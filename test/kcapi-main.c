@@ -277,6 +277,7 @@ static int cavs_sym(struct kcapi_cavs *cavs_test)
 	if (!cavs_test->keylen || !cavs_test->key ||
 	    kcapi_cipher_setkey(&handle, cavs_test->key, cavs_test->keylen)) {
 		printf("Symmetric cipher setkey failed\n");
+		kcapi_cipher_destroy(&handle);
 		return -EINVAL;
 	}
 
@@ -404,16 +405,17 @@ static int cavs_aead(struct kcapi_cavs *cavs_test)
 	if (!outbuf)
 		goto out;
 
-	/* FIXME should take blocklen -- should be removed */
-	newiv = pad_iv(cavs_test->iv, cavs_test->ivlen, 16);
-	if (!newiv)
-		goto out;
-
 	ret = -EINVAL;
 	if (kcapi_aead_init(&handle, cavs_test->cipher)) {
 		printf("Allocation of cipher failed\n");
 		goto out;
 	}
+
+	/* FIXME -- should be removed */
+	newiv = pad_iv(cavs_test->iv, cavs_test->ivlen,
+		       kcapi_aead_ivsize(&handle));
+	if (!newiv)
+		goto out;
 
 	/* Set key */
 	if (!cavs_test->keylen || !cavs_test->key ||
@@ -443,7 +445,6 @@ static int cavs_aead(struct kcapi_cavs *cavs_test)
 					 cavs_test->ctlen + cavs_test->taglen,
 					 outbuf, outbuflen);
 	errsv = errno;
-	kcapi_aead_destroy(&handle);
 	if (0 > ret && EBADMSG != errsv){
 		printf("Cipher operation of buffer failed: %d %d\n", errno, ret);
 		goto out;
@@ -465,6 +466,7 @@ static int cavs_aead(struct kcapi_cavs *cavs_test)
 	ret = 0;
 
 out:
+	kcapi_aead_destroy(&handle);
 	if (newiv)
 		free(newiv);
 	if (outbuf)
