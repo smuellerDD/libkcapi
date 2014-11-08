@@ -9,3 +9,6 @@
 
 * Use -pedantic compilation flag in Makefile once the af_alg_aead_assoc is moved
   to amsystem header file
+
+* Discuss with Herbert Xu whether the function pad_iv is needed: can we remove
+  the check for the IV size in algif_skcipher.c.
