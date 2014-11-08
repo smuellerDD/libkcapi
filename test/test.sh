@@ -407,8 +407,18 @@ aeadfunc()
 	done
 }
 
+auxtest()
+{
+	./kcapi -z
+	if [ $? -ne 0 ]
+	then
+		echo "Auxiliary test failure detected"
+		let failures=($failures+1)
+	fi
+}
 
 hashfunc
 symfunc
 aeadfunc
+auxtest
 exit $failures

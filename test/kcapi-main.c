@@ -124,7 +124,7 @@ static int hex2bin_m(const char *hex, size_t hexlen,
 	return 0;
 }
 
-void aux_test_rng(char *name)
+static int aux_test_rng(char *name)
 {
 	struct kcapi_handle handle;
 #define RNGOUTBUF 150
@@ -134,7 +134,7 @@ void aux_test_rng(char *name)
 
 	if (kcapi_rng_init(&handle, name)) {
                 printf("Allocation of cipher %s failed\n", name);
-                return;
+                return 1;
         }
 
 	ret = kcapi_rng_generate(&handle, outbuf, RNGOUTBUF);
@@ -142,7 +142,7 @@ void aux_test_rng(char *name)
 		printf("Failure to generate random numbers %d\n",
 		       (int)ret);
 		kcapi_rng_destroy(&handle);
-		return;
+		return 1;
 	}
 	if (ret != RNGOUTBUF) {
 		printf("RNG only returned %d bytes (requested %d)\n",
@@ -152,15 +152,17 @@ void aux_test_rng(char *name)
 	bin2hex(outbuf, ret, hex, RNGOUTBUF * 2 + 1, 0);
 	printf("RNG %s returned: %s\n", name, hex);
 	kcapi_rng_destroy(&handle);
+
+	return 0;
 }
 
-void auxiliary_tests(void)
+static int auxiliary_tests(void)
 {
 	struct kcapi_handle handle;
 
         if (kcapi_aead_init(&handle, "ccm(aes)")) {
                 printf("Allocation of cipher failed\n");
-                return;
+                return 1;
         }
         {
 		int iv = kcapi_aead_ivsize(&handle);
@@ -173,7 +175,7 @@ void auxiliary_tests(void)
 
         if (kcapi_cipher_init(&handle, "cbc(aes)")) {
                 printf("Allocation of cipher failed\n");
-                return;
+                return 1;
         }
         {
 		int iv = kcapi_cipher_ivsize(&handle);
@@ -182,10 +184,16 @@ void auxiliary_tests(void)
 	}
 	kcapi_cipher_destroy(&handle);
 
-	aux_test_rng("drbg_nopr_hmac_sha256");
-	aux_test_rng("drbg_nopr_sha1");
-	aux_test_rng("drbg_nopr_ctr_aes256");
-	aux_test_rng("ansi_cprng");
+	if (aux_test_rng("drbg_nopr_hmac_sha256"))
+		return 1;
+	if (aux_test_rng("drbg_nopr_sha1"))
+		return 1;
+	if (aux_test_rng("drbg_nopr_ctr_aes256"))
+		return 1;
+	if (aux_test_rng("ansi_cprng"))
+		return 1;
+
+	return 0;
 }
 
 /************************************************************************
@@ -660,8 +668,7 @@ int main(int argc, char *argv[])
 				cavs_test.type = atoi(optarg);
 				break;
 			case 'z':
-				auxiliary_tests();
-				rc = 0;
+				rc = auxiliary_tests();
 				goto out;
 				break;
 			default:
