@@ -11,6 +11,9 @@ Theh library does not implement any cipher algorithms. All consumer requests
 are sent to the kernel for processing. Results from the kernel crypto API
 are returned to the consumer via the library API.
 
+The kernel interface and therefore this library can be used by unprivileged
+processes.
+
 API Documentation
 =================
 
@@ -51,7 +54,7 @@ The consumer must ensure that the memory is appropriately sanitized. The caller
 does not need to sanitize struct kcapi_handle as it does not contain any
 sensitive data.
 
-Unimplemented interfaces
+Unimplemented Interfaces
 ========================
 
 Depending on the version of your kernel, some of the kernel interfaces
@@ -64,6 +67,27 @@ handle. The following interfaces are available:
 	kcapi_aead_*	kernel interface under review
 	kcapi_rng_*	kernel interface under review
 
+Test cases
+==========
+
+The test/ directory contains test cases to verify the correct operation of
+this library. In addition it allows the verification of the correct operation
+of the kernel crypto API.
+
+The test cases are documented in test/README.
+
+Kernel Patches
+==============
+
+The following kernel patches are distributed with this library. There is no
+need to add them to the kernel unless you want to use the following
+functionality that is already supported by this library:
+
+	* AEAD cipher: kernel-patch/add-aead-algif_skcipher.diff
+
+	* RNG: kernel-patch/RNG/
+
+These patches will be send to the Linux kernel community.
 
 Author
 ======
