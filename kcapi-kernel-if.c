@@ -54,7 +54,7 @@
 #define MINVERSION 1 /* API compatible, ABI may change, functional
 		      * enhancements only, consumer can be left unchanged if
 		      * enhancements are not considered */
-#define PATCHLEVEL 0 /* API / ABI compatible, no functional changes, no
+#define PATCHLEVEL 1 /* API / ABI compatible, no functional changes, no
 		      * enhancements, bug fixes only */
 
 /* remove once in if_alg.h */
@@ -244,10 +244,15 @@ static inline unsigned int _kcapi_common_getinfo(struct kcapi_handle *handle,
 						 int optval)
 {
 	socklen_t len = 0;
+	int outlen = 0;
+
 	if (getsockopt(handle->opfd, SOL_ALG, optval, NULL, &len) == -1)
 		return 0;
 
-	return (int)len;
+	outlen = (int)len;
+	if (outlen < 0)
+		outlen = 0;
+	return outlen;
 }
 
 static int _kcapi_handle_init(struct kcapi_handle *handle,
