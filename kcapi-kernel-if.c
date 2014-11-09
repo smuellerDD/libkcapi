@@ -683,7 +683,6 @@ int kcapi_aead_ccm_nonce_to_iv(const unsigned char *nonce, size_t noncelen,
 	unsigned char *newiv = NULL;
 	unsigned char l = 16 - 2 - noncelen;
 
-	/* TODO blocksize */
 	if (noncelen > 16 - 2)
 		return -EINVAL;
 	newiv = calloc(1, 16);
