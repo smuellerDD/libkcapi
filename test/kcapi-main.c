@@ -453,7 +453,7 @@ static int cavs_aead(struct kcapi_cavs *cavs_test)
 					 cavs_test->ctlen + cavs_test->taglen,
 					 outbuf, outbuflen);
 	errsv = errno;
-	if (0 > ret && EBADMSG != errsv){
+	if (0 > ret && EBADMSG != errsv) {
 		printf("Cipher operation of buffer failed: %d %d\n", errno, ret);
 		goto out;
 	}
