@@ -298,8 +298,8 @@ static inline int _kcapi_handle_destroy(struct kcapi_handle *handle)
 /**
  * Obtain version string of kcapi library
  *
- * @buf buffer to place version string into
- * @buflen length of buffer
+ * @buf buffer to place version string into - output
+ * @buflen length of buffer - input
  */
 void kcapi_versionstring(char *buf, size_t buflen)
 {
@@ -423,7 +423,7 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 /**
  * Return size of IV required for cipher pointed to by the cipher handle
  *
- * @handle cipher handle
+ * @handle cipher handle - input
  *
  * return: > 0 specifying the IV size
  * 	   0 on error
@@ -436,7 +436,7 @@ int kcapi_cipher_ivsize(struct kcapi_handle *handle)
 /**
  * Return size of one block of the cipher pointed to by the cipher handle
  *
- * @handle cipher handle
+ * @handle cipher handle - input
  *
  * return: > 0 specifying the block size
  * 	   0 on error
@@ -630,7 +630,7 @@ void kcapi_aead_gettag(struct kcapi_handle *handle,
 /**
  * Return size of IV required for cipher pointed to by the AEAD handle
  *
- * @handle cipher handle
+ * @handle cipher handle - input
  *
  * return: > 0 specifying the IV size
  * 	   0 on error
@@ -643,7 +643,7 @@ int kcapi_aead_ivsize(struct kcapi_handle *handle)
 /**
  * Return size of one block of the cipher pointed to by the AEAD handle
  *
- * @handle cipher handle
+ * @handle cipher handle - input
  *
  * return: > 0 specifying the block size
  * 	   0 on error
@@ -658,7 +658,7 @@ int kcapi_aead_blocksize(struct kcapi_handle *handle)
  * cipher. Smaller tag sizes may be chosen depending on the AEAD cipher
  * type.
  *
- * @handle cipher handle
+ * @handle cipher handle - input
  *
  * return: > 0 specifying the block size
  * 	   0 on error
