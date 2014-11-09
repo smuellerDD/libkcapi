@@ -7,7 +7,7 @@ space to utilize the kernel crypto API.
 libkcapi uses this Netlink interface and exports easy to use APIs so that
 a developer does not need to consider the low-level Netlink interface handling.
 
-Theh library does not implement any cipher algorithms. All consumer requests
+The library does not implement any cipher algorithms. All consumer requests
 are sent to the kernel for processing. Results from the kernel crypto API
 are returned to the consumer via the library API.
 
