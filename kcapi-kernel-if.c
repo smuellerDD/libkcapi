@@ -587,6 +587,11 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
  * The plaintext buffer will not hold the tag which means the caller only needs
  * to allocate memory sufficient to hold the plaintext.
  *
+ * To catch authentication errors (i.e. integrity violations) during the
+ * decryption operation, the errno of this call shall be checked for EBADMSG.
+ * If this function returns < 0 and errno is set to EBADMSG, an authentication
+ * error is detected.
+ *
  * @handle cipher handle - input
  * @in ciphertext data buffer - input
  * @inlen length of in buffer - input
