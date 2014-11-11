@@ -337,10 +337,10 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
 	if (ivsize == ivlen)
 		return -ERANGE;
 
-	niv = calloc(1, newlen);
+	niv = calloc(1, ivsize);
 	if (!niv)
 		return -ENOMEM;
-	memcpy(niv, iv, ivlen);
+	memcpy(niv, iv, ivsize);
 
 	*newiv = niv;
 	*newivlen = ivlen;
