@@ -125,5 +125,8 @@ ssize_t kcapi_rng_generate(struct kcapi_handle *handle,
 			   unsigned char *buffer, size_t len);
 
 void kcapi_versionstring(char *buf, size_t buflen);
+int kcapi_pad_iv(struct kcapi_handle *handle,
+		 const unsigned char *iv, size_t ivlen,
+		 unsigned char **newiv, size_t *newivlen);
 
 #endif /* _KCAPI_H */
