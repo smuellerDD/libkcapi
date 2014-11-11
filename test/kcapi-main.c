@@ -376,7 +376,7 @@ static int cavs_aead(struct kcapi_cavs *cavs_test)
 	unsigned char *cttag = NULL;
 	int ret = -ENOMEM;
 	unsigned char *newiv = NULL;
-	unsigned int newivlen = 0;
+	size_t newivlen = 0;
 	int errsv = 0;
 
 	if (!cavs_test->taglen)
