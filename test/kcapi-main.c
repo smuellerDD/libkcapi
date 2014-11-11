@@ -341,20 +341,6 @@ static unsigned char *concatenate(const unsigned char *buf1, size_t buf1len,
 	return outbuf;
 }
 
-/* FIXME remove the check in skcipher sendmsg handler for ivlen == blocklen */
-static unsigned char *pad_iv(const unsigned char *iv, size_t ivlen,
-			     size_t newlen)
-{
-	unsigned char *newiv = NULL;
-
-	newiv = calloc(1, newlen);
-	if (!newiv)
-		return NULL;
-	memcpy(newiv, iv, ivlen);
-
-	return newiv;
-}
-
 /*
  * Encryption command line:
  * $ ./kcapi -x 2 -e -c "gcm(aes)" -p 89154d0d4129d322e4487bafaa4f6b46 -k c0ece3e63198af382b5603331cc23fa8 -i 7e489b83622e7228314d878d -a afcd7202d621e06ca53b70c2bdff7fb2 -l 16
@@ -389,7 +375,8 @@ static int cavs_aead(struct kcapi_cavs *cavs_test)
 	char *outhex = NULL;
 	unsigned char *cttag = NULL;
 	int ret = -ENOMEM;
-	unsigned char *newiv;
+	unsigned char *newiv = NULL;
+	unsigned int newivlen = 0;
 	int errsv = 0;
 
 	if (!cavs_test->taglen)
@@ -419,10 +406,9 @@ static int cavs_aead(struct kcapi_cavs *cavs_test)
 		goto out;
 	}
 
-	/* FIXME -- should be removed */
-	newiv = pad_iv(cavs_test->iv, cavs_test->ivlen,
-		       kcapi_aead_ivsize(&handle));
-	if (!newiv)
+	ret = kcapi_pad_iv(&handle, cavs_test->iv, cavs_test->ivlen,
+			   &newiv, &newivlen);
+	if (ret && ret != -ERANGE)
 		goto out;
 
 	/* Set key */
@@ -433,7 +419,7 @@ static int cavs_aead(struct kcapi_cavs *cavs_test)
 	}
 
 	/* Setting the IV for the cipher operations */
-	kcapi_aead_setiv(&handle, newiv, 16);
+	kcapi_aead_setiv(&handle, newiv, newivlen);
 
 	/* Setting the associated data */
 	if (cavs_test->assoclen && cavs_test->assoc)
