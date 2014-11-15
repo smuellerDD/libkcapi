@@ -15,8 +15,8 @@
  *    written permission.
  *
  * ALTERNATIVELY, this product may be distributed under the terms of
- * the GNU General Public License, in which case the provisions of the GPL2 are
- * required INSTEAD OF the above restrictions.  (This clause is
+ * the GNU General Public License, in which case the provisions of the GPL2
+ * are required INSTEAD OF the above restrictions.  (This clause is
  * necessary due to a potential bad interaction between the GPL and
  * the restrictions contained in a BSD-style copyright.)
  *
@@ -39,35 +39,48 @@
 
 /**
  * Common data required for symmetric and AEAD ciphers
+ * @in: Input data (plaintext for encryption, ciphertext for
+ *	decryption) - input
+ * @inlen: Length of in buffer - input
+ * @out: output buffer (ciphertext for encryption, plaintext for
+ *	 decryption) - output
+ * @outlen: Length of output buffer - input
+ * @iv: IV - input
+ * @ivlen: Length of IV - input
  */
 struct kcapi_skcipher_data {
-	const unsigned char *in; /** <Input data (plaintext for encryption,
-				  * ciphertext for decryption) -- input */
-	size_t inlen; /** <Length of in buffer -- input */
-	unsigned char *out; /** <output buffer (ciphertext for encryption,
-			     * plaintext for decryption) -- output */
-	size_t outlen; /** <Length of output buffer -- input */
-	const unsigned char *iv; /** <IV -- input */
-	size_t ivlen; /** <Length of IV -- input */
+	const unsigned char *in;
+	size_t inlen;
+	unsigned char *out;
+	size_t outlen;
+	const unsigned char *iv;
+	size_t ivlen;
 };
 
 /**
  * AEAD data
+ * @assoc: Associated data - input
+ * @assoclen: Length of associated data - input
+ * @taglen: Length of authentication tag - input
+ * @tag: Authentication tag - input for decryption, output for encryption
  */
 struct kcapi_aead_data {
-	const unsigned char *assoc; /** <Associated data -- input */
-	size_t assoclen; /** <Length of associated data -- input */
-	size_t taglen; /** <Length of authentication tag -- input */
-	unsigned char *tag; /** <Authentication tag -- input for decryption,
-			     * output for encryption */
+	const unsigned char *assoc;
+	size_t assoclen;
+	size_t taglen;
+	unsigned char *tag;
 };
 
 /**
  * Cipher handle
+ * @tfmfd: Socket descriptor for AF_ALG
+ * @opfd: FD to open kernel crypto API TFM
+ * @skdata: Common data for all ciphers
+ * @aead: AEAD cipher specific data
  */
 struct kcapi_handle {
-	int tfmfd;	/** <Socket descriptor for AF_ALG */
-	int opfd;	/** <FD to open kernel crypto API TFM */
+	int tfmfd;
+	int opfd;
 	struct kcapi_skcipher_data skdata;
 	struct kcapi_aead_data aead;
 };
