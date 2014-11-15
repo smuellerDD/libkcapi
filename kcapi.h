@@ -131,6 +131,7 @@ int kcapi_md_update(struct kcapi_handle *handle,
 		    const unsigned char *buffer, size_t len);
 ssize_t kcapi_md_final(struct kcapi_handle *handle,
 		       unsigned char *buffer, size_t len);
+int kcapi_md_digestsize(struct kcapi_handle *handle);
 
 int kcapi_rng_init(struct kcapi_handle *handle, const char *ciphername);
 int kcapi_rng_destroy(struct kcapi_handle *handle);

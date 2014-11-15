@@ -63,6 +63,7 @@
 #define ALG_GET_BLOCKSIZE		6
 #define ALG_GET_IVSIZE			7
 #define ALG_GET_AEAD_AUTHSIZE		8
+#define ALG_GET_DIGESTSIZE		9
 
 struct af_alg_aead_assoc {
 	__u32	aead_assoclen;
@@ -844,9 +845,23 @@ ssize_t kcapi_md_final(struct kcapi_handle *handle,
 	return r;
 }
 
+/**
+ * kcapi_md_digestsize() - return the size of the message digest
+ * @handle: cipher handle - input
+ *
+ * The returned message digest size can be used before the @kcapi_md_final
+ * function invocation to determine the right memory size to be allocated for
+ * this call.
+ *
+ * Return: > 0 specifying the block size; 0 on error
+ */
+int kcapi_md_digestsize(struct kcapi_handle *handle)
+{
+	return _kcapi_common_getinfo(handle, ALG_GET_DIGESTSIZE);
+}
 
 /**
- * DOC: Deterministic Random Number API
+ * DOC: Random Number API
  */
 
 /**
