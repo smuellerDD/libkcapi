@@ -44,7 +44,7 @@
  * @inlen: Length of in buffer - input
  * @out: output buffer (ciphertext for encryption, plaintext for
  *	 decryption) - output
- * @outlen: Length of output buffer - input
+ * @outlen: Length of output buffer - input / output
  * @iv: IV - input
  * @ivlen: Length of IV - input
  */
@@ -63,12 +63,14 @@ struct kcapi_skcipher_data {
  * @assoclen: Length of associated data - input
  * @taglen: Length of authentication tag - input
  * @tag: Authentication tag - input for decryption, output for encryption
+ * @retlen: internal data -- number of bytes returned by the read system call
  */
 struct kcapi_aead_data {
 	const unsigned char *assoc;
 	size_t assoclen;
 	size_t taglen;
 	unsigned char *tag;
+	size_t retlen;
 };
 
 /**
@@ -112,11 +114,21 @@ void kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen);
 ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
 			   unsigned char *out, size_t outlen);
+ssize_t kcapi_aead_enc_nonalign(struct kcapi_handle *handle,
+				unsigned char *pt, size_t ptlen, size_t taglen);
+void kcapi_aead_enc_getdata(struct kcapi_handle *handle,
+			    unsigned char **ct, size_t *ctlen,
+			    unsigned char **tag, size_t *taglen);
+void kcapi_aead_enc_free(struct kcapi_handle *handle);
 ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
 			   unsigned char *out, size_t outlen);
-void kcapi_aead_gettag(struct kcapi_handle *handle,
-		       unsigned char **tag, size_t *taglen);
+ssize_t kcapi_aead_dec_nonalign(struct kcapi_handle *handle,
+				unsigned char *ct, size_t ctlen,
+				unsigned char *tag, size_t taglen);
+void kcapi_aead_dec_getdata(struct kcapi_handle *handle,
+			    unsigned char **pt, size_t *ptlen);
+void kcapi_aead_dec_free(struct kcapi_handle *handle);
 int kcapi_aead_ivsize(struct kcapi_handle *handle);
 int kcapi_aead_blocksize(struct kcapi_handle *handle);
 int kcapi_aead_authsize(struct kcapi_handle *handle);

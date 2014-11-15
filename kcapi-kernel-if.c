@@ -190,14 +190,18 @@ static ssize_t _kcapi_common_crypt(struct kcapi_handle *handle,
 		goto bad;
 	}
 
-	if (enc && handle->aead.taglen) {
-		handle->aead.tag = handle->skdata.out +
-				  (ret - handle->aead.taglen);
-		handle->skdata.outlen = ret - handle->aead.taglen;
+	if (handle->aead.taglen) {
+		handle->aead.retlen = ret;
+		if (enc) {
+			handle->aead.tag = handle->skdata.out +
+					   (ret - handle->aead.taglen);
+			handle->aead.retlen -= handle->aead.taglen;
+		}
 	}
 
 bad:
 	memset(buffer, 0, bufferlen);
+	/* magic to convince GCC to memset the buffer */
 	_buffer = memchr(buffer, 1, bufferlen);
 	if (_buffer)
 		_buffer = '\0';
@@ -598,7 +602,7 @@ void kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen)
 }
 
 /**
- * kcapi_aead_encrypt() - encrypt data
+ * kcapi_aead_encrypt() - encrypt aligned data
  * @handle: cipher handle - input
  * @in: plaintext data buffer - input
  * @inlen: length of in buffer - input
@@ -609,7 +613,8 @@ void kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen)
  * ciphertext pointers. That would mean that after the encryption operation,
  * the plaintext is overwritten with the ciphertext.
  *
- * The ciphertext buffer will hold the tag as follows:
+ * When using this function, the caller must align the input and output
+ * data buffers. The ciphertext buffer must hold the tag as follows:
  * 	ciphertext || tag
  * The caller must ensure that the ciphertext buffer is large enough to hold
  * the ciphertext together with the tag of the size set by the caller using
@@ -626,6 +631,80 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 }
 
 /**
+ * kcapi_aead_enc_nonalign() - encrypt nonaligned data
+ * @handle: cipher handle - input
+ * @pt: plaintext data buffer - input
+ * @ptlen: length of plaintext buffer - input
+ * @taglen: length of the authentication tag to be created - input
+ *
+ * The caller does not need to know anything about the memory structure
+ * of the input / output data. The ciphertext buffer is allocated for the
+ * caller.
+ *
+ * After invoking this function the caller should use kcapi_aead_enc_getdata()
+ * to obtain the resulting ciphertext and authentication tag references.
+ *
+ * Caller must invoke kcapi_aead_enc_free() to release the buffer allocated with
+ * this function.
+ */
+ssize_t kcapi_aead_enc_nonalign(struct kcapi_handle *handle,
+				unsigned char *pt, size_t ptlen, size_t taglen)
+{
+	unsigned char *ctbuf = NULL;
+
+	if (!ptlen || !taglen)
+		return -EINVAL;
+
+	ctbuf = calloc(1, ptlen + taglen);
+	if (!ctbuf)
+		return -ENOMEM;
+
+	handle->skdata.in = pt;
+	handle->skdata.inlen = ptlen;
+	handle->skdata.out = ctbuf;
+	handle->skdata.outlen = ptlen + taglen;
+	handle->aead.taglen = taglen;
+
+	return _kcapi_common_crypt(handle, ALG_OP_ENCRYPT);
+}
+
+/**
+ * kcapi_aead_enc_getdata() - Get the resulting data from encryption
+ * @handle: cipher handle - input
+ * @ct: pointer to ciphertext - output
+ * @ctlen: length of ciphertext - output
+ * @tag: tag buffer pointer - output
+ * @taglen: length of tag - output
+ *
+ * This function is a service function to the consumer to locate the right
+ * ciphertext buffer offset holding the authentication tag. In addition, it
+ * provides the consumer with the length of the tag and the length of the
+ * ciphertext.
+ *
+ * This call supplements kcapi_aead_enc_nonalign() where the caller does not
+ * need to know about the memory structure of ciphertext and tag.
+ */
+void kcapi_aead_enc_getdata(struct kcapi_handle *handle,
+			    unsigned char **ct, size_t *ctlen,
+			    unsigned char **tag, size_t *taglen)
+{
+	*ct = handle->skdata.out;
+	*ctlen = handle->aead.retlen;
+	*tag = handle->aead.tag;
+	*taglen = handle->aead.taglen;
+}
+
+/**
+ * kcapi_aead_enc_free() - free buffers allocated with kcapi_aead_enc_nonalign()
+ * @handle: cipher handle - input
+ */
+void kcapi_aead_enc_free(struct kcapi_handle *handle)
+{
+	memset(handle->skdata.out, 0, handle->skdata.outlen);
+	free(handle->skdata.out);
+}
+
+/**
  * kcapi_aead_decrypt() - decrypt data
  * @handle: cipher handle - input
  * @in: ciphertext data buffer - input
@@ -637,7 +716,8 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
  * ciphertext pointers. That would mean that after the encryption operation,
  * the ciphertext is overwritten with the plaintext.
  *
- * The ciphertext buffer must contain the tag as follows:
+ * When using this function, the caller must align the input and output
+ * data buffers. The ciphertext buffer must contain the tag as follows:
  * 	ciphertext || tag
  * The plaintext buffer will not hold the tag which means the caller only needs
  * to allocate memory sufficient to hold the plaintext.
@@ -658,19 +738,92 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 }
 
 /**
- * kcapi_aead_gettag() - Get the tag / authentication data and its size
+ * kcapi_aead_dec_nonalign() - decrypt nonaligned data
  * @handle: cipher handle - input
- * @tag: tag buffer pointer - output
- * @taglen: length of tag - output
+ * @ct: ciphertext data buffer - input
+ * @ctlen: length of ciphertext buffer - input
+ * @tag: authentication tag buffer - input
+ * @taglen: length of the authentication tag - input
  *
- * Note, this call is only needed for obtaining the generated tag after
- * after encryption.
+ * The caller does not need to know anything about the memory structure
+ * of the input / output data. The plaintext buffer is allocated for the
+ * caller.
+ *
+ * After invoking this function the caller should use kcapi_aead_dec_getdata()
+ * to obtain the resulting plaintext buffer.
+ *
+ * Caller must invoke kcapi_aead_dec_free() to release the buffer allocated with
+ * this function.
  */
-void kcapi_aead_gettag(struct kcapi_handle *handle,
-		       unsigned char **tag, size_t *taglen)
+ssize_t kcapi_aead_dec_nonalign(struct kcapi_handle *handle,
+				unsigned char *ct, size_t ctlen,
+				unsigned char *tag, size_t taglen)
 {
-	*tag = handle->aead.tag;
-	*taglen = handle->aead.taglen;
+	unsigned char *ptbuf = NULL;
+	unsigned char *input = NULL;
+	unsigned char *_input = NULL;
+	ssize_t ret = 0;
+
+	if (!ctlen || !taglen)
+		return -EINVAL;
+
+	ptbuf = calloc(1, ctlen);
+	if (!ptbuf)
+		return -ENOMEM;
+
+	/* Format input data by concatenating ciphertext and tag */
+	input = calloc(1, ctlen + taglen);
+	if (!input) {
+		free(ptbuf);
+		return -ENOMEM;
+	}
+	memcpy(input, ct, ctlen);
+	memcpy(input + ctlen, tag, taglen);
+
+	handle->skdata.in = input;
+	handle->skdata.inlen = ctlen + taglen;
+	handle->skdata.out = ptbuf;
+	handle->skdata.outlen = ctlen;
+	handle->aead.taglen = taglen;
+	ret = _kcapi_common_crypt(handle, ALG_OP_DECRYPT);
+
+	memset(input, 0, ctlen + taglen);
+	/* magic to convince GCC to memset the buffer */
+	_input = memchr(input, 1, ctlen + taglen);
+	if (_input)
+		_input = '\0';
+	free(input);
+
+	return ret;
+}
+
+/**
+ * kcapi_aead_dec_getdata() - Get the resulting data from decryption
+ * @handle: cipher handle - input
+ * @pt: pointer to plaintext - output
+ * @ptlen: length of plaintext - output
+ *
+ * This function is a service function to the consumer to obtain the
+ * plaintext buffer and its length.
+ *
+ * This call supplements kcapi_aead_dec_nonalign() where the caller does not
+ * need to know about the memory structure created by this function.
+ */
+void kcapi_aead_dec_getdata(struct kcapi_handle *handle,
+			    unsigned char **pt, size_t *ptlen)
+{
+	*pt = handle->skdata.out;
+	*ptlen = handle->aead.retlen;
+}
+
+/**
+ * kcapi_aead_dec_free() - free buffers allocated with kcapi_aead_dec_nonalign()
+ * @handle: cipher handle - input
+ */
+void kcapi_aead_dec_free(struct kcapi_handle *handle)
+{
+	memset(handle->skdata.out, 0, handle->skdata.outlen);
+	free(handle->skdata.out);
 }
 
 /**
