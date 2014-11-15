@@ -17,8 +17,8 @@
  *    written permission.
  *
  * ALTERNATIVELY, this product may be distributed under the terms of
- * the GNU General Public License, in which case the provisions of the GPL2 are
- * required INSTEAD OF the above restrictions.  (This clause is
+ * the GNU General Public License, in which case the provisions of the GPL2
+ * are required INSTEAD OF the above restrictions.  (This clause is
  * necessary due to a potential bad interaction between the GPL and
  * the restrictions contained in a BSD-style copyright.)
  *
@@ -495,6 +495,10 @@ int kcapi_cipher_blocksize(struct kcapi_handle *handle)
  *
  * The following API calls allow using the Authenticated Encryption with
  * Associated Data.
+ *
+ * IMORTANT NOTE Please read the description of @kcapi_aead_encrypt and
+ * @kcapi_aead_decrypt for the expected memory layout regarding the tag and
+ * the plaintext / ciphertext.
  */
 
 /**
