@@ -159,39 +159,62 @@ static int aux_test_rng(char *name)
 static int auxiliary_tests(void)
 {
 	struct kcapi_handle handle;
+	int ret = 0;
 
         if (kcapi_aead_init(&handle, "ccm(aes)")) {
-                printf("Allocation of cipher failed\n");
-                return 1;
-        }
-        {
+                printf("Allocation of ccm(aes) cipher failed\n");
+                ret++;
+        } else {
 		int iv = kcapi_aead_ivsize(&handle);
 		int bs = kcapi_aead_blocksize(&handle);
 		int au = kcapi_aead_authsize(&handle);
-		printf("AEAD sizes: IV %d BS %d AUTH %d\n", iv, bs, au);
+		if (iv == 16 && bs == 1 && au == 16) {
+			printf("AEAD obtained information passed\n");
+		} else {
+			printf("AEAD obtained information failed -- sizes: IV %d BS %d AUTH %d\n", iv, bs, au);
+			ret++;
+		}
 	}
 	kcapi_aead_destroy(&handle);
 
-
         if (kcapi_cipher_init(&handle, "cbc(aes)")) {
-                printf("Allocation of cipher failed\n");
+                printf("Allocation of cbc(aes) cipher failed\n");
                 return 1;
-        }
-        {
+        } else {
 		int iv = kcapi_cipher_ivsize(&handle);
 		int bs = kcapi_cipher_blocksize(&handle);
-		printf("Symmetric cipher sizes: IV %d BS %d\n", iv, bs);
+		if (iv == 16 && bs == 16) {
+			printf("Symmetric cipher obtained information passed\n");
+		} else {
+			printf("Symmetric cipher obtained information failed --sizes: IV %d BS %d\n", iv, bs);
+			ret++;
+		}
 	}
 	kcapi_cipher_destroy(&handle);
 
+	if (kcapi_md_init(&handle, "sha256")) {
+                printf("Allocation of sha256 cipher failed\n");
+                return 1;
+        } else {
+		int ds = kcapi_md_digestsize(&handle);
+		if (ds == 32) {
+			printf("Message digest obtained information passed\n");
+		} else {
+			printf("Message digest obtained information failed -- sizes: digestsize %d\n", ds);
+			ret++;
+		}
+	}
+	kcapi_md_destroy(&handle);
+
+
 	if (aux_test_rng("drbg_nopr_hmac_sha256"))
-		return 1;
+		ret++;
 	if (aux_test_rng("drbg_nopr_sha1"))
-		return 1;
+		ret++;
 	if (aux_test_rng("drbg_nopr_ctr_aes256"))
-		return 1;
+		ret++;
 	if (aux_test_rng("ansi_cprng"))
-		return 1;
+		ret++;
 
 	return 0;
 }
@@ -225,6 +248,7 @@ static void usage(void)
 	fprintf(stderr, "\t\t\t2 for AEAD cipher algorithm\n");
 	fprintf(stderr, "\t\t\t3 for message digest and keyed message digest\n");
 	fprintf(stderr, "\t-z\tAuxiliary tests of the API\n");
+	fprintf(stderr, "\t-y\tNonaligned AEAD API\n");
 }
 
 enum type {
@@ -277,7 +301,7 @@ static int cavs_sym(struct kcapi_cavs *cavs_test)
 	}
 
 	if (kcapi_cipher_init(&handle, cavs_test->cipher)) {
-		printf("Allocation of cipher failed\n");
+		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
 		return -EINVAL;
 	}
 
@@ -291,7 +315,12 @@ static int cavs_sym(struct kcapi_cavs *cavs_test)
 
 	/* Setting the IV for the cipher operations */
 	if (cavs_test->ivlen && cavs_test->iv)
-		kcapi_cipher_setiv(&handle, cavs_test->iv, cavs_test->ivlen);
+		ret = kcapi_cipher_setiv(&handle, cavs_test->iv,
+					 cavs_test->ivlen);
+		if (ret) {
+			printf("Setting of IV failed %d\n", ret);
+			return ret;
+		}
 
 	if (cavs_test->enc) {
 		ret = kcapi_cipher_encrypt(&handle,
@@ -367,7 +396,7 @@ static unsigned char *concatenate(const unsigned char *buf1, size_t buf1len,
  * the kernel waits for more input data and a read will be blocked until the
  * AAD is supplied.
  */
-static int cavs_aead(struct kcapi_cavs *cavs_test)
+static int cavs_aead_aligned(struct kcapi_cavs *cavs_test)
 {
 	struct kcapi_handle handle;
 	unsigned char *outbuf = NULL;
@@ -406,11 +435,6 @@ static int cavs_aead(struct kcapi_cavs *cavs_test)
 		goto out;
 	}
 
-	ret = kcapi_pad_iv(&handle, cavs_test->iv, cavs_test->ivlen,
-			   &newiv, &newivlen);
-	if (ret && ret != -ERANGE)
-		goto out;
-
 	/* Set key */
 	if (!cavs_test->keylen || !cavs_test->key ||
 	    kcapi_aead_setkey(&handle, cavs_test->key, cavs_test->keylen)) {
@@ -418,8 +442,17 @@ static int cavs_aead(struct kcapi_cavs *cavs_test)
 		goto out;
 	}
 
-	/* Setting the IV for the cipher operations */
-	kcapi_aead_setiv(&handle, newiv, newivlen);
+	/* set IV */
+	ret = kcapi_pad_iv(&handle, cavs_test->iv, cavs_test->ivlen,
+			   &newiv, &newivlen);
+	if (ret && ret != -ERANGE)
+		goto out;
+
+	if (ret == -ERANGE)
+		ret = kcapi_aead_setiv(&handle,
+				       cavs_test->iv, cavs_test->ivlen);
+	else
+		ret = kcapi_aead_setiv(&handle, newiv, newivlen);
 
 	/* Setting the associated data */
 	if (cavs_test->assoclen && cavs_test->assoc)
@@ -472,6 +505,129 @@ out:
 	return ret;
 }
 
+
+static int cavs_aead_nonaligned(struct kcapi_cavs *cavs_test)
+{
+	struct kcapi_handle handle;
+	int ret = -ENOMEM;
+	unsigned char *newiv = NULL;
+	size_t newivlen = 0;
+	int errsv = 0;
+
+	if (!cavs_test->taglen)
+		return -EINVAL;
+	if (!cavs_test->ivlen || !cavs_test->iv)
+		return -EINVAL;
+
+	ret = -EINVAL;
+	if (kcapi_aead_init(&handle, cavs_test->cipher)) {
+		printf("Allocation of cipher %s failed\n", cavs_test->cipher);
+		goto out;
+	}
+
+	/* Set key */
+	if (!cavs_test->keylen || !cavs_test->key ||
+	    kcapi_aead_setkey(&handle, cavs_test->key, cavs_test->keylen)) {
+		printf("Symmetric cipher setkey failed\n");
+		goto out;
+	}
+
+	/* set IV */
+	ret = kcapi_pad_iv(&handle, cavs_test->iv, cavs_test->ivlen,
+			   &newiv, &newivlen);
+	if (ret && ret != -ERANGE)
+		goto out;
+
+	if (ret == -ERANGE)
+		ret = kcapi_aead_setiv(&handle,
+				       cavs_test->iv, cavs_test->ivlen);
+	else
+		ret = kcapi_aead_setiv(&handle, newiv, newivlen);
+
+	if (ret) {
+		printf("Setting IV failed %d\n", ret);
+		goto out;
+	}
+
+	/* Setting the associated data */
+	if (cavs_test->assoclen && cavs_test->assoc)
+		kcapi_aead_setassoc(&handle, cavs_test->assoc,
+				    cavs_test->assoclen);
+
+	ret = -EIO;
+	if (cavs_test->enc)
+		ret = kcapi_aead_enc_nonalign(&handle,
+					      cavs_test->pt, cavs_test->ptlen,
+					      cavs_test->taglen);
+	else
+		ret = kcapi_aead_dec_nonalign(&handle,
+					      cavs_test->ct, cavs_test->ctlen,
+					      cavs_test->tag, cavs_test->taglen);
+	errsv = errno;
+	if (0 > ret && EBADMSG != errsv) {
+		printf("Cipher operation of buffer failed: %d %d\n", errno, ret);
+		goto outfree;
+	}
+
+	if (EBADMSG == errsv) {
+		printf("EBADMSG\n");
+		ret = 0;
+		goto outfree;
+	}
+
+	ret = -ENOMEM;
+	if (cavs_test->enc) {
+		unsigned char *ct = NULL;
+		size_t ctlen = 0;
+		char *cthex = NULL;
+		unsigned char *tag = NULL;
+		size_t taglen = 0;
+		char *taghex = NULL;
+
+		kcapi_aead_enc_getdata(&handle, &ct, &ctlen, &tag, &taglen);
+		cthex = calloc(1, (ctlen * 2 + 1));
+		if (!cthex)
+			goto outfree;
+		taghex = calloc(1, (taglen * 2 + 1));
+		if (!taghex) {
+			free(cthex);
+			goto outfree;
+		}
+
+		bin2hex(ct, ctlen, cthex, ctlen * 2 + 1, 0);
+		bin2hex(tag, taglen, taghex, taglen * 2 + 1, 0);
+		printf("%s%s\n", cthex, taghex);
+		free(cthex);
+		free(taghex);
+	} else {
+		unsigned char *pt = NULL;
+		size_t ptlen = 0;
+		char *pthex = NULL;;
+
+		kcapi_aead_dec_getdata(&handle, &pt, &ptlen);
+		pthex = calloc(1, (ptlen * 2 + 1));
+		if (!pthex)
+			goto outfree;
+
+		bin2hex(pt, ptlen, pthex, ptlen * 2 + 1, 0);
+		printf("%s\n", pthex);
+		free(pthex);
+	}
+
+	ret = 0;
+
+outfree:
+	if (cavs_test->enc)
+		kcapi_aead_enc_free(&handle);
+	else
+		kcapi_aead_dec_free(&handle);
+out:
+	kcapi_aead_destroy(&handle);
+	if (newiv)
+		free(newiv);
+	return ret;
+}
+
 /*
  * Hash command line invocation:
  * $ ./kcapi -x 3 -c sha256 -p 38f86d
@@ -501,7 +657,7 @@ static int cavs_hash(struct kcapi_cavs *cavs_test)
 	memset(mdhex, 0, MAXMDHEX);
 
 	if (kcapi_md_init(&handle, cavs_test->cipher)) {
-		printf("Allocation of hash failed\n");
+		printf("Allocation of hash %s failed\n", cavs_test->cipher);
 		return 1;
 	}
 	/* HMAC */
@@ -537,6 +693,7 @@ int main(int argc, char *argv[])
 	int c = 0;
 	int ret = 1;
 	int rc = 1;
+	int nonaligned = 0;
 	struct kcapi_cavs cavs_test;
 
 	memset(&cavs_test, 0, sizeof(struct kcapi_cavs));
@@ -559,9 +716,10 @@ int main(int argc, char *argv[])
 			{"tag", 1, 0, 0},
 			{"ciphertype", 1, 0, 0},
 			{"aux", 0, 0, 0},
+			{"nonaligned", 0, 0, 0},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "ec:p:q:i:n:k:a:l:t:x:z", opts, &opt_index);
+		c = getopt_long(argc, argv, "ec:p:q:i:n:k:a:l:t:x:zy", opts, &opt_index);
 		if(-1 == c)
 			break;
 		switch(c)
@@ -657,6 +815,9 @@ int main(int argc, char *argv[])
 				rc = auxiliary_tests();
 				goto out;
 				break;
+			case 'y':
+				nonaligned = 1;
+				break;
 			default:
 				usage();
 				goto out;
@@ -666,7 +827,10 @@ int main(int argc, char *argv[])
 	if (SYM == cavs_test.type)
 		rc = cavs_sym(&cavs_test);
 	else if (AEAD == cavs_test.type)
-		rc = cavs_aead(&cavs_test);
+		if (nonaligned)
+			rc = cavs_aead_nonaligned(&cavs_test);
+		else
+			rc = cavs_aead_aligned(&cavs_test);
 	else if (HASH == cavs_test.type)
 		rc = cavs_hash(&cavs_test);
 	else

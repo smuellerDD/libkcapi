@@ -365,6 +365,8 @@ symfunc()
 
 aeadfunc()
 {
+	aligned=$1;
+
 	AEADEXEC="1 2 3 4 5 6 7 8 9 10 11 12"
 	for i in $AEADEXEC
 	do
@@ -388,18 +390,23 @@ aeadfunc()
 		expected=""
 		if [ "$AEAD_enc" = 1  ]
 		then
-			result=$(./kcapi -x 2 -e -c $AEAD_name $iv -k $AEAD_key -a $AEAD_assoc -p $AEAD_msg -l $AEAD_taglen)
+			result=$(./kcapi $aligned -x 2 -e -c $AEAD_name $iv -k $AEAD_key -a $AEAD_assoc -p $AEAD_msg -l $AEAD_taglen)
 			expected="${AEAD_exp}${AEAD_tag}"
 		else
-			result=$(./kcapi -x 2 -c $AEAD_name $iv -k $AEAD_key -a $AEAD_assoc -t $AEAD_tag -q $AEAD_msg)
+			result=$(./kcapi $aligned -x 2 -c $AEAD_name $iv -k $AEAD_key -a $AEAD_assoc -t $AEAD_tag -q $AEAD_msg)
 			expected="${AEAD_exp}"
 		fi
 
+		alignout="aligned requests"
+		if [ -z "$aligned" ]
+		then
+			alignout="nonaligned requests"
+		fi
 		if [ x"$result" = x"$expected" ]
 		then
-			echo "AEAD test $i passed"
+			echo "AEAD $alignout test $i passed"
 		else
-			echo "AEAD test $i failed"
+			echo "AEAD $alignout test $i failed"
 			echo " Exp $expected"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -420,5 +427,6 @@ auxtest()
 hashfunc
 symfunc
 aeadfunc
+aeadfunc "-y"
 auxtest
 exit $failures
