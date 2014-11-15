@@ -19,8 +19,8 @@
  *    written permission.
  *
  * ALTERNATIVELY, this product may be distributed under the terms of
- * the GNU General Public License, in which case the provisions of the GPL2 are
- * required INSTEAD OF the above restrictions.  (This clause is
+ * the GNU General Public License, in which case the provisions of the GPL2
+ * are required INSTEAD OF the above restrictions.  (This clause is
  * necessary due to a potential bad interaction between the GPL and
  * the restrictions contained in a BSD-style copyright.)
  *
@@ -64,18 +64,18 @@ static int rng_recvmsg(struct kiocb *unused, struct socket *sock,
 	struct rng_ctx *ctx = ask->private;
 	int err = -EFAULT;
 
-	if (0 == len)
+	if (len == 0)
 		return 0;
-	if (MAXSIZE < len)
+	if (len > MAXSIZE)
 		len = MAXSIZE;
 
 	lock_sock(sk);
 	len = crypto_rng_get_bytes(ctx->drng, ctx->result, len);
-	if (0 > len)
+	if (len < 0)
 		goto unlock;
 
 	err = memcpy_toiovec(msg->msg_iov, ctx->result, len);
-	memset(ctx->result, 0, err);
+	memzero_explicit(ctx->result, len);
 
 unlock:
 	release_sock(sk);
@@ -120,7 +120,7 @@ static void rng_sock_destruct(struct sock *sk)
 	struct alg_sock *ask = alg_sk(sk);
 	struct rng_ctx *ctx = ask->private;
 
-	memset(ctx->result, 0, MAXSIZE);
+	memzero_explicit(ctx->result, sizeof(ctx->result));
 	sock_kfree_s(sk, ctx, ctx->len);
 	af_alg_release_parent(sk);
 }
@@ -136,7 +136,7 @@ static int rng_accept_parent(void *private, struct sock *sk)
 	ctx = sock_kmalloc(sk, len, GFP_KERNEL);
 	if (!ctx)
 		return -ENOMEM;
-	memset(ctx->result, 0, MAXSIZE);
+	memset(ctx->result, 0, sizeof(ctx->result));
 
 	ctx->len = len;
 
