@@ -332,18 +332,18 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
 		 unsigned char **newiv, size_t *newivlen)
 {
 	unsigned char *niv = NULL;
-	unsigned int ivsize = _kcapi_common_getinfo(handle, ALG_GET_IVSIZE);
+	unsigned int nivlen = _kcapi_common_getinfo(handle, ALG_GET_IVSIZE);
 
-	if (ivsize == ivlen)
+	if (nivlen == ivlen)
 		return -ERANGE;
 
-	niv = calloc(1, ivsize);
+	niv = calloc(1, nivlen);
 	if (!niv)
 		return -ENOMEM;
-	memcpy(niv, iv, ivsize);
+	memcpy(niv, iv, nivlen);
 
 	*newiv = niv;
-	*newivlen = ivlen;
+	*newivlen = nivlen;
 
 	return 0;
 }
@@ -402,13 +402,25 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
  * @iv: buffer holding the IV (may be NULL if IV is not needed) - input
  * @ivlen: length of iv (should be zero if iv is NULL) - input
  *
- * This function requires IV to be exactly block size.
+ * Return: 0 upon success; < 0 in case of an error
+ *
+ * This function requires IV to be exactly IV size. The function verifies
+ * the IV size to avoid unnecessary kernel round trips.
  */
-void kcapi_cipher_setiv(struct kcapi_handle *handle,
-			const unsigned char *iv, size_t ivlen)
+int kcapi_cipher_setiv(struct kcapi_handle *handle,
+		       const unsigned char *iv, size_t ivlen)
 {
+	int cipher_ivlen = _kcapi_common_getinfo(handle, ALG_GET_IVSIZE);
+
+	if (cipher_ivlen < 0)
+		return cipher_ivlen;
+	if (!iv || ivlen != (size_t)cipher_ivlen)
+		return -EINVAL;
+
 	handle->skdata.iv = iv;
-	handle->skdata.ivlen = iv ? ivlen : 0;
+	handle->skdata.ivlen = ivlen;
+
+	return 0;
 }
 
 /**
@@ -532,13 +544,25 @@ int kcapi_aead_setkey(struct kcapi_handle *handle,
  * @iv: buffer holding the IV (may be NULL if IV is not needed) - input
  * @ivlenv length of iv (should be zero if iv is NULL) - input
  *
- * This function requires IV to be exactly block size.
+ * Return: 0 upon success; < 0 in case of an error
+ *
+ * This function requires IV to be exactly IV size. The function verifies
+ * the IV size to avoid unnecessary kernel round trips.
  */
-void kcapi_aead_setiv(struct kcapi_handle *handle,
-		      const unsigned char *iv, size_t ivlen)
+int kcapi_aead_setiv(struct kcapi_handle *handle,
+		     const unsigned char *iv, size_t ivlen)
 {
+	int cipher_ivlen = _kcapi_common_getinfo(handle, ALG_GET_IVSIZE);
+
+	if (cipher_ivlen < 0)
+		return cipher_ivlen;
+	if (!iv || ivlen != (size_t)cipher_ivlen)
+		return -EINVAL;
+
 	handle->skdata.iv = iv;
-	handle->skdata.ivlen = iv ? ivlen : 0;
+	handle->skdata.ivlen = ivlen;
+
+	return 0;
 }
 
 /**

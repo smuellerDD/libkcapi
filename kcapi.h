@@ -89,8 +89,8 @@ int kcapi_cipher_init(struct kcapi_handle *handle, const char *ciphername);
 int kcapi_cipher_destroy(struct kcapi_handle *handle);
 int kcapi_cipher_setkey(struct kcapi_handle *handle,
 			const unsigned char *key, size_t keylen);
-void kcapi_cipher_setiv(struct kcapi_handle *handle,
-			const unsigned char *iv, size_t ivlen);
+int kcapi_cipher_setiv(struct kcapi_handle *handle,
+		       const unsigned char *iv, size_t ivlen);
 ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 			     const unsigned char *in, size_t inlen,
 			     unsigned char *out, size_t outlen);
@@ -104,8 +104,8 @@ int kcapi_aead_init(struct kcapi_handle *handle, const char *ciphername);
 int kcapi_aead_destroy(struct kcapi_handle *handle);
 int kcapi_aead_setkey(struct kcapi_handle *handle,
 		      const unsigned char *key, size_t keylen);
-void kcapi_aead_setiv(struct kcapi_handle *handle,
-		      const unsigned char *iv, size_t ivlen);
+int kcapi_aead_setiv(struct kcapi_handle *handle,
+		     const unsigned char *iv, size_t ivlen);
 void kcapi_aead_setassoc(struct kcapi_handle *handle,
 			 const unsigned char *assoc, size_t assoclen);
 void kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen);
