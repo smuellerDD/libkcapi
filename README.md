@@ -83,11 +83,11 @@ The following kernel patches are distributed with this library. There is no
 need to add them to the kernel unless you want to use the following
 functionality that is already supported by this library:
 
-	* AEAD cipher: kernel-patch/add-aead-algif_skcipher.diff
+	* AEAD cipher
 
-	* RNG: kernel-patch/RNG/
+	* Random number generator
 
-These patches will be send to the Linux kernel community.
+Use the latest patch set in the kernel-patch/ directory.
 
 Author
 ======
