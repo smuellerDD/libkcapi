@@ -60,10 +60,11 @@
 /* remove once in if_alg.h */
 #define ALG_SET_AEAD_ASSOC		4
 #define ALG_SET_AEAD_AUTHSIZE		5
-#define ALG_GET_BLOCKSIZE		6
-#define ALG_GET_IVSIZE			7
-#define ALG_GET_AEAD_AUTHSIZE		8
-#define ALG_GET_DIGESTSIZE		9
+
+#define ALG_GET_BLOCKSIZE		1
+#define ALG_GET_IVSIZE			2
+#define ALG_GET_AEAD_AUTHSIZE		3
+#define ALG_GET_DIGESTSIZE		4
 
 struct af_alg_aead_assoc {
 	__u32	aead_assoclen;
