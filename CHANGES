@@ -1,0 +1,11 @@
+Changes 0.2.0:
+ * Add kcapi_aead_[enc|dec]_* calls for non-aligned requests
+ * Updated kernel patch to match what has been sent to LKML
+ * Documentation of API calls and data structures completed
+ * Add kcapi_md_digestsize
+ * Add sanity checking to IV setting API
+ * Add kcapi_pad_iv
+ * Add sanity check around getsockopt wrapper API call
+ * API documentation marks input / output parameters
+ * API documentation explains AEAD decryption EBADMSG error code
+ * Update of teets to cover all changed / new API calls
