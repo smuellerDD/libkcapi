@@ -1,0 +1,66 @@
+From 85677dbd19e5ba39c307e281b7fad86b6790a8b2 Mon Sep 17 00:00:00 2001
+From: Stephan Mueller <smueller@chronox.de>
+Date: Wed, 12 Nov 2014 07:50:58 +0100
+Subject: [PATCH 0/8] crypto: AF_ALG: add AEAD and RNG support
+
+Hi,
+
+This patch set adds AEAD and RNG support to the AF_ALG interface
+exported by the kernel crypto API. By extending AF_ALG with AEAD and RNG
+support, all cipher types the kernel crypto API allows access to are
+now accessible from userspace.
+
+The RNG support is stand-alone.
+
+The AEAD implementation is added to algif_skcipher.c to prevent
+re-implementation of the memory moving logic.
+
+The extension for the AEAD support can be summarized with the following
+types of changes:
+
+        * select the correct crypto API functions (either the ablkcipher
+          or the aead functions)
+
+        * apply the additional data needed for AEAD at the right time
+          (associated data, authentication tag) -- this includes the addition
+          of user space interfaces to allow setting this data.
+
+        * add the calculation for the memory size needed for encryption and
+          decryption.
+
+In addition, the patch set adds a getsockopt implementation to skcipher to
+allow user space to inquire about properties of the ciphers (IV size,
+block size, authentication data size). This extension would be needed for a
+generic user space usage of these ciphers.
+
+The new AEAD and RNG interfaces are fully tested with the test application
+provided at [1]. That test application exercises all newly added user space
+interfaces.
+
+The patch set was tested on x86_64 and i386.
+
+[1] http://www.chronox.de/libkcapi.html
+
+Stephan Mueller (8):
+  crypto: AF_ALG: add user space interface for AEAD
+  crypto: AF_ALG: user space interface for cipher info
+  crypto: AF_ALG: extend data structuers for AEAD
+  crypto: AF_ALG: crypto API calls to inline functions
+  crypto: AF_ALG: add AEAD support
+  crypto: AF_ALG: make setkey optional
+  crypto: AF_ALG: add random number generator support
+  crypto: AF_ALG: enable RNG interface compilation
+
+ crypto/Kconfig              |   9 ++
+ crypto/Makefile             |   1 +
+ crypto/af_alg.c             |  20 +++
+ crypto/algif_rng.c          | 186 +++++++++++++++++++++++
+ crypto/algif_skcipher.c     | 350 ++++++++++++++++++++++++++++++++++++++++----
+ include/crypto/if_alg.h     |   2 +
+ include/uapi/linux/if_alg.h |  10 ++
+ 7 files changed, 550 insertions(+), 28 deletions(-)
+ create mode 100644 crypto/algif_rng.c
+
+-- 
+2.1.0
+

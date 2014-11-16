@@ -1,0 +1,97 @@
+From b3cb2f3c2e9bc720b81631be84e6ca283eb2a7ec Mon Sep 17 00:00:00 2001
+From: Stephan Mueller <smueller@chronox.de>
+Date: Sun, 9 Nov 2014 19:58:15 +0100
+Subject: [PATCH 1/8] crypto: AF_ALG: add user space interface for AEAD
+
+AEAD requires the following data in addition to normal symmetric
+ciphers:
+
+	* Associated authentication data of arbitrary length
+
+	* Authentication tag for decryption
+
+	* Length of authentication tag for encryption
+
+The authentication tag data is communicated as part of the actual
+ciphertext as mandated by the kernel crypto API. Therefore we only need
+to provide a user space interface for the associated authentication data
+as well as for the authentication tag length.
+
+This patch adds both as a setsockopt interface that is identical to the
+AF_ALG interface for setting an IV and for selecting the cipher
+operation type (encrypt or decrypt).
+
+Signed-off-by: Stephan Mueller <smueller@chronox.de>
+---
+ crypto/af_alg.c             | 17 +++++++++++++++++
+ include/crypto/if_alg.h     |  2 ++
+ include/uapi/linux/if_alg.h |  7 +++++++
+ 3 files changed, 26 insertions(+)
+
+diff --git a/crypto/af_alg.c b/crypto/af_alg.c
+index 6a3ad80..635140b 100644
+--- a/crypto/af_alg.c
++++ b/crypto/af_alg.c
+@@ -421,6 +421,23 @@ int af_alg_cmsg_send(struct msghdr *msg, struct af_alg_control *con)
+ 			con->op = *(u32 *)CMSG_DATA(cmsg);
+ 			break;
+ 
++
++		case ALG_SET_AEAD_AUTHSIZE:
++			if (cmsg->cmsg_len < CMSG_LEN(sizeof(u32)))
++				return -EINVAL;
++			con->aead_authsize = *(u32 *)CMSG_DATA(cmsg);
++			break;
++
++		case ALG_SET_AEAD_ASSOC:
++			if (cmsg->cmsg_len < CMSG_LEN(sizeof(*con->aead_assoc)))
++				return -EINVAL;
++			con->aead_assoc = (void *)CMSG_DATA(cmsg);
++			if (cmsg->cmsg_len <
++				CMSG_LEN(con->aead_assoc->aead_assoclen +
++					 sizeof(*con->aead_assoc)))
++				return -EINVAL;
++			break;
++
+ 		default:
+ 			return -EINVAL;
+ 		}
+diff --git a/include/crypto/if_alg.h b/include/crypto/if_alg.h
+index d61c111..c741483 100644
+--- a/include/crypto/if_alg.h
++++ b/include/crypto/if_alg.h
+@@ -41,7 +41,9 @@ struct af_alg_completion {
+ 
+ struct af_alg_control {
+ 	struct af_alg_iv *iv;
++	struct af_alg_aead_assoc *aead_assoc;
+ 	int op;
++	unsigned int aead_authsize;
+ };
+ 
+ struct af_alg_type {
+diff --git a/include/uapi/linux/if_alg.h b/include/uapi/linux/if_alg.h
+index 0f9acce..64e7008 100644
+--- a/include/uapi/linux/if_alg.h
++++ b/include/uapi/linux/if_alg.h
+@@ -28,10 +28,17 @@ struct af_alg_iv {
+ 	__u8	iv[0];
+ };
+ 
++struct af_alg_aead_assoc {
++	__u32	aead_assoclen;
++	__u8	aead_assoc[0];
++};
++
+ /* Socket options */
+ #define ALG_SET_KEY			1
+ #define ALG_SET_IV			2
+ #define ALG_SET_OP			3
++#define ALG_SET_AEAD_ASSOC		4
++#define ALG_SET_AEAD_AUTHSIZE		5
+ 
+ /* Operations */
+ #define ALG_OP_DECRYPT			0
+-- 
+2.1.0
+
