@@ -700,7 +700,12 @@ void kcapi_aead_enc_getdata(struct kcapi_handle *handle,
  */
 void kcapi_aead_enc_free(struct kcapi_handle *handle)
 {
+	unsigned char *buf = handle->skdata.out;
 	memset(handle->skdata.out, 0, handle->skdata.outlen);
+	/* magic to convince GCC to memset the buffer */
+	buf = memchr(buf, 1, handle->skdata.outlen);
+	if (buf)
+		buf = '\0';
 	free(handle->skdata.out);
 }
 
@@ -759,41 +764,29 @@ ssize_t kcapi_aead_dec_nonalign(struct kcapi_handle *handle,
 				unsigned char *ct, size_t ctlen,
 				unsigned char *tag, size_t taglen)
 {
-	unsigned char *ptbuf = NULL;
 	unsigned char *input = NULL;
-	unsigned char *_input = NULL;
 	ssize_t ret = 0;
 
 	if (!ctlen || !taglen)
 		return -EINVAL;
 
-	ptbuf = calloc(1, ctlen);
-	if (!ptbuf)
-		return -ENOMEM;
-
 	/* Format input data by concatenating ciphertext and tag */
 	input = calloc(1, ctlen + taglen);
-	if (!input) {
-		free(ptbuf);
+	if (!input)
 		return -ENOMEM;
-	}
 	memcpy(input, ct, ctlen);
 	memcpy(input + ctlen, tag, taglen);
 
+	/*
+	 * in-place decryption as ciphertext buffer is larger than plaintext
+	 * buffer
+	 */
 	handle->skdata.in = input;
 	handle->skdata.inlen = ctlen + taglen;
-	handle->skdata.out = ptbuf;
+	handle->skdata.out = input;
 	handle->skdata.outlen = ctlen;
 	handle->aead.taglen = taglen;
 	ret = _kcapi_common_crypt(handle, ALG_OP_DECRYPT);
-
-	memset(input, 0, ctlen + taglen);
-	/* magic to convince GCC to memset the buffer */
-	_input = memchr(input, 1, ctlen + taglen);
-	if (_input)
-		_input = '\0';
-	free(input);
-
 	return ret;
 }
 
@@ -822,7 +815,17 @@ void kcapi_aead_dec_getdata(struct kcapi_handle *handle,
  */
 void kcapi_aead_dec_free(struct kcapi_handle *handle)
 {
-	memset(handle->skdata.out, 0, handle->skdata.outlen);
+	/*
+	 * handle->skdata.in is the same memory as handle->skdata.out
+	 * but skdata.in is const -- thus we use skdata.out; though,
+	 * the buffer is still skdata.inlen in size!
+	 */
+	unsigned char *buf = handle->skdata.out;
+	memset(handle->skdata.out, 0, handle->skdata.inlen);
+	/* magic to convince GCC to memset the buffer */
+	buf = memchr(buf, 1, handle->skdata.inlen);
+	if (buf)
+		buf = '\0';
 	free(handle->skdata.out);
 }
 
