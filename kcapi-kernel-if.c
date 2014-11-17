@@ -503,7 +503,9 @@ int kcapi_cipher_blocksize(struct kcapi_handle *handle)
  *
  * IMORTANT NOTE Please read the description of @kcapi_aead_encrypt and
  * @kcapi_aead_decrypt for the expected memory layout regarding the tag and
- * the plaintext / ciphertext.
+ * the plaintext / ciphertext when using aligned data requests. For
+ * non-aligned cipher requests, no specific memory layout needs to be
+ * observed.
  */
 
 /**
@@ -552,7 +554,7 @@ int kcapi_aead_setkey(struct kcapi_handle *handle,
  * kcapi_aead_setiv() - set IV for the AEAD operation
  * @handle: cipher handle - input
  * @iv: buffer holding the IV (may be NULL if IV is not needed) - input
- * @ivlenv length of iv (should be zero if iv is NULL) - input
+ * @ivlen: length of iv (should be zero if iv is NULL) - input
  *
  * Return: 0 upon success; < 0 in case of an error
  *
