@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"
+	"http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd" []>
+
+<book id="libkcapi">
+ <bookinfo>
+  <title>Linux Kernel Crypto API User Space Interface Library</title>
+
+  <authorgroup>
+   <author>
+    <firstname>Stephan</firstname>
+    <surname>Mueller</surname>
+    <affiliation>
+     <address>
+      <email>smueller@chronox.de</email>
+     </address>
+    </affiliation>
+   </author>
+  </authorgroup>
+
+  <copyright>
+   <year>2014</year>
+   <holder>Stephan Mueller</holder>
+  </copyright>
+
+
+  <legalnotice>
+   <para>
+     This documentation is free software; you can redistribute
+     it and/or modify it under the terms of the GNU General Public
+     License as published by the Free Software Foundation; either
+     version 2 of the License, or (at your option) any later
+     version.
+   </para>
+
+   <para>
+     This program is distributed in the hope that it will be
+     useful, but WITHOUT ANY WARRANTY; without even the implied
+     warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+     See the GNU General Public License for more details.
+   </para>
+
+   <para>
+     You should have received a copy of the GNU General Public
+     License along with this program; if not, write to the Free
+     Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+     MA 02111-1307 USA
+   </para>
+
+   <para>
+     For more details see the file COPYING in the source
+     distribution of Linux.
+   </para>
+  </legalnotice>
+ </bookinfo>
+
+ <toc></toc>
+
+ <chapter id="Intro">
+  <title>libkcapi - Linux Kernel Crypto API User Space Interface Library</title>
+
+  <para>
+   The Linux kernel exports a Netlink interface of type AF_ALG to allow user
+   space to utilize the kernel crypto API.
+  </para>
+
+  <para>
+   libkcapi uses this Netlink interface and exports easy to use APIs so that
+   a developer does not need to consider the low-level Netlink interface
+   handling.
+  </para>
+
+  <para>
+   The library does not implement any cipher algorithms. All consumer requests
+   are sent to the kernel for processing. Results from the kernel crypto API
+   are returned to the consumer via the library API.
+  </para>
+
+  <para>
+   The kernel interface and therefore this library can be used by unprivileged
+   processes.
+  </para>
+ </chapter>
+
+ <chapter id="Usage"><title>Programming Guidelines</title>
+  <para>
+   A consumer has to use the kcapi.h header file to link with libkcapi. The
+   linking has to be performed using -lkcapi.
+  </para>
+
+  <para>
+   In case a consumer does not want a shared library, the libkcapi C file and
+   header file can also just copied to the consumer code and compiled along
+   with it.
+  </para>
+
+  <sect1><title>Memory Allocation</title>
+   <para>
+    The library libkcapi uses the data structure struct kcapi_handle as the
+    cipher handle that allows the consumer to operate with the various function
+    calls of this library.
+   </para>
+
+   <para>
+    Unlike other crypto libraries, libkcapi does not allocate any memory or
+    performs operations that implies memory allocation. struct kcapi_handle only
+    holds pointers to the consumer-provided buffers with sensitive data. That
+    means that the buffers holding sensitive data like keys are under full
+    control of the consumer. Therefore, this library does not offer any memory
+    allocation or secure memory clearing functions.
+   </para>
+
+   <para>
+    The consumer must ensure that the memory is appropriately sanitized. The
+    caller does not need to sanitize struct kcapi_handle as it does not contain
+    any sensitive data.
+   </para>
+
+   <para>
+    <emphasis>Exception:</emphasis>
+    The only exception to the rule that the library does not maintain memory
+    with sensitive data applies to the nonaligned AEAD cipher API calls. These
+    calls should be used as follows -- the example outlines the encryption
+    case. The decryption API calls are equivalent.
+
+    <programlisting>
+     ...
+     kcapi_aead_enc_nonalign
+     ...
+     kcapi_aead_enc_getdata
+     ...
+     kcapi_aead_enc_free
+    </programlisting>
+   </para>
+  </sect1>
+
+  <sect1><title>Kernel Interfaces</title>
+   <para>
+    Depending on the version of your kernel, some of the kernel interfaces
+    the library depends on are not available. When using the respective library
+    API functions, an error is returned during initialization of the cipher
+    handle. The following interfaces are available:
+   </para>
+
+   <itemizedlist>
+    <listitem>
+     <para>kcapi_md_* usable since kernel version 3.0</para></listitem>
+    <listitem>
+     <para>kcapi_cipher_* usable since kernel version 3.0</para>
+    </listitem>
+    <listitem>
+     <para>
+      kcapi_aead_* kernel interface under review, patches available in
+      the directory kernel-patch applicable against latest cryptodev-2.6 tree
+     </para>
+    </listitem>
+    <listitem>
+     <para>
+      kcapi_aead_* kernel interface under review, patches available in
+      the directory kernel-patch applicable against latest cryptodev-2.6 tree
+     </para>
+    </listitem>
+   </itemizedlist>
+  </sect1>
+
+  <sect1><title>Example Code</title>
+   <para>
+    Example code covering all available API calls is provided with the test
+    code in the test/ directory.
+   </para>
+  </sect1>
+ </chapter>
+
+ <chapter id="API"><title>Programming Interface</title>
+  <sect1><title>Common API</title>
+!Pkcapi-kernel-if.c Common API
+!Pkcapi-kernel-if.c kcapi_versionstring
+!Pkcapi-kernel-if.c kcapi_pad_iv
+   </sect1>
+   <sect1><title>Symmetric Cipher API</title>
+!Pkcapi-kernel-if.c Symmetric Cipher API
+!Fkcapi-kernel-if.c kcapi_cipher_init
+!Fkcapi-kernel-if.c kcapi_cipher_destroy
+!Fkcapi-kernel-if.c kcapi_cipher_setkey
+!Fkcapi-kernel-if.c kcapi_cipher_setiv
+!Fkcapi-kernel-if.c kcapi_cipher_encrypt
+!Fkcapi-kernel-if.c kcapi_cipher_decrypt
+!Fkcapi-kernel-if.c kcapi_cipher_ivsize
+!Fkcapi-kernel-if.c kcapi_cipher_blocksize
+   </sect1>
+   <sect1><title>AEAD Cipher API</title>
+!Pkcapi-kernel-if.c AEAD Cipher API
+!Fkcapi-kernel-if.c kcapi_aead_init
+!Fkcapi-kernel-if.c kcapi_aead_destroy
+!Fkcapi-kernel-if.c kcapi_aead_setkey
+!Fkcapi-kernel-if.c kcapi_aead_setiv
+!Fkcapi-kernel-if.c kcapi_aead_setassoc
+!Fkcapi-kernel-if.c kcapi_aead_settaglen
+!Fkcapi-kernel-if.c kcapi_aead_encrypt
+!Fkcapi-kernel-if.c kcapi_aead_enc_nonalign
+!Fkcapi-kernel-if.c kcapi_aead_enc_getdata
+!Fkcapi-kernel-if.c kcapi_aead_enc_free
+!Fkcapi-kernel-if.c kcapi_aead_decrypt
+!Fkcapi-kernel-if.c kcapi_aead_dec_nonalign
+!Fkcapi-kernel-if.c kcapi_aead_dec_getdata
+!Fkcapi-kernel-if.c kcapi_aead_dec_free
+!Fkcapi-kernel-if.c kcapi_aead_ivsize
+!Fkcapi-kernel-if.c kcapi_aead_blocksize
+!Fkcapi-kernel-if.c kcapi_aead_authsize
+!Fkcapi-kernel-if.c kcapi_aead_ccm_nonce_to_iv
+   </sect1>
+   <sect1><title>Message Digest Cipher API</title>
+!Pkcapi-kernel-if.c Message Digest Cipher API
+!Fkcapi-kernel-if.c kcapi_md_init
+!Fkcapi-kernel-if.c kcapi_md_destroy
+!Fkcapi-kernel-if.c kcapi_md_setkey
+!Fkcapi-kernel-if.c kcapi_md_update
+!Fkcapi-kernel-if.c kcapi_md_final
+!Fkcapi-kernel-if.c kcapi_md_digestsize
+   </sect1>
+   <sect1><title>Random Number API</title>
+!Pkcapi-kernel-if.c Random Number API
+!Fkcapi-kernel-if.c kcapi_rng_init
+!Fkcapi-kernel-if.c kcapi_rng_destroy
+!Fkcapi-kernel-if.c kcapi_rng_generate
+  </sect1>
+ </chapter>
+</book>
