@@ -51,10 +51,10 @@
 
 #define MAJVERSION 0 /* API / ABI incompatible changes, functional changes that
 		      * require consumer to be updated */
-#define MINVERSION 2 /* API compatible, ABI may change, functional
+#define MINVERSION 3 /* API compatible, ABI may change, functional
 		      * enhancements only, consumer can be left unchanged if
 		      * enhancements are not considered */
-#define PATCHLEVEL 1 /* API / ABI compatible, no functional changes, no
+#define PATCHLEVEL 0 /* API / ABI compatible, no functional changes, no
 		      * enhancements, bug fixes only */
 
 /* remove once in if_alg.h */
@@ -275,7 +275,7 @@ static int _kcapi_handle_init(struct kcapi_handle *handle,
 
 	handle->tfmfd = socket(AF_ALG, SOCK_SEQPACKET, 0);
 	if (handle->tfmfd == -1)
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 
 	if (bind(handle->tfmfd, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
 		close(handle->tfmfd);
@@ -369,8 +369,9 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
  * This function provides the initialization of a symmetric cipher handle and
  * establishes the connection to the kernel.
  *
- * Return: 0 upon success; ENOENT - algorithm not available; ENOTSUP - AF_ALG
- *	     family not available; EINVAL - accept syscall failed
+ * Return: 0 upon success; ENOENT - algorithm not available; 
+ *	   -EOPNOTSUPP - AF_ALG family not available;
+ *	   -EINVAL - accept syscall failed
  */
 int kcapi_cipher_init(struct kcapi_handle *handle, const char *ciphername)
 {
@@ -517,8 +518,9 @@ int kcapi_cipher_blocksize(struct kcapi_handle *handle)
  * This function initializes an AEAD cipher handle and establishes the
  * connection to the kernel.
  *
- * Return: 0 upon success; -ENOENT - algorithm not available; -ENOTSUP - AF_ALG
- *	   family not available; -EINVAL - accept syscall failed
+ * Return: 0 upon success; -ENOENT - algorithm not available;
+ *	   -EOPNOTSUPP - AF_ALG family not available;
+ *	   -EINVAL - accept syscall failed
  */
 int kcapi_aead_init(struct kcapi_handle *handle, const char *ciphername)
 {
@@ -914,8 +916,9 @@ int kcapi_aead_ccm_nonce_to_iv(const unsigned char *nonce, size_t noncelen,
  * This function provides the initialization of a (keyed) message digest handle
  * and establishes the connection to the kernel.
  *
- * Return: 0 upon success; ENOENT - algorithm not available; ENOTSUP - AF_ALG
- *	     family not available; EINVAL - accept syscall failed
+ * Return: 0 upon success; ENOENT - algorithm not available;
+ *	   -EOPNOTSUPP - AF_ALG family not available;
+ *	   -EINVAL - accept syscall failed
  */
 int kcapi_md_init(struct kcapi_handle *handle, const char *ciphername)
 {
@@ -1034,8 +1037,9 @@ int kcapi_md_digestsize(struct kcapi_handle *handle)
  * This function provides the initialization of a random number generator handle
  * and establishes the connection to the kernel.
  *
- * Return: 0 upon success; ENOENT - algorithm not available; ENOTSUP - AF_ALG
- *	     family not available; EINVAL - accept syscall failed
+ * Return: 0 upon success; ENOENT - algorithm not available; 
+ *	   -EOPNOTSUPP - AF_ALG family not available;
+ *	   -EINVAL - accept syscall failed
  */
 int kcapi_rng_init(struct kcapi_handle *handle, const char *ciphername)
 {
