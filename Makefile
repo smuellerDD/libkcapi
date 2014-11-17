@@ -28,7 +28,7 @@ CFLAGS += $(foreach includedir,$(INCLUDE_DIRS),-I$(includedir))
 LDFLAGS += $(foreach librarydir,$(LIBRARY_DIRS),-L$(librarydir))
 LDFLAGS += $(foreach library,$(LIBRARIES),-l$(library))
 
-.PHONY: all scan install clean distclean
+.PHONY: all scan install clean distclean man maninstall pdf ps html
 
 all: $(NAME)
 
@@ -38,14 +38,30 @@ $(NAME): $(OBJS)
 scan:	$(OBJS)
 	scan-build --use-analyzer=/usr/bin/clang $(CC) -shared -Wl,-soname,lib$(NAME).so.$(LIBMAJOR) -o lib$(NAME).so.$(LIBVERSION) $(OBJS) $(LDFLAGS)
 
-install: $(NAME)
+install:
 	install -m 0755 -s lib$(NAME).so.$(LIBVERSION) $(PREFIX)/$(LIBDIR)/
 	$(RM) $(PREFIX)/$(LIBDIR)/lib$(NAME).so.$(LIBMAJOR)
 	ln -s lib$(NAME).so.$(LIBVERSION) $(PREFIX)/$(LIBDIR)/lib$(NAME).so.$(LIBMAJOR)
 	install -m 0644 kcapi.h $(PREFIX)/include
 
+man:
+	LIBVERSION=$(LIBVERSION) doc/gendocs.sh man
+
+maninstall:
+	install -m 0644 doc/man/* $(PREFIX)/share/man/man3
+
+html:
+	LIBVERSION=$(LIBVERSION) doc/gendocs.sh html
+
+pdf:
+	LIBVERSION=$(LIBVERSION) doc/gendocs.sh pdf
+
+ps:
+	LIBVERSION=$(LIBVERSION) doc/gendocs.sh ps
+
 clean:
 	@- $(RM) $(OBJS)
 	@- $(RM) lib$(NAME).so.$(LIBVERSION)
+	@- doc/gendocs.sh clean
 
 distclean: clean
