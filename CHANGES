@@ -1,3 +1,8 @@
+Changes 0.2.1:
+ * Add automation to generate nicely formatted guidance documents out of source code
+   comments. See README.md for make targets generating the respective guidance
+   documents.
+
 Changes 0.2.0:
  * Add kcapi_aead_[enc|dec]_* calls for non-aligned requests
  * Updated kernel patch to match what has been sent to LKML
