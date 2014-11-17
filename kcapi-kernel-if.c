@@ -768,7 +768,6 @@ ssize_t kcapi_aead_dec_nonalign(struct kcapi_handle *handle,
 				unsigned char *tag, size_t taglen)
 {
 	unsigned char *input = NULL;
-	ssize_t ret = 0;
 
 	if (!ctlen || !taglen)
 		return -EINVAL;
@@ -789,8 +788,7 @@ ssize_t kcapi_aead_dec_nonalign(struct kcapi_handle *handle,
 	handle->skdata.out = input;
 	handle->skdata.outlen = ctlen;
 	handle->aead.taglen = taglen;
-	ret = _kcapi_common_crypt(handle, ALG_OP_DECRYPT);
-	return ret;
+	return _kcapi_common_crypt(handle, ALG_OP_DECRYPT);
 }
 
 /**
