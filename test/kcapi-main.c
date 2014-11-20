@@ -355,21 +355,6 @@ static int cavs_sym(struct kcapi_cavs *cavs_test)
 	return 0;
 }
 
-static unsigned char *concatenate(const unsigned char *buf1, size_t buf1len,
-				  const unsigned char *buf2, size_t buf2len)
-{
-	unsigned char *outbuf = NULL;
-
-	outbuf = calloc(1, buf1len + buf2len);
-	if (!outbuf)
-		return NULL;
-
-	memcpy(outbuf, buf1, buf1len);
-	memcpy(outbuf + buf1len, buf2, buf2len);
-
-	return outbuf;
-}
-
 /*
  * Encryption command line:
  * $ ./kcapi -x 2 -e -c "gcm(aes)" -p 89154d0d4129d322e4487bafaa4f6b46 -k c0ece3e63198af382b5603331cc23fa8 -i 7e489b83622e7228314d878d -a afcd7202d621e06ca53b70c2bdff7fb2 -l 16
@@ -402,7 +387,7 @@ static int cavs_aead_aligned(struct kcapi_cavs *cavs_test)
 	unsigned char *outbuf = NULL;
 	size_t outbuflen = 0;
 	char *outhex = NULL;
-	unsigned char *cttag = NULL;
+	unsigned char *inbuf = NULL;
 	int ret = -ENOMEM;
 	unsigned char *newiv = NULL;
 	size_t newivlen = 0;
@@ -416,14 +401,25 @@ static int cavs_aead_aligned(struct kcapi_cavs *cavs_test)
 		if (!cavs_test->ptlen)
 			return -EINVAL;
 		outbuflen = cavs_test->ptlen + cavs_test->taglen;
+		inbuf = calloc(1, cavs_test->ptlen + cavs_test->assoclen);
+		if (!inbuf)
+			return -ENOMEM;
+		memcpy(inbuf, cavs_test->assoc, cavs_test->assoclen);
+		memcpy(inbuf + cavs_test->assoclen,
+		       cavs_test->pt, cavs_test->ptlen);
 	} else {
 		if (!cavs_test->taglen || !cavs_test->tag)
 			return -EINVAL;
 		outbuflen = cavs_test->ctlen;
-		cttag = concatenate(cavs_test->ct, cavs_test->ctlen,
-				    cavs_test->tag, cavs_test->taglen);
-		if (!cttag)
+		inbuf = calloc(1, cavs_test->ctlen + cavs_test->assoclen +
+			       cavs_test->taglen);
+		if (!inbuf)
 			return -ENOMEM;
+		memcpy(inbuf, cavs_test->assoc, cavs_test->assoclen);
+		memcpy(inbuf + cavs_test->assoclen,
+		       cavs_test->ct, cavs_test->ctlen);
+		memcpy(inbuf + cavs_test->assoclen + cavs_test->ctlen,
+		       cavs_test->tag, cavs_test->taglen);
 	}
 	outbuf = calloc(1, outbuflen);
 	if (!outbuf)
@@ -455,9 +451,7 @@ static int cavs_aead_aligned(struct kcapi_cavs *cavs_test)
 		ret = kcapi_aead_setiv(&handle, newiv, newivlen);
 
 	/* Setting the associated data */
-	if (cavs_test->assoclen && cavs_test->assoc)
-		kcapi_aead_setassoc(&handle, cavs_test->assoc,
-				    cavs_test->assoclen);
+	kcapi_aead_setassoclen(&handle, cavs_test->assoclen);
 
 	/* Setting the tag length */
 	kcapi_aead_settaglen(&handle, cavs_test->taglen);
@@ -465,11 +459,13 @@ static int cavs_aead_aligned(struct kcapi_cavs *cavs_test)
 	ret = -EIO;
 	if (cavs_test->enc)
 		ret = kcapi_aead_encrypt(&handle,
-					 cavs_test->pt, cavs_test->ptlen,
+					 inbuf,
+					 cavs_test->ptlen + cavs_test->assoclen,
 					 outbuf, outbuflen);
 	else
-		ret = kcapi_aead_decrypt(&handle, cttag,
-					 cavs_test->ctlen + cavs_test->taglen,
+		ret = kcapi_aead_decrypt(&handle, inbuf,
+					 cavs_test->ctlen + cavs_test->taglen +
+					 cavs_test->assoclen,
 					 outbuf, outbuflen);
 	errsv = errno;
 	if (0 > ret && EBADMSG != errsv) {
@@ -498,13 +494,12 @@ out:
 		free(newiv);
 	if (outbuf)
 		free(outbuf);
-	if (cttag)
-		free(cttag);
+	if (inbuf)
+		free(inbuf);
 	if (outhex)
 		free(outhex);
 	return ret;
 }
-
 
 static int cavs_aead_nonaligned(struct kcapi_cavs *cavs_test)
 {
@@ -549,19 +544,18 @@ static int cavs_aead_nonaligned(struct kcapi_cavs *cavs_test)
 		goto out;
 	}
 
-	/* Setting the associated data */
-	if (cavs_test->assoclen && cavs_test->assoc)
-		kcapi_aead_setassoc(&handle, cavs_test->assoc,
-				    cavs_test->assoclen);
-
 	ret = -EIO;
 	if (cavs_test->enc)
 		ret = kcapi_aead_enc_nonalign(&handle,
 					      cavs_test->pt, cavs_test->ptlen,
+					      cavs_test->assoc,
+					      cavs_test->assoclen,
 					      cavs_test->taglen);
 	else
 		ret = kcapi_aead_dec_nonalign(&handle,
 					      cavs_test->ct, cavs_test->ctlen,
+					      cavs_test->assoc,
+					      cavs_test->assoclen,
 					      cavs_test->tag, cavs_test->taglen);
 	errsv = errno;
 	if (0 > ret && EBADMSG != errsv) {
@@ -627,6 +621,7 @@ out:
 		free(newiv);
 	return ret;
 }
+
 
 /*
  * Hash command line invocation:

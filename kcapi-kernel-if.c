@@ -37,11 +37,9 @@
  */
 
 #include <stdio.h>
-
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <linux/if_alg.h>
 #include <stdint.h>
 #include <errno.h>
 #include <string.h>
@@ -58,18 +56,13 @@
 		      * enhancements, bug fixes only */
 
 /* remove once in if_alg.h */
-#define ALG_SET_AEAD_ASSOC		4
+#define ALG_SET_AEAD_ASSOCLEN		4
 #define ALG_SET_AEAD_AUTHSIZE		5
 
 #define ALG_GET_BLOCKSIZE		1
 #define ALG_GET_IVSIZE			2
 #define ALG_GET_AEAD_AUTHSIZE		3
 #define ALG_GET_DIGESTSIZE		4
-
-struct af_alg_aead_assoc {
-	__u32	aead_assoclen;
-	__u8	aead_assoc[0];
-};
 
 /* remove once in socket.h */
 #ifndef AF_ALG
@@ -106,18 +99,17 @@ static ssize_t _kcapi_common_crypt(struct kcapi_handle *handle,
 
 	/* AEAD data */
 	uint32_t *taglen = NULL;
+	uint32_t *assoclen = NULL;
 	size_t taglen_msg_size = handle->aead.taglen ?
 				 CMSG_SPACE(sizeof(*taglen)) : 0;
-	struct af_alg_aead_assoc *alg_assoc = NULL;
-	size_t assoc_msg_size = handle->aead.taglen ?
-				CMSG_SPACE(sizeof(*alg_assoc) +
-					   handle->aead.assoclen) : 0;
+	size_t assoc_msg_size = handle->aead.assoclen ?
+				CMSG_SPACE(sizeof(*assoclen)) : 0;
 
 	size_t bufferlen =
 		CMSG_SPACE(sizeof(*type)) + 	/* Encryption / Decryption */
 		iv_msg_size +			/* IV */
 		taglen_msg_size +		/* AEAD tag length */
-		assoc_msg_size;			/* AEAD associated data */
+		assoc_msg_size;			/* AEAD associated data size */
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -170,12 +162,10 @@ static ssize_t _kcapi_common_crypt(struct kcapi_handle *handle,
 		/* Set associated data length */
 		header = CMSG_NXTHDR(&msg, header);
 		header->cmsg_level = SOL_ALG;
-		header->cmsg_type = ALG_SET_AEAD_ASSOC;
-		header->cmsg_len = assoc_msg_size;
-		alg_assoc = (void*)CMSG_DATA(header);
-		alg_assoc->aead_assoclen = handle->aead.assoclen;
-		memcpy(alg_assoc->aead_assoc, handle->aead.assoc,
-		       handle->aead.assoclen);
+		header->cmsg_type = ALG_SET_AEAD_ASSOCLEN;
+		header->cmsg_len = CMSG_LEN(sizeof(*assoclen));
+		assoclen = (void*)CMSG_DATA(header);
+		*assoclen = handle->aead.assoclen;
 	}
 
 	ret = sendmsg(handle->opfd, &msg, 0);
@@ -580,17 +570,13 @@ int kcapi_aead_setiv(struct kcapi_handle *handle,
 }
 
 /**
- * kcapi_aead_setassoc() - set associated data for AEAD operation
+ * kcapi_aead_setassoclen() - set associated data for AEAD operation
  * @handle: cipher handle - input
- * @assoc: buffer holding the IV (may be NULL if associated data is not
- *	  needed) - input
  * @assoclen: length of assoc (should be zero if assoc is NULL) - input
  */
-void kcapi_aead_setassoc(struct kcapi_handle *handle,
-			 const unsigned char *assoc, size_t assoclen)
+void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen)
 {
-	handle->aead.assoc = assoc;
-	handle->aead.assoclen = assoc ? assoclen : 0;
+	handle->aead.assoclen = assoclen;
 }
 
 /**
@@ -619,7 +605,12 @@ void kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen)
  * the plaintext is overwritten with the ciphertext.
  *
  * When using this function, the caller must align the input and output
- * data buffers. The ciphertext buffer must hold the tag as follows:
+ * data buffers. The input buffer must hold the following information:
+ * 	associated authentication data || plaintext
+ * The caller must use kcapi_aead_setassoclen() to specify the size of the
+ * associated data buffer.
+ *
+ * The output ciphertext buffer must hold the tag as follows:
  * 	ciphertext || tag
  * The caller must ensure that the ciphertext buffer is large enough to hold
  * the ciphertext together with the tag of the size set by the caller using
@@ -640,6 +631,8 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
  * @handle: cipher handle - input
  * @pt: plaintext data buffer - input
  * @ptlen: length of plaintext buffer - input
+ * @assoc: associated authentication data buffer - input
+ * @assoclen: length of associated authentication data buffer - input
  * @taglen: length of the authentication tag to be created - input
  *
  * The caller does not need to know anything about the memory structure
@@ -653,22 +646,33 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
  * this function.
  */
 ssize_t kcapi_aead_enc_nonalign(struct kcapi_handle *handle,
-				unsigned char *pt, size_t ptlen, size_t taglen)
+				unsigned char *pt, size_t ptlen,
+				unsigned char *assoc, size_t assoclen,
+				size_t taglen)
 {
-	unsigned char *ctbuf = NULL;
+	unsigned char *ptbuf = NULL;
 
-	if (!ptlen || !taglen)
+	if (!ptlen || !assoclen || !taglen)
 		return -EINVAL;
 
-	ctbuf = calloc(1, ptlen + taglen);
-	if (!ctbuf)
+	/* to perform in-place encryption, have sufficient space */
+	if (assoclen < taglen)
+		ptbuf = calloc(1, ptlen + taglen);
+	else
+		ptbuf = calloc(1, ptlen + assoclen);
+	if (!ptbuf)
 		return -ENOMEM;
 
-	handle->skdata.in = pt;
-	handle->skdata.inlen = ptlen;
-	handle->skdata.out = ctbuf;
+	/* AEAD encryption input buffer layout: assoc data || plaintext */
+	memcpy(ptbuf, assoc, assoclen);
+	memcpy(ptbuf + assoclen, pt, ptlen);
+
+	handle->skdata.in = ptbuf;
+	handle->skdata.inlen = assoclen + ptlen;
+	handle->skdata.out = ptbuf;
 	handle->skdata.outlen = ptlen + taglen;
 	handle->aead.taglen = taglen;
+	handle->aead.assoclen = assoclen;
 
 	return _kcapi_common_crypt(handle, ALG_OP_ENCRYPT);
 }
@@ -706,9 +710,13 @@ void kcapi_aead_enc_getdata(struct kcapi_handle *handle,
 void kcapi_aead_enc_free(struct kcapi_handle *handle)
 {
 	unsigned char *buf = handle->skdata.out;
-	memset(handle->skdata.out, 0, handle->skdata.outlen);
+
+	size_t len = (handle->skdata.inlen < handle->skdata.outlen) ?
+			handle->skdata.outlen : handle->skdata.inlen;
+
+	memset(handle->skdata.out, 0, len);
 	/* magic to convince GCC to memset the buffer */
-	buf = memchr(buf, 1, handle->skdata.outlen);
+	buf = memchr(buf, 1, len);
 	if (buf)
 		buf = '\0';
 	free(handle->skdata.out);
@@ -728,7 +736,7 @@ void kcapi_aead_enc_free(struct kcapi_handle *handle)
  *
  * When using this function, the caller must align the input and output
  * data buffers. The ciphertext buffer must contain the tag as follows:
- * 	ciphertext || tag
+ * 	associated data || ciphertext || tag
  * The plaintext buffer will not hold the tag which means the caller only needs
  * to allocate memory sufficient to hold the plaintext.
  *
@@ -752,6 +760,8 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
  * @handle: cipher handle - input
  * @ct: ciphertext data buffer - input
  * @ctlen: length of ciphertext buffer - input
+ * @assoc: associated authentication data buffer - input
+ * @assoclen: length of associated authentication data buffer - input
  * @tag: authentication tag buffer - input
  * @taglen: length of the authentication tag - input
  *
@@ -767,29 +777,35 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
  */
 ssize_t kcapi_aead_dec_nonalign(struct kcapi_handle *handle,
 				unsigned char *ct, size_t ctlen,
+				unsigned char *assoc, size_t assoclen,
 				unsigned char *tag, size_t taglen)
 {
 	unsigned char *input = NULL;
 
-	if (!ctlen || !taglen)
+	if (!ctlen || !assoclen || !taglen)
 		return -EINVAL;
 
 	/* Format input data by concatenating ciphertext and tag */
-	input = calloc(1, ctlen + taglen);
+	input = calloc(1, ctlen + assoclen + taglen);
 	if (!input)
 		return -ENOMEM;
-	memcpy(input, ct, ctlen);
-	memcpy(input + ctlen, tag, taglen);
+
+	/* AEAD encryption input buffer layout: assoc data || plaintext */
+	memcpy(input, assoc, assoclen);
+	memcpy(input + assoclen, ct, ctlen);
+	memcpy(input + assoclen + ctlen, tag, taglen);
 
 	/*
 	 * in-place decryption as ciphertext buffer is larger than plaintext
 	 * buffer
 	 */
 	handle->skdata.in = input;
-	handle->skdata.inlen = ctlen + taglen;
+	handle->skdata.inlen = assoclen + ctlen + taglen;
 	handle->skdata.out = input;
 	handle->skdata.outlen = ctlen;
 	handle->aead.taglen = taglen;
+	handle->aead.assoclen = assoclen;
+
 	return _kcapi_common_crypt(handle, ALG_OP_DECRYPT);
 }
 

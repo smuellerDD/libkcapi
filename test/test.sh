@@ -397,10 +397,10 @@ aeadfunc()
 			expected="${AEAD_exp}"
 		fi
 
-		alignout="aligned requests"
+		alignout="nonaligned requests"
 		if [ -z "$aligned" ]
 		then
-			alignout="nonaligned requests"
+			alignout="aligned requests"
 		fi
 		if [ x"$result" = x"$expected" ]
 		then

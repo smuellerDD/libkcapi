@@ -7,5 +7,5 @@
 * Remove marked symbols at the beginning of kcapi-kernel-if.c once they are
   added to a system header file.
 
-* Use -pedantic compilation flag in Makefile once the af_alg_aead_assoc is moved
-  to a system header file
+* Include linux/cryptouser.h once available in user space and remove header
+  file copy from libkcapi code base.

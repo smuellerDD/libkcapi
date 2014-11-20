@@ -37,6 +37,8 @@
 #ifndef _KCAPI_H
 #define _KCAPI_H
 
+#include <linux/if_alg.h>
+
 /**
  * Common data required for symmetric and AEAD ciphers
  * @in: Input data (plaintext for encryption, ciphertext for
@@ -59,14 +61,12 @@ struct kcapi_skcipher_data {
 
 /**
  * AEAD data
- * @assoc: Associated data - input
  * @assoclen: Length of associated data - input
  * @taglen: Length of authentication tag - input
  * @tag: Authentication tag - input for decryption, output for encryption
  * @retlen: internal data -- number of bytes returned by the read system call
  */
 struct kcapi_aead_data {
-	const unsigned char *assoc;
 	size_t assoclen;
 	size_t taglen;
 	unsigned char *tag;
@@ -108,14 +108,15 @@ int kcapi_aead_setkey(struct kcapi_handle *handle,
 		      const unsigned char *key, size_t keylen);
 int kcapi_aead_setiv(struct kcapi_handle *handle,
 		     const unsigned char *iv, size_t ivlen);
-void kcapi_aead_setassoc(struct kcapi_handle *handle,
-			 const unsigned char *assoc, size_t assoclen);
+void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen);
 void kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen);
 ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
 			   unsigned char *out, size_t outlen);
 ssize_t kcapi_aead_enc_nonalign(struct kcapi_handle *handle,
-				unsigned char *pt, size_t ptlen, size_t taglen);
+				unsigned char *pt, size_t ptlen,
+				unsigned char *assoc, size_t assoclen,
+				size_t taglen);
 void kcapi_aead_enc_getdata(struct kcapi_handle *handle,
 			    unsigned char **ct, size_t *ctlen,
 			    unsigned char **tag, size_t *taglen);
@@ -125,6 +126,7 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   unsigned char *out, size_t outlen);
 ssize_t kcapi_aead_dec_nonalign(struct kcapi_handle *handle,
 				unsigned char *ct, size_t ctlen,
+				unsigned char *assoc, size_t assoclen,
 				unsigned char *tag, size_t taglen);
 void kcapi_aead_dec_getdata(struct kcapi_handle *handle,
 			    unsigned char **pt, size_t *ptlen);
