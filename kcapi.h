@@ -40,6 +40,32 @@
 #include <linux/if_alg.h>
 
 /**
+ * Information obtained for different ciphers during handle init time
+ * using the NETLINK_CRYPTO interface.
+ * @blocksize block size of cipher (hash, symmetric, AEAD)
+ * @ivsize size of IV of cipher (symmetric, AEAD)
+ * @hash_digestsize size of message digest (hash)
+ * @blk_min_keysize minimum key size (symmetric)
+ * @blk_max_keysize maximum key size (symmetric)
+ * @aead_maxauthsize maximum authentication tag size (AEAD)
+ * @rng_seedsize seed size (RNG)
+ */
+struct kcapi_cipher_info {
+	/* generic */
+	int blocksize;
+	int ivsize;
+	/* hash */
+	int hash_digestsize;
+	/* blkcipher */
+	int blk_min_keysize;
+	int blk_max_keysize;
+	/* aead */
+	int aead_maxauthsize;
+	/* rng */
+	int rng_seedsize;
+};
+
+/**
  * Common data required for symmetric and AEAD ciphers
  * @in: Input data (plaintext for encryption, ciphertext for
  *	decryption) - input
@@ -85,6 +111,7 @@ struct kcapi_handle {
 	int opfd;
 	struct kcapi_skcipher_data skdata;
 	struct kcapi_aead_data aead;
+	struct kcapi_cipher_info info;
 };
 
 int kcapi_cipher_init(struct kcapi_handle *handle, const char *ciphername);

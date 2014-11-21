@@ -44,6 +44,10 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <asm/types.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+#include "cryptouser.h"
 
 #include "kcapi.h"
 
@@ -172,6 +176,7 @@ static ssize_t _kcapi_common_crypt(struct kcapi_handle *handle,
 	if (ret != (ssize_t)handle->skdata.inlen)
 		goto bad;
 
+	/* TODO: EINTR and ERESTARTSYS */
 	ret = read(handle->opfd, handle->skdata.out, handle->skdata.outlen);
 	if (0 > ret)
 		goto bad;
@@ -236,19 +241,193 @@ static inline int _kcapi_common_setkey(struct kcapi_handle *handle,
 	return 0;
 }
 
-static inline unsigned int _kcapi_common_getinfo(struct kcapi_handle *handle,
-						 int optval)
+static int __kcapi_common_getinfo(struct kcapi_handle *handle,
+				  const char *ciphername,
+				  int drivername)
 {
-	socklen_t len = 0;
-	int outlen = 0;
+	int ret = -EFAULT;
 
-	if (getsockopt(handle->opfd, SOL_ALG, optval, NULL, &len) == -1)
-		return 0;
+	/* NETLINK_CRYPTO specific */
+	char buf[4096];
+	struct nlmsghdr *res_n = (struct nlmsghdr *)buf;
+	struct {
+		struct nlmsghdr n;
+		struct crypto_user_alg cru;
+	} req;
+	struct crypto_user_alg *cru_res;
+	int res_len = 0;
+	struct rtattr *tb[CRYPTOCFGA_MAX+1];
+	struct rtattr *rta;
 
-	outlen = (int)len;
-	if (outlen < 0)
-		outlen = 0;
-	return outlen;
+	/* AunsignedF_NETLINK specific */
+	struct sockaddr_nl nl;
+	int sd = 0;
+	socklen_t addr_len;
+	struct iovec iov;
+	struct msghdr msg;
+
+	memset(&req, 0, sizeof(req));
+	memset(&buf, 0, sizeof(buf));
+	memset(&msg, 0, sizeof(msg));
+
+	req.n.nlmsg_len = NLMSG_LENGTH(sizeof(req.cru));
+	req.n.nlmsg_flags = NLM_F_REQUEST;
+	req.n.nlmsg_type = CRYPTO_MSG_GETALG;
+
+	if (drivername)
+		strncpy(req.cru.cru_driver_name, ciphername,
+			strlen(ciphername));
+	else
+		strncpy(req.cru.cru_name, ciphername, strlen(ciphername));
+
+
+	/* talk to netlink socket */
+	sd =  socket(AF_NETLINK, SOCK_RAW, NETLINK_CRYPTO);
+	if (sd < 0) {
+		perror("Netlink error: cannot open netlink socket");
+		return -EFAULT;
+	}
+	memset(&nl, 0, sizeof(nl));
+	nl.nl_family = AF_NETLINK;
+	if (bind(sd, (struct sockaddr*)&nl, sizeof(nl)) < 0) {
+		perror("Netlink error: cannot bind netlink socket");
+		goto out;
+	}
+	/* sanity check that netlink socket was successfully opened */
+	addr_len = sizeof(nl);
+	if (getsockname(sd, (struct sockaddr*)&nl, &addr_len) < 0) {
+		perror("Netlink error: cannot getsockname");
+		goto out;
+	}
+	if (addr_len != sizeof(nl)) {
+		fprintf(stderr, "Netlink error: wrong address length %d\n",
+			addr_len);
+		goto out;
+	}
+	if (nl.nl_family != AF_NETLINK) {
+		fprintf(stderr, "Netlink error: wrong address family %d\n",
+			nl.nl_family);
+		goto out;
+	}
+
+	/* sending data */
+	iov.iov_base = (void*) &req.n;
+	iov.iov_len = req.n.nlmsg_len;
+	msg.msg_name = &nl;
+	msg.msg_namelen = sizeof(nl);
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+	memset(&nl, 0, sizeof(nl));
+	nl.nl_family = AF_NETLINK;
+	if (sendmsg(sd, &msg, 0) < 0) {
+		perror("Netlink error: sendmsg failed");
+		goto out;
+	}
+	memset(buf,0,sizeof(buf));
+	iov.iov_base = buf;
+	while (1) {
+		iov.iov_len = sizeof(buf);
+		ret = recvmsg(sd, &msg, 0);
+		if (ret < 0) {
+			if (errno == EINTR || errno == EAGAIN)
+				continue;
+			perror("Netlink error: netlink receive error");
+			ret = -EFAULT;
+			goto out;
+		}
+		if (ret == 0) {
+			fprintf(stderr, "Netlink error: no data\n");
+			ret = -EFAULT;
+			goto out;
+		}
+		if ((size_t)ret > sizeof(buf)) {
+			perror("Netlink error: received too much data\n");
+			ret = -EFAULT;
+			goto out;
+		}
+		break;
+	}
+
+	ret = -EFAULT;
+	res_len = res_n->nlmsg_len;
+	if (res_n->nlmsg_type == NLMSG_ERROR) {
+		/*
+		 * return -EAGAIN -- this error will occur if we received a
+		 * driver name, but used it for a generic name. Allow caller
+		 * to invoke function again where driver name is looked up
+		 */
+		ret = -EAGAIN;
+		goto out;
+	}
+
+	if (res_n->nlmsg_type == CRYPTO_MSG_GETALG) {
+		cru_res = NLMSG_DATA(res_n);
+		res_len -= NLMSG_SPACE(sizeof(*cru_res));
+	}
+	if (res_len < 0) {
+		fprintf(stderr, "Netlink error: nlmsg len %d\n", res_len);
+		goto out;
+	}
+
+	/* parse data */
+	rta = CR_RTA(cru_res);
+	memset(tb, 0, sizeof(struct rtattr *) * (CRYPTOCFGA_MAX + 1));
+	while (RTA_OK(rta, res_len)) {
+		if ((rta->rta_type <= CRYPTOCFGA_MAX) && (!tb[rta->rta_type]))
+			tb[rta->rta_type] = rta;
+		rta = RTA_NEXT(rta, res_len);
+	}
+	if (res_len) {
+		fprintf(stderr, "Netlink error: unprocessed data %d\n",
+			res_len);
+		goto out;
+	}
+
+	if (tb[CRYPTOCFGA_REPORT_HASH]) {
+		struct rtattr *rta = tb[CRYPTOCFGA_REPORT_HASH];
+		struct crypto_report_hash *rsh =
+			(struct crypto_report_hash *) RTA_DATA(rta);
+		handle->info.hash_digestsize = rsh->digestsize;
+		handle->info.blocksize = rsh->blocksize;
+	}
+	if (tb[CRYPTOCFGA_REPORT_BLKCIPHER]) {
+		struct rtattr *rta = tb[CRYPTOCFGA_REPORT_BLKCIPHER];
+		struct crypto_report_blkcipher *rblk =
+			(struct crypto_report_blkcipher *) RTA_DATA(rta);
+		handle->info.blocksize = rblk->blocksize;
+		handle->info.ivsize = rblk->ivsize;
+		handle->info.blk_min_keysize = rblk->min_keysize;
+		handle->info.blk_max_keysize = rblk->max_keysize;
+	}
+	if (tb[CRYPTOCFGA_REPORT_AEAD]) {
+		struct rtattr *rta = tb[CRYPTOCFGA_REPORT_AEAD];
+		struct crypto_report_aead *raead =
+			(struct crypto_report_aead *) RTA_DATA(rta);
+		handle->info.blocksize = raead->blocksize;
+		handle->info.ivsize = raead->ivsize;
+		handle->info.aead_maxauthsize = raead->maxauthsize;
+	}
+	if (tb[CRYPTOCFGA_REPORT_RNG]) {
+		struct rtattr *rta = tb[CRYPTOCFGA_REPORT_RNG];
+		struct crypto_report_rng *rrng =
+			(struct crypto_report_rng *) RTA_DATA(rta);
+		handle->info.rng_seedsize = rrng->seedsize;
+	}
+
+	ret = 0;
+
+out:
+	close(sd);
+	return ret;
+}
+
+static int _kcapi_common_getinfo(struct kcapi_handle *handle,
+				 const char *ciphername)
+{
+	int ret = __kcapi_common_getinfo(handle, ciphername, 0);
+	if (ret)
+		return __kcapi_common_getinfo(handle, ciphername, 1);
+	return 0;
 }
 
 static int _kcapi_handle_init(struct kcapi_handle *handle,
@@ -280,7 +459,7 @@ static int _kcapi_handle_init(struct kcapi_handle *handle,
 		return -EINVAL;
 	}
 
-	return 0;
+	return _kcapi_common_getinfo(handle, ciphername);
 }
 
 static inline int _kcapi_handle_destroy(struct kcapi_handle *handle)
@@ -289,6 +468,7 @@ static inline int _kcapi_handle_destroy(struct kcapi_handle *handle)
 		close(handle->tfmfd);
 	if (handle->opfd != -1)
 		close(handle->opfd);
+	memset(handle, 0, sizeof(struct kcapi_handle));
 	return 0;
 }
 
@@ -328,7 +508,7 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
 		 unsigned char **newiv, size_t *newivlen)
 {
 	unsigned char *niv = NULL;
-	unsigned int nivlen = _kcapi_common_getinfo(handle, ALG_GET_IVSIZE);
+	unsigned int nivlen = handle->info.ivsize;
 
 	if (nivlen == ivlen)
 		return -ERANGE;
@@ -407,7 +587,7 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
 int kcapi_cipher_setiv(struct kcapi_handle *handle,
 		       const unsigned char *iv, size_t ivlen)
 {
-	int cipher_ivlen = _kcapi_common_getinfo(handle, ALG_GET_IVSIZE);
+	int cipher_ivlen = handle->info.ivsize;
 
 	if (cipher_ivlen < 0)
 		return cipher_ivlen;
@@ -472,7 +652,7 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
  */
 int kcapi_cipher_ivsize(struct kcapi_handle *handle)
 {
-	return _kcapi_common_getinfo(handle, ALG_GET_IVSIZE);
+	return handle->info.ivsize;
 }
 
 /**
@@ -483,7 +663,7 @@ int kcapi_cipher_ivsize(struct kcapi_handle *handle)
  */
 int kcapi_cipher_blocksize(struct kcapi_handle *handle)
 {
-	return _kcapi_common_getinfo(handle, ALG_GET_BLOCKSIZE);
+	return handle->info.blocksize;
 }
 
 /**
@@ -556,7 +736,7 @@ int kcapi_aead_setkey(struct kcapi_handle *handle,
 int kcapi_aead_setiv(struct kcapi_handle *handle,
 		     const unsigned char *iv, size_t ivlen)
 {
-	int cipher_ivlen = _kcapi_common_getinfo(handle, ALG_GET_IVSIZE);
+	int cipher_ivlen = handle->info.ivsize;
 
 	if (cipher_ivlen < 0)
 		return cipher_ivlen;
@@ -856,7 +1036,7 @@ void kcapi_aead_dec_free(struct kcapi_handle *handle)
  */
 int kcapi_aead_ivsize(struct kcapi_handle *handle)
 {
-	return _kcapi_common_getinfo(handle, ALG_GET_IVSIZE);
+	return handle->info.ivsize;
 }
 
 /**
@@ -867,7 +1047,7 @@ int kcapi_aead_ivsize(struct kcapi_handle *handle)
  */
 int kcapi_aead_blocksize(struct kcapi_handle *handle)
 {
-	return _kcapi_common_getinfo(handle, ALG_GET_BLOCKSIZE);
+	return handle->info.blocksize;
 }
 
 /**
@@ -882,7 +1062,7 @@ int kcapi_aead_blocksize(struct kcapi_handle *handle)
  */
 int kcapi_aead_authsize(struct kcapi_handle *handle)
 {
-	return _kcapi_common_getinfo(handle, ALG_GET_AEAD_AUTHSIZE);
+	return handle->info.aead_maxauthsize;
 }
 
 /**
@@ -1037,7 +1217,7 @@ ssize_t kcapi_md_final(struct kcapi_handle *handle,
  */
 int kcapi_md_digestsize(struct kcapi_handle *handle)
 {
-	return _kcapi_common_getinfo(handle, ALG_GET_DIGESTSIZE);
+	return handle->info.hash_digestsize;
 }
 
 /**
