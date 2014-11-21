@@ -1,0 +1,122 @@
+From ccbbb30e67f31018e369e957cf621f5fc2064d00 Mon Sep 17 00:00:00 2001
+From: Stephan Mueller <smueller@chronox.de>
+Date: Fri, 21 Nov 2014 05:32:41 +0100
+Subject: [PATCH v3 7/7] crypto: AF_ALG: document the user space interface
+
+The extension of the user space interface documentation covers all
+aspects of the patchset, including:
+
+        * AEAD cipher interface
+
+        * RNG cipher interface
+
+Signed-off-by: Stephan Mueller <smueller@chronox.de>
+---
+ Documentation/crypto/crypto-API-userspace.txt | 70 ++++++++++++++++++++++++++-
+ 1 file changed, 68 insertions(+), 2 deletions(-)
+
+diff --git a/Documentation/crypto/crypto-API-userspace.txt b/Documentation/crypto/crypto-API-userspace.txt
+index ac619cd..0646034 100644
+--- a/Documentation/crypto/crypto-API-userspace.txt
++++ b/Documentation/crypto/crypto-API-userspace.txt
+@@ -30,8 +30,9 @@ ciphers are accessible:
+ 
+ 	* Symmetric ciphers
+ 
+-Note, AEAD ciphers are currently not supported via the symmetric cipher
+-interface.
++	* AEAD ciphers
++
++	* Random number generators
+ 
+ The interface is provided via Netlink using the type AF_ALG. In addition, the
+ setsockopt option type is SOL_ALG. In case the user space header files do not
+@@ -85,6 +86,7 @@ If a consumer on the other hand wants to maintain the plaintext and the
+ ciphertext in different memory locations, all a consumer needs to do is to
+ provide different memory pointers for the encryption and decryption operation.
+ 
++
+ Message digest API
+ ==================
+ 
+@@ -169,6 +171,69 @@ as large as to hold all blocks of the encrypted or decrypted data. If the output
+ data size is smaller, only as many blocks are returned that fit into that
+ output buffer size.
+ 
++
++AEAD cipher API
++===============
++
++The operation is identical to the symmetric cipher API. However, an AEAD
++cipher requires additional information, such as the authentication tag and
++the associated data. This data is to be supplied in addition to the normal
++symmetric cipher data like key and IV discussed for the symmetric ciphers.
++
++During initialization, the struct sockaddr data structure must be filled as
++follows:
++
++struct sockaddr_alg sa = {
++	.salg_family = AF_ALG,
++	.salg_type = "aead", /* this selects the AEAD cipher */
++	.salg_name = "gcm(aes)" /* this is the cipher name */
++};
++
++The discussion about the sendmsg given for the symmetric cipher applies for
++the AEAD interface as well. In addition to the plaintext / ciphertext data and
++the IV, the following data must be supplied with the cmsghdr data structure:
++
++	* The AEAD authentication tag size is set with the flag
++	  ALG_SET_AEAD_AUTHSIZE. The integer value of the authentication tag
++	  size must be provided in the data field of the cmsghdr structure.
++
++	* The AEAD associated data is set with the flag ALG_SET_AEAD_ASSOC.
++	  The data is set the same way as for the IV by supplying the associated
++	  data in the data field of the cmsghdr structure.
++
++The authentication tag itself, however, is handled in a different way to comply
++with the specifics of the kernel crypto API and to avoid copying the
++authentication tag around in memory. The authentication tag is added to the
++memory that immediately follows the ciphertext.
++
++	* When performing an encryption operation, the resulting ciphertext
++	  buffer will hold the tag as follows: ciphertext || tag.  The consumer
++	  must ensure that the ciphertext buffer is large enough to hold the
++	  ciphertext together with the tag of the size set by the consumer using
++	  the ALG_SET_AEAD_AUTHSIZE cmsghdr flag as discussed above.
++
++	* When performing a decryption operation, the initial ciphertext buffer
++	  must hold the tag as follows: ciphertext || tag. The resulting
++	  plaintext has the same size as the ciphertext.
++
++Note: Authentication errors during decryption are marked with a failing
++read/recv system call whose errno is set to EBADMSG.
++
++
++Random number generator API
++===========================
++
++Compared to the symmetric ciphers, the random number generator API is simple:
++it only supports the system calls of read/recv.
++
++The consumer must observe the returned size of the read/recv system calls and
++potentially make subsequent calls if the returned length of random numbers is
++smaller than the expected length.
++
++When initializing a random number generator instance, the AF_ALG interface
++handler ensures that it is appropriately seeded.
++
++
+ Setsockopt interface
+ ====================
+ 
+@@ -190,6 +255,7 @@ optname:
+ 
+ 		- the hash cipher type (keyed message digests)
+ 
++
+ User space API example
+ ======================
+ 
+-- 
+2.1.0
+
