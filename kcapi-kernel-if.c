@@ -241,6 +241,7 @@ static inline int _kcapi_common_setkey(struct kcapi_handle *handle,
 	return 0;
 }
 
+#if 0
 static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 				  const char *ciphername,
 				  int drivername)
@@ -420,14 +421,19 @@ out:
 	close(sd);
 	return ret;
 }
+#endif
 
 static int _kcapi_common_getinfo(struct kcapi_handle *handle,
 				 const char *ciphername)
 {
+	handle->info.blocksize = 16;
+	handle->info.ivsize = 16;
+#if 0
 	int ret = __kcapi_common_getinfo(handle, ciphername, 0);
 	if (ret)
 		return __kcapi_common_getinfo(handle, ciphername, 1);
 	return 0;
+#endif
 }
 
 static int _kcapi_handle_init(struct kcapi_handle *handle,
@@ -447,6 +453,7 @@ static int _kcapi_handle_init(struct kcapi_handle *handle,
 		return -EOPNOTSUPP;
 
 	if (bind(handle->tfmfd, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
+		perror("AF_ALG: bind failed");
 		close(handle->tfmfd);
 		handle->tfmfd = -1;
 		return -ENOENT;
@@ -454,6 +461,7 @@ static int _kcapi_handle_init(struct kcapi_handle *handle,
 
 	handle->opfd = accept(handle->tfmfd, NULL, 0);
 	if (handle->opfd == -1) {
+		perror("AF_ALG: accept failed");
 		close(handle->tfmfd);
 		handle->tfmfd = -1;
 		return -EINVAL;
