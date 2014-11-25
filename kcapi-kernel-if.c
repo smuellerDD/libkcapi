@@ -227,7 +227,6 @@ static inline int _kcapi_common_setiv(struct kcapi_handle *handle,
 	return 0;
 }
 
-#if 0
 static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 				  const char *ciphername,
 				  int drivername)
@@ -407,19 +406,13 @@ out:
 	close(sd);
 	return ret;
 }
-#endif
 
 static int _kcapi_common_getinfo(struct kcapi_handle *handle,
 				 const char *ciphername)
 {
-	(void)ciphername;
-	handle->info.blocksize = 16;
-	handle->info.ivsize = 16;
-#if 0
 	int ret = __kcapi_common_getinfo(handle, ciphername, 0);
 	if (ret)
 		return __kcapi_common_getinfo(handle, ciphername, 1);
-#endif
 	return 0;
 }
 

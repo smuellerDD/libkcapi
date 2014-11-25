@@ -10,18 +10,3 @@
 * Include linux/cryptouser.h once available in user space and remove header
   file copy from libkcapi code base.
 
-* activate _kcapi_common_getinfo once kernel support is in for crypto_user.c:
---- a/crypto/crypto_user.c
-+++ b/crypto/crypto_user.c
-@@ -201,10 +201,7 @@ static int crypto_report(struct sk_buff *in_skb, struct nlm
-        if (!null_terminated(p->cru_name) || !null_terminated(p->cru_driver_name
-                return -EINVAL;
- 
--       if (!p->cru_driver_name[0])
--               return -EINVAL;
--
--       alg = crypto_alg_match(p, 1);
-+       alg = crypto_alg_match(p, 0);
-        if (!alg)
-                return -ENOENT;
- 
