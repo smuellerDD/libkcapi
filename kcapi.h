@@ -67,33 +67,31 @@ struct kcapi_cipher_info {
 
 /**
  * Common data required for symmetric and AEAD ciphers
- * @in: Input data (plaintext for encryption, ciphertext for
- *	decryption) - input
- * @inlen: Length of in buffer - input
- * @out: output buffer (ciphertext for encryption, plaintext for
- *	 decryption) - output
- * @outlen: Length of output buffer - input / output
  * @iv: IV - input
  * @ivlen: Length of IV - input
  */
-struct kcapi_skcipher_data {
-	const unsigned char *in;
-	size_t inlen;
-	unsigned char *out;
-	size_t outlen;
+struct kcapi_cipher_data {
 	const unsigned char *iv;
 	size_t ivlen;
 };
 
 /**
  * AEAD data
+ * @datalen: Length of plaintext / ciphertext data - input
+ * @data: Pointer to plaintext / ciphertext data - input / output (the length is
+ *	  calculated with: kcapi_skcipher_data->inlen -
+ *			   kcapi_aead_data->taglen - kcapi_aead_data->assoclen)
  * @assoclen: Length of associated data - input
+ * @assoc: Pointer to associated data - input
  * @taglen: Length of authentication tag - input
  * @tag: Authentication tag - input for decryption, output for encryption
  * @retlen: internal data -- number of bytes returned by the read system call
  */
 struct kcapi_aead_data {
+	size_t datalen;
+	unsigned char *data;
 	size_t assoclen;
+	unsigned char *assoc;
 	size_t taglen;
 	unsigned char *tag;
 	size_t retlen;
@@ -109,7 +107,7 @@ struct kcapi_aead_data {
 struct kcapi_handle {
 	int tfmfd;
 	int opfd;
-	struct kcapi_skcipher_data skdata;
+	struct kcapi_cipher_data cipher;
 	struct kcapi_aead_data aead;
 	struct kcapi_cipher_info info;
 };
@@ -140,24 +138,23 @@ void kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen);
 ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
 			   unsigned char *out, size_t outlen);
-ssize_t kcapi_aead_enc_nonalign(struct kcapi_handle *handle,
-				unsigned char *pt, size_t ptlen,
-				unsigned char *assoc, size_t assoclen,
-				size_t taglen);
-void kcapi_aead_enc_getdata(struct kcapi_handle *handle,
-			    unsigned char **ct, size_t *ctlen,
-			    unsigned char **tag, size_t *taglen);
-void kcapi_aead_enc_free(struct kcapi_handle *handle);
 ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
 			   unsigned char *out, size_t outlen);
-ssize_t kcapi_aead_dec_nonalign(struct kcapi_handle *handle,
-				unsigned char *ct, size_t ctlen,
-				unsigned char *assoc, size_t assoclen,
-				unsigned char *tag, size_t taglen);
-void kcapi_aead_dec_getdata(struct kcapi_handle *handle,
-			    unsigned char **pt, size_t *ptlen);
-void kcapi_aead_dec_free(struct kcapi_handle *handle);
+int kcapi_aead_alloc_nonalign(struct kcapi_handle *handle, size_t datalen,
+			      size_t assoclen, size_t taglen);
+int kcapi_aead_setassoc_nonalign(struct kcapi_handle *handle,
+				 unsigned char *assoc);
+int kcapi_aead_settag_nonalign(struct kcapi_handle *handle,
+				 unsigned char *tag);
+int kcapi_aead_setdata_nonalign(struct kcapi_handle *handle,
+				unsigned char *data);
+ssize_t kcapi_aead_enc_nonalign(struct kcapi_handle *handle);
+ssize_t kcapi_aead_dec_nonalign(struct kcapi_handle *handle);
+void kcapi_aead_getdata_nonalign(struct kcapi_handle *handle,
+				 unsigned char **data, size_t *datalen,
+				 unsigned char **tag, size_t *taglen);
+void kcapi_aead_free_nonalign(struct kcapi_handle *handle);
 int kcapi_aead_ivsize(struct kcapi_handle *handle);
 int kcapi_aead_blocksize(struct kcapi_handle *handle);
 int kcapi_aead_authsize(struct kcapi_handle *handle);
