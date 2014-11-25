@@ -544,19 +544,44 @@ static int cavs_aead_nonaligned(struct kcapi_cavs *cavs_test)
 		goto out;
 	}
 
-	ret = -EIO;
 	if (cavs_test->enc)
-		ret = kcapi_aead_enc_nonalign(&handle,
-					      cavs_test->pt, cavs_test->ptlen,
-					      cavs_test->assoc,
-					      cavs_test->assoclen,
-					      cavs_test->taglen);
+		ret = kcapi_aead_alloc_nonalign(&handle, cavs_test->ptlen,
+						cavs_test->assoclen,
+						cavs_test->taglen);
 	else
-		ret = kcapi_aead_dec_nonalign(&handle,
-					      cavs_test->ct, cavs_test->ctlen,
-					      cavs_test->assoc,
-					      cavs_test->assoclen,
-					      cavs_test->tag, cavs_test->taglen);
+		ret = kcapi_aead_alloc_nonalign(&handle, cavs_test->ctlen,
+						cavs_test->assoclen,
+						cavs_test->taglen);
+	if (ret) {
+		printf("Allocation of nonaligned data buffer failed\n");
+		goto out;
+	}
+	ret = kcapi_aead_setassoc_nonalign(&handle, cavs_test->assoc);
+	if (ret) {
+		printf("Setting of associated data failed\n");
+		goto outfree;
+	}
+
+	if (cavs_test->enc) {
+		ret = kcapi_aead_setdata_nonalign(&handle, cavs_test->pt);
+		if (ret) {
+			printf("Setting of plaintext failed\n");
+			goto outfree;
+		}
+		ret = kcapi_aead_enc_nonalign(&handle);
+	} else {
+		ret = kcapi_aead_settag_nonalign(&handle, cavs_test->tag);
+		if (ret) {
+			printf("Setting of tag failed\n");
+			goto outfree;
+		}
+		ret = kcapi_aead_setdata_nonalign(&handle, cavs_test->ct);
+		if (ret) {
+			printf("Setting of plaintext failed\n");
+			goto outfree;
+		}
+		ret = kcapi_aead_dec_nonalign(&handle);
+	}
 	errsv = errno;
 	if (0 > ret && EBADMSG != errsv) {
 		printf("Cipher operation of buffer failed: %d %d\n", errno, ret);
@@ -578,7 +603,8 @@ static int cavs_aead_nonaligned(struct kcapi_cavs *cavs_test)
 		size_t taglen = 0;
 		char *taghex = NULL;
 
-		kcapi_aead_enc_getdata(&handle, &ct, &ctlen, &tag, &taglen);
+		kcapi_aead_getdata_nonalign(&handle, &ct, &ctlen,
+					    &tag, &taglen);
 		cthex = calloc(1, (ctlen * 2 + 1));
 		if (!cthex)
 			goto outfree;
@@ -598,7 +624,7 @@ static int cavs_aead_nonaligned(struct kcapi_cavs *cavs_test)
 		size_t ptlen = 0;
 		char *pthex = NULL;;
 
-		kcapi_aead_dec_getdata(&handle, &pt, &ptlen);
+		kcapi_aead_getdata_nonalign(&handle, &pt, &ptlen, NULL, NULL);
 		pthex = calloc(1, (ptlen * 2 + 1));
 		if (!pthex)
 			goto outfree;
@@ -611,10 +637,7 @@ static int cavs_aead_nonaligned(struct kcapi_cavs *cavs_test)
 	ret = 0;
 
 outfree:
-	if (cavs_test->enc)
-		kcapi_aead_enc_free(&handle);
-	else
-		kcapi_aead_dec_free(&handle);
+	kcapi_aead_free_nonalign(&handle);
 out:
 	kcapi_aead_destroy(&handle);
 	if (newiv)
