@@ -53,7 +53,7 @@
 
 #define MAJVERSION 0 /* API / ABI incompatible changes, functional changes that
 		      * require consumer to be updated */
-#define MINVERSION 3 /* API compatible, ABI may change, functional
+#define MINVERSION 4 /* API compatible, ABI may change, functional
 		      * enhancements only, consumer can be left unchanged if
 		      * enhancements are not considered */
 #define PATCHLEVEL 0 /* API / ABI compatible, no functional changes, no
