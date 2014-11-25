@@ -125,11 +125,22 @@
 
     <programlisting>
      ...
-     kcapi_aead_enc_nonalign
+     kcapi_aead_alloc_nonalign
      ...
-     kcapi_aead_enc_getdata
+     kcapi_aead_setassoc_nonalign
      ...
-     kcapi_aead_enc_free
+     kcapi_aead_setdata_nonalign
+     ...
+     if (enc) {
+       kcapi_aead_enc_nonalign
+       kcapi_aead_getdata_nonalign(handle, ct, ctlen, tag, taglen)
+     } else {
+       kcapi_aead_settag_nonalign
+       kcapi_aead_dec_nonalign
+       kcapi_aead_getdata_nonalign(handle, pt, ptlen, NULL, NULL)
+     }
+     ...
+     kcapi_aead_free_nonalign
     </programlisting>
    </para>
   </sect1>
