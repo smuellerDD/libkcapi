@@ -115,34 +115,6 @@
     caller does not need to sanitize struct kcapi_handle as it does not contain
     any sensitive data.
    </para>
-
-   <para>
-    <emphasis>Exception:</emphasis>
-    The only exception to the rule that the library does not maintain memory
-    with sensitive data applies to the nonaligned AEAD cipher API calls. These
-    calls should be used as follows -- the example outlines the encryption
-    case. The decryption API calls are equivalent.
-
-    <programlisting>
-     ...
-     kcapi_aead_alloc_nonalign
-     ...
-     kcapi_aead_setassoc_nonalign
-     ...
-     kcapi_aead_setdata_nonalign
-     ...
-     if (enc) {
-       kcapi_aead_enc_nonalign
-       kcapi_aead_getdata_nonalign(handle, ct, ctlen, tag, taglen)
-     } else {
-       kcapi_aead_settag_nonalign
-       kcapi_aead_dec_nonalign
-       kcapi_aead_getdata_nonalign(handle, pt, ptlen, NULL, NULL)
-     }
-     ...
-     kcapi_aead_free_nonalign
-    </programlisting>
-   </para>
   </sect1>
 
   <sect1><title>Kernel Interfaces</title>
