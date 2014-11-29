@@ -381,13 +381,12 @@ static int cavs_sym(struct kcapi_cavs *cavs_test)
  * the kernel waits for more input data and a read will be blocked until the
  * AAD is supplied.
  */
-static int cavs_aead_aligned(struct kcapi_cavs *cavs_test)
+static int cavs_aead(struct kcapi_cavs *cavs_test)
 {
 	struct kcapi_handle handle;
 	unsigned char *outbuf = NULL;
 	size_t outbuflen = 0;
 	char *outhex = NULL;
-	unsigned char *inbuf = NULL;
 	int ret = -ENOMEM;
 	unsigned char *newiv = NULL;
 	size_t newivlen = 0;
@@ -397,39 +396,26 @@ static int cavs_aead_aligned(struct kcapi_cavs *cavs_test)
 		return -EINVAL;
 	if (!cavs_test->ivlen || !cavs_test->iv)
 		return -EINVAL;
-	if (cavs_test->enc) {
-		if (!cavs_test->ptlen)
-			return -EINVAL;
-		outbuflen = cavs_test->ptlen + cavs_test->taglen;
-		inbuf = calloc(1, cavs_test->ptlen + cavs_test->assoclen);
-		if (!inbuf)
-			return -ENOMEM;
-		memcpy(inbuf, cavs_test->assoc, cavs_test->assoclen);
-		memcpy(inbuf + cavs_test->assoclen,
-		       cavs_test->pt, cavs_test->ptlen);
-	} else {
-		if (!cavs_test->taglen || !cavs_test->tag)
-			return -EINVAL;
-		outbuflen = cavs_test->ctlen;
-		inbuf = calloc(1, cavs_test->ctlen + cavs_test->assoclen +
-			       cavs_test->taglen);
-		if (!inbuf)
-			return -ENOMEM;
-		memcpy(inbuf, cavs_test->assoc, cavs_test->assoclen);
-		memcpy(inbuf + cavs_test->assoclen,
-		       cavs_test->ct, cavs_test->ctlen);
-		memcpy(inbuf + cavs_test->assoclen + cavs_test->ctlen,
-		       cavs_test->tag, cavs_test->taglen);
-	}
-	outbuf = calloc(1, outbuflen);
-	if (!outbuf)
-		goto out;
 
 	ret = -EINVAL;
 	if (kcapi_aead_init(&handle, cavs_test->cipher)) {
 		printf("Allocation of cipher failed\n");
 		goto out;
 	}
+
+	ret = -ENOMEM;
+	if (cavs_test->enc) {
+		outbuflen = kcapi_aead_outbuflen(&handle, cavs_test->ptlen,
+						 cavs_test->taglen, 1);
+		outbuf = calloc(1, outbuflen);
+	} else {
+		outbuflen = kcapi_aead_outbuflen(&handle, cavs_test->ctlen,
+						 cavs_test->taglen, 0);
+		outbuf = calloc(1, outbuflen);
+	}
+	if (!outbuf)
+		goto out;
+
 
 	/* Set key */
 	if (!cavs_test->keylen || !cavs_test->key ||
@@ -451,22 +437,29 @@ static int cavs_aead_aligned(struct kcapi_cavs *cavs_test)
 		ret = kcapi_aead_setiv(&handle, newiv, newivlen);
 
 	/* Setting the associated data */
-	kcapi_aead_setassoclen(&handle, cavs_test->assoclen);
-
-	/* Setting the tag length */
-	kcapi_aead_settaglen(&handle, cavs_test->taglen);
+	kcapi_aead_setassoc(&handle, cavs_test->assoc, cavs_test->assoclen);
 
 	ret = -EIO;
-	if (cavs_test->enc)
+	if (cavs_test->enc) {
+		/* Setting the tag length */
+		if (kcapi_aead_settaglen(&handle, cavs_test->taglen)) {
+			printf("Setting of authentication tag length failed\n");
+			goto out;
+		}
 		ret = kcapi_aead_encrypt(&handle,
-					 inbuf,
-					 cavs_test->ptlen + cavs_test->assoclen,
+					 cavs_test->pt, cavs_test->ptlen,
 					 outbuf, outbuflen);
-	else
-		ret = kcapi_aead_decrypt(&handle, inbuf,
-					 cavs_test->ctlen + cavs_test->taglen +
-					 cavs_test->assoclen,
+	} else {
+		/* Setting the tag length */
+		if (kcapi_aead_settag(&handle,
+				      cavs_test->tag, cavs_test->taglen)) {
+			printf("Setting of authentication tag length failed\n");
+			goto out;
+		}
+		ret = kcapi_aead_decrypt(&handle,
+					 cavs_test->ct, cavs_test->ctlen,
 					 outbuf, outbuflen);
+	}
 	errsv = errno;
 	if (0 > ret && EBADMSG != errsv) {
 		printf("Cipher operation of buffer failed: %d %d\n", errno, ret);
@@ -494,157 +487,10 @@ out:
 		free(newiv);
 	if (outbuf)
 		free(outbuf);
-	if (inbuf)
-		free(inbuf);
 	if (outhex)
 		free(outhex);
 	return ret;
 }
-
-static int cavs_aead_nonaligned(struct kcapi_cavs *cavs_test)
-{
-	struct kcapi_handle handle;
-	int ret = -ENOMEM;
-	unsigned char *newiv = NULL;
-	size_t newivlen = 0;
-	int errsv = 0;
-
-	if (!cavs_test->taglen)
-		return -EINVAL;
-	if (!cavs_test->ivlen || !cavs_test->iv)
-		return -EINVAL;
-
-	ret = -EINVAL;
-	if (kcapi_aead_init(&handle, cavs_test->cipher)) {
-		printf("Allocation of cipher %s failed\n", cavs_test->cipher);
-		goto out;
-	}
-
-	/* Set key */
-	if (!cavs_test->keylen || !cavs_test->key ||
-	    kcapi_aead_setkey(&handle, cavs_test->key, cavs_test->keylen)) {
-		printf("Symmetric cipher setkey failed\n");
-		goto out;
-	}
-
-	/* set IV */
-	ret = kcapi_pad_iv(&handle, cavs_test->iv, cavs_test->ivlen,
-			   &newiv, &newivlen);
-	if (ret && ret != -ERANGE)
-		goto out;
-
-	if (ret == -ERANGE)
-		ret = kcapi_aead_setiv(&handle,
-				       cavs_test->iv, cavs_test->ivlen);
-	else
-		ret = kcapi_aead_setiv(&handle, newiv, newivlen);
-
-	if (ret) {
-		printf("Setting IV failed %d\n", ret);
-		goto out;
-	}
-
-	if (cavs_test->enc)
-		ret = kcapi_aead_alloc_nonalign(&handle, cavs_test->ptlen,
-						cavs_test->assoclen,
-						cavs_test->taglen);
-	else
-		ret = kcapi_aead_alloc_nonalign(&handle, cavs_test->ctlen,
-						cavs_test->assoclen,
-						cavs_test->taglen);
-	if (ret) {
-		printf("Allocation of nonaligned data buffer failed\n");
-		goto out;
-	}
-	ret = kcapi_aead_setassoc_nonalign(&handle, cavs_test->assoc);
-	if (ret) {
-		printf("Setting of associated data failed\n");
-		goto outfree;
-	}
-
-	if (cavs_test->enc) {
-		ret = kcapi_aead_setdata_nonalign(&handle, cavs_test->pt);
-		if (ret) {
-			printf("Setting of plaintext failed\n");
-			goto outfree;
-		}
-		ret = kcapi_aead_enc_nonalign(&handle);
-	} else {
-		ret = kcapi_aead_settag_nonalign(&handle, cavs_test->tag);
-		if (ret) {
-			printf("Setting of tag failed\n");
-			goto outfree;
-		}
-		ret = kcapi_aead_setdata_nonalign(&handle, cavs_test->ct);
-		if (ret) {
-			printf("Setting of plaintext failed\n");
-			goto outfree;
-		}
-		ret = kcapi_aead_dec_nonalign(&handle);
-	}
-	errsv = errno;
-	if (0 > ret && EBADMSG != errsv) {
-		printf("Cipher operation of buffer failed: %d %d\n", errno, ret);
-		goto outfree;
-	}
-
-	if (EBADMSG == errsv) {
-		printf("EBADMSG\n");
-		ret = 0;
-		goto outfree;
-	}
-
-	ret = -ENOMEM;
-	if (cavs_test->enc) {
-		unsigned char *ct = NULL;
-		size_t ctlen = 0;
-		char *cthex = NULL;
-		unsigned char *tag = NULL;
-		size_t taglen = 0;
-		char *taghex = NULL;
-
-		kcapi_aead_getdata_nonalign(&handle, &ct, &ctlen,
-					    &tag, &taglen);
-		cthex = calloc(1, (ctlen * 2 + 1));
-		if (!cthex)
-			goto outfree;
-		taghex = calloc(1, (taglen * 2 + 1));
-		if (!taghex) {
-			free(cthex);
-			goto outfree;
-		}
-
-		bin2hex(ct, ctlen, cthex, ctlen * 2 + 1, 0);
-		bin2hex(tag, taglen, taghex, taglen * 2 + 1, 0);
-		printf("%s%s\n", cthex, taghex);
-		free(cthex);
-		free(taghex);
-	} else {
-		unsigned char *pt = NULL;
-		size_t ptlen = 0;
-		char *pthex = NULL;;
-
-		kcapi_aead_getdata_nonalign(&handle, &pt, &ptlen, NULL, NULL);
-		pthex = calloc(1, (ptlen * 2 + 1));
-		if (!pthex)
-			goto outfree;
-
-		bin2hex(pt, ptlen, pthex, ptlen * 2 + 1, 0);
-		printf("%s\n", pthex);
-		free(pthex);
-	}
-
-	ret = 0;
-
-outfree:
-	kcapi_aead_free_nonalign(&handle);
-out:
-	kcapi_aead_destroy(&handle);
-	if (newiv)
-		free(newiv);
-	return ret;
-}
-
 
 /*
  * Hash command line invocation:
@@ -711,7 +557,6 @@ int main(int argc, char *argv[])
 	int c = 0;
 	int ret = 1;
 	int rc = 1;
-	int nonaligned = 0;
 	struct kcapi_cavs cavs_test;
 
 	memset(&cavs_test, 0, sizeof(struct kcapi_cavs));
@@ -734,10 +579,9 @@ int main(int argc, char *argv[])
 			{"tag", 1, 0, 0},
 			{"ciphertype", 1, 0, 0},
 			{"aux", 0, 0, 0},
-			{"nonaligned", 0, 0, 0},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "ec:p:q:i:n:k:a:l:t:x:zy", opts, &opt_index);
+		c = getopt_long(argc, argv, "ec:p:q:i:n:k:a:l:t:x:z", opts, &opt_index);
 		if(-1 == c)
 			break;
 		switch(c)
@@ -833,9 +677,6 @@ int main(int argc, char *argv[])
 				rc = auxiliary_tests();
 				goto out;
 				break;
-			case 'y':
-				nonaligned = 1;
-				break;
 			default:
 				usage();
 				goto out;
@@ -845,10 +686,7 @@ int main(int argc, char *argv[])
 	if (SYM == cavs_test.type)
 		rc = cavs_sym(&cavs_test);
 	else if (AEAD == cavs_test.type)
-		if (nonaligned)
-			rc = cavs_aead_nonaligned(&cavs_test);
-		else
-			rc = cavs_aead_aligned(&cavs_test);
+		rc = cavs_aead(&cavs_test);
 	else if (HASH == cavs_test.type)
 		rc = cavs_hash(&cavs_test);
 	else
