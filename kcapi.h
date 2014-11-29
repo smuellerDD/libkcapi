@@ -73,6 +73,7 @@ struct kcapi_cipher_info {
 struct kcapi_cipher_data {
 	const unsigned char *iv;
 	size_t ivlen;
+	int more;
 };
 
 /**
@@ -85,7 +86,8 @@ struct kcapi_cipher_data {
  * @assoc: Pointer to associated data - input
  * @taglen: Length of authentication tag - input
  * @tag: Authentication tag - input for decryption, output for encryption
- * @retlen: internal data -- number of bytes returned by the read system call
+ * @retlen: internal data -- number plaintext / ciphertext bytes returned by
+ *	    the read system call
  */
 struct kcapi_aead_data {
 	size_t datalen;
@@ -112,6 +114,7 @@ struct kcapi_handle {
 	struct kcapi_cipher_info info;
 };
 
+/* Symmetric Cipher API */
 int kcapi_cipher_init(struct kcapi_handle *handle, const char *ciphername);
 int kcapi_cipher_destroy(struct kcapi_handle *handle);
 int kcapi_cipher_setkey(struct kcapi_handle *handle,
@@ -127,40 +130,36 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 int kcapi_cipher_ivsize(struct kcapi_handle *handle);
 int kcapi_cipher_blocksize(struct kcapi_handle *handle);
 
+/* AEAD Cipher API */
 int kcapi_aead_init(struct kcapi_handle *handle, const char *ciphername);
 int kcapi_aead_destroy(struct kcapi_handle *handle);
 int kcapi_aead_setkey(struct kcapi_handle *handle,
 		      const unsigned char *key, size_t keylen);
 int kcapi_aead_setiv(struct kcapi_handle *handle,
 		     const unsigned char *iv, size_t ivlen);
-void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen);
-void kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen);
+void kcapi_aead_setassoc(struct kcapi_handle *handle,
+			 unsigned char *assoc, size_t assoclen);
+int kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen);
+int kcapi_aead_settag(struct kcapi_handle *handle,
+		      unsigned char *tag, size_t taglen);
 ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
 			   unsigned char *out, size_t outlen);
+void kcapi_aead_getdata(struct kcapi_handle *handle,
+			unsigned char **data, size_t *datalen,
+			unsigned char **tag, size_t *taglen);
 ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
 			   unsigned char *out, size_t outlen);
-int kcapi_aead_alloc_nonalign(struct kcapi_handle *handle, size_t datalen,
-			      size_t assoclen, size_t taglen);
-int kcapi_aead_setassoc_nonalign(struct kcapi_handle *handle,
-				 unsigned char *assoc);
-int kcapi_aead_settag_nonalign(struct kcapi_handle *handle,
-				 unsigned char *tag);
-int kcapi_aead_setdata_nonalign(struct kcapi_handle *handle,
-				unsigned char *data);
-ssize_t kcapi_aead_enc_nonalign(struct kcapi_handle *handle);
-ssize_t kcapi_aead_dec_nonalign(struct kcapi_handle *handle);
-void kcapi_aead_getdata_nonalign(struct kcapi_handle *handle,
-				 unsigned char **data, size_t *datalen,
-				 unsigned char **tag, size_t *taglen);
-void kcapi_aead_free_nonalign(struct kcapi_handle *handle);
 int kcapi_aead_ivsize(struct kcapi_handle *handle);
 int kcapi_aead_blocksize(struct kcapi_handle *handle);
 int kcapi_aead_authsize(struct kcapi_handle *handle);
+size_t kcapi_aead_outbuflen(struct kcapi_handle *handle,
+			    size_t inlen, size_t taglen, int enc);
 int kcapi_aead_ccm_nonce_to_iv(const unsigned char *nonce, size_t noncelen,
 			       unsigned char **iv, size_t *ivlen);
 
+/* Message Digest Cipher API */
 int kcapi_md_init(struct kcapi_handle *handle, const char *ciphername);
 int kcapi_md_destroy(struct kcapi_handle *handle);
 int kcapi_md_setkey(struct kcapi_handle *handle,
@@ -171,6 +170,7 @@ ssize_t kcapi_md_final(struct kcapi_handle *handle,
 		       unsigned char *buffer, size_t len);
 int kcapi_md_digestsize(struct kcapi_handle *handle);
 
+/* Random Number API */
 int kcapi_rng_init(struct kcapi_handle *handle, const char *ciphername);
 int kcapi_rng_destroy(struct kcapi_handle *handle);
 ssize_t kcapi_rng_generate(struct kcapi_handle *handle,
