@@ -248,7 +248,7 @@ static void usage(void)
 	fprintf(stderr, "\t\t\t2 for AEAD cipher algorithm\n");
 	fprintf(stderr, "\t\t\t3 for message digest and keyed message digest\n");
 	fprintf(stderr, "\t-z\tAuxiliary tests of the API\n");
-	fprintf(stderr, "\t-y\tNonaligned AEAD API\n");
+	fprintf(stderr, "\t-s\tUse the stream API\n");
 }
 
 enum type {
@@ -290,7 +290,7 @@ static int cavs_sym(struct kcapi_cavs *cavs_test)
 {
 	struct kcapi_handle handle;
 	char *outhex = NULL;
-	int ret;
+	int ret = -EINVAL;
 
 	if (cavs_test->enc) {
 		if (!cavs_test->ptlen)
@@ -309,18 +309,18 @@ static int cavs_sym(struct kcapi_cavs *cavs_test)
 	if (!cavs_test->keylen || !cavs_test->key ||
 	    kcapi_cipher_setkey(&handle, cavs_test->key, cavs_test->keylen)) {
 		printf("Symmetric cipher setkey failed\n");
-		kcapi_cipher_destroy(&handle);
-		return -EINVAL;
+		goto out;
 	}
 
 	/* Setting the IV for the cipher operations */
-	if (cavs_test->ivlen && cavs_test->iv)
+	if (cavs_test->ivlen && cavs_test->iv) {
 		ret = kcapi_cipher_setiv(&handle, cavs_test->iv,
 					 cavs_test->ivlen);
 		if (ret) {
 			printf("Setting of IV failed %d\n", ret);
-			return ret;
+			goto out;
 		}
+	}
 
 	if (cavs_test->enc) {
 		ret = kcapi_cipher_encrypt(&handle,
@@ -331,18 +331,19 @@ static int cavs_sym(struct kcapi_cavs *cavs_test)
 					   cavs_test->ct, cavs_test->ctlen,
 					   cavs_test->ct, cavs_test->ctlen);
 	}
-	kcapi_cipher_destroy(&handle);
 	if (0 > ret)  {
-		printf("Encryption buffer failed\n");
-		return 1;
+		printf("En/Decryption of buffer failed\n");
+		goto out;
 	}
 
 	if (cavs_test->enc)
 		outhex = calloc(1, (cavs_test->ptlen) * 2 + 1);
 	else
 		outhex = calloc(1, (cavs_test->ctlen) * 2 + 1);
-	if (!outhex)
-		return -ENOMEM;
+	if (!outhex) {
+		ret = -ENOMEM;
+		goto out;
+	}
 	if (cavs_test->enc)
 		bin2hex(cavs_test->pt, cavs_test->ptlen,
 			outhex, (cavs_test->ptlen) * 2 + 1, 0);
@@ -352,7 +353,101 @@ static int cavs_sym(struct kcapi_cavs *cavs_test)
 	printf("%s\n", outhex);
 	free(outhex);
 
-	return 0;
+	ret = 0;
+
+out:
+	kcapi_cipher_destroy(&handle);
+	return ret;
+}
+
+static int cavs_sym_stream(struct kcapi_cavs *cavs_test)
+{
+	struct kcapi_handle handle;
+	char *outhex = NULL;
+	int ret = -EINVAL;
+	struct iovec iov;
+
+	if (cavs_test->enc) {
+		if (!cavs_test->ptlen)
+			return -EINVAL;
+	} else {
+		if (!cavs_test->ctlen)
+			return -EINVAL;
+	}
+
+	if (kcapi_cipher_init(&handle, cavs_test->cipher)) {
+		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
+		return -EINVAL;
+	}
+
+	/* Set key */
+	if (!cavs_test->keylen || !cavs_test->key ||
+	    kcapi_cipher_setkey(&handle, cavs_test->key, cavs_test->keylen)) {
+		printf("Symmetric cipher setkey failed\n");
+		goto out;
+	}
+
+	/* Setting the IV for the cipher operations */
+	if (cavs_test->ivlen && cavs_test->iv) {
+		ret = kcapi_cipher_setiv(&handle, cavs_test->iv,
+					 cavs_test->ivlen);
+		if (ret) {
+			printf("Setting of IV failed %d\n", ret);
+			goto out;
+		}
+	}
+
+	if (cavs_test->enc) {
+		ret = kcapi_cipher_stream_init_enc(&handle, NULL, 0);
+	} else {
+		ret = kcapi_cipher_stream_init_dec(&handle, NULL, 0);
+	}
+	if (0 > ret)  {
+		printf("Initialization of cipher buffer failed\n");
+		goto out;
+	}
+
+	if (cavs_test->enc) {
+		iov.iov_base = cavs_test->pt;
+		iov.iov_len = cavs_test->ptlen;
+	} else {
+		iov.iov_base = cavs_test->ct;
+		iov.iov_len = cavs_test->ctlen;
+	}
+	ret = kcapi_cipher_stream_update(&handle, &iov, 1);
+	if (0 > ret) {
+		printf("Sending of data failed\n");
+		goto out;
+	}
+	/* cipher operation on input buffer -- input will be overwritten */
+	ret = kcapi_cipher_stream_op(&handle, &iov, 1);
+	if (0 > ret) {
+		printf("Finalization and cipher operation failed\n");
+		goto out;
+	}
+
+	if (cavs_test->enc)
+		outhex = calloc(1, (cavs_test->ptlen) * 2 + 1);
+	else
+		outhex = calloc(1, (cavs_test->ctlen) * 2 + 1);
+	if (!outhex) {
+		ret = -ENOMEM;
+		goto out;
+	}
+	if (cavs_test->enc)
+		bin2hex(cavs_test->pt, cavs_test->ptlen,
+			outhex, (cavs_test->ptlen) * 2 + 1, 0);
+	else
+		bin2hex(cavs_test->ct, cavs_test->ctlen,
+			outhex, (cavs_test->ctlen) * 2 + 1, 0);
+	printf("%s\n", outhex);
+	free(outhex);
+
+	ret = 0;
+out:
+	kcapi_cipher_destroy(&handle);
+
+	return ret;
 }
 
 /*
@@ -392,8 +487,17 @@ static int cavs_aead(struct kcapi_cavs *cavs_test)
 	size_t newivlen = 0;
 	int errsv = 0;
 
-	if (!cavs_test->taglen)
+	if (cavs_test->enc) {
+		if (!cavs_test->ptlen)
+			return -EINVAL;
+	} else {
+		if (!cavs_test->ctlen)
+			return -EINVAL;
+	}
+	if (!cavs_test->taglen || (!cavs_test->enc && !cavs_test->tag)) {
+		printf("Missing tag data\n");
 		return -EINVAL;
+	}
 	if (!cavs_test->ivlen || !cavs_test->iv)
 		return -EINVAL;
 
@@ -416,6 +520,122 @@ static int cavs_aead(struct kcapi_cavs *cavs_test)
 	if (!outbuf)
 		goto out;
 
+	/* Set key */
+	if (!cavs_test->keylen || !cavs_test->key ||
+	    kcapi_aead_setkey(&handle, cavs_test->key, cavs_test->keylen)) {
+		printf("Symmetric cipher setkey failed\n");
+		goto out;
+	}
+
+	/* set IV */
+	ret = kcapi_pad_iv(&handle, cavs_test->iv, cavs_test->ivlen,
+			   &newiv, &newivlen);
+	if (ret && ret != -ERANGE)
+		goto out;
+
+	if (ret == -ERANGE)
+		ret = kcapi_aead_setiv(&handle,
+				       cavs_test->iv, cavs_test->ivlen);
+	else
+		ret = kcapi_aead_setiv(&handle, newiv, newivlen);
+
+	ret = -EIO;
+	/* Setting the tag length */
+	if (kcapi_aead_settaglen(&handle, cavs_test->taglen)) {
+		printf("Setting of authentication tag length failed\n");
+		goto out;
+	}
+	kcapi_aead_setassoclen(&handle, cavs_test->assoclen);
+
+	if (cavs_test->enc)
+		ret = kcapi_aead_encrypt(&handle,
+					 cavs_test->pt, cavs_test->ptlen,
+					 cavs_test->assoc, cavs_test->assoclen,
+					 outbuf, outbuflen);
+	else
+		ret = kcapi_aead_decrypt(&handle,
+					 cavs_test->ct, cavs_test->ctlen,
+					 cavs_test->assoc, cavs_test->assoclen,
+					 cavs_test->tag, outbuf, outbuflen);
+	errsv = errno;
+	if (0 > ret && EBADMSG != errsv) {
+		printf("Cipher operation of buffer failed: %d %d\n", errno, ret);
+		goto out;
+	}
+
+	if (EBADMSG == errsv) {
+		printf("EBADMSG\n");
+		ret = 0;
+		goto out;
+	}
+
+	ret = -ENOMEM;
+	outhex = calloc(1, (outbuflen * 2 + 1));
+	if (!outhex)
+		goto out;
+	bin2hex(outbuf, outbuflen, outhex, outbuflen * 2 + 1, 0);
+	printf("%s\n", outhex);
+
+	ret = 0;
+
+out:
+	kcapi_aead_destroy(&handle);
+	if (newiv)
+		free(newiv);
+	if (outbuf)
+		free(outbuf);
+	if (outhex)
+		free(outhex);
+	return ret;
+}
+
+static int cavs_aead_stream(struct kcapi_cavs *cavs_test)
+{
+	struct kcapi_handle handle;
+	unsigned char *outbuf = NULL;
+	size_t outbuflen = 0;
+	char *outhex = NULL;
+	int ret = -ENOMEM;
+	unsigned char *newiv = NULL;
+	size_t newivlen = 0;
+	int errsv = 0;
+	struct iovec iov;
+	struct iovec outiov;
+
+	if (cavs_test->enc) {
+		if (!cavs_test->ptlen)
+			return -EINVAL;
+	} else {
+		if (!cavs_test->ctlen)
+			return -EINVAL;
+	}
+	if (!cavs_test->taglen || (!cavs_test->enc && !cavs_test->tag)) {
+		printf("Missing tag data\n");
+		return -EINVAL;
+	}
+	if (!cavs_test->ivlen || !cavs_test->iv)
+		return -EINVAL;
+
+	ret = -EINVAL;
+	if (kcapi_aead_init(&handle, cavs_test->cipher)) {
+		printf("Allocation of cipher failed\n");
+		goto out;
+	}
+
+	ret = -ENOMEM;
+	if (cavs_test->enc) {
+		outbuflen = kcapi_aead_outbuflen(&handle, cavs_test->ptlen,
+						 cavs_test->taglen, 1);
+		outbuf = calloc(1, outbuflen);
+	} else {
+		outbuflen = kcapi_aead_outbuflen(&handle, cavs_test->ctlen,
+						 cavs_test->taglen, 0);
+		outbuf = calloc(1, outbuflen);
+	}
+	if (!outbuf)
+		goto out;
+	outiov.iov_base = outbuf;
+	outiov.iov_len = outbuflen;
 
 	/* Set key */
 	if (!cavs_test->keylen || !cavs_test->key ||
@@ -436,29 +656,56 @@ static int cavs_aead(struct kcapi_cavs *cavs_test)
 	else
 		ret = kcapi_aead_setiv(&handle, newiv, newivlen);
 
-	/* Setting the associated data */
-	kcapi_aead_setassoc(&handle, cavs_test->assoc, cavs_test->assoclen);
-
 	ret = -EIO;
+	/* Setting the tag length */
+	if (kcapi_aead_settaglen(&handle, cavs_test->taglen)) {
+		printf("Setting of authentication tag length failed\n");
+		goto out;
+	}
+	kcapi_aead_setassoclen(&handle, cavs_test->assoclen);
+
+	iov.iov_base = cavs_test->assoc;
+	iov.iov_len = cavs_test->assoclen;
 	if (cavs_test->enc) {
-		/* Setting the tag length */
-		if (kcapi_aead_settaglen(&handle, cavs_test->taglen)) {
-			printf("Setting of authentication tag length failed\n");
+		/* send assoc with init call */
+		ret = kcapi_aead_stream_init_enc(&handle, &iov, 1);
+		if (0 > ret) {
+			printf("Initialization of cipher buffer failed\n");
 			goto out;
 		}
-		ret = kcapi_aead_encrypt(&handle,
-					 cavs_test->pt, cavs_test->ptlen,
-					 outbuf, outbuflen);
+		/* send plaintext with last call */
+		iov.iov_base = cavs_test->pt;
+		iov.iov_len = cavs_test->ptlen;
+		ret = kcapi_aead_stream_update_last(&handle, &iov, 1);
+		if (0 > ret) {
+			printf("Sending last update buffer failed\n");
+			goto out;
+		}
+		ret = kcapi_aead_stream_op(&handle, &outiov, 1);
 	} else {
-		/* Setting the tag length */
-		if (kcapi_aead_settag(&handle,
-				      cavs_test->tag, cavs_test->taglen)) {
-			printf("Setting of authentication tag length failed\n");
+		/* send assoc with init call */
+		ret = kcapi_aead_stream_init_dec(&handle, &iov, 1);
+		if (0 > ret) {
+			printf("Initialization of cipher buffer failed\n");
 			goto out;
 		}
-		ret = kcapi_aead_decrypt(&handle,
-					 cavs_test->ct, cavs_test->ctlen,
-					 outbuf, outbuflen);
+		/* send plaintext with intermediary call */
+		iov.iov_base = cavs_test->ct;
+		iov.iov_len = cavs_test->ctlen;
+		ret = kcapi_aead_stream_update(&handle, &iov, 1);
+		if (0 > ret) {
+			printf("Sending update buffer failed\n");
+			goto out;
+		}
+		/* send tag with last send call */
+		iov.iov_base = cavs_test->tag;
+		iov.iov_len = cavs_test->taglen;
+		ret = kcapi_aead_stream_update_last(&handle, &iov, 1);
+		if (0 > ret) {
+			printf("Sending last update buffer failed\n");
+			goto out;
+		}
+		ret = kcapi_aead_stream_op(&handle, &outiov, 1);
 	}
 	errsv = errno;
 	if (0 > ret && EBADMSG != errsv) {
@@ -557,6 +804,7 @@ int main(int argc, char *argv[])
 	int c = 0;
 	int ret = 1;
 	int rc = 1;
+	int stream = 0;
 	struct kcapi_cavs cavs_test;
 
 	memset(&cavs_test, 0, sizeof(struct kcapi_cavs));
@@ -579,9 +827,10 @@ int main(int argc, char *argv[])
 			{"tag", 1, 0, 0},
 			{"ciphertype", 1, 0, 0},
 			{"aux", 0, 0, 0},
+			{"stream", 0, 0, 0},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "ec:p:q:i:n:k:a:l:t:x:z", opts, &opt_index);
+		c = getopt_long(argc, argv, "ec:p:q:i:n:k:a:l:t:x:zs", opts, &opt_index);
 		if(-1 == c)
 			break;
 		switch(c)
@@ -677,17 +926,27 @@ int main(int argc, char *argv[])
 				rc = auxiliary_tests();
 				goto out;
 				break;
+			case 's':
+				stream = 1;
+				break;
 			default:
 				usage();
 				goto out;
 		}
 	}
 
-	if (SYM == cavs_test.type)
-		rc = cavs_sym(&cavs_test);
-	else if (AEAD == cavs_test.type)
-		rc = cavs_aead(&cavs_test);
-	else if (HASH == cavs_test.type)
+	if (SYM == cavs_test.type) {
+		if (stream)
+			rc = cavs_sym_stream(&cavs_test);
+		else
+			rc = cavs_sym(&cavs_test);
+	}
+	else if (AEAD == cavs_test.type) {
+		if (stream)
+			rc = cavs_aead_stream(&cavs_test);
+		else
+			rc = cavs_aead(&cavs_test);
+	} else if (HASH == cavs_test.type)
 		rc = cavs_hash(&cavs_test);
 	else
 		goto out;

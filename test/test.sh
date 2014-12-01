@@ -329,6 +329,7 @@ hashfunc()
 
 symfunc()
 {
+	stream=$1
 	SYMEXEC="1 2 3 4 5 6 7 8 9 10 11"
 	for i in $SYMEXEC
 	do
@@ -346,16 +347,21 @@ symfunc()
 		fi
 		if [ "$SYM_enc" = 1  ]
 		then
-			result=$(./kcapi -x 1 -e -c $SYM_name $iv -k $SYM_key -p $SYM_msg)
+			result=$(./kcapi -x 1 $stream -e -c $SYM_name $iv -k $SYM_key -p $SYM_msg)
 		else
-			result=$(./kcapi -x 1 -c $SYM_name $iv -k $SYM_key -q $SYM_msg)
+			result=$(./kcapi -x 1 $stream -c $SYM_name $iv -k $SYM_key -q $SYM_msg)
 		fi
 
+		sout="one shot"
+		if [ -n "$stream" ]
+		then
+			sout="stream"
+		fi
 		if [ x"$result" = x"$SYM_exp" ]
 		then
-			echo "Symmetric test $i passed"
+			echo "Symmetric $sout test $i passed"
 		else
-			echo "Symmetric test $i failed"
+			echo "Symmetric $sout test $i failed"
 			echo " Exp $SYM_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -365,6 +371,8 @@ symfunc()
 
 aeadfunc()
 {
+	stream=$1
+
 	AEADEXEC="1 2 3 4 5 6 7 8 9 10 11 12"
 	for i in $AEADEXEC
 	do
@@ -388,18 +396,23 @@ aeadfunc()
 		expected=""
 		if [ "$AEAD_enc" = 1  ]
 		then
-			result=$(./kcapi -x 2 -e -c $AEAD_name $iv -k $AEAD_key -a $AEAD_assoc -p $AEAD_msg -l $AEAD_taglen)
+			result=$(./kcapi -x 2 $stream -e -c $AEAD_name $iv -k $AEAD_key -a $AEAD_assoc -p $AEAD_msg -l $AEAD_taglen)
 			expected="${AEAD_exp}${AEAD_tag}"
 		else
-			result=$(./kcapi -x 2 -c $AEAD_name $iv -k $AEAD_key -a $AEAD_assoc -t $AEAD_tag -q $AEAD_msg)
+			result=$(./kcapi -x 2 $stream -c $AEAD_name $iv -k $AEAD_key -a $AEAD_assoc -t $AEAD_tag -q $AEAD_msg)
 			expected="${AEAD_exp}"
 		fi
 
+		sout="one shot"
+		if [ -n "$stream" ]
+		then
+			sout="stream"
+		fi
 		if [ x"$result" = x"$expected" ]
 		then
-			echo "AEAD test $i passed"
+			echo "AEAD $sout test $i passed"
 		else
-			echo "AEAD test $i failed"
+			echo "AEAD $sout test $i failed"
 			echo " Exp $expected"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -419,6 +432,8 @@ auxtest()
 
 hashfunc
 symfunc
+symfunc -s
 aeadfunc
+aeadfunc -s
 auxtest
 exit $failures
