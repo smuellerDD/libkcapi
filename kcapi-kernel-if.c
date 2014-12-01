@@ -85,7 +85,7 @@
 
 static ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 				       struct iovec *iov, size_t iovlen,
-				       uint32_t enc)
+				       uint32_t enc, int more)
 {
 	ssize_t ret = -EINVAL;
 	char *buffer = NULL;
@@ -143,7 +143,7 @@ static ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 	}
 
 	/* set AEAD information */
-	if (handle->aead.taglen) {
+	if (handle->aead.assoclen) {
 		/* Set associated data length */
 		header = CMSG_NXTHDR(&msg, header);
 		header->cmsg_level = SOL_ALG;
@@ -153,7 +153,7 @@ static ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 		*assoclen = handle->aead.assoclen;
 	}
 
-	ret = sendmsg(handle->opfd, &msg, 0);
+	ret = sendmsg(handle->opfd, &msg, more ? MSG_MORE : 0);
 
 	memset(buffer, 0, bufferlen);
 	/* magic to convince GCC to memset the buffer */
@@ -164,7 +164,6 @@ static ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 	return ret;
 }
 
-#if 0
 static ssize_t _kcapi_common_send_data(struct kcapi_handle *handle,
 				       struct iovec *iov, size_t iovlen,
 				       int more)
@@ -175,34 +174,19 @@ static ssize_t _kcapi_common_send_data(struct kcapi_handle *handle,
 	msg.msg_iov = iov;
 	msg.msg_iovlen = iovlen;
 
-	handle->cipher.more = more;
-
 	return sendmsg(handle->opfd, &msg, more ? MSG_MORE : 0);
 }
-#endif
 
 static ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 				       struct iovec *iov, size_t iovlen)
 {
 	struct msghdr msg;
 
-	/*
-	 * bug by caller: the kernel expects more data, but for AEAD
-	 * we must have sent all data
-	 */
-	if (handle->cipher.more && handle->aead.taglen) {
-		fprintf(stderr, "AEAD error: kernel expects more data, but recvmsg triggered\n");
-		return -EAGAIN;
-	}
-
 	memset(&msg, 0, sizeof(msg));
 	msg.msg_iov = iov;
 	msg.msg_iovlen = iovlen;
 
 	return recvmsg(handle->opfd, &msg, 0);
-#if 0
-
-#endif
 }
 
 static inline int _kcapi_common_setkey(struct kcapi_handle *handle,
@@ -464,6 +448,22 @@ static inline int _kcapi_handle_destroy(struct kcapi_handle *handle)
 	return 0;
 }
 
+static inline size_t _kcapi_aead_encrypt_outlen(struct kcapi_handle *handle,
+						size_t inlen, size_t taglen)
+{
+	int bs = handle->info.blocksize;
+
+	return ((inlen + bs - 1) / bs * bs + taglen);
+}
+
+static inline size_t _kcapi_aead_decrypt_outlen(struct kcapi_handle *handle,
+						size_t inlen)
+{
+	int bs = handle->info.blocksize;
+
+	return ((inlen + bs - 1) / bs * bs);
+}
+
 /**
  * DOC: Common API
  *
@@ -583,7 +583,7 @@ int kcapi_cipher_setiv(struct kcapi_handle *handle,
 }
 
 /**
- * kcapi_cipher_encrypt() - encrypt data
+ * kcapi_cipher_encrypt() - encrypt data (one shot)
  * @handle: cipher handle - input
  * @in: plaintext data buffer - input
  * @inlen: length of in buffer - input
@@ -621,7 +621,7 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 
 	iov.iov_base = (void*)(uintptr_t)in;
 	iov.iov_len = inlen;
-	ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_ENCRYPT);
+	ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_ENCRYPT, 0);
 	if (0 > ret)
 		return ret;
 
@@ -631,7 +631,7 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 }
 
 /**
- * kcapi_cipher_decrypt() - decrypt data
+ * kcapi_cipher_decrypt() - decrypt data (one shot)
  * @handle: cipher handle - input
  * @in: ciphertext data buffer - input
  * @inlen: length of in buffer - input
@@ -675,13 +675,135 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 
 	iov.iov_base = (void*)(uintptr_t)in;
 	iov.iov_len = inlen;
-	ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_DECRYPT);
+	ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_DECRYPT, 0);
 	if (0 > ret)
 		return ret;
 
 	iov.iov_base = (void*)(uintptr_t)out;
 	iov.iov_len = outlen;
 	return _kcapi_common_recv_data(handle, &iov, 1);
+}
+
+/**
+ * kcapi_cipher_stream_init_enc() - start an encryption operation (multi-call)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list with data to be encrypted. This is the pointer to
+ *	 the first @iov entry if an array of @iov entries is supplied. See
+ *	 sendmsg(2) for details on how @iov is to be used. This pointer may be
+ *	 NULL if no data to be encrypted is available at the point of the call.
+ *	  - input
+ * @iovlen: number of scatter/gather list elements. If @iov is NULL, this value
+ *	    must be zero. - input
+ *
+ * A multi-call encryption operation is started with this call. Multiple
+ * successive kcapi_cipher_stream_update() function calls can be invoked to
+ * send more plaintext data to be encrypted. The kernel buffers the input
+ * until kcapi_cipher_stream_op() picks up the encrypted data. Once plaintext
+ * is encrypted during the kcapi_cipher_stream_op() it is removed from the
+ * kernel buffer.
+ *
+ * The function calls of kcapi_cipher_stream_update() and
+ * kcapi_cipher_stream_op() can be mixed, even by multiple threads of an
+ * application.
+ *
+ * Return: number of bytes sent to the kernel upon success; < 0 in case of error
+ *	   with errno set
+ */
+ssize_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
+				     struct iovec *iov, size_t iovlen)
+{
+	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_ENCRYPT, 1);
+}
+
+/**
+ * kcapi_cipher_stream_init_dec() - start a decryption operation (multi-call)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list with data to be decrypted. This is the pointer to
+ *	 the first @iov entry if an array of @iov entries is supplied. See
+ *	 sendmsg(2) for details on how @iov is to be used. This pointer may be
+ *	 NULL if no data to be decrypted is available at the point of the call.
+ *	 - input
+ * @iovlen: number of scatter/gather list elements. If @iov is NULL, this value
+ *	    must be zero. - input
+ *
+ * A multi-call decryption operation is started with this call. Multiple
+ * successive kcapi_cipher_stream_update() function calls can be invoked to
+ * send more ciphertext data to be decrypted. The kernel buffers the input
+ * until kcapi_cipher_stream_op() picks up the decrypted data. Once ciphertext
+ * is decrypted during the kcapi_cipher_stream_op() it is removed from the
+ * kernel buffer.
+ *
+ * The function calls of kcapi_cipher_stream_update() and
+ * kcapi_cipher_stream_op() can be mixed, even by multiple threads of an
+ * application.
+ *
+ * Return: number of bytes sent to the kernel upon success; < 0 in case of error
+ *	   with errno set
+ */
+ssize_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
+				     struct iovec *iov, size_t iovlen)
+{
+	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_DECRYPT, 1);
+}
+
+/**
+ * kcapi_cipher_stream_update() - send more data for processing (multi-call)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list with data to be processed by the cipher operation.
+ *	 - input
+ * @iovlen: number of scatter/gather list elements. - input
+ *
+ * Using this function call, more plaintext for encryption or ciphertext for
+ * decryption can be submitted to the kernel.
+ *
+ * This function may cause the caller to sleep if the kernel buffer holding
+ * the data is getting full. The process will be woken up once more buffer
+ * space becomes available by calling kcapi_cipher_stream_op().
+ *
+ * Note: with the separate API calls of kcapi_cipher_stream_update() and
+ * kcapi_cipher_stream_op() a multi-threaded application can be implemented
+ * where one thread sends data to be processed and one thread picks up data
+ * processed by the cipher operation.
+ *
+ * Return: number of bytes sent to the kernel upon success; < 0 in case of error
+ *	   with errno set
+ */
+ssize_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
+				   struct iovec *iov, size_t iovlen)
+{
+	return _kcapi_common_send_data(handle, iov, iovlen, 1);
+}
+
+/**
+ * kcapi_cipher_stream_op() - obtain processed data (multi-call)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list pointing to buffers to be filled with the resulting
+ *	 data from a cipher operation. - output
+ * @iovlen: number of scatter/gather list elements. - input
+ *
+ * This call can be called interleaved with kcapi_cipher_stream_update() to
+ * fetch the processed data.
+ *
+ * This function may cause the caller to sleep if the kernel buffer holding
+ * the data is empty. The process will be woken up once more data is sent
+ * by calling kcapi_cipher_stream_update().
+ *
+ * Note, when supplying buffers that are not multiple of block size, the buffers
+ * will only be filled up to the maximum number of full block sizes that fit
+ * into the buffer.
+ *
+ * Return: number of bytes obtained from the kernel upon success; < 0 in case
+ *	   of error with errno set
+ */
+ssize_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
+			       struct iovec *iov, size_t iovlen)
+{
+	if (!iov || !iovlen) {
+		fprintf(stderr,
+			"Symmetric operation: No buffer for output data provided\n");
+		return -EINVAL;
+	}
+	return _kcapi_common_recv_data(handle, iov, iovlen);
 }
 
 /**
@@ -785,25 +907,14 @@ int kcapi_aead_setiv(struct kcapi_handle *handle,
 }
 
 /**
- * kcapi_aead_setassoc() - set associated data for AEAD operation
+ * kcapi_aead_settaglen() - Set authentication tag size
  * @handle: cipher handle - input
- * @assoc: associated data - input
- * @assoclen: length of assoc (should be zero if @assoc is NULL) - input
- */
-void kcapi_aead_setassoc(struct kcapi_handle *handle,
-			 unsigned char *assoc, size_t assoclen)
-{
-	handle->aead.assoc = assoc;
-	handle->aead.assoclen = assoclen;
-}
-
-/**
- * kcapi_aead_settaglen() - Set authentication tag size (encryption)
- * @handle: cipher handle - input
- * @taglen: length of tag - input
+ * @taglen: length of authentication tag - input
  *
  * Set the authentication tag size needed for encryption operation. The tag is
  * created during encryption operation with the size provided with this call.
+ *
+ * Return: 0 upon success; < 0 in case of error with errno set
  */
 int kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen)
 {
@@ -817,52 +928,31 @@ int kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen)
 }
 
 /**
- * kcapi_aead_settag() - Set authentication tag (decryption)
+ * kcapi_aead_setassoclen() - Set authentication data size
  * @handle: cipher handle - input
- * @tag: authentication tag data - input
- * @taglen: length of tag - input
- *
- * Set the authentication tag needed for decryption operation.
+ * @assoclen: length of associated data length
  */
-int kcapi_aead_settag(struct kcapi_handle *handle,
-		      unsigned char *tag, size_t taglen)
+void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen)
 {
-	handle->aead.tag = tag;
-	handle->aead.taglen = taglen;
-	if (setsockopt(handle->opfd, SOL_ALG, ALG_SET_AEAD_AUTHSIZE,
-		       NULL, taglen) == -1)
-		return -EINVAL;
-
-	return 0;
-}
-
-
-static inline size_t _kcapi_aead_encrypt_outlen(struct kcapi_handle *handle,
-						size_t inlen, size_t taglen)
-{
-	int bs = handle->info.blocksize;
-
-	return ((inlen + bs - 1) / bs * bs + taglen);
-}
-
-static inline size_t _kcapi_aead_decrypt_outlen(struct kcapi_handle *handle,
-						size_t inlen)
-{
-	int bs = handle->info.blocksize;
-
-	return ((inlen + bs - 1) / bs * bs);
+	handle->aead.assoclen = assoclen;
 }
 
 /**
- * kcapi_aead_encrypt() - encrypt AEAD data
+ * kcapi_aead_encrypt() - encrypt AEAD data (one shot)
  * @handle: cipher handle - input
  * @in: plaintext data buffer - input
  * @inlen: length of plaintext buffer - input
+ * @assoc: associated data - input
+ * @assoclen: length of assoc (should be zero if @assoc is NULL) - input
  * @out: data buffer holding cipher text and authentication tag - output
  * @outlen: length of out buffer - input
  *
  * This call encrypts data. The caller must have invoked the following calls
- * before using this call: kcapi_aead_settaglen(), kcapi_aead_setassoc().
+ * before using this call: kcapi_aead_settaglen().
+ *
+ * The AEAD cipher operation requires the furnishing of the associated
+ * authentication data. In case such data is not required, it can be set to
+ * NULL and length value must be set to zero.
  *
  * It is perfectly legal to use the same buffer as the plaintext and
  * ciphertext pointers. That would mean that after the encryption operation,
@@ -877,6 +967,7 @@ static inline size_t _kcapi_aead_decrypt_outlen(struct kcapi_handle *handle,
  */
 ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
+			   const unsigned char *assoc, size_t assoclen,
 			   unsigned char *out, size_t outlen)
 {
 	struct iovec iov[2];
@@ -899,16 +990,18 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 		return -EINVAL;
 	}
 
-	if (handle->aead.assoclen) {
-		iov[0].iov_base = (void*)(uintptr_t)handle->aead.assoc;
-		iov[0].iov_len = handle->aead.assoclen;
+	if (assoc && assoclen) {
+		iov[0].iov_base = (void*)(uintptr_t)assoc;
+		iov[0].iov_len = assoclen;
 		iov[1].iov_base = (void*)(uintptr_t)in;
 		iov[1].iov_len = inlen;
-		ret = _kcapi_common_send_meta(handle, &iov[0], 2, ALG_OP_ENCRYPT);
+		ret = _kcapi_common_send_meta(handle, &iov[0], 2,
+					      ALG_OP_ENCRYPT, 0);
 	} else {
 		iov[0].iov_base = (void*)(uintptr_t)in;
 		iov[0].iov_len = inlen;
-		ret = _kcapi_common_send_meta(handle, &iov[0], 1, ALG_OP_ENCRYPT);
+		ret = _kcapi_common_send_meta(handle, &iov[0], 1,
+					      ALG_OP_ENCRYPT, 0);
 	}
 	if (0 > ret)
 		return ret;
@@ -959,15 +1052,22 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
 }
 
 /**
- * kcapi_aead_decrypt() - decrypt AEAD data
+ * kcapi_aead_decrypt() - decrypt AEAD data (one shot)
  * @handle: cipher handle - input
  * @in: ciphertext data buffer - input
  * @inlen: length of in buffer - input
+ * @assoc: associated data - input
+ * @assoclen: length of assoc (should be zero if @assoc is NULL) - input
+ * @tag: authentication tag data of size set with kcapi_aead_settaglen() - input
  * @out: plaintext data buffer - output
  * @outlen: length of out buffer - input
  *
  * This call encrypts data. The caller must have invoked the following calls
- * before using this call: kcapi_aead_settag(), kcapi_aead_setassoc().
+ * before using this call: kcapi_aead_settag().
+ *
+ * The AEAD cipher operation requires the furnishing of the associated
+ * authentication data. In case such data is not required, it can be set to
+ * NULL and length value must be set to zero.
  *
  * It is perfectly legal to use the same buffer as the plaintext and
  * ciphertext pointers. That would mean that after the encryption operation,
@@ -983,14 +1083,15 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
  */
 ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
+			   const unsigned char *assoc, size_t assoclen,
+			   const unsigned char *tag,
 			   unsigned char *out, size_t outlen)
 {
 	struct iovec iov[3];
 	ssize_t ret = 0;
 	int bs = handle->info.blocksize;
 
-	if (!in || !inlen || !out || !outlen ||
-	    !handle->aead.tag || !handle->aead.taglen) {
+	if (!in || !inlen || !out || !outlen || !tag || !handle->aead.taglen) {
 		fprintf(stderr,
 			"AEAD Decryption: Empty plaintext buffer, ciphertext buffer, or tag buffer provided\n");
 		return -EINVAL;
@@ -1006,19 +1107,21 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 	}
 
 	if (handle->aead.assoclen) {
-		iov[0].iov_base = (void*)(uintptr_t)handle->aead.assoc;
-		iov[0].iov_len = handle->aead.assoclen;
+		iov[0].iov_base = (void*)(uintptr_t)assoc;
+		iov[0].iov_len = assoclen;
 		iov[1].iov_base = (void*)(uintptr_t)in;
 		iov[1].iov_len = inlen;
-		iov[2].iov_base = (void*)(uintptr_t)handle->aead.tag;
+		iov[2].iov_base = (void*)(uintptr_t)tag;
 		iov[2].iov_len = handle->aead.taglen;
-		ret = _kcapi_common_send_meta(handle, &iov[0], 3, ALG_OP_DECRYPT);
+		ret = _kcapi_common_send_meta(handle, &iov[0], 3,
+					      ALG_OP_DECRYPT, 0);
 	} else {
 		iov[0].iov_base = (void*)(uintptr_t)in;
 		iov[0].iov_len = inlen;
-		iov[1].iov_base = (void*)(uintptr_t)handle->aead.tag;
+		iov[1].iov_base = (void*)(uintptr_t)tag;
 		iov[1].iov_len = handle->aead.taglen;
-		ret = _kcapi_common_send_meta(handle, &iov[0], 2, ALG_OP_DECRYPT);
+		ret = _kcapi_common_send_meta(handle, &iov[0], 2,
+					      ALG_OP_DECRYPT, 0);
 	}
 	if (0 > ret)
 		return ret;
@@ -1029,6 +1132,182 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 
 	handle->aead.retlen = ret;
 	return ret;
+}
+
+/**
+ * kcapi_aead_stream_init_enc() - start an encryption operation (multi-call)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list with data to be encrypted. This is the pointer to
+ *	 the first @iov entry if an array of @iov entries is supplied. See
+ *	 sendmsg(2) for details on how @iov is to be used. This pointer may be
+ *	 NULL if no data to be encrypted is available at the point of the call.
+ *	  - input
+ * @iovlen: number of scatter/gather list elements. If @iov is NULL, this value
+ *	    must be zero. - input
+ *
+ * A multi-call encryption operation is started with this call. Multiple
+ * successive kcapi_aead_stream_update() function calls can be invoked to
+ * send more plaintext data to be encrypted. The kernel buffers the input
+ * until kcapi_aead_stream_op() picks up the encrypted data. Once plaintext
+ * is encrypted during the kcapi_aead_stream_op() it is removed from the
+ * kernel buffer.
+ *
+ * The caller must have invoked the following calls before using this call:
+ * kcapi_aead_settaglen().
+ *
+ * Note, unlike the corresponding symmetric cipher API, the function calls of
+ * kcapi_aead_stream_update() and kcapi_aead_stream_op() cannot be mixed! This
+ * due to the nature of AEAD where the cipher operation ensures the integrity
+ * of the entire data (decryption) or calculates a message digest over the
+ * entire data (encryption).
+ *
+ * When using the multi-call API, the caller must ensure that data is sent
+ * in the correct order (regardless whether data is sent in multiple chunks
+ * using kcapi_aead_stream_init_enc() or kcapi_cipher_stream_update()): (i)
+ * the complete associated data must be provided, followed by (ii) the
+ * plaintext.
+ *
+ * Return: number of bytes sent to the kernel upon success; < 0 in case of error
+ *	   with errno set
+ */
+ssize_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
+				   struct iovec *iov, size_t iovlen)
+{
+	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_ENCRYPT, 1);
+}
+
+/**
+ * kcapi_aead_stream_init_enc() - start a decryption operation (multi-call)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list with data to be encrypted. This is the pointer to
+ *	 the first @iov entry if an array of @iov entries is supplied. See
+ *	 sendmsg(2) for details on how @iov is to be used. This pointer may be
+ *	 NULL if no data to be encrypted is available at the point of the call.
+ *	  - input
+ * @iovlen: number of scatter/gather list elements. If @iov is NULL, this value
+ *	    must be zero. - input
+ *
+ * A multi-call decryption operation is started with this call. Multiple
+ * successive kcapi_aead_stream_update() function calls can be invoked to
+ * send more ciphertext data to be encrypted. The kernel buffers the input
+ * until kcapi_aead_stream_op() picks up the decrypted data. Once ciphertext
+ * is decrypted during the kcapi_aead_stream_op() it is removed from the
+ * kernel buffer.
+ *
+ * The caller must have invoked the following calls before using this call:
+ * kcapi_aead_settag().
+ *
+ * Note, unlike the corresponding symmetric cipher API, the function calls of
+ * kcapi_aead_stream_update() and kcapi_aead_stream_op() cannot be mixed! This
+ * due to the nature of AEAD where the cipher operation ensures the integrity
+ * of the entire data (decryption) or calculates a message digest over the
+ * entire data (encryption).
+ *
+ * When using the multi-call API, the caller must ensure that data is sent
+ * in the correct order (regardless whether data is sent in multiple chunks
+ * using kcapi_aead_stream_init_enc() or kcapi_cipher_stream_update()): (i)
+ * the complete associated data must be provided, followed by (ii) the
+ * plaintext. For decryption, also (iii) the tag value must be sent.
+ *
+ * Return: number of bytes sent to the kernel upon success; < 0 in case of error
+ *	   with errno set
+ */
+ssize_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
+				   struct iovec *iov, size_t iovlen)
+{
+	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_DECRYPT, 1);
+}
+
+/**
+ * kcapi_aead_stream_update() - send more data for processing (multi-call)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list with data to be processed by the cipher operation.
+ *	 - input
+ * @iovlen: number of scatter/gather list elements. - input
+ *
+ * Using this function call, more plaintext for encryption or ciphertext for
+ * decryption can be submitted to the kernel.
+ *
+ * Note, see the order of input data as outlined in
+ * kcapi_aead_stream_init_dec().
+ *
+ * This function may cause the caller to sleep if the kernel buffer holding
+ * the data is getting full. The process will be woken up once more buffer
+ * space becomes available by calling kcapi_aead_stream_op().
+ *
+ * IMPORTANT NOTE: The last block of input data SHOULD be provided with
+ * kcapi_aead_stream_update_last() as the kernel must be informed about the
+ * completion of the input data.
+ *
+ * Note: with the separate API calls of kcapi_aead_stream_update() and
+ * kcapi_aead_stream_op() a multi-threaded application can be implemented
+ * where one thread sends data to be processed and one thread picks up data
+ * processed by the cipher operation.
+ *
+ * Return: number of bytes sent to the kernel upon success; < 0 in case of error
+ *	   with errno set
+ */
+ssize_t kcapi_aead_stream_update(struct kcapi_handle *handle,
+				 struct iovec *iov, size_t iovlen)
+{
+	return _kcapi_common_send_data(handle, iov, iovlen, 1);
+}
+
+/**
+ * kcapi_aead_stream_update() - send last data for processing (multi-call)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list with data to be processed by the cipher operation.
+ *	 - input
+ * @iovlen: number of scatter/gather list elements. - input
+ *
+ * Using this function call, more plaintext for encryption or ciphertext for
+ * decryption can be submitted to the kernel.
+ *
+ * This call is identical to the kcapi_aead_stream_update() call with the
+ * exception that it marks the last data buffer before the cipher operation
+ * is triggered. Typically, the tag value is provided with this call.
+ *
+ * Return: number of bytes sent to the kernel upon success; < 0 in case of error
+ *	   with errno set
+ */
+ssize_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
+				      struct iovec *iov, size_t iovlen)
+{
+	return _kcapi_common_send_data(handle, iov, iovlen, 0);
+}
+
+/**
+ * kcapi_aead_stream_op() - obtain processed data (multi-call)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list pointing to buffers to be filled with the
+ *	 resulting data from a cipher operation. - output
+ * @iovlen: number of @outiov scatter/gather list elements. - input
+ *
+ * This function may cause the caller to sleep if the kernel buffer holding
+ * the data is empty. The process will be woken up once more data is sent
+ * by calling kcapi_cipher_stream_update().
+ *
+ * Note, when supplying buffers that are not multiple of block size, the buffers
+ * will only be filled up to the maximum number of full block sizes that fit
+ * into the buffer.
+ *
+ * Return: number of bytes obtained from the kernel upon success; < 0 in case
+ *	   of error with errno set
+ */
+ssize_t kcapi_aead_stream_op(struct kcapi_handle *handle,
+			     struct iovec *iov, size_t iovlen)
+{
+	if (!iov) {
+		fprintf(stderr,
+			"AEAD operation: No buffer for output data provided\n");
+		return -EINVAL;
+	}
+	if (iovlen != 1) {
+		fprintf(stderr,
+			"AEAD operation: Output IOV must contain only one entry\n");
+		return -EINVAL;
+	}
+	return _kcapi_common_recv_data(handle, iov, iovlen);
 }
 
 /**

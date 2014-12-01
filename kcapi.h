@@ -38,6 +38,7 @@
 #define _KCAPI_H
 
 #include <linux/if_alg.h>
+#include <sys/uio.h>
 
 /**
  * Information obtained for different ciphers during handle init time
@@ -73,7 +74,6 @@ struct kcapi_cipher_info {
 struct kcapi_cipher_data {
 	const unsigned char *iv;
 	size_t ivlen;
-	int more;
 };
 
 /**
@@ -127,6 +127,14 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 			     const unsigned char *in, size_t inlen,
 			     unsigned char *out, size_t outlen);
+ssize_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
+				     struct iovec *iov, size_t iovlen);
+ssize_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
+				     struct iovec *iov, size_t iovlen);
+ssize_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
+				   struct iovec *iov, size_t iovlen);
+ssize_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
+			       struct iovec *iov, size_t iovlen);
 int kcapi_cipher_ivsize(struct kcapi_handle *handle);
 int kcapi_cipher_blocksize(struct kcapi_handle *handle);
 
@@ -137,20 +145,30 @@ int kcapi_aead_setkey(struct kcapi_handle *handle,
 		      const unsigned char *key, size_t keylen);
 int kcapi_aead_setiv(struct kcapi_handle *handle,
 		     const unsigned char *iv, size_t ivlen);
-void kcapi_aead_setassoc(struct kcapi_handle *handle,
-			 unsigned char *assoc, size_t assoclen);
 int kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen);
-int kcapi_aead_settag(struct kcapi_handle *handle,
-		      unsigned char *tag, size_t taglen);
+void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen);
 ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
+			   const unsigned char *assoc, size_t assoclen,
 			   unsigned char *out, size_t outlen);
 void kcapi_aead_getdata(struct kcapi_handle *handle,
 			unsigned char **data, size_t *datalen,
 			unsigned char **tag, size_t *taglen);
 ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
+			   const unsigned char *assoc, size_t assoclen,
+			   const unsigned char *tag,
 			   unsigned char *out, size_t outlen);
+ssize_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
+				   struct iovec *iov, size_t iovlen);
+ssize_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
+				   struct iovec *iov, size_t iovlen);
+ssize_t kcapi_aead_stream_update(struct kcapi_handle *handle,
+				 struct iovec *iov, size_t iovlen);
+ssize_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
+				      struct iovec *iov, size_t iovlen);
+ssize_t kcapi_aead_stream_op(struct kcapi_handle *handle,
+			     struct iovec *iov, size_t iovlen);
 int kcapi_aead_ivsize(struct kcapi_handle *handle);
 int kcapi_aead_blocksize(struct kcapi_handle *handle);
 int kcapi_aead_authsize(struct kcapi_handle *handle);
