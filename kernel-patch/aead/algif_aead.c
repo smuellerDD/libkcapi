@@ -84,6 +84,7 @@ static void aead_put_sgl(struct sock *sk)
 	struct aead_sg_list *sgl = &ctx->tsgl;
 	struct scatterlist *sg = sgl->sg;
 	unsigned int i;
+printk("p 1\n");
 
 	for (i = 0; i < sgl->cur; i++) {
 		if (!sg_page(sg + i))
@@ -96,6 +97,7 @@ static void aead_put_sgl(struct sock *sk)
 	ctx->used = 0;
 	ctx->more = 0;
 	ctx->merge = 0;
+printk("p 2\n");
 }
 
 static int aead_wait_for_wmem(struct sock *sk, unsigned flags)
@@ -437,7 +439,7 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 
 	err = -EINVAL;
 	/* first chunk of input is AD */
-	sg_init_table(&assoc, 2);
+	sg_init_table(&assoc, 1);
 	sg_set_page(&assoc, sg_page(sg), ctx->aead_assoclen, 0);
 	aead_request_set_assoc(&ctx->aead_req, &assoc, ctx->aead_assoclen);
 
@@ -447,6 +449,8 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 		sg = sgl->sg + i;
 		if (sg->length <= assoclen) {
 			assoclen -= sg->length;
+			if (i >= ctx->tsgl.cur)
+				goto unlock;
 		} else {
 			sg->length -= assoclen;
 			sg->offset += assoclen;
