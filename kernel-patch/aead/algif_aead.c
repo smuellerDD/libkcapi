@@ -97,7 +97,6 @@ printk("p 1\n");
 	ctx->used = 0;
 	ctx->more = 0;
 	ctx->merge = 0;
-printk("p 2\n");
 }
 
 static int aead_wait_for_wmem(struct sock *sk, unsigned flags)
@@ -233,6 +232,10 @@ static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
 
 		if (!con.aead_assoclen)
 			return -EINVAL;
+
+		/* aead_recvmsg limits the maximum AD size to one page */
+		if (con.aead_assoclen > PAGE_SIZE)
+			return -E2BIG;
 	}
 
 	lock_sock(sk);
@@ -438,7 +441,11 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 		goto unlock;
 
 	err = -EINVAL;
-	/* first chunk of input is AD */
+	/*
+	 * first chunk of input is AD -- one scatterlist entry is one page,
+	 * and we process only one scatterlist, the maximum size of AD is
+	 * one page
+	 */
 	sg_init_table(&assoc, 1);
 	sg_set_page(&assoc, sg_page(sg), ctx->aead_assoclen, 0);
 	aead_request_set_assoc(&ctx->aead_req, &assoc, ctx->aead_assoclen);
