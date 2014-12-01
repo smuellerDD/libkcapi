@@ -270,6 +270,13 @@ static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
 	}
 
 	if (!aead_writable(sk)) {
+		/*
+		 * If there is more data to be expected, but we cannot write
+		 * more data, forcefully define that we do not expect more
+		 * data to invoke the AEAD operation. This prevents a deadlock
+		 * in user space.
+		 */
+		ctx->more = 0;
 		err = aead_wait_for_wmem(sk, msg->msg_flags);
 		if (err)
 			goto unlock;
