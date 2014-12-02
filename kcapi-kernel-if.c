@@ -65,11 +65,6 @@
 #define ALG_SET_AEAD_ASSOCLEN		4
 #define ALG_SET_AEAD_AUTHSIZE		5
 
-#define ALG_GET_BLOCKSIZE		1
-#define ALG_GET_IVSIZE			2
-#define ALG_GET_AEAD_AUTHSIZE		3
-#define ALG_GET_DIGESTSIZE		4
-
 /* remove once in socket.h */
 #ifndef AF_ALG
 #define AF_ALG 38
