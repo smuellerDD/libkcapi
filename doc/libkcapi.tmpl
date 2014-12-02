@@ -60,13 +60,13 @@
   <title>libkcapi - Linux Kernel Crypto API User Space Interface Library</title>
 
   <para>
-   The Linux kernel exports a Netlink interface of type AF_ALG to allow user
+   The Linux kernel exports a network interface of type AF_ALG to allow user
    space to utilize the kernel crypto API.
   </para>
 
   <para>
-   libkcapi uses this Netlink interface and exports easy to use APIs so that
-   a developer does not need to consider the low-level Netlink interface
+   libkcapi uses this network interface and exports easy to use APIs so that
+   a developer does not need to consider the low-level network interface
    handling.
   </para>
 
@@ -93,6 +93,118 @@
    header file can also just copied to the consumer code and compiled along
    with it.
   </para>
+
+  <sect1><title>Symmetric Cipher API</title>
+   <para>
+    Symmetric ciphers can be used in the following different ways:
+     <itemizedlist>
+      <listitem>
+       <para>
+        One-shot API: The one-shot API performs an encryption operation
+        with one API call. With that API call, the caller provides the input
+        data and immediately receives the output from the cipher operation.
+       </para>
+      </listitem>
+      <listitem>
+       <para>
+        Stream API: With the stream API, the caller can implement independent
+        calls to send data to the kernel and receive data from the kernel.
+        Multiple send calls can be inter-mixed with multiple receive calls.
+        If the kernel buffer is full, the caller of a subsequent send call will
+        be put to sleep. Conversely, if the buffer is empty, a caller trying
+        to read data resulting from a cipher operation will be put to sleep.
+        Sleeping callers will be woken up by the kernel once buffer space
+        becomes available or data becomes available, respectively. The detached
+        nature of the sending/receiving operation allows the implementation of
+        multi-threaded applications where one or more threads send data and one
+        or more threads receive data. The threads must operate on the same
+        cipher handle. However, access to that cipher handle does not need to
+        be serialized when the stream API calls are invoked as the API calls
+        only read the cipher handle.
+       </para>
+      </listitem>
+     </itemizedlist>
+   </para>
+  </sect1>
+
+  <sect1><title>AEAD Cipher API</title>
+   <para>
+    AEAD ciphers implement a very similar API approach as the symmetric ciphers:
+     <itemizedlist>
+      <listitem>
+       <para>
+        One-shot API: The one-shot API performs an encryption operation
+        with one API call. With that API call, the caller provides the input
+        data and immediately receives the output from the cipher operation.
+       </para>
+      </listitem>
+      <listitem>
+       <para>
+        Stream API: With the stream API, the caller can implement independent
+        calls to send data to the kernel and receive data from the kernel.
+        However, unlike the symmetric cipher API, one AEAD cipher operation
+        must be considered as one unit as the integrity value is calculated
+        for one encryption or decryption operation. The caller can use multiple
+        calls to provide the input data. The last chunk of data must be
+        sent to the kernel with the API call marking the last submission.
+        Then, the cipher operation can be triggered with the recvmsg invocation.
+        It is possible to implement a multi-threaded application as the
+        thread triggering the cipher operation is put to sleep until the last
+        block is received. Once the last block is received, the caller waiting
+        on the cipher operation is woken up to obtain the data.
+       </para>
+      </listitem>
+     </itemizedlist>
+   </para>
+
+   <sect2><title>AEAD Memory Structure</title>
+    <para>
+     When using the stream API for AEAD, the caller must observe a particular
+     order of data components. It is permissible that for each of the following
+     data components multiple send calls are used. But in total, all send calls
+     must send the AEAD data in the following sequence:
+    </para>
+
+    <orderedlist>
+     <listitem>
+      <para>Associated Authentication Data: The AAD must be provided as a first
+      chunk.</para>
+     </listitem>
+     <listitem>
+      <para>Plaintext / Ciphertext: Following the AAD, the entire plaintext
+      or ciphertext is provided that shall be encrypted and integrity protected
+      or decrypted and whose integrity shall be verified.</para>
+     </listitem>
+     <listitem>
+      <para>(in case of decryption) Authentication Tag: If data is to be
+      decrypted, the authentication tag must be supplied as the last data
+      component.</para>
+     </listitem>
+    </orderedlist>
+
+    <para>
+     To read data, the caller must provide one buffer referenced to with a
+     scatterlist holding one entry that can hold the entire output of the AAD
+     with the following memory structure:
+    </para>
+
+    <itemizedlist>
+     <listitem>
+      <para>Encryption: Ciphertext followed by the authentication tag</para>
+     </listitem>
+     <listitem>
+      <para>Decryption: Plaintext</para>
+     </listitem>
+    </itemizedlist>
+
+    <para>
+     To allow the caller to initialize sufficient memory for the destination
+     buffer, the API call of kcapi_aead_outbuflen() can be used. To locate
+     the ciphertext and authentication tag components in the returned data,
+     the API call of kcapi_aead_getdata() can be used.
+    </para>
+   </sect2>
+  </sect1>
 
   <sect1><title>Memory Allocation</title>
    <para>
@@ -160,37 +272,60 @@
 !Pkcapi-kernel-if.c kcapi_versionstring
 !Pkcapi-kernel-if.c kcapi_pad_iv
    </sect1>
-   <sect1><title>Symmetric Cipher API</title>
+   <sect1><title>Symmetric Cipher API - Generic</title>
+    <para>
+     These generic API for symmetric ciphers calls are to be used for both, the
+     one-shot and the stream encryption/decryption operations.
+    </para>
 !Pkcapi-kernel-if.c Symmetric Cipher API
 !Fkcapi-kernel-if.c kcapi_cipher_init
 !Fkcapi-kernel-if.c kcapi_cipher_destroy
 !Fkcapi-kernel-if.c kcapi_cipher_setkey
 !Fkcapi-kernel-if.c kcapi_cipher_setiv
-!Fkcapi-kernel-if.c kcapi_cipher_encrypt
-!Fkcapi-kernel-if.c kcapi_cipher_decrypt
 !Fkcapi-kernel-if.c kcapi_cipher_ivsize
 !Fkcapi-kernel-if.c kcapi_cipher_blocksize
    </sect1>
-   <sect1><title>AEAD Cipher API</title>
+   <sect1><title>Symmetric Cipher API - One Shot</title>
+!Fkcapi-kernel-if.c kcapi_cipher_encrypt
+!Fkcapi-kernel-if.c kcapi_cipher_decrypt
+   </sect1>
+   <sect1><title>Symmetric Cipher API - Stream</title>
+    <para>The stream API requires that first the cipher operation type is
+    set with the init call, followed by an arbitrary number and mix of the
+    update and op calls.</para>
+!Fkcapi-kernel-if.c kcapi_cipher_stream_init_enc
+!Fkcapi-kernel-if.c kcapi_cipher_stream_init_dec
+!Fkcapi-kernel-if.c kcapi_cipher_stream_update
+!Fkcapi-kernel-if.c kcapi_cipher_stream_op
+   </sect1>
+   <sect1><title>AEAD Cipher API - Generic</title>
+    <para>
+     These generic API for symmetric ciphers calls are to be used for both, the
+     one-shot and the stream encryption/decryption operations.
+    </para>
 !Pkcapi-kernel-if.c AEAD Cipher API
 !Fkcapi-kernel-if.c kcapi_aead_init
 !Fkcapi-kernel-if.c kcapi_aead_destroy
 !Fkcapi-kernel-if.c kcapi_aead_setkey
 !Fkcapi-kernel-if.c kcapi_aead_setiv
-!Fkcapi-kernel-if.c kcapi_aead_setassoc
+!Fkcapi-kernel-if.c kcapi_aead_setassoclen
 !Fkcapi-kernel-if.c kcapi_aead_settaglen
-!Fkcapi-kernel-if.c kcapi_aead_encrypt
-!Fkcapi-kernel-if.c kcapi_aead_enc_nonalign
-!Fkcapi-kernel-if.c kcapi_aead_enc_getdata
-!Fkcapi-kernel-if.c kcapi_aead_enc_free
-!Fkcapi-kernel-if.c kcapi_aead_decrypt
-!Fkcapi-kernel-if.c kcapi_aead_dec_nonalign
-!Fkcapi-kernel-if.c kcapi_aead_dec_getdata
-!Fkcapi-kernel-if.c kcapi_aead_dec_free
 !Fkcapi-kernel-if.c kcapi_aead_ivsize
 !Fkcapi-kernel-if.c kcapi_aead_blocksize
 !Fkcapi-kernel-if.c kcapi_aead_authsize
 !Fkcapi-kernel-if.c kcapi_aead_ccm_nonce_to_iv
+!Fkcapi-kernel-if.c kcapi_aead_getdata
+   </sect1>
+   <sect1><title>AEAD Cipher API - One Shot</title>
+!Fkcapi-kernel-if.c kcapi_aead_encrypt
+!Fkcapi-kernel-if.c kcapi_aead_decrypt
+   </sect1>
+      <sect1><title>AEAD Cipher API - Stream</title>
+!Fkcapi-kernel-if.c kcapi_aead_stream_init_enc
+!Fkcapi-kernel-if.c kcapi_aead_stream_init_dec
+!Fkcapi-kernel-if.c kcapi_aead_stream_update
+!Fkcapi-kernel-if.c kcapi_aead_stream_update_last
+!Fkcapi-kernel-if.c kcapi_aead_stream_op
    </sect1>
    <sect1><title>Message Digest Cipher API</title>
 !Pkcapi-kernel-if.c Message Digest Cipher API

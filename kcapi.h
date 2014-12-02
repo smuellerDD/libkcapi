@@ -152,6 +152,7 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   const unsigned char *assoc, size_t assoclen,
 			   unsigned char *out, size_t outlen);
 void kcapi_aead_getdata(struct kcapi_handle *handle,
+			unsigned char *encdata, size_t encdatalen,
 			unsigned char **data, size_t *datalen,
 			unsigned char **tag, size_t *taglen);
 ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
