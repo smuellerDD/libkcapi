@@ -206,6 +206,34 @@
    </sect2>
   </sect1>
 
+  <sect1><title>Message Digest API</title>
+   <para>
+    Again, like for the symmetric ciphers, the message digest API implements
+    the one-shot and the stream use cases.
+   </para>
+  </sect1>
+
+  <sect1><title>Zero Copy</title>
+   <para>
+    When using the one-shot API for symmetric ciphers as well as AEAD ciphers,
+    the library uses the zero copy interface to provide the input data
+    to the kernel. That means, the kernel operates on the user space pages.
+   </para>
+
+   <para>
+    To ensure the efficiency of this zero copy approach, the caller should
+    use a page-aligned data buffer for the input data. Non-aligned buffers
+    would work also, but the kernel would need to perform more page
+    accesses, lowering the throughput. Such an aligned buffer can be created,
+    for example, using the following call - the value 4096 should be the size
+    of one page on the system:
+   </para>
+
+   <programlisting>
+    unsigned char buf[4096] __attribute__((__aligned__(4096)));
+   </programlisting>
+  </sect1>
+
   <sect1><title>Memory Allocation</title>
    <para>
     The library libkcapi uses the data structure struct kcapi_handle as the
@@ -327,14 +355,19 @@
 !Fkcapi-kernel-if.c kcapi_aead_stream_update_last
 !Fkcapi-kernel-if.c kcapi_aead_stream_op
    </sect1>
-   <sect1><title>Message Digest Cipher API</title>
+   <sect1><title>Message Digest Cipher API - Generic</title>
 !Pkcapi-kernel-if.c Message Digest Cipher API
 !Fkcapi-kernel-if.c kcapi_md_init
 !Fkcapi-kernel-if.c kcapi_md_destroy
 !Fkcapi-kernel-if.c kcapi_md_setkey
+!Fkcapi-kernel-if.c kcapi_md_digestsize
+   </sect1>
+   <sect1><title>Message Digest Cipher API - One Shot</title>
+!Fkcapi-kernel-if.c kcapi_md_digest
+   </sect1>
+   <sect1><title>Message Digest Cipher API - Stream</title>
 !Fkcapi-kernel-if.c kcapi_md_update
 !Fkcapi-kernel-if.c kcapi_md_final
-!Fkcapi-kernel-if.c kcapi_md_digestsize
    </sect1>
    <sect1><title>Random Number API</title>
 !Pkcapi-kernel-if.c Random Number API
