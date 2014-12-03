@@ -287,6 +287,7 @@ failures=0
 
 hashfunc()
 {
+	stream=$1
 	HASHEXEC="1 2 3 4 5 6 7 8 9"
 	for i in $HASHEXEC
 	do
@@ -306,7 +307,7 @@ hashfunc()
 		then
 			HASH_msg="-"
 		fi
-		result=$(./kcapi -x 3 -c ${HASH_name} ${key} -p ${HASH_msg})
+		result=$(./kcapi -x 3 $stream -c ${HASH_name} ${key} -p ${HASH_msg})
 
 		outlen=$(echo -n $result | wc -c)
 
@@ -315,11 +316,16 @@ hashfunc()
 			result=$(echo $result | cut -b -$explen)
 		fi
 
+		sout="one shot"
+		if [ -n "$stream" ]
+		then
+			sout="stream"
+		fi
 		if [ x"$result" = x"$HASH_exp" ]
 		then
-			echo "Hash test $i passed"
+			echo "Hash $sout test $i passed"
 		else
-			echo "Hash test $i failed"
+			echo "Hash $sout test $i failed"
 			echo " Exp $HASH_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -431,6 +437,7 @@ auxtest()
 }
 
 hashfunc
+hashfunc -s
 symfunc
 symfunc -s
 aeadfunc

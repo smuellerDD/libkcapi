@@ -550,13 +550,12 @@ static int cavs_aead(struct kcapi_cavs *cavs_test)
 	if (cavs_test->enc)
 		ret = kcapi_aead_encrypt(&handle,
 					 cavs_test->pt, cavs_test->ptlen,
-					 cavs_test->assoc, cavs_test->assoclen,
-					 outbuf, outbuflen);
+					 cavs_test->assoc, outbuf, outbuflen);
 	else
 		ret = kcapi_aead_decrypt(&handle,
 					 cavs_test->ct, cavs_test->ctlen,
-					 cavs_test->assoc, cavs_test->assoclen,
-					 cavs_test->tag, outbuf, outbuflen);
+					 cavs_test->assoc, cavs_test->tag,
+					 outbuf, outbuflen);
 	errsv = errno;
 	if (0 > ret && EBADMSG != errsv) {
 		printf("Cipher operation of buffer failed: %d %d\n", errno, ret);
@@ -774,6 +773,48 @@ static int cavs_hash(struct kcapi_cavs *cavs_test)
 	/* HMAC */
 	if (cavs_test->keylen) {
 		if (kcapi_md_setkey(&handle, cavs_test->key,
+				    cavs_test->keylen)) {
+			printf("HMAC setkey failed\n");
+			kcapi_md_destroy(&handle);
+			return 1;
+		}
+	}
+	rc = kcapi_md_digest(&handle, cavs_test->pt, cavs_test->ptlen,
+			     md, cavs_test->outlen ? cavs_test->outlen : MAXMD);
+	if (0 > rc) {
+		printf("Message digest generation failed\n");
+		kcapi_md_destroy(&handle);
+		return 1;
+	}
+	kcapi_md_destroy(&handle);
+
+	bin2hex(md, rc, mdhex, MAXMDHEX, 0);
+	printf("%s\n", mdhex);
+	return 0;
+}
+
+static int cavs_hash_stream(struct kcapi_cavs *cavs_test)
+{
+	struct kcapi_handle handle;
+	int rc = 0;
+#define MAXMD 64
+	unsigned char md[MAXMD];
+#define MAXMDHEX (MAXMD * 2 + 1)
+	char mdhex[MAXMDHEX];
+
+	if (cavs_test->outlen > MAXMD)
+		return -EINVAL;
+
+	memset(md, 0, MAXMD);
+	memset(mdhex, 0, MAXMDHEX);
+
+	if (kcapi_md_init(&handle, cavs_test->cipher)) {
+		printf("Allocation of hash %s failed\n", cavs_test->cipher);
+		return 1;
+	}
+	/* HMAC */
+	if (cavs_test->keylen) {
+		if (kcapi_md_setkey(&handle, cavs_test->key,
 					cavs_test->keylen)) {
 			printf("HMAC setkey failed\n");
 			kcapi_md_destroy(&handle);
@@ -946,9 +987,12 @@ int main(int argc, char *argv[])
 			rc = cavs_aead_stream(&cavs_test);
 		else
 			rc = cavs_aead(&cavs_test);
-	} else if (HASH == cavs_test.type)
-		rc = cavs_hash(&cavs_test);
-	else
+	} else if (HASH == cavs_test.type) {
+		if (stream)
+			rc = cavs_hash_stream(&cavs_test);
+		else
+			rc = cavs_hash(&cavs_test);
+	} else
 		goto out;
 	if (rc)
 		printf("Failed to invoke testing\n");
