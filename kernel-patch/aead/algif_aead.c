@@ -62,10 +62,14 @@ static inline bool aead_writable(struct sock *sk)
 	return PAGE_SIZE <= aead_sndbuf(sk);
 }
 
-static inline bool aead_readable(struct aead_ctx *ctx)
+static inline bool aead_sufficient_data(struct aead_ctx *ctx)
 {
 	unsigned as = crypto_aead_authsize(crypto_aead_reqtfm(&ctx->aead_req));
 
+	return (ctx->used >= (ctx->aead_assoclen + ctx->enc ? : as ));
+}
+static inline bool aead_readable(struct aead_ctx *ctx)
+{
 	/*
 	 * Ensure that assoc data is present, the plaintext / ciphertext
 	 * is non-zero and that the authentication tag is also present
@@ -73,8 +77,7 @@ static inline bool aead_readable(struct aead_ctx *ctx)
 	 *
 	 * Also, wait until all data is received before processing.
 	 */
-	return (ctx->used >= (ctx->aead_assoclen + ctx->enc ? : as ) &&
-		!ctx->more);
+	return (aead_sufficient_data(ctx) && !ctx->more);
 }
 
 static void aead_put_sgl(struct sock *sk)
@@ -84,7 +87,6 @@ static void aead_put_sgl(struct sock *sk)
 	struct aead_sg_list *sgl = &ctx->tsgl;
 	struct scatterlist *sg = sgl->sg;
 	unsigned int i;
-printk("p 1\n");
 
 	for (i = 0; i < sgl->cur; i++) {
 		if (!sg_page(sg + i))
@@ -327,7 +329,7 @@ unlock:
 }
 
 static ssize_t aead_sendpage(struct socket *sock, struct page *page,
-				 int offset, size_t size, int flags)
+			     int offset, size_t size, int flags)
 {
 	struct sock *sk = sock->sk;
 	struct alg_sock *ask = alg_sk(sk);
@@ -360,6 +362,8 @@ static ssize_t aead_sendpage(struct socket *sock, struct page *page,
 	sg_set_page(sgl->sg + sgl->cur, page, size, offset);
 	sgl->cur++;
 	ctx->used += size;
+
+	err = 0;
 
 done:
 	ctx->more = flags & MSG_MORE;
@@ -419,6 +423,9 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 
 	used = ctx->used;
 
+	err = -ENOMEM;
+	if (!aead_sufficient_data(ctx))
+		goto unlock;
 	/*
 	 * The cipher operation input data is reduced by the associated data
 	 * length as this data is processed separately later on.
@@ -437,7 +444,6 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 		outlen = ((outlen + bs - 1) / bs * bs);
 	}
 
-	err = -ENOMEM;
 	/* ensure output buffer is sufficiently large */
 	if (msg->msg_iov->iov_len < outlen)
 		goto unlock;
@@ -454,7 +460,7 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 	 * one page
 	 */
 	sg_init_table(&assoc, 1);
-	sg_set_page(&assoc, sg_page(sg), ctx->aead_assoclen, 0);
+	sg_set_page(&assoc, sg_page(sg), ctx->aead_assoclen, sg->offset);
 	aead_request_set_assoc(&ctx->aead_req, &assoc, ctx->aead_assoclen);
 
 	/* point sg to cipher/plaintext start */
