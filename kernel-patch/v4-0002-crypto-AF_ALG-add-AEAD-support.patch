@@ -20,7 +20,7 @@ decryption, the caller must hand in the ciphertext with the tag appended
 to the ciphertext. Therefore, the selection of the used memory
 needs to add/subtract the tag size from the source/destination buffers
 depending on the encryption type. The code is provided with comments
-explainint when and how that operation is performed.
+explaining when and how that operation is performed.
 
 A fully working example using all aspects of AEAD is provided at
 http://www.chronox.de/libkcapi.html

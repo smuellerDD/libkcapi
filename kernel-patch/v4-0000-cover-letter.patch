@@ -35,10 +35,10 @@ interfaces. The testing covers:
 
 	* use of the splice / vmsplice interface
 
-	* invcation of all AF_ALG types (aead, rng, skcipher, hash)
+	* invocation of all AF_ALG types (aead, rng, skcipher, hash)
 
 	* using all types of operation (encryption, decryption, keyed MD,
-	  MD, random numbers, AEAD decryption with positive and netagive
+	  MD, random numbers, AEAD decryption with positive and negative
 	  authentication verification)
 
 	* stress testing by running all tests for 30 minutes in an
