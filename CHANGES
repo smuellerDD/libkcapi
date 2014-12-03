@@ -1,3 +1,12 @@
+Change 0.4.0:
+ * update AEAD cipher interface for current implemetation
+ * remove nonalinged API
+-* add one-shot and stream API
+ * use zero copy interface for one-shot APi
+ * add tests to cover one-shot and stream API
+ * full documentation update
+ * stress testing the library and the AEAD/RNG implementation
+
 Change 0.3.0:
  * new kernel patch for AEAD/RNG interface
  * Support for updated AEAD kernel interface
