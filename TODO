@@ -1,11 +1,7 @@
-* Upstream patch to add kernel-side support for AEAD Netlink interface
-  (kernel-patch/add-aead-algif_skcipher.diff)
+* Upstream module in aead/ to add kernel-side support for AEAD Netlink interface
 
 * Upstream module in rng/ to add kernel-side support for random number generator
   Netlink interface
-
-* Remove marked symbols at the beginning of kcapi-kernel-if.c once they are
-  added to a system header file.
 
 * Include linux/cryptouser.h once available in user space and remove header
   file copy from libkcapi code base.
