@@ -96,7 +96,6 @@ struct kcapi_aead_data {
 	unsigned char *assoc;
 	size_t taglen;
 	unsigned char *tag;
-	size_t retlen;
 };
 
 /**
@@ -109,6 +108,7 @@ struct kcapi_aead_data {
 struct kcapi_handle {
 	int tfmfd;
 	int opfd;
+	int pipes[2];
 	struct kcapi_cipher_data cipher;
 	struct kcapi_aead_data aead;
 	struct kcapi_cipher_info info;
@@ -149,16 +149,15 @@ int kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen);
 void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen);
 ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
-			   const unsigned char *assoc, size_t assoclen,
-			   unsigned char *out, size_t outlen);
+			   const unsigned char *assoc, unsigned char *out,
+			   size_t outlen);
 void kcapi_aead_getdata(struct kcapi_handle *handle,
 			unsigned char *encdata, size_t encdatalen,
 			unsigned char **data, size_t *datalen,
 			unsigned char **tag, size_t *taglen);
 ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
-			   const unsigned char *assoc, size_t assoclen,
-			   const unsigned char *tag,
+			   const unsigned char *assoc, const unsigned char *tag,
 			   unsigned char *out, size_t outlen);
 ssize_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
 				   struct iovec *iov, size_t iovlen);
@@ -183,10 +182,13 @@ int kcapi_md_init(struct kcapi_handle *handle, const char *ciphername);
 int kcapi_md_destroy(struct kcapi_handle *handle);
 int kcapi_md_setkey(struct kcapi_handle *handle,
 		    const unsigned char *key, size_t keylen);
-int kcapi_md_update(struct kcapi_handle *handle,
-		    const unsigned char *buffer, size_t len);
+ssize_t kcapi_md_update(struct kcapi_handle *handle,
+			const unsigned char *buffer, size_t len);
 ssize_t kcapi_md_final(struct kcapi_handle *handle,
 		       unsigned char *buffer, size_t len);
+ssize_t kcapi_md_digest(struct kcapi_handle *handle,
+		       const unsigned char *in, size_t inlen,
+		       unsigned char *out, size_t outlen);
 int kcapi_md_digestsize(struct kcapi_handle *handle);
 
 /* Random Number API */

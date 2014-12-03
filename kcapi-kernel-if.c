@@ -36,6 +36,9 @@
  * DAMAGE.
  */
 
+#define _GNU_SOURCE
+#include <fcntl.h>
+#include <sys/uio.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -47,6 +50,7 @@
 #include <asm/types.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include <unistd.h>
 #include "cryptouser.h"
 
 #include "kcapi.h"
@@ -172,6 +176,12 @@ static ssize_t _kcapi_common_send_data(struct kcapi_handle *handle,
 	return sendmsg(handle->opfd, &msg, more ? MSG_MORE : 0);
 }
 
+static ssize_t _kcapi_common_vmsplice_data(struct kcapi_handle *handle,
+					   struct iovec *iov, size_t iovlen)
+{
+	return vmsplice(handle->pipes[1], iov, iovlen, SPLICE_F_GIFT);
+}
+
 static ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 				       struct iovec *iov, size_t iovlen)
 {
@@ -182,6 +192,15 @@ static ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 	msg.msg_iovlen = iovlen;
 
 	return recvmsg(handle->opfd, &msg, 0);
+}
+
+static ssize_t _kcapi_common_splice_data(struct kcapi_handle *handle,
+					 size_t inlen,
+				         unsigned char *out, size_t outlen)
+{
+	if (0 > splice(handle->pipes[0], NULL, handle->opfd, NULL, inlen, 0))
+		return -EIO;
+	return read(handle->opfd, out, outlen);
 }
 
 static inline int _kcapi_common_setkey(struct kcapi_handle *handle,
@@ -403,6 +422,7 @@ static int _kcapi_handle_init(struct kcapi_handle *handle,
 			      const char *type, const char *ciphername)
 {
 	struct sockaddr_alg sa;
+	int ret;
 
 	memset(handle, 0, sizeof(struct kcapi_handle));
 
@@ -430,7 +450,21 @@ static int _kcapi_handle_init(struct kcapi_handle *handle,
 		return -EINVAL;
 	}
 
-	return _kcapi_common_getinfo(handle, ciphername);
+	ret = pipe(handle->pipes);
+	if (ret) {
+		close(handle->tfmfd);
+		close(handle->opfd);
+		return ret;
+	}
+
+	ret = _kcapi_common_getinfo(handle, ciphername);
+	if(ret) {
+		close(handle->tfmfd);
+		close(handle->opfd);
+		close(handle->pipes[0]);
+		close(handle->pipes[1]);
+	}
+	return ret;
 }
 
 static inline int _kcapi_handle_destroy(struct kcapi_handle *handle)
@@ -439,6 +473,10 @@ static inline int _kcapi_handle_destroy(struct kcapi_handle *handle)
 		close(handle->tfmfd);
 	if (handle->opfd != -1)
 		close(handle->opfd);
+	if (handle->pipes[0] != -1)
+		close(handle->pipes[0]);
+	if (handle->pipes[1] != -1)
+		close(handle->pipes[1]);
 	memset(handle, 0, sizeof(struct kcapi_handle));
 	return 0;
 }
@@ -616,13 +654,22 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 
 	iov.iov_base = (void*)(uintptr_t)in;
 	iov.iov_len = inlen;
+#if 0
+	/* using two syscall */
+	/* TODO make heuristic when one syscall is slower than four syscalls */
 	ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_ENCRYPT, 0);
-	if (0 > ret)
-		return ret;
-
 	iov.iov_base = (void*)(uintptr_t)out;
 	iov.iov_len = outlen;
 	return _kcapi_common_recv_data(handle, &iov, 1);
+#endif
+	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT, 0);
+	if (0 > ret)
+		return ret;
+
+	ret = _kcapi_common_vmsplice_data(handle, &iov, 1);
+	if (0 > ret)
+		return ret;
+	return _kcapi_common_splice_data(handle, inlen, out, outlen);
 }
 
 /**
@@ -670,13 +717,22 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 
 	iov.iov_base = (void*)(uintptr_t)in;
 	iov.iov_len = inlen;
+#if 0
+	/* using two syscall */
+	/* TODO make heuristic when one syscall is slower than four syscalls */
 	ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_DECRYPT, 0);
-	if (0 > ret)
-		return ret;
-
 	iov.iov_base = (void*)(uintptr_t)out;
 	iov.iov_len = outlen;
 	return _kcapi_common_recv_data(handle, &iov, 1);
+#endif
+	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_DECRYPT, 0);
+	if (0 > ret)
+		return ret;
+
+	ret = _kcapi_common_vmsplice_data(handle, &iov, 1);
+	if (0 > ret)
+		return ret;
+	return _kcapi_common_splice_data(handle, inlen, out, outlen);
 }
 
 /**
@@ -926,8 +982,7 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen)
  * @handle: cipher handle - input
  * @in: plaintext data buffer - input
  * @inlen: length of plaintext buffer - input
- * @assoc: associated data - input
- * @assoclen: length of assoc (should be zero if @assoc is NULL) - input
+ * @assoc: associated data of size set with kcapi_aead_setassoclen() - input
  * @out: data buffer holding cipher text and authentication tag - output
  * @outlen: length of out buffer - input
  *
@@ -948,11 +1003,12 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen)
  */
 ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
-			   const unsigned char *assoc, size_t assoclen,
-			   unsigned char *out, size_t outlen)
+			   const unsigned char *assoc, unsigned char *out,
+			   size_t outlen)
 {
 	struct iovec iov[2];
 	ssize_t ret = 0;
+	size_t len = 0;
 
 	if (!in || !inlen || !out || !outlen || !handle->aead.taglen) {
 		fprintf(stderr,
@@ -971,9 +1027,10 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 		return -EINVAL;
 	}
 
-	if (assoc && assoclen) {
+#if 0
+	if (assoc && handle->aead.assoclen) {
 		iov[0].iov_base = (void*)(uintptr_t)assoc;
-		iov[0].iov_len = assoclen;
+		iov[0].iov_len = handle->aead.assoclen;
 		iov[1].iov_base = (void*)(uintptr_t)in;
 		iov[1].iov_len = inlen;
 		ret = _kcapi_common_send_meta(handle, &iov[0], 2,
@@ -990,7 +1047,28 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 	iov[0].iov_base = (void*)(uintptr_t)out;
 	iov[0].iov_len = outlen;
 	ret = _kcapi_common_recv_data(handle, &iov[0], 1);
+#endif
+	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT, 0);
+	if (0 > ret)
+		return ret;
+	if (assoc && handle->aead.assoclen) {
+		iov[0].iov_base = (void*)(uintptr_t)assoc;
+		iov[0].iov_len = handle->aead.assoclen;
+		len = handle->aead.assoclen;
+		iov[1].iov_base = (void*)(uintptr_t)in;
+		iov[1].iov_len = inlen;
+		len += inlen;
+		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 2);
+	} else {
+		iov[0].iov_base = (void*)(uintptr_t)in;
+		iov[0].iov_len = inlen;
+		len = inlen;
+		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 1);
+	}
+	if (0 > ret)
+		return ret;
 
+	ret = _kcapi_common_splice_data(handle, len, out, outlen);
 	if ((ret < (ssize_t)handle->aead.taglen))
 		return -E2BIG;
 
@@ -1042,8 +1120,7 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
  * @handle: cipher handle - input
  * @in: ciphertext data buffer - input
  * @inlen: length of in buffer - input
- * @assoc: associated data - input
- * @assoclen: length of assoc (should be zero if @assoc is NULL) - input
+ * @assoc: associated data of size set with kcapi_aead_setassoclen() - input
  * @tag: authentication tag data of size set with kcapi_aead_settaglen() - input
  * @out: plaintext data buffer - output
  * @outlen: length of out buffer - input
@@ -1066,12 +1143,12 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
  */
 ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
-			   const unsigned char *assoc, size_t assoclen,
-			   const unsigned char *tag,
+			   const unsigned char *assoc, const unsigned char *tag,
 			   unsigned char *out, size_t outlen)
 {
 	struct iovec iov[3];
 	ssize_t ret = 0;
+	size_t len = 0;
 	int bs = handle->info.blocksize;
 
 	if (!in || !inlen || !out || !outlen || !tag || !handle->aead.taglen) {
@@ -1089,9 +1166,10 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 		return -EINVAL;
 	}
 
-	if (handle->aead.assoclen) {
+#if 0
+	if (assoc && handle->aead.assoclen) {
 		iov[0].iov_base = (void*)(uintptr_t)assoc;
-		iov[0].iov_len = assoclen;
+		iov[0].iov_len = handle->aead.assoclen;
 		iov[1].iov_base = (void*)(uintptr_t)in;
 		iov[1].iov_len = inlen;
 		iov[2].iov_base = (void*)(uintptr_t)tag;
@@ -1112,9 +1190,34 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 	iov[0].iov_base = (void*)(uintptr_t)out;
 	iov[0].iov_len = outlen;
 	ret = _kcapi_common_recv_data(handle, &iov[0], 1);
+#endif
+	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_DECRYPT, 0);
+	if (0 > ret)
+		return ret;
+	if (assoc && handle->aead.assoclen) {
+		iov[0].iov_base = (void*)(uintptr_t)assoc;
+		iov[0].iov_len = handle->aead.assoclen;
+		len = handle->aead.assoclen;
+		iov[1].iov_base = (void*)(uintptr_t)in;
+		iov[1].iov_len = inlen;
+		len += inlen;
+		iov[2].iov_base = (void*)(uintptr_t)tag;
+		iov[2].iov_len = handle->aead.taglen;
+		len += handle->aead.taglen;
+		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 3);
+	} else {
+		iov[0].iov_base = (void*)(uintptr_t)in;
+		iov[0].iov_len = inlen;
+		len = inlen;
+		iov[1].iov_base = (void*)(uintptr_t)tag;
+		iov[1].iov_len = handle->aead.taglen;
+		len += handle->aead.taglen;
+		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 2);
+	}
+	if (0 > ret)
+		return ret;
 
-	handle->aead.retlen = ret;
-	return ret;
+	return _kcapi_common_splice_data(handle, len, out, outlen);
 }
 
 /**
@@ -1427,16 +1530,8 @@ int kcapi_md_setkey(struct kcapi_handle *handle,
 	return _kcapi_common_setkey(handle, key, keylen);
 }
 
-/**
- * kcapi_md_update() - message digest update function
- * @handle: cipher handle - input
- * @buffer: holding the data to add to the message digest - input
- * @len: buffer length - input
- *
- * Return: 0 upon success; < 0 in case of error
- */
-int kcapi_md_update(struct kcapi_handle *handle,
-		    const unsigned char *buffer, size_t len)
+static ssize_t _kcapi_md_update(struct kcapi_handle *handle,
+				const unsigned char *buffer, size_t len)
 {
 	ssize_t r;
 
@@ -1448,22 +1543,33 @@ int kcapi_md_update(struct kcapi_handle *handle,
 }
 
 /**
- * kcapi_md_final() - message digest finalization function
+ * kcapi_md_update() - message digest update function (stream)
  * @handle: cipher handle - input
- * @buffer: filled with the message digest - output
+ * @buffer: holding the data to add to the message digest - input
  * @len: buffer length - input
  *
- * Return: size of message digest upon success; -EIO - data cannot be obtained
- * 	   -ENOMEM - buffer is too small for the complete message digest,
- * 	   the buffer is filled with the truncated message digest
+ * Return: 0 upon success; < 0 in case of error
  */
+ssize_t kcapi_md_update(struct kcapi_handle *handle,
+		    const unsigned char *buffer, size_t len)
+{
+	return _kcapi_md_update(handle, buffer, len);
+}
 
-ssize_t kcapi_md_final(struct kcapi_handle *handle,
-		       unsigned char *buffer, size_t len)
+static ssize_t _kcapi_md_final(struct kcapi_handle *handle,
+			       unsigned char *buffer, size_t len)
 {
 	ssize_t r;
 	struct iovec iov;
 	struct msghdr msg;
+
+	if (len < (unsigned long)handle->info.hash_digestsize) {
+		fprintf(stderr,
+			"Message digest: output buffer too small (seen %lu - required %d)\n",
+			(unsigned long)len,
+			handle->info.hash_digestsize);
+		return -EINVAL;
+	}
 
 	iov.iov_base = (void*)(uintptr_t)buffer;
 	iov.iov_len = len;
@@ -1483,6 +1589,79 @@ ssize_t kcapi_md_final(struct kcapi_handle *handle,
 	return r;
 }
 
+/**
+ * kcapi_md_final() - message digest finalization function (stream)
+ * @handle: cipher handle - input
+ * @buffer: filled with the message digest - output
+ * @len: buffer length - input
+ *
+ * Return: size of message digest upon success; -EIO - data cannot be obtained
+ * 	   -ENOMEM - buffer is too small for the complete message digest,
+ * 	   the buffer is filled with the truncated message digest
+ */
+
+ssize_t kcapi_md_final(struct kcapi_handle *handle,
+		       unsigned char *buffer, size_t len)
+{
+	return _kcapi_md_final(handle, buffer, len);
+}
+
+/**
+ * kcapi_md_digest() - calculate message digest on buffer (one-shot)
+ * @handle: cipher handle - input
+ * @in: buffer with input data - input
+ * @inlen: length of input buffer
+ * @out: buffer for message digest - output
+ * @outlen: length of @out
+ *
+ * With this one-shot function, a message digest of the given buffer is
+ * generated. The output buffer must be allocated by the caller and have at
+ * least the length of the message digest size for the chosen message digest.
+ *
+ * The message digest handle must have been initialized, potentially by also
+ * setting the key using the generic message digest API functions.
+ *
+ * Return: size of message digest upon success; -EIO - data cannot be obtained
+ * 	   -ENOMEM - buffer is too small for the complete message digest,
+ * 	   the buffer is filled with the truncated message digest
+ */
+ssize_t kcapi_md_digest(struct kcapi_handle *handle,
+		       const unsigned char *in, size_t inlen,
+		       unsigned char *out, size_t outlen)
+{
+	struct iovec iov;
+	ssize_t ret = 0;
+
+	if (!out || !outlen) {
+		fprintf(stderr,
+			"Message digest: Empty plaintext or message digest buffer provided\n");
+		return -EINVAL;
+	}
+
+	if (outlen < (unsigned int)handle->info.hash_digestsize) {
+		fprintf(stderr,
+			"Message digest: output buffer too small (seen %lu - required %d)\n",
+			(unsigned long)outlen,
+			handle->info.hash_digestsize);
+		return -EINVAL;
+	}
+
+	/* zero buffer length cannot be handled via splice */
+	if(!inlen) {
+		if (_kcapi_md_update(handle, in, inlen))
+			return -EIO;
+		return _kcapi_md_final(handle, out, outlen);
+	}
+
+	/* normal zero copy */
+	iov.iov_base = (void*)(uintptr_t)in;
+	iov.iov_len = inlen;
+
+	ret = _kcapi_common_vmsplice_data(handle, &iov, 1);
+	if (0 > ret)
+		return ret;
+	return _kcapi_common_splice_data(handle, inlen, out, outlen);
+}
 /**
  * kcapi_md_digestsize() - return the size of the message digest
  * @handle: cipher handle - input
