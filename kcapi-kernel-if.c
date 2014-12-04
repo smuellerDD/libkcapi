@@ -247,7 +247,7 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	struct rtattr *tb[CRYPTOCFGA_MAX+1];
 	struct rtattr *rta;
 
-	/* AunsignedF_NETLINK specific */
+	/* AF_NETLINK specific */
 	struct sockaddr_nl nl;
 	int sd = 0;
 	socklen_t addr_len;
