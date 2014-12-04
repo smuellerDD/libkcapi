@@ -2,9 +2,11 @@
 <!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"
 	"http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd" []>
 
-<book id="libkcapi">
+<book id="libkcapi" revision="@@LIBVERSION@@">
  <bookinfo>
   <title>Linux Kernel Crypto API User Space Interface Library</title>
+
+  <edition>@@LIBVERSION@@</edition>
 
   <authorgroup>
    <author>
@@ -58,6 +60,8 @@
 
  <chapter id="Intro">
   <title>libkcapi - Linux Kernel Crypto API User Space Interface Library</title>
+
+  <para>This documentation applies to version @@LIBVERSION@@.</para>
 
   <para>
    The Linux kernel exports a network interface of type AF_ALG to allow user
