@@ -53,17 +53,17 @@
  */
 struct kcapi_cipher_info {
 	/* generic */
-	int blocksize;
-	int ivsize;
+	unsigned int blocksize;
+	unsigned int ivsize;
 	/* hash */
-	int hash_digestsize;
+	unsigned int hash_digestsize;
 	/* blkcipher */
-	int blk_min_keysize;
-	int blk_max_keysize;
+	unsigned int blk_min_keysize;
+	unsigned int blk_max_keysize;
 	/* aead */
-	int aead_maxauthsize;
+	unsigned int aead_maxauthsize;
 	/* rng */
-	int rng_seedsize;
+	unsigned int rng_seedsize;
 };
 
 /**
@@ -104,6 +104,7 @@ struct kcapi_aead_data {
  * @opfd: FD to open kernel crypto API TFM
  * @skdata: Common data for all ciphers
  * @aead: AEAD cipher specific data
+ * @info: properties of ciphers
  */
 struct kcapi_handle {
 	int tfmfd;
@@ -135,8 +136,8 @@ ssize_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
 				   struct iovec *iov, size_t iovlen);
 ssize_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
 			       struct iovec *iov, size_t iovlen);
-int kcapi_cipher_ivsize(struct kcapi_handle *handle);
-int kcapi_cipher_blocksize(struct kcapi_handle *handle);
+unsigned int kcapi_cipher_ivsize(struct kcapi_handle *handle);
+unsigned int kcapi_cipher_blocksize(struct kcapi_handle *handle);
 
 /* AEAD Cipher API */
 int kcapi_aead_init(struct kcapi_handle *handle, const char *ciphername);
@@ -169,9 +170,9 @@ ssize_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
 				      struct iovec *iov, size_t iovlen);
 ssize_t kcapi_aead_stream_op(struct kcapi_handle *handle,
 			     struct iovec *iov, size_t iovlen);
-int kcapi_aead_ivsize(struct kcapi_handle *handle);
-int kcapi_aead_blocksize(struct kcapi_handle *handle);
-int kcapi_aead_authsize(struct kcapi_handle *handle);
+unsigned int kcapi_aead_ivsize(struct kcapi_handle *handle);
+unsigned int kcapi_aead_blocksize(struct kcapi_handle *handle);
+unsigned int kcapi_aead_authsize(struct kcapi_handle *handle);
 size_t kcapi_aead_outbuflen(struct kcapi_handle *handle,
 			    size_t inlen, size_t taglen, int enc);
 int kcapi_aead_ccm_nonce_to_iv(const unsigned char *nonce, size_t noncelen,
@@ -189,7 +190,7 @@ ssize_t kcapi_md_final(struct kcapi_handle *handle,
 ssize_t kcapi_md_digest(struct kcapi_handle *handle,
 		       const unsigned char *in, size_t inlen,
 		       unsigned char *out, size_t outlen);
-int kcapi_md_digestsize(struct kcapi_handle *handle);
+unsigned int kcapi_md_digestsize(struct kcapi_handle *handle);
 
 /* Random Number API */
 int kcapi_rng_init(struct kcapi_handle *handle, const char *ciphername);
