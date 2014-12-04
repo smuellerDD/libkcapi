@@ -3,7 +3,7 @@
 #
 
 CC=gcc
-CFLAGS +=-Wextra -Wall -pedantic -pie -fPIE -Wl,-z,relro,-z,now
+CFLAGS +=-Wextra -Wall -pedantic -fPIC -Wl,-z,relro,-z,now
 
 # Change as necessary
 PREFIX := /usr/local
