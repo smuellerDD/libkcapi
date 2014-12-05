@@ -13,6 +13,11 @@ are returned to the consumer via the library API.
 The kernel interface and therefore this library can be used by unprivileged
 processes.
 
+The focus during the development of this library is put on speed. This library
+does not perform any memcpy for processing the cryptographic data! The library
+uses scatter / gather lists to eliminate the need for moving data around in
+memory.
+
 Make Targets
 ============
 
