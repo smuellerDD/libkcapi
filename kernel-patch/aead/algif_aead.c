@@ -208,9 +208,6 @@ static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
 	bool enc = 0;
 	bool init = 0;
 	int err = -EINVAL;
-	struct scatterlist *sg = NULL;
-	int plen = 0;
-	unsigned long len = size;
 
 	if (msg->msg_controllen) {
 		err = af_alg_cmsg_send(msg, &con);
@@ -252,69 +249,75 @@ static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
 		ctx->aead_assoclen = con.aead_assoclen;
 	}
 
-	if (ctx->merge) {
-		sg = sgl->sg + sgl->cur - 1;
-		len = min_t(unsigned long, len,
-			    PAGE_SIZE - sg->offset - sg->length);
+	while (size) {
+		unsigned long len = size;
+		struct scatterlist *sg = NULL;
 
-		err = memcpy_fromiovec(page_address(sg_page(sg)) +
-				       sg->offset + sg->length,
-				       msg->msg_iov, len);
-		if (err)
-			goto unlock;
+		if (ctx->merge) {
+			sg = sgl->sg + sgl->cur - 1;
+			len = min_t(unsigned long, len,
+				    PAGE_SIZE - sg->offset - sg->length);
+			err = memcpy_fromiovec(page_address(sg_page(sg)) +
+					       sg->offset + sg->length,
+					       msg->msg_iov, len);
+			if (err)
+				goto unlock;
 
-		sg->length += len;
-		ctx->merge = (sg->offset + sg->length) & (PAGE_SIZE - 1);
+			sg->length += len;
+			ctx->merge = (sg->offset + sg->length) &
+				     (PAGE_SIZE - 1);
 
-		ctx->used += len;
-		copied += len;
-		size -= len;
-	}
-
-	if (!aead_writable(sk)) {
-		/*
-		 * If there is more data to be expected, but we cannot write
-		 * more data, forcefully define that we do not expect more
-		 * data to invoke the AEAD operation. This prevents a deadlock
-		 * in user space.
-		 */
-		ctx->more = 0;
-		err = aead_wait_for_wmem(sk, msg->msg_flags);
-		if (err)
-			goto unlock;
-	}
-
-	len = min_t(unsigned long, size, aead_sndbuf(sk));
-	sg = sgl->sg;
-	while (len && sgl->cur < ALG_MAX_PAGES) {
-		sg = sgl->sg + sgl->cur;
-		plen = min_t(int, len, PAGE_SIZE);
-
-		if (sgl->cur >= ALG_MAX_PAGES) {
-			err = -E2BIG;
-			goto unlock;
+			ctx->used += len;
+			copied += len;
+			size -= len;
 		}
 
-		sg_assign_page(sg, alloc_page(GFP_KERNEL));
-		err = -ENOMEM;
-		if (!sg_page(sg))
-			goto unlock;
-
-		err = memcpy_fromiovec(page_address(sg_page(sg)),
-				       msg->msg_iov, plen);
-		if (err) {
-			__free_page(sg_page(sg));
-			sg_assign_page(sg, NULL);
-			goto unlock;
+		if (!aead_writable(sk)) {
+			/*
+			 * If there is more data to be expected, but we cannot
+			 * write more data, forcefully define that we do not
+			 * expect more data to invoke the AEAD operation. This
+			 * prevents a deadlock in user space.
+			 */
+			ctx->more = 0;
+			err = aead_wait_for_wmem(sk, msg->msg_flags);
+			if (err)
+				goto unlock;
 		}
 
-		sg->length = plen;
-		len -= plen;
-		ctx->used += plen;
-		copied += plen;
-		sgl->cur++;
-		size -= len;
-		ctx->merge = plen & (PAGE_SIZE - 1);
+		len = min_t(unsigned long, size, aead_sndbuf(sk));
+		while (len && sgl->cur < ALG_MAX_PAGES) {
+			int plen = 0;
+
+			sg = sgl->sg + sgl->cur;
+			plen = min_t(int, len, PAGE_SIZE);
+
+			if (sgl->cur >= ALG_MAX_PAGES) {
+				err = -E2BIG;
+				goto unlock;
+			}
+
+			sg_assign_page(sg, alloc_page(GFP_KERNEL));
+			err = -ENOMEM;
+			if (!sg_page(sg))
+				goto unlock;
+
+			err = memcpy_fromiovec(page_address(sg_page(sg)),
+					       msg->msg_iov, plen);
+			if (err) {
+				__free_page(sg_page(sg));
+				sg_assign_page(sg, NULL);
+				goto unlock;
+			}
+
+			sg->length = plen;
+			len -= plen;
+			ctx->used += plen;
+			copied += plen;
+			sgl->cur++;
+			size -= plen;
+			ctx->merge = plen & (PAGE_SIZE - 1);
+		}
 	}
 
 	err = 0;
@@ -351,6 +354,8 @@ static ssize_t aead_sendpage(struct socket *sock, struct page *page,
 		goto done;
 
 	if (!aead_writable(sk)) {
+		/* see aead_sendmsg why more is set to 0 */
+		ctx->more = 0;
 		err = aead_wait_for_wmem(sk, flags);
 		if (err)
 			goto unlock;
