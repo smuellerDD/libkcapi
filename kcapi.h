@@ -195,6 +195,8 @@ unsigned int kcapi_md_digestsize(struct kcapi_handle *handle);
 /* Random Number API */
 int kcapi_rng_init(struct kcapi_handle *handle, const char *ciphername);
 int kcapi_rng_destroy(struct kcapi_handle *handle);
+int kcapi_rng_seed(struct kcapi_handle *handle, unsigned char *seed,
+		   size_t seedlen);
 ssize_t kcapi_rng_generate(struct kcapi_handle *handle,
 			   unsigned char *buffer, size_t len);
 

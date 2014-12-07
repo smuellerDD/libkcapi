@@ -1,0 +1,51 @@
+From b4b6f802aadcc8b315299f4b63fdd2a04286b661 Mon Sep 17 00:00:00 2001
+From: Stephan Mueller <smueller@chronox.de>
+Date: Sun, 7 Dec 2014 13:43:45 +0100
+Subject: [PATCH v5 2/8] crypto: AF_ALG: add setsockopt for auth tag size
+
+Use setsockopt on the tfm FD to provide the authentication tag size for
+an AEAD cipher. This is achieved by adding a callback function which is
+intended to be used by the AEAD AF_ALG implementation.
+
+The optlen argument of the setsockopt specifies the authentication tag
+size to be used with the AEAD tfm.
+
+Signed-off-by: Stephan Mueller <smueller@chronox.de>
+---
+ crypto/af_alg.c         | 7 +++++++
+ include/crypto/if_alg.h | 1 +
+ 2 files changed, 8 insertions(+)
+
+diff --git a/crypto/af_alg.c b/crypto/af_alg.c
+index 68ff113..547c369 100644
+--- a/crypto/af_alg.c
++++ b/crypto/af_alg.c
+@@ -215,6 +215,13 @@ static int alg_setsockopt(struct socket *sock, int level, int optname,
+ 			goto unlock;
+ 
+ 		err = alg_setkey(sk, optval, optlen);
++		break;
++	case ALG_SET_AEAD_AUTHSIZE:
++		if (sock->state == SS_CONNECTED)
++			goto unlock;
++		if (!type->setauthsize)
++			goto unlock;
++		err = type->setauthsize(ask->private, optlen);
+ 	}
+ 
+ unlock:
+diff --git a/include/crypto/if_alg.h b/include/crypto/if_alg.h
+index cd62bf4..5c7b6c5 100644
+--- a/include/crypto/if_alg.h
++++ b/include/crypto/if_alg.h
+@@ -50,6 +50,7 @@ struct af_alg_type {
+ 	void (*release)(void *private);
+ 	int (*setkey)(void *private, const u8 *key, unsigned int keylen);
+ 	int (*accept)(void *private, struct sock *sk);
++	int (*setauthsize)(void *private, unsigned int authsize);
+ 
+ 	struct proto_ops *ops;
+ 	struct module *owner;
+-- 
+2.1.0
+

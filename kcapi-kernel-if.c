@@ -59,15 +59,16 @@
 		      * require consumer to be updated (as long as this number
 		      * is zero, the API is not considered stable and can
 		      * change without a bump of the major version) */
-#define MINVERSION 4 /* API compatible, ABI may change, functional
+#define MINVERSION 5 /* API compatible, ABI may change, functional
 		      * enhancements only, consumer can be left unchanged if
 		      * enhancements are not considered */
-#define PATCHLEVEL 1 /* API / ABI compatible, no functional changes, no
+#define PATCHLEVEL 0 /* API / ABI compatible, no functional changes, no
 		      * enhancements, bug fixes only */
 
 /* remove once in if_alg.h */
 #define ALG_SET_AEAD_ASSOCLEN		4
 #define ALG_SET_AEAD_AUTHSIZE		5
+#define ALG_SET_RNG_SEED		6
 
 /* remove once in socket.h */
 #ifndef AF_ALG
@@ -1730,6 +1731,25 @@ int kcapi_rng_init(struct kcapi_handle *handle, const char *ciphername)
 int kcapi_rng_destroy(struct kcapi_handle *handle)
 {
 	return _kcapi_handle_destroy(handle);
+}
+
+/**
+ * kcapi_rng_seed() - Seed the RNG
+ * @handle: cipher handle - input
+ * @seed: seed data - input
+ * @seedlen: size of @seed
+ *
+ * Return: 0 upon success;
+ * 	   < 0 upon error
+ */
+int kcapi_rng_seed(struct kcapi_handle *handle, unsigned char *seed,
+		   size_t seedlen)
+{
+	if (setsockopt(handle->tfmfd, SOL_ALG, ALG_SET_RNG_SEED,
+		       seed, seedlen) == -1)
+		return -EINVAL;
+
+	return 0;
 }
 
 /**

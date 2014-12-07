@@ -51,7 +51,6 @@ MODULE_DESCRIPTION("User-space interface for random number generators");
 
 struct rng_ctx {
 #define MAXSIZE 128
-	u8 result[MAXSIZE];
 	unsigned int len;
 	struct crypto_rng *drng;
 };
@@ -63,22 +62,32 @@ static int rng_recvmsg(struct kiocb *unused, struct socket *sock,
 	struct alg_sock *ask = alg_sk(sk);
 	struct rng_ctx *ctx = ask->private;
 	int err = -EFAULT;
+	int genlen = 0;
+	u8 result[MAXSIZE];
 
 	if (len == 0)
 		return 0;
 	if (len > MAXSIZE)
 		len = MAXSIZE;
 
-	lock_sock(sk);
-	len = crypto_rng_get_bytes(ctx->drng, ctx->result, len);
-	if (len < 0)
-		goto unlock;
+	/*
+	 * although not strictly needed, this is a precaution against coding
+	 * errors
+	 */
+	memset(result, 0, len);
 
-	err = memcpy_toiovec(msg->msg_iov, ctx->result, len);
-	memzero_explicit(ctx->result, len);
+	/*
+	 * The enforcement of a proper seeding of an RNG is done within an
+	 * RNG implementation. Some RNGs (DRBG, krng) do not need specific
+	 * seeding as they automatically seed. The X9.31 DRNG will return
+	 * an error if it was not seeded properly.
+	 */
+	genlen = crypto_rng_get_bytes(ctx->drng, result, len);
+	if (genlen < 0)
+		return genlen;
 
-unlock:
-	release_sock(sk);
+	err = memcpy_toiovec(msg->msg_iov, result, len);
+	memzero_explicit(result, genlen);
 
 	return err ? err : len;
 }
@@ -120,7 +129,6 @@ static void rng_sock_destruct(struct sock *sk)
 	struct alg_sock *ask = alg_sk(sk);
 	struct rng_ctx *ctx = ask->private;
 
-	memzero_explicit(ctx->result, sizeof(ctx->result));
 	sock_kfree_s(sk, ctx, ctx->len);
 	af_alg_release_parent(sk);
 }
@@ -130,42 +138,40 @@ static int rng_accept_parent(void *private, struct sock *sk)
 	struct rng_ctx *ctx;
 	struct alg_sock *ask = alg_sk(sk);
 	unsigned int len = sizeof(*ctx);
-	int seedsize = crypto_rng_seedsize(private);
-	int ret = -ENOMEM;
 
 	ctx = sock_kmalloc(sk, len, GFP_KERNEL);
 	if (!ctx)
 		return -ENOMEM;
-	memset(ctx->result, 0, sizeof(ctx->result));
 
 	ctx->len = len;
 
-	if (seedsize) {
-		u8 *buf = kmalloc(seedsize, GFP_KERNEL);
-		if (!buf)
-			goto err;
-		get_random_bytes(buf, seedsize);
-		ret = crypto_rng_reset(private, buf, len);
-		kzfree(buf);
-		if (ret)
-			goto err;
-	}
+	/*
+	 * No seeding done at that point -- if multiple accepts are
+	 * done on one RNG instance, each resulting FD points to the same
+	 * state of the RNG.
+	 */
 
 	ctx->drng = private;
 	ask->private = ctx;
 	sk->sk_destruct = rng_sock_destruct;
 
 	return 0;
+}
 
-err:
-	sock_kfree_s(sk, ctx, len);
-	return ret;
+static int rng_setseed(void *private, const u8 *seed, unsigned int seedlen)
+{
+	/*
+	 * Check whether seedlen is of sufficient size is done in RNG
+	 * implementations.
+	 */
+	return crypto_rng_reset(private, (u8 *)seed, seedlen);
 }
 
 static const struct af_alg_type algif_type_rng = {
 	.bind		=	rng_bind,
 	.release	=	rng_release,
 	.accept		=	rng_accept_parent,
+	.setseed	=	rng_setseed,
 	.ops		=	&algif_rng_ops,
 	.name		=	"rng",
 	.owner		=	THIS_MODULE
