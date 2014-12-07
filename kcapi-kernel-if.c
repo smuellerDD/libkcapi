@@ -62,7 +62,7 @@
 #define MINVERSION 4 /* API compatible, ABI may change, functional
 		      * enhancements only, consumer can be left unchanged if
 		      * enhancements are not considered */
-#define PATCHLEVEL 0 /* API / ABI compatible, no functional changes, no
+#define PATCHLEVEL 1 /* API / ABI compatible, no functional changes, no
 		      * enhancements, bug fixes only */
 
 /* remove once in if_alg.h */
@@ -970,7 +970,7 @@ int kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen)
 {
 	handle->aead.tag = NULL;
 	handle->aead.taglen = taglen;
-	if (setsockopt(handle->opfd, SOL_ALG, ALG_SET_AEAD_AUTHSIZE,
+	if (setsockopt(handle->tfmfd, SOL_ALG, ALG_SET_AEAD_AUTHSIZE,
 		       NULL, taglen) == -1)
 		return -EINVAL;
 
@@ -1038,6 +1038,8 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 	}
 
 #if 0
+	/* using two syscall */
+	/* TODO make heuristic when one syscall is slower than four syscalls */
 	if (assoc && handle->aead.assoclen) {
 		iov[0].iov_base = (void*)(uintptr_t)assoc;
 		iov[0].iov_len = handle->aead.assoclen;
@@ -1177,6 +1179,8 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 	}
 
 #if 0
+	/* using two syscall */
+	/* TODO make heuristic when one syscall is slower than four syscalls */
 	if (assoc && handle->aead.assoclen) {
 		iov[0].iov_base = (void*)(uintptr_t)assoc;
 		iov[0].iov_len = handle->aead.assoclen;
