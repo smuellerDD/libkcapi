@@ -506,35 +506,6 @@ unlock:
 	return err ? err : outlen;
 }
 
-static int aead_setsockopt(struct socket *sock, int level, int optname,
-			   char __user *optval, unsigned int optlen)
-{
-	struct sock *sk = sock->sk;
-	struct alg_sock *ask = alg_sk(sk);
-	struct aead_ctx *ctx = ask->private;
-	const struct af_alg_type *type;
-	int err = -ENOPROTOOPT;
-
-	lock_sock(sk);
-	type = ask->type;
-
-	if (level != SOL_ALG || !type)
-		goto unlock;
-
-	switch (optname) {
-	case ALG_SET_AEAD_AUTHSIZE:
-		err = crypto_aead_setauthsize(
-				crypto_aead_reqtfm(&ctx->aead_req), optlen);
-		if (err)
-			goto unlock;
-	}
-
-unlock:
-	release_sock(sk);
-
-	return err;
-}
-
 static unsigned int aead_poll(struct file *file, struct socket *sock,
 				  poll_table *wait)
 {
@@ -568,13 +539,13 @@ static struct proto_ops algif_aead_ops = {
 	.mmap		=	sock_no_mmap,
 	.bind		=	sock_no_bind,
 	.accept		=	sock_no_accept,
+	.setsockopt	=	sock_no_setsockopt,
 
 	.release	=	af_alg_release,
 	.sendmsg	=	aead_sendmsg,
 	.sendpage	=	aead_sendpage,
 	.recvmsg	=	aead_recvmsg,
 	.poll		=	aead_poll,
-	.setsockopt	=	aead_setsockopt,
 };
 
 static void *aead_bind(const char *name, u32 type, u32 mask)
@@ -585,6 +556,11 @@ static void *aead_bind(const char *name, u32 type, u32 mask)
 static void aead_release(void *private)
 {
 	crypto_free_aead(private);
+}
+
+static int aead_setauthsize(void *private, unsigned int authsize)
+{
+	return crypto_aead_setauthsize(private, authsize);
 }
 
 static int aead_setkey(void *private, const u8 *key, unsigned int keylen)
@@ -649,6 +625,7 @@ static const struct af_alg_type algif_type_aead = {
 	.bind		=	aead_bind,
 	.release	=	aead_release,
 	.setkey		=	aead_setkey,
+	.setauthsize	=	aead_setauthsize,
 	.accept		=	aead_accept_parent,
 	.ops		=	&algif_aead_ops,
 	.name		=	"aead",
