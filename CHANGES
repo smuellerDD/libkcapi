@@ -1,3 +1,7 @@
+Change 0.5.0:
+ * kernel interface for AEAD and RNG changed
+ * add kcapi_rng_seed API call
+
 Change 0.4.0:
  * update AEAD cipher interface for current implemetation
  * remove nonalinged API
