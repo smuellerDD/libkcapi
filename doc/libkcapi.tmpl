@@ -219,9 +219,10 @@
 
   <sect1><title>Zero Copy</title>
    <para>
-    When using the one-shot API for symmetric ciphers as well as AEAD ciphers,
-    the library uses the zero copy interface to provide the input data
-    to the kernel. That means, the kernel operates on the user space pages.
+    When using the one-shot API for symmetric ciphers, AEAD ciphers,
+    as well as message digests, the library uses the zero copy interface to
+    provide the input data to the kernel. That means, the kernel operates on
+    the user space pages.
    </para>
 
    <para>
