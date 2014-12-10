@@ -84,6 +84,53 @@
    The kernel interface and therefore this library can be used by unprivileged
    processes.
   </para>
+
+  <sect1><title>Purpose Of AF_ALG</title>
+   <para>
+    With the presence of numerous user space cryptographic libraries,
+    one may ask why is there a need for the kernel to expose its kernel
+    crypto API to user space. As there are system calls and potentially
+    memory copies needed before a cipher can be invoked, it should be
+    typically slower than user space shared libraries.
+   </para>
+
+   <para>
+    There are several reasons for AF_ALG:
+     <itemizedlist>
+      <listitem>
+       <para>
+        The first and most important item is the access to hardware
+        accelerators and hardware devices whose technical interface can
+        only be accessed from the kernel mode / supervisor state of the
+        processor. Such support cannot be used from user space except
+        through AF_ALG.
+       </para>
+      </listitem>
+      <listitem>
+       <para>
+        When using user space libraries, all key material and other
+        cryptographic sensitive parameters remains in the calling
+        application's memory even when the application supplied the
+        information to the library. When using AF_ALG, the key material
+        and other sensitive parameters are handed to the kernel. The
+        calling application now can reliably erase that information
+        from its memory and just use the cipher handle to perform
+        the cryptographic operations. If the application is cracked
+        an attacker cannot obtain the key material.
+       </para>
+      </listitem>
+      <listitem>
+       <para>
+        On memory constrained systems like embedded systems, the additional
+        memory footprint of a user space cryptographic library may
+        be too much. As the kernel requires the kernel crypto API to be
+        present, reusing existing code should reduce the memory footprint.
+       </para>
+      </listitem>
+     </itemizedlist>
+   </para>
+
+  </sect1>
  </chapter>
 
  <chapter id="Usage"><title>Programming Guidelines</title>
@@ -289,6 +336,57 @@
      </para>
     </listitem>
    </itemizedlist>
+
+   <sect2><title>Kernel Configuration</title>
+    <para>
+     To use libkcapi, the following kernel options need to be enabled:
+    </para>
+
+    <itemizedlist>
+     <listitem>
+      <para>
+       CONFIG_CRYPTO_USER enables the NETLINK_CRYPTO interface to allow
+       obtaining information about the loaded ciphers. When compiled as module
+       in older kernels (pre 3.18) the resulting crypto_user kernel module must
+       be loaded manually.
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+       CONFIG_CRYPTO_USER_API enables the core functionality of the user space
+       interface handler.
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+       CONFIG_CRYPTO_USER_API_HASH enables the "hash" interface (i.e. allows
+       the use of all message digest and keyed message digest ciphers).
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+       CONFIG_CRYPTO_USER_API_SKCIPHER enables the "skcipher" interface
+       to use symmetric cipher algorithms.
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+       CONFIG_CRYPTO_USER_API_AEAD enables the "aead" interface to use AEAD
+       cipher algorithms. This support is currently discussed on LKML and
+       therefore not present in the mainline kernel. The patches in the
+       kernel-patch/ directory add that support.
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+       CONFIG_CRYPTO_USER_API_RNG enables the "rng" interface to use the
+       random number generators. This support is currently discussed on LKML
+       and therefore not present in the mainline kernel. The patches in the
+       kernel-patch/ directory add that support.
+      </para>
+     </listitem>
+    </itemizedlist>
+   </sect2>
   </sect1>
 
   <sect1><title>Example Code</title>
