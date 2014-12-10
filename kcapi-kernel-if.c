@@ -516,6 +516,30 @@ void kcapi_versionstring(char *buf, size_t buflen)
 }
 
 /**
+ * kcapi_version() - Return machine-usable version number of kcapi library
+ *
+ * The function returns a version number that is monotonic increasing
+ * for newer versions. The version numbers are multiples of 100. For example,
+ * version 1.2.3 is converted to 1020300 -- the last two digits are reserved
+ * for future use.
+ *
+ * The result of this function can be used in comparing the version number
+ * in a calling program if version-specific calls need to be make.
+ *
+ * Return: Version number of kcapi library
+ */
+unsigned int kcapi_version(void)
+{
+	unsigned int version = 0
+
+	version =  MAJVERSION * 1000000;
+	version += MINVERSION * 10000;
+	version += PATCHLEVEL * 100;
+
+	return version;
+}
+
+/**
  * kcapi_pad_iv() - realign the key as necessary for cipher
  * @handle: cipher handle
  * @iv: current IV buffer - input
