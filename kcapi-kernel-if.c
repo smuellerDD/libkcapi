@@ -62,7 +62,7 @@
 #define MINVERSION 6 /* API compatible, ABI may change, functional
 		      * enhancements only, consumer can be left unchanged if
 		      * enhancements are not considered */
-#define PATCHLEVEL 0 /* API / ABI compatible, no functional changes, no
+#define PATCHLEVEL 1 /* API / ABI compatible, no functional changes, no
 		      * enhancements, bug fixes only */
 
 /* remove once in if_alg.h */
@@ -466,9 +466,8 @@ static int _kcapi_handle_init(struct kcapi_handle *handle,
 
 	ret = _kcapi_common_getinfo(handle, ciphername);
 	if(ret) {
-		perror("NETLINK_CRYPTO: cannot obtain cipher information for %s (is required crypto_user.c patch missing? see documentation)\n",
+		fprintf(stderr, "NETLINK_CRYPTO: cannot obtain cipher information for %s (is required crypto_user.c patch missing? see documentation)\n",
 		       ciphername);
-
 		close(handle->tfmfd);
 		close(handle->opfd);
 		close(handle->pipes[0]);

@@ -1,3 +1,11 @@
+Change 0.6.1:
+ * fix compile error
+
+Change 0.6.0:
+ * add kcapi_md_blocksize
+ * add stress / negative testing
+ * add hint to NETLINK_CRYPTO patch requirement
+
 Change 0.5.0:
  * kernel interface for AEAD and RNG changed
  * add kcapi_rng_seed API call
