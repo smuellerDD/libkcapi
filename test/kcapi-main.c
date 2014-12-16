@@ -124,6 +124,58 @@ static int hex2bin_m(const char *hex, size_t hexlen,
 	return 0;
 }
 
+static int aux_stress_init_error(const char *name, int type)
+{
+	struct kcapi_handle handle;
+	int ret = 0;
+
+	if (type == 0)
+		ret = kcapi_cipher_init(&handle, name);
+	else if (type == 1)
+		ret = kcapi_aead_init(&handle, name);
+	else if (type == 2)
+		ret = kcapi_md_init(&handle, name);
+	else
+		ret = kcapi_rng_init(&handle, name);
+
+	if (ret) {
+		printf("PASS: Allocation of nonsense string \"%s\" failed\n",
+		       name);
+		return 0;
+	}
+	printf("FAIL Allocation of nonsense string \"%s\" passed\n", name);
+
+	if (type == 0)
+		ret = kcapi_cipher_destroy(&handle);
+	else if (type == 1)
+		ret = kcapi_aead_destroy(&handle);
+	else if (type == 2)
+		ret = kcapi_md_destroy(&handle);
+	else
+		ret = kcapi_rng_destroy(&handle);
+
+	return 1;
+}
+
+static int aux_stress(void)
+{
+	int ret = 0;
+	int i = 0;
+
+	for (i = 0; i < 4; i++) {
+		if (aux_stress_init_error("(((((((((((((()))))))))))))))", i))
+			ret++;
+		if (aux_stress_init_error("bla", i))
+			ret++;
+		if (aux_stress_init_error(NULL, i))
+			ret++;
+		if (aux_stress_init_error("\x10\x13\x30\x11\x12\x13\x01\x02", i))
+			ret++;
+	}
+
+	return ret;
+}
+
 static int aux_test_rng(char *name, unsigned char *seed, size_t seedlen)
 {
 	struct kcapi_handle handle;
@@ -243,6 +295,8 @@ static int auxiliary_tests(void)
 			 "\x00\x01\x02\x03\x04\x05\x06\x07\x08", 32))
 		ret++;
 
+	ret += aux_stress();
+
 	return 0;
 }
 
@@ -253,12 +307,14 @@ static int auxiliary_tests(void)
 static void usage(void)
 {
 	char version[20];
+	unsigned int ver = kcapi_version();
 
 	memset(version, 0, 20);
 	kcapi_versionstring(version, 20);
 
 	fprintf(stderr, "\nKernel Crypto API CAVS Test\n");
-	fprintf(stderr, "\nKernel Crypto API interface library version: %s\n\n", version);
+	fprintf(stderr, "\nKernel Crypto API interface library version: %s\n", version);
+	fprintf(stderr, "Reported numeric version number %u\n\n", ver);
 	fprintf(stderr, "Usage:\n");
 	fprintf(stderr, "\t-e\tIf set, encrypt otherwise decrypt\n");
 	fprintf(stderr, "\t-c\tKernel Crypto API cipher name to be used for operation\n");
