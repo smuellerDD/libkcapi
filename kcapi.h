@@ -191,6 +191,7 @@ ssize_t kcapi_md_digest(struct kcapi_handle *handle,
 		       const unsigned char *in, size_t inlen,
 		       unsigned char *out, size_t outlen);
 unsigned int kcapi_md_digestsize(struct kcapi_handle *handle);
+unsigned int kcapi_md_blocksize(struct kcapi_handle *handle);
 
 /* Random Number API */
 int kcapi_rng_init(struct kcapi_handle *handle, const char *ciphername);
@@ -201,6 +202,7 @@ ssize_t kcapi_rng_generate(struct kcapi_handle *handle,
 			   unsigned char *buffer, size_t len);
 
 void kcapi_versionstring(char *buf, size_t buflen);
+unsigned int kcapi_version(void);
 int kcapi_pad_iv(struct kcapi_handle *handle,
 		 const unsigned char *iv, size_t ivlen,
 		 unsigned char **newiv, size_t *newivlen);
