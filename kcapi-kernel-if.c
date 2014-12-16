@@ -59,16 +59,22 @@
 		      * require consumer to be updated (as long as this number
 		      * is zero, the API is not considered stable and can
 		      * change without a bump of the major version) */
-#define MINVERSION 5 /* API compatible, ABI may change, functional
+#define MINVERSION 6 /* API compatible, ABI may change, functional
 		      * enhancements only, consumer can be left unchanged if
 		      * enhancements are not considered */
 #define PATCHLEVEL 0 /* API / ABI compatible, no functional changes, no
 		      * enhancements, bug fixes only */
 
 /* remove once in if_alg.h */
+#ifndef ALG_SET_AEAD_ASSOCLEN
 #define ALG_SET_AEAD_ASSOCLEN		4
+#endif
+#ifndef ALG_SET_AEAD_AUTHSIZE
 #define ALG_SET_AEAD_AUTHSIZE		5
+#endif
+#ifndef ALG_SET_RNG_SEED
 #define ALG_SET_RNG_SEED		6
+#endif
 
 /* remove once in socket.h */
 #ifndef AF_ALG
@@ -460,6 +466,9 @@ static int _kcapi_handle_init(struct kcapi_handle *handle,
 
 	ret = _kcapi_common_getinfo(handle, ciphername);
 	if(ret) {
+		perror("NETLINK_CRYPTO: cannot obtain cipher information for %s (is required crypto_user.c patch missing? see documentation)\n",
+		       ciphername);
+
 		close(handle->tfmfd);
 		close(handle->opfd);
 		close(handle->pipes[0]);
@@ -530,7 +539,7 @@ void kcapi_versionstring(char *buf, size_t buflen)
  */
 unsigned int kcapi_version(void)
 {
-	unsigned int version = 0
+	unsigned int version = 0;
 
 	version =  MAJVERSION * 1000000;
 	version += MINVERSION * 10000;
@@ -690,7 +699,7 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 	 * without memcpy below the given threshold.
 	 */
 	/* TODO make heuristic when one syscall is slower than four syscalls */
-	if (inlen < (1<<15) {
+	if (inlen < (1<<15)) {
 		ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_ENCRYPT,
 					      0);
 		iov.iov_base = (void*)(uintptr_t)out;
@@ -759,7 +768,7 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 	 * without memcpy below the given threshold.
 	 */
 	/* TODO make heuristic when one syscall is slower than four syscalls */
-	if (inlen < (1<<15) {
+	if (inlen < (1<<15)) {
 		ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_DECRYPT,
 					      0);
 		iov.iov_base = (void*)(uintptr_t)out;
@@ -1734,6 +1743,18 @@ ssize_t kcapi_md_digest(struct kcapi_handle *handle,
 unsigned int kcapi_md_digestsize(struct kcapi_handle *handle)
 {
 	return handle->info.hash_digestsize;
+}
+
+/**
+ * kcapi_md_blocksize() - return size of one block of the message digest
+ * @handle: cipher handle - input
+ *
+ * Return: > 0 specifying the block size;
+ *	   0 on error
+ */
+unsigned int kcapi_md_blocksize(struct kcapi_handle *handle)
+{
+	return handle->info.blocksize;
 }
 
 /**
