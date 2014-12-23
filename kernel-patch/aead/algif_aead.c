@@ -66,7 +66,7 @@ static inline bool aead_sufficient_data(struct aead_ctx *ctx)
 {
 	unsigned as = crypto_aead_authsize(crypto_aead_reqtfm(&ctx->aead_req));
 
-	return (ctx->used >= (ctx->aead_assoclen + ctx->enc ? : as ));
+	return (ctx->used >= (ctx->aead_assoclen + (ctx->enc ?: as)));
 }
 static inline bool aead_readable(struct aead_ctx *ctx)
 {

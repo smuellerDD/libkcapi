@@ -158,7 +158,7 @@ static int rng_accept_parent(void *private, struct sock *sk)
 	return 0;
 }
 
-static int rng_setseed(void *private, const u8 *seed, unsigned int seedlen)
+static int rng_setkey(void *private, const u8 *seed, unsigned int seedlen)
 {
 	/*
 	 * Check whether seedlen is of sufficient size is done in RNG
@@ -171,7 +171,7 @@ static const struct af_alg_type algif_type_rng = {
 	.bind		=	rng_bind,
 	.release	=	rng_release,
 	.accept		=	rng_accept_parent,
-	.setseed	=	rng_setseed,
+	.setkey		=	rng_setkey,
 	.ops		=	&algif_rng_ops,
 	.name		=	"rng",
 	.owner		=	THIS_MODULE

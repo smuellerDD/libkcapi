@@ -1,0 +1,24 @@
+From a7b9689f3b76450a8d88922595f3694ab49a819c Mon Sep 17 00:00:00 2001
+From: Stephan Mueller <smueller@chronox.de>
+Date: Tue, 23 Dec 2014 09:49:47 +0100
+Subject: [PATCH v6 0/4] *** SUBJECT HERE ***
+
+*** BLURB HERE ***
+
+Stephan Mueller (4):
+  crypto: AF_ALG: add AEAD support
+  crypto: AF_ALG: enable AEAD interface compilation
+  crypto: AF_ALG: add random number generator support
+  crypto: AF_ALG: enable RNG interface compilation
+
+ crypto/Kconfig      |  18 ++
+ crypto/Makefile     |   2 +
+ crypto/algif_aead.c | 650 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ crypto/algif_rng.c  | 192 ++++++++++++++++
+ 4 files changed, 862 insertions(+)
+ create mode 100644 crypto/algif_aead.c
+ create mode 100644 crypto/algif_rng.c
+
+-- 
+2.1.0
+
