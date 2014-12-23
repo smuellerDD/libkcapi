@@ -205,8 +205,11 @@ static ssize_t _kcapi_common_splice_data(struct kcapi_handle *handle,
 					 size_t inlen,
 				         unsigned char *out, size_t outlen)
 {
-	if (0 > splice(handle->pipes[0], NULL, handle->opfd, NULL, inlen, 0))
-		return -EIO;
+	ssize_t ret = 0;
+
+	ret = splice(handle->pipes[0], NULL, handle->opfd, NULL, inlen, 0);
+	if (0 > ret)
+		return ret;
 	return read(handle->opfd, out, outlen);
 }
 
