@@ -72,9 +72,6 @@
 #ifndef ALG_SET_AEAD_AUTHSIZE
 #define ALG_SET_AEAD_AUTHSIZE		5
 #endif
-#ifndef ALG_SET_RNG_SEED
-#define ALG_SET_RNG_SEED		6
-#endif
 
 /* remove once in socket.h */
 #ifndef AF_ALG
@@ -1804,11 +1801,7 @@ int kcapi_rng_destroy(struct kcapi_handle *handle)
 int kcapi_rng_seed(struct kcapi_handle *handle, unsigned char *seed,
 		   size_t seedlen)
 {
-	if (setsockopt(handle->tfmfd, SOL_ALG, ALG_SET_RNG_SEED,
-		       seed, seedlen) == -1)
-		return -EINVAL;
-
-	return 0;
+	return _kcapi_common_setkey(handle, seed, seedlen);
 }
 
 /**
