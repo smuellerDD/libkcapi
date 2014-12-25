@@ -1134,6 +1134,7 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 	if (handle->aead.assoclen + inlen > MAXPIPELEN) {
 		fprintf(stderr, "AEAD Decryption: input data exceeds maximum allowed size of %lu\n",
 			MAXPIPELEN);
+		return -E2BIG;
 	}
 	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT, 0);
 	if (0 > ret)
@@ -1283,6 +1284,7 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 	if (handle->aead.assoclen + inlen + handle->aead.taglen > MAXPIPELEN) {
 		fprintf(stderr, "AEAD Decryption: input data exceeds maximum allowed size of %lu\n",
 			MAXPIPELEN);
+		return -E2BIG;
 	}
 	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_DECRYPT, 0);
 	if (0 > ret)
