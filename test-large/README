@@ -1,0 +1,6 @@
+This test generates a test file of various sizes and generates the hash
+using libkcapi and openssl. Both values are compared to verify that both
+match.
+
+This test verifies that the vmsplice/splice implementation in libkcapi
+works with arbitrary sizes.
