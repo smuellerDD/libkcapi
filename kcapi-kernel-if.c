@@ -60,10 +60,10 @@
 		      * require consumer to be updated (as long as this number
 		      * is zero, the API is not considered stable and can
 		      * change without a bump of the major version) */
-#define MINVERSION 7 /* API compatible, ABI may change, functional
+#define MINVERSION 6 /* API compatible, ABI may change, functional
 		      * enhancements only, consumer can be left unchanged if
 		      * enhancements are not considered */
-#define PATCHLEVEL 0 /* API / ABI compatible, no functional changes, no
+#define PATCHLEVEL 2 /* API / ABI compatible, no functional changes, no
 		      * enhancements, bug fixes only */
 
 /* remove once in if_alg.h */
@@ -90,7 +90,7 @@
 
 static ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 				       struct iovec *iov, size_t iovlen,
-				       uint32_t enc, int more)
+				       uint32_t enc, unsigned int flags)
 {
 	ssize_t ret = -EINVAL;
 	char *buffer = NULL;
@@ -158,7 +158,7 @@ static ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 		*assoclen = handle->aead.assoclen;
 	}
 
-	ret = sendmsg(handle->opfd, &msg, more ? MSG_MORE : 0);
+	ret = sendmsg(handle->opfd, &msg, flags);
 
 	memset(buffer, 0, bufferlen);
 	/* magic to convince GCC to memset the buffer */
@@ -169,22 +169,28 @@ static ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 	return ret;
 }
 
-static ssize_t _kcapi_common_send_data(struct kcapi_handle *handle,
+static inline ssize_t _kcapi_common_send_data(struct kcapi_handle *handle,
 				       struct iovec *iov, size_t iovlen,
-				       int more)
+				       unsigned int flags)
 {
 	struct msghdr msg;
 
-	memset(&msg, 0, sizeof(msg));
+	msg.msg_name = NULL;
+	msg.msg_namelen = 0;
+	msg.msg_control = NULL;
+	msg.msg_controllen = 0;
+	msg.msg_flags = 0;
 	msg.msg_iov = iov;
 	msg.msg_iovlen = iovlen;
 
-	return sendmsg(handle->opfd, &msg, more ? MSG_MORE : 0);
+	return sendmsg(handle->opfd, &msg, flags);
 }
 
-static ssize_t _kcapi_common_vmsplice_data(struct kcapi_handle *handle,
-					   struct iovec *iov, size_t iovlen,
-					   size_t inlen, unsigned int flags)
+static inline ssize_t _kcapi_common_vmsplice_data(struct kcapi_handle *handle,
+						  struct iovec *iov,
+						  size_t iovlen,
+						  size_t inlen,
+						  unsigned int flags)
 {
 	ssize_t ret = 0;
 
@@ -194,20 +200,28 @@ static ssize_t _kcapi_common_vmsplice_data(struct kcapi_handle *handle,
 	return splice(handle->pipes[0], NULL, handle->opfd, NULL, inlen, flags);
 }
 
-static ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
-				       struct iovec *iov, size_t iovlen)
+static inline ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
+					      struct iovec *iov, size_t iovlen)
 {
 	struct msghdr msg;
+	ssize_t ret = 0;
 
-	memset(&msg, 0, sizeof(msg));
+	msg.msg_name = NULL;
+	msg.msg_namelen = 0;
+	msg.msg_control = NULL;
+	msg.msg_controllen = 0;
+	msg.msg_flags = 0;
 	msg.msg_iov = iov;
 	msg.msg_iovlen = iovlen;
 
-	return recvmsg(handle->opfd, &msg, 0);
+	ret = recvmsg(handle->opfd, &msg, 0);
+	if (msg.msg_flags & MSG_TRUNC)
+		return -ENOMEM;
+	return ret;
 }
 
-static ssize_t _kcapi_common_read_data(struct kcapi_handle *handle,
-				       unsigned char *out, size_t outlen)
+static inline ssize_t _kcapi_common_read_data(struct kcapi_handle *handle,
+					      unsigned char *out, size_t outlen)
 {
 	return read(handle->opfd, out, outlen);
 }
@@ -839,7 +853,8 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 ssize_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
 				     struct iovec *iov, size_t iovlen)
 {
-	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_ENCRYPT, 1);
+	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_ENCRYPT,
+				       MSG_MORE);
 }
 
 /**
@@ -870,7 +885,8 @@ ssize_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
 ssize_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
 				     struct iovec *iov, size_t iovlen)
 {
-	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_DECRYPT, 1);
+	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_DECRYPT,
+				       MSG_MORE);
 }
 
 /**
@@ -898,7 +914,7 @@ ssize_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
 ssize_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
 				   struct iovec *iov, size_t iovlen)
 {
-	return _kcapi_common_send_data(handle, iov, iovlen, 1);
+	return _kcapi_common_send_data(handle, iov, iovlen, MSG_MORE);
 }
 
 /**
@@ -1136,7 +1152,8 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			MAXPIPELEN);
 		return -E2BIG;
 	}
-	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT, 0);
+	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT,
+				      MSG_MORE);
 	if (0 > ret)
 		return ret;
 	if (assoc && handle->aead.assoclen) {
@@ -1286,7 +1303,8 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			MAXPIPELEN);
 		return -E2BIG;
 	}
-	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_DECRYPT, 0);
+	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_DECRYPT,
+				      MSG_MORE);
 	if (0 > ret)
 		return ret;
 	if (assoc && handle->aead.assoclen) {
@@ -1351,7 +1369,8 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 ssize_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
 				   struct iovec *iov, size_t iovlen)
 {
-	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_ENCRYPT, 1);
+	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_ENCRYPT,
+				       MSG_MORE);
 }
 
 /**
@@ -1390,7 +1409,8 @@ ssize_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
 ssize_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
 				   struct iovec *iov, size_t iovlen)
 {
-	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_DECRYPT, 1);
+	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_DECRYPT,
+				       MSG_MORE);
 }
 
 /**
@@ -1425,7 +1445,7 @@ ssize_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
 ssize_t kcapi_aead_stream_update(struct kcapi_handle *handle,
 				 struct iovec *iov, size_t iovlen)
 {
-	return _kcapi_common_send_data(handle, iov, iovlen, 1);
+	return _kcapi_common_send_data(handle, iov, iovlen, MSG_MORE);
 }
 
 /**
@@ -1659,9 +1679,7 @@ ssize_t kcapi_md_update(struct kcapi_handle *handle,
 static ssize_t _kcapi_md_final(struct kcapi_handle *handle,
 			       unsigned char *buffer, size_t len)
 {
-	ssize_t r;
 	struct iovec iov;
-	struct msghdr msg;
 
 	if (len < (unsigned long)handle->info.hash_digestsize) {
 		fprintf(stderr,
@@ -1673,20 +1691,7 @@ static ssize_t _kcapi_md_final(struct kcapi_handle *handle,
 
 	iov.iov_base = (void*)(uintptr_t)buffer;
 	iov.iov_len = len;
-	msg.msg_name = NULL;
-	msg.msg_namelen = 0;
-	msg.msg_iov = &iov;
-	msg.msg_iovlen = 1;
-	msg.msg_control = NULL;
-	msg.msg_controllen = 0;
-
-	r = recvmsg(handle->opfd, &msg, 0);
-	if (r < 0)
-		return -EIO;
-	if (msg.msg_flags & MSG_TRUNC)
-		return -ENOMEM;
-
-	return r;
+	return _kcapi_common_recv_data(handle, &iov, 1);
 }
 
 /**
@@ -1864,23 +1869,15 @@ ssize_t kcapi_rng_generate(struct kcapi_handle *handle,
 {
 	ssize_t out = 0;
 	struct iovec iov;
-	struct msghdr msg;
 
 	while (len) {
 		ssize_t r = 0;
 
 		iov.iov_base = (void*)(uintptr_t)buffer;
 		iov.iov_len = len;
-		msg.msg_name = NULL;
-		msg.msg_namelen = 0;
-		msg.msg_iov = &iov;
-		msg.msg_iovlen = 1;
-		msg.msg_control = NULL;
-		msg.msg_controllen = 0;
-
-		r = recvmsg(handle->opfd, &msg, 0);
+		r = _kcapi_common_recv_data(handle, &iov, 1);
 		if (0 >= r)
-			return -EIO;
+			return r;
 		len -= r;
 		out += r;
 
