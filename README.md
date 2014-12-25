@@ -18,9 +18,28 @@ does not perform any memcpy for processing the cryptographic data! The library
 uses scatter / gather lists to eliminate the need for moving data around in
 memory.
 
+Version Numbers
+===============
+The version numbers for this library have the following schema:
+MAJOR.MINOR.PATCHLEVEL
+
+Changes in the major number implies API and ABI incompatible changes, or
+functional changes that require consumer to be updated (as long as this 
+number is zero, the API is not considered stable and can change without a 
+bump of the major version).
+
+Changes in the minor version are API compatible, but the ABI may change. 
+Functional enhancements only are added. Thus, a consumer can be left 
+unchanged if enhancements are not considered. The consumer only needs to 
+be recompiled.
+
+Patchlevel changes are API / ABI compatible. No functional changes, no
+enhancements are made. This release is a bug fixe release only. The
+consumer can be left unchanged and does not need to be recompiled.
+
+
 Make Targets
 ============
-
 The following make targets are applicable:
 
 * make              # compile library

@@ -85,6 +85,33 @@
    processes.
   </para>
 
+  <sect1><title>Version Number Schema</title>
+   <para>
+    The version numbers for this library have the following schema:
+    MAJOR.MINOR.PATCHLEVEL
+   </para>
+
+   <para>
+    Changes in the major number implies API and ABI incompatible changes, or
+    functional changes that require consumer to be updated (as long as this
+    number is zero, the API is not considered stable and can change without a
+    bump of the major version).
+   </para>
+
+   <para>
+    Changes in the minor version are API compatible, but the ABI may change.
+    Functional enhancements only are added. Thus, a consumer can be left
+    unchanged if enhancements are not considered. The consumer only needs to
+    be recompiled.
+   </para>
+
+   <para>
+    Patchlevel changes are API / ABI compatible. No functional changes, no
+    enhancements are made. This release is a bug fixe release only. The
+    consumer can be left unchanged and does not need to be recompiled.
+   </para>
+  <sect1>
+
   <sect1><title>Purpose Of AF_ALG</title>
    <para>
     With the presence of numerous user space cryptographic libraries,
