@@ -51,6 +51,7 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <unistd.h>
+#include <sys/user.h>
 #include "cryptouser.h"
 
 #include "kcapi.h"
@@ -81,6 +82,7 @@
 #define SOL_ALG 279
 #endif
 
+#define MAXPIPELEN (16 * PAGE_SIZE)
 
 /************************************************************
  * Internal logic
@@ -181,9 +183,17 @@ static ssize_t _kcapi_common_send_data(struct kcapi_handle *handle,
 }
 
 static ssize_t _kcapi_common_vmsplice_data(struct kcapi_handle *handle,
-					   struct iovec *iov, size_t iovlen)
+					   struct iovec *iov, size_t iovlen,
+					   size_t inlen, int more)
 {
-	return vmsplice(handle->pipes[1], iov, iovlen, SPLICE_F_GIFT);
+	ssize_t ret = 0;
+
+	ret = vmsplice(handle->pipes[1], iov, iovlen,
+		       more ? SPLICE_F_GIFT|SPLICE_F_MORE : SPLICE_F_GIFT);
+	if (0 > ret)
+		return ret;
+	return splice(handle->pipes[0], NULL, handle->opfd, NULL, inlen,
+		      more ? SPLICE_F_MORE : 0);
 }
 
 static ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
@@ -198,15 +208,9 @@ static ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 	return recvmsg(handle->opfd, &msg, 0);
 }
 
-static ssize_t _kcapi_common_splice_data(struct kcapi_handle *handle,
-					 size_t inlen,
-				         unsigned char *out, size_t outlen)
+static ssize_t _kcapi_common_read_data(struct kcapi_handle *handle,
+				       unsigned char *out, size_t outlen)
 {
-	ssize_t ret = 0;
-
-	ret = splice(handle->pipes[0], NULL, handle->opfd, NULL, inlen, 0);
-	if (0 > ret)
-		return ret;
 	return read(handle->opfd, out, outlen);
 }
 
@@ -674,6 +678,7 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 {
 	struct iovec iov;
 	ssize_t ret = 0;
+	size_t processed = 0;
 	unsigned int bs = handle->info.blocksize;
 
 	if (!in || !inlen || !out || !outlen) {
@@ -691,7 +696,6 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 	}
 
 	iov.iov_base = (void*)(uintptr_t)in;
-	iov.iov_len = inlen;
 #if 0
 	/*
 	 * Using two syscalls with memcpy is faster than four syscalls
@@ -699,6 +703,7 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 	 */
 	/* TODO make heuristic when one syscall is slower than four syscalls */
 	if (inlen < (1<<15)) {
+		iov.iov_len = inlen;
 		ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_ENCRYPT,
 					      0);
 		iov.iov_base = (void*)(uintptr_t)out;
@@ -706,14 +711,24 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 		return _kcapi_common_recv_data(handle, &iov, 1);
 }
 #endif
+
 	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT, 0);
 	if (0 > ret)
 		return ret;
 
-	ret = _kcapi_common_vmsplice_data(handle, &iov, 1);
-	if (0 > ret)
-		return ret;
-	return _kcapi_common_splice_data(handle, inlen, out, outlen);
+	while (inlen) {
+		size_t datalen = (inlen > MAXPIPELEN) ? MAXPIPELEN : inlen;
+
+		iov.iov_len = datalen;
+		ret = _kcapi_common_vmsplice_data(handle, &iov, 1, datalen, 1);
+		if (0 > ret)
+			return ret;
+		processed += ret;
+		iov.iov_base = (void*)(uintptr_t)(in + processed);
+		inlen -= ret;
+	}
+
+	return _kcapi_common_read_data(handle, out, outlen);
 }
 
 /**
@@ -737,6 +752,7 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 {
 	struct iovec iov;
 	ssize_t ret = 0;
+	size_t processed = 0;
 
 	if (!in || !inlen || !out || !outlen) {
 		fprintf(stderr,
@@ -760,7 +776,6 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 	}
 
 	iov.iov_base = (void*)(uintptr_t)in;
-	iov.iov_len = inlen;
 #if 0
 	/*
 	 * Using two syscalls with memcpy is faster than four syscalls
@@ -768,6 +783,7 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 	 */
 	/* TODO make heuristic when one syscall is slower than four syscalls */
 	if (inlen < (1<<15)) {
+		iov.iov_len = inlen;
 		ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_DECRYPT,
 					      0);
 		iov.iov_base = (void*)(uintptr_t)out;
@@ -775,14 +791,24 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 		return _kcapi_common_recv_data(handle, &iov, 1);
 	}
 #endif
+
 	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_DECRYPT, 0);
 	if (0 > ret)
 		return ret;
 
-	ret = _kcapi_common_vmsplice_data(handle, &iov, 1);
-	if (0 > ret)
-		return ret;
-	return _kcapi_common_splice_data(handle, inlen, out, outlen);
+	while (inlen) {
+		size_t datalen = (inlen > MAXPIPELEN) ? MAXPIPELEN : inlen;
+
+		iov.iov_len = datalen;
+		ret = _kcapi_common_vmsplice_data(handle, &iov, 1, datalen, 1);
+		if (0 > ret)
+			return ret;
+		processed += ret;
+		iov.iov_base = (void*)(uintptr_t)(in + processed);
+		inlen -= ret;
+	}
+
+	return _kcapi_common_read_data(handle, out, outlen);
 }
 
 /**
@@ -1115,17 +1141,17 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 		iov[1].iov_base = (void*)(uintptr_t)in;
 		iov[1].iov_len = inlen;
 		len += inlen;
-		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 2);
+		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 2, len, 0);
 	} else {
 		iov[0].iov_base = (void*)(uintptr_t)in;
 		iov[0].iov_len = inlen;
 		len = inlen;
-		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 1);
+		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 1, len, 0);
 	}
 	if (0 > ret)
 		return ret;
 
-	ret = _kcapi_common_splice_data(handle, len, out, outlen);
+	ret = _kcapi_common_read_data(handle, out, outlen);
 	if ((ret < (ssize_t)handle->aead.taglen))
 		return -E2BIG;
 
@@ -1263,7 +1289,7 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 		iov[2].iov_base = (void*)(uintptr_t)tag;
 		iov[2].iov_len = handle->aead.taglen;
 		len += handle->aead.taglen;
-		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 3);
+		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 3, len, 0);
 	} else {
 		iov[0].iov_base = (void*)(uintptr_t)in;
 		iov[0].iov_len = inlen;
@@ -1271,12 +1297,12 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 		iov[1].iov_base = (void*)(uintptr_t)tag;
 		iov[1].iov_len = handle->aead.taglen;
 		len += handle->aead.taglen;
-		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 2);
+		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 2, len, 0);
 	}
 	if (0 > ret)
 		return ret;
 
-	return _kcapi_common_splice_data(handle, len, out, outlen);
+	return _kcapi_common_read_data(handle, out, outlen);
 }
 
 /**
@@ -1697,6 +1723,7 @@ ssize_t kcapi_md_digest(struct kcapi_handle *handle,
 {
 	struct iovec iov;
 	ssize_t ret = 0;
+	size_t processed = 0;
 
 	if (!out || !outlen) {
 		fprintf(stderr,
@@ -1713,7 +1740,8 @@ ssize_t kcapi_md_digest(struct kcapi_handle *handle,
 	}
 
 	/* zero buffer length cannot be handled via splice */
-	if(!inlen) {
+	/* TODO check that heuristic for sendmsg is appropriate */
+	if(inlen == 0 /* < (1<<15) */) {
 		if (_kcapi_md_update(handle, in, inlen))
 			return -EIO;
 		return _kcapi_md_final(handle, out, outlen);
@@ -1721,12 +1749,19 @@ ssize_t kcapi_md_digest(struct kcapi_handle *handle,
 
 	/* normal zero copy */
 	iov.iov_base = (void*)(uintptr_t)in;
-	iov.iov_len = inlen;
 
-	ret = _kcapi_common_vmsplice_data(handle, &iov, 1);
-	if (0 > ret)
-		return ret;
-	return _kcapi_common_splice_data(handle, inlen, out, outlen);
+	while (inlen) {
+		size_t datalen = (inlen > MAXPIPELEN) ? MAXPIPELEN : inlen;
+
+		iov.iov_len = datalen;
+		ret = _kcapi_common_vmsplice_data(handle, &iov, 1, datalen, 1);
+		if (0 > ret)
+			return ret;
+		processed += ret;
+		iov.iov_base = (void*)(uintptr_t)(in + processed);
+		inlen -= ret;
+	}
+	return _kcapi_common_read_data(handle, out, outlen);
 }
 /**
  * kcapi_md_digestsize() - return the size of the message digest
