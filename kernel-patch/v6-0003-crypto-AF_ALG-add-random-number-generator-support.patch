@@ -1,6 +1,6 @@
-From de79bac46ac4fb0bd10e53f0901bbe056c6ccf30 Mon Sep 17 00:00:00 2001
+From 782f53433bd342dae605d7c4f40ffe2996516a14 Mon Sep 17 00:00:00 2001
 From: Stephan Mueller <smueller@chronox.de>
-Date: Tue, 23 Dec 2014 09:47:41 +0100
+Date: Thu, 25 Dec 2014 22:36:05 +0100
 Subject: [PATCH v6 3/4] crypto: AF_ALG: add random number generator support
 
 This patch adds the random number generator support for AF_ALG.
@@ -51,7 +51,7 @@ Signed-off-by: Stephan Mueller <smueller@chronox.de>
 
 diff --git a/crypto/algif_rng.c b/crypto/algif_rng.c
 new file mode 100644
-index 0000000..53a39dd
+index 0000000..91c06f5
 --- /dev/null
 +++ b/crypto/algif_rng.c
 @@ -0,0 +1,192 @@
@@ -143,7 +143,7 @@ index 0000000..53a39dd
 +	if (genlen < 0)
 +		return genlen;
 +
-+	err = memcpy_toiovec(msg->msg_iov, result, len);
++	err = memcpy_to_msg(msg, result, len);
 +	memzero_explicit(result, genlen);
 +
 +	return err ? err : len;
