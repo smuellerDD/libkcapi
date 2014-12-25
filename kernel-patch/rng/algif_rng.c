@@ -86,7 +86,7 @@ static int rng_recvmsg(struct kiocb *unused, struct socket *sock,
 	if (genlen < 0)
 		return genlen;
 
-	err = memcpy_toiovec(msg->msg_iov, result, len);
+	err = memcpy_to_msg(msg, result, len);
 	memzero_explicit(result, genlen);
 
 	return err ? err : len;
