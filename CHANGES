@@ -1,3 +1,13 @@
+Change 0.6.2:
+ * update all vmsplice invocations to consider the limitations of the pipe
+   buffer of 16 pages (the limitation in the kernel is enforced by
+   vmsplice_to_pipe setting nr_pages_max and splice_from_pipe_feed which
+   iterates over the available pipe->nrbufs) - this fixes message digests and
+   symmetric operations for input data larger than 16 pages; the AEAD
+   cipher contains a sanity check that the input data size is not too large --
+   thanks to Amit Uttamchandani <amit.uttam@gmail.com> for the bug report
+ * update aead/rng kernel pages to match 3.19-rc1
+
 Change 0.6.1:
  * fix compile error
 
@@ -22,13 +32,13 @@ Change 0.4.0:
 Change 0.3.0:
  * new kernel patch for AEAD/RNG interface
  * Support for updated AEAD kernel interface
- * Use of NETLINK_CRYPTO instead of getsockopt (code currently disabled due to a bug
-   in crypto/crypto_user.c -- see TODO)
+ * Use of NETLINK_CRYPTO instead of getsockopt (code currently disabled due to
+   a bug in crypto/crypto_user.c -- see TODO)
 
 Changes 0.2.1:
- * Add automation to generate nicely formatted guidance documents out of source code
-   comments. See README.md for make targets generating the respective guidance
-   documents.
+ * Add automation to generate nicely formatted guidance documents out of source
+   code comments. See README.md for make targets generating the respective
+   guidance documents.
 
 Changes 0.2.0:
  * Add kcapi_aead_[enc|dec]_* calls for non-aligned requests
