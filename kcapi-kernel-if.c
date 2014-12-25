@@ -60,10 +60,10 @@
 		      * require consumer to be updated (as long as this number
 		      * is zero, the API is not considered stable and can
 		      * change without a bump of the major version) */
-#define MINVERSION 6 /* API compatible, ABI may change, functional
+#define MINVERSION 7 /* API compatible, ABI may change, functional
 		      * enhancements only, consumer can be left unchanged if
 		      * enhancements are not considered */
-#define PATCHLEVEL 1 /* API / ABI compatible, no functional changes, no
+#define PATCHLEVEL 0 /* API / ABI compatible, no functional changes, no
 		      * enhancements, bug fixes only */
 
 /* remove once in if_alg.h */
@@ -184,16 +184,14 @@ static ssize_t _kcapi_common_send_data(struct kcapi_handle *handle,
 
 static ssize_t _kcapi_common_vmsplice_data(struct kcapi_handle *handle,
 					   struct iovec *iov, size_t iovlen,
-					   size_t inlen, int more)
+					   size_t inlen, unsigned int flags)
 {
 	ssize_t ret = 0;
 
-	ret = vmsplice(handle->pipes[1], iov, iovlen,
-		       more ? SPLICE_F_GIFT|SPLICE_F_MORE : SPLICE_F_GIFT);
+	ret = vmsplice(handle->pipes[1], iov, iovlen, SPLICE_F_GIFT|flags);
 	if (0 > ret)
 		return ret;
-	return splice(handle->pipes[0], NULL, handle->opfd, NULL, inlen,
-		      more ? SPLICE_F_MORE : 0);
+	return splice(handle->pipes[0], NULL, handle->opfd, NULL, inlen, flags);
 }
 
 static ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
@@ -720,7 +718,8 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 		size_t datalen = (inlen > MAXPIPELEN) ? MAXPIPELEN : inlen;
 
 		iov.iov_len = datalen;
-		ret = _kcapi_common_vmsplice_data(handle, &iov, 1, datalen, 1);
+		ret = _kcapi_common_vmsplice_data(handle, &iov, 1, datalen,
+						  SPLICE_F_MORE);
 		if (0 > ret)
 			return ret;
 		processed += ret;
@@ -800,7 +799,8 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 		size_t datalen = (inlen > MAXPIPELEN) ? MAXPIPELEN : inlen;
 
 		iov.iov_len = datalen;
-		ret = _kcapi_common_vmsplice_data(handle, &iov, 1, datalen, 1);
+		ret = _kcapi_common_vmsplice_data(handle, &iov, 1, datalen,
+						  SPLICE_F_MORE);
 		if (0 > ret)
 			return ret;
 		processed += ret;
@@ -1131,6 +1131,10 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 	iov[0].iov_len = outlen;
 	ret = _kcapi_common_recv_data(handle, &iov[0], 1);
 #endif
+	if (handle->aead.assoclen + inlen > MAXPIPELEN) {
+		fprintf(stderr, "AEAD Decryption: input data exceeds maximum allowed size of %lu\n",
+			MAXPIPELEN);
+	}
 	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT, 0);
 	if (0 > ret)
 		return ret;
@@ -1276,6 +1280,10 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 	iov[0].iov_len = outlen;
 	ret = _kcapi_common_recv_data(handle, &iov[0], 1);
 #endif
+	if (handle->aead.assoclen + inlen + handle->aead.taglen > MAXPIPELEN) {
+		fprintf(stderr, "AEAD Decryption: input data exceeds maximum allowed size of %lu\n",
+			MAXPIPELEN);
+	}
 	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_DECRYPT, 0);
 	if (0 > ret)
 		return ret;
@@ -1754,7 +1762,8 @@ ssize_t kcapi_md_digest(struct kcapi_handle *handle,
 		size_t datalen = (inlen > MAXPIPELEN) ? MAXPIPELEN : inlen;
 
 		iov.iov_len = datalen;
-		ret = _kcapi_common_vmsplice_data(handle, &iov, 1, datalen, 1);
+		ret = _kcapi_common_vmsplice_data(handle, &iov, 1, datalen,
+						  SPLICE_F_MORE);
 		if (0 > ret)
 			return ret;
 		processed += ret;
