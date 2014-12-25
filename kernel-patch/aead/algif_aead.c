@@ -257,9 +257,9 @@ static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
 			sg = sgl->sg + sgl->cur - 1;
 			len = min_t(unsigned long, len,
 				    PAGE_SIZE - sg->offset - sg->length);
-			err = memcpy_fromiovec(page_address(sg_page(sg)) +
-					       sg->offset + sg->length,
-					       msg->msg_iov, len);
+			err = memcpy_from_msg(page_address(sg_page(sg)) +
+					      sg->offset + sg->length,
+					      msg, len);
 			if (err)
 				goto unlock;
 
@@ -302,8 +302,8 @@ static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
 			if (!sg_page(sg))
 				goto unlock;
 
-			err = memcpy_fromiovec(page_address(sg_page(sg)),
-					       msg->msg_iov, plen);
+			err = memcpy_from_msg(page_address(sg_page(sg)),
+					      msg, plen);
 			if (err) {
 				__free_page(sg_page(sg));
 				sg_assign_page(sg, NULL);
@@ -401,7 +401,7 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 	 * Require exactly one IOV block as the AEAD operation is a one shot
 	 * due to the authentication tag.
 	 */
-	if (msg->msg_iovlen != 1)
+	if (msg->msg_iter.nr_segs != 1)
 		return -ENOMSG;
 
 	lock_sock(sk);
@@ -450,10 +450,11 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 	}
 
 	/* ensure output buffer is sufficiently large */
-	if (msg->msg_iov->iov_len < outlen)
+	if (msg->msg_iter.iov->iov_len < outlen)
 		goto unlock;
 
-	outlen = af_alg_make_sg(&ctx->rsgl, msg->msg_iov->iov_base, outlen, 1);
+	outlen = af_alg_make_sg(&ctx->rsgl, msg->msg_iter.iov->iov_base,
+				outlen, 1);
 	err = outlen;
 	if (err < 0)
 		goto unlock;
