@@ -194,6 +194,12 @@ static inline ssize_t _kcapi_common_vmsplice_data(struct kcapi_handle *handle,
 {
 	ssize_t ret = 0;
 
+	if (inlen > MAXPIPELEN) {
+		fprintf(stderr, "Splice operation: input data exceeds maximum allowed size of %lu\n",
+			MAXPIPELEN);
+		return -E2BIG;
+	}
+
 	ret = vmsplice(handle->pipes[1], iov, iovlen, SPLICE_F_GIFT|flags);
 	if (0 > ret)
 		return ret;
@@ -1147,11 +1153,6 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 	iov[0].iov_len = outlen;
 	ret = _kcapi_common_recv_data(handle, &iov[0], 1);
 #endif
-	if (handle->aead.assoclen + inlen > MAXPIPELEN) {
-		fprintf(stderr, "AEAD Decryption: input data exceeds maximum allowed size of %lu\n",
-			MAXPIPELEN);
-		return -E2BIG;
-	}
 	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT,
 				      MSG_MORE);
 	if (0 > ret)
@@ -1298,11 +1299,6 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 	iov[0].iov_len = outlen;
 	ret = _kcapi_common_recv_data(handle, &iov[0], 1);
 #endif
-	if (handle->aead.assoclen + inlen + handle->aead.taglen > MAXPIPELEN) {
-		fprintf(stderr, "AEAD Decryption: input data exceeds maximum allowed size of %lu\n",
-			MAXPIPELEN);
-		return -E2BIG;
-	}
 	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_DECRYPT,
 				      MSG_MORE);
 	if (0 > ret)
