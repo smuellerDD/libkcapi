@@ -11,7 +11,6 @@
  * under the terms of the GNU General Public License as published by the Free
  * Software Foundation; either version 2 of the License, or (at your option)
  * any later version.
- *
  */
 
 #include <crypto/scatterwalk.h>
@@ -60,24 +59,6 @@ static inline int aead_sndbuf(struct sock *sk)
 static inline bool aead_writable(struct sock *sk)
 {
 	return PAGE_SIZE <= aead_sndbuf(sk);
-}
-
-static inline bool aead_sufficient_data(struct aead_ctx *ctx)
-{
-	unsigned as = crypto_aead_authsize(crypto_aead_reqtfm(&ctx->aead_req));
-
-	return (ctx->used >= (ctx->aead_assoclen + (ctx->enc ?: as)));
-}
-static inline bool aead_readable(struct aead_ctx *ctx)
-{
-	/*
-	 * Ensure that assoc data is present, the plaintext / ciphertext
-	 * is non-zero and that the authentication tag is also present
-	 * in case of a decryption operation.
-	 *
-	 * Also, wait until all data is received before processing.
-	 */
-	return (aead_sufficient_data(ctx) && !ctx->more);
 }
 
 static void aead_put_sgl(struct sock *sk)
@@ -163,7 +144,7 @@ static int aead_wait_for_data(struct sock *sk, unsigned flags)
 			break;
 		prepare_to_wait(sk_sleep(sk), &wait, TASK_INTERRUPTIBLE);
 		timeout = MAX_SCHEDULE_TIMEOUT;
-		if (sk_wait_event(sk, &timeout, aead_readable(ctx))) {
+		if (sk_wait_event(sk, &timeout, !ctx->more)) {
 			err = 0;
 			break;
 		}
@@ -181,7 +162,7 @@ static void aead_data_wakeup(struct sock *sk)
 	struct aead_ctx *ctx = ask->private;
 	struct socket_wq *wq;
 
-	if (!aead_readable(ctx))
+	if (ctx->more)
 		return;
 
 	rcu_read_lock();
@@ -420,7 +401,7 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 	*	AEAD decryption output: plaintext
 	*/
 
-	if (!aead_readable(ctx)) {
+	if (ctx->more) {
 		err = aead_wait_for_data(sk, flags);
 		if (err)
 			goto unlock;
@@ -428,9 +409,7 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 
 	used = ctx->used;
 
-	err = -ENOMEM;
-	if (!aead_sufficient_data(ctx))
-		goto unlock;
+	err = -EINVAL;
 	/*
 	 * The cipher operation input data is reduced by the associated data
 	 * length as this data is processed separately later on.
@@ -518,7 +497,7 @@ static unsigned int aead_poll(struct file *file, struct socket *sock,
 	sock_poll_wait(file, sk_sleep(sk), wait);
 	mask = 0;
 
-	if (aead_readable(ctx))
+	if (!ctx->more)
 		mask |= POLLIN | POLLRDNORM;
 
 	if (aead_writable(sk))
