@@ -23,7 +23,7 @@ depending on the encryption type. The code is provided with comments
 explaining when and how that operation is performed.
 
 A fully working example using all aspects of AEAD is provided at
-http://www.chronox.de/libkcapi.htm
+http://www.chronox.de/libkcapi.html
 
 Signed-off-by: Stephan Mueller <smueller@chronox.de>
 ---
