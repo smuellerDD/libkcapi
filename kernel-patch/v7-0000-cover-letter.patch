@@ -1,0 +1,118 @@
+From 076df6771a8d6dc61e802dd5c7d6d8d85655f683 Mon Sep 17 00:00:00 2001
+From: Stephan Mueller <smueller@chronox.de>
+Date: Fri, 2 Jan 2015 15:37:16 +0100
+Subject: [PATCH v7 0/2] crypto: AF_ALG: add AEAD and RNG support
+
+Hi,
+
+This patch set adds AEAD and RNG support to the AF_ALG interface
+exported by the kernel crypto API. By extending AF_ALG with AEAD and RNG
+support, all cipher types the kernel crypto API allows access to are
+now accessible from userspace.
+
+Both, AEAD and RNG implementations are stand-alone and do not depend
+other AF_ALG interfaces (like hash or skcipher).
+
+The AEAD implementation uses the same approach as provided with
+skcipher by offering the following interfaces:
+
+	* sendmsg and recvmsg interfaces allowing multiple
+	  invocations supporting a threaded user space. To support
+	  multi-threaded user space, kernel-side buffering
+	  is implemented similarly to skcipher.
+
+	* splice / vmsplice interfaces allowing a zero-copy
+	  invocation
+
+The RNG interface only implements the recvmsg interface as
+zero-copy is not applicable.
+
+The new AEAD and RNG interfaces are fully tested with the test application
+provided at [1]. That test application exercises all newly added user space
+interfaces. The testing covers:
+
+	* use of the sendmsg/recvmsg interface
+
+	* use of the splice / vmsplice interface
+
+	* invocation of all AF_ALG types (aead, rng, skcipher, hash)
+
+	* using all types of operation (encryption, decryption, keyed MD,
+	  MD, random numbers, AEAD decryption with positive and negative
+	  authentication verification)
+
+	* stress testing by running all tests for 30 minutes in an
+	  endless loop
+
+	* test execution on 64 bit and 32 bit
+
+[1] http://www.chronox.de/libkcapi.html
+
+Changes v2:
+* rebase to current cryptodev-2.6 tree
+* use memzero_explicit to zeroize AEAD associated data
+* use sizeof for determining length of AEAD associated data
+* update algif_rng.c covering all suggestions from Daniel Borkmann
+  <dborkman@redhat.com>
+* addition of patch 9: add digestsize interface for hashes
+* addition of patch to update documentation covering the userspace interface
+* change numbers of getsockopt options: separate them from sendmsg interface
+  definitions
+
+Changes v3:
+* remove getsockopt interface
+* AEAD: associated data is set prepended to the plain/ciphertext
+* AEAD: allowing arbitrary associated data lengths
+* remove setkey patch as protection was already in the existing code
+
+Changes v4:
+* stand-alone implementation of AEAD
+* testing of all interfaces offered by AEAD
+* stress testing of AEAD and RNG
+
+Changes v5:
+* AEAD: add outer while(size) loop in aead_sendmsg to ensure all data is
+  copied into the kernel (reporter Herbert Xu)
+* AEAD: aead_sendmsg bug fix: change size -= len; to size -= plen;
+* AF_ALG / AEAD: add aead_setauthsize and associated extension to
+  struct af_alg_type as well as alg_setsockopt (reporter Herbert Xu)
+* RNG: rng_recvmsg: use 128 byte stack variable for output of RNG instead
+  of ctx->result (reporter Herbert Xu)
+* RNG / AF_ALG: allow user space to seed RNG via setsockopt
+* RNG: rng_recvmsg bug fix: use genlen as result variable for
+  crypto_rng_get_bytes as previously no negative errors were obtained
+* AF_ALG: alg_setop: zeroize buffer before free
+
+Changes v6:
+* AEAD/RNG: port to 3.19-rc1 with the iov_iter handling
+* RNG: use the setkey interface to obtain the seed and drop the patch adding
+  a separate reseeding interface
+* extract the zeroization patch for alg_setkey into a stand-alone patch
+  submission
+* fix bug in aead_sufficient_data (reporter Herbert Xu)
+* testing of all interfaces with test application provided with libkcapi version
+  0.6.2
+
+Changes v7:
+* AEAD: aead_recvmsg: change error code from ENOMEM to EINVAL
+* AEAD: drop aead_readable/aead_sufficient_data and only use ctx->more to decide
+  whether the read side shall become active. This change requires that the
+  patch for crypto_aead_decrypt ensuring that the ciphertext contains the
+  authentication tag was added -- see https://lkml.org/lkml/2014/12/30/200.
+  Otherwise, user space can trigger a kernel crash.
+* RNG: patch dropped as it was applied
+* AEAD: port Kconfig/Makefile patch forward to current code base
+
+Stephan Mueller (2):
+  crypto: AF_ALG: add AEAD support
+  crypto: AF_ALG: enable AEAD interface compilation
+
+ crypto/Kconfig      |   9 +
+ crypto/Makefile     |   1 +
+ crypto/algif_aead.c | 631 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 641 insertions(+)
+ create mode 100644 crypto/algif_aead.c
+
+-- 
+2.1.0
+
