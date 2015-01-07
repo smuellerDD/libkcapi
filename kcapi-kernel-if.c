@@ -63,7 +63,7 @@
 #define MINVERSION 6 /* API compatible, ABI may change, functional
 		      * enhancements only, consumer can be left unchanged if
 		      * enhancements are not considered */
-#define PATCHLEVEL 2 /* API / ABI compatible, no functional changes, no
+#define PATCHLEVEL 3 /* API / ABI compatible, no functional changes, no
 		      * enhancements, bug fixes only */
 
 /* remove once in if_alg.h */
@@ -203,7 +203,10 @@ static inline ssize_t _kcapi_common_vmsplice_data(struct kcapi_handle *handle,
 	ret = vmsplice(handle->pipes[1], iov, iovlen, SPLICE_F_GIFT|flags);
 	if (0 > ret)
 		return ret;
-	return splice(handle->pipes[0], NULL, handle->opfd, NULL, inlen, flags);
+	if ((size_t)ret != inlen)
+		fprintf(stderr, "vmsplice: not all data received by kernel (data recieved: %ld -- data sent: %lu)\n",
+			(long)ret, (unsigned long)inlen);
+	return splice(handle->pipes[0], NULL, handle->opfd, NULL, ret, flags);
 }
 
 static inline ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
@@ -1113,12 +1116,6 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 	ssize_t ret = 0;
 	size_t len = 0;
 
-	if (!in || !inlen || !out || !outlen || !handle->aead.taglen) {
-		fprintf(stderr,
-			"AEAD Encryption: Empty plaintext buffer, ciphertext buffer or zero tag length provided\n");
-		return -EINVAL;
-	}
-
 	/* require properly sized output data size */
 	if (outlen < _kcapi_aead_encrypt_outlen(handle, inlen,
 						handle->aead.taglen) ) {
@@ -1256,12 +1253,6 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 	ssize_t ret = 0;
 	size_t len = 0;
 	unsigned int bs = handle->info.blocksize;
-
-	if (!in || !inlen || !out || !outlen || !tag || !handle->aead.taglen) {
-		fprintf(stderr,
-			"AEAD Decryption: Empty plaintext buffer, ciphertext buffer, or tag buffer provided\n");
-		return -EINVAL;
-	}
 
 	/* require properly sized output data size */
 	if (outlen < _kcapi_aead_decrypt_outlen(handle, inlen)) {
