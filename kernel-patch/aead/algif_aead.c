@@ -61,6 +61,13 @@ static inline bool aead_writable(struct sock *sk)
 	return PAGE_SIZE <= aead_sndbuf(sk);
 }
 
+static inline bool aead_sufficient_data(struct aead_ctx *ctx)
+{
+	unsigned as = crypto_aead_authsize(crypto_aead_reqtfm(&ctx->aead_req));
+
+	return (ctx->used >= (ctx->aead_assoclen + (ctx->enc ? 0 : as)));
+}
+
 static void aead_put_sgl(struct sock *sk)
 {
 	struct alg_sock *ask = alg_sk(sk);
@@ -209,13 +216,6 @@ static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
 
 		if (con.iv && con.iv->ivlen != ivsize)
 			return -EINVAL;
-
-		if (!con.aead_assoclen)
-			return -EINVAL;
-
-		/* aead_recvmsg limits the maximum AD size to one page */
-		if (con.aead_assoclen > PAGE_SIZE)
-			return -E2BIG;
 	}
 
 	lock_sock(sk);
@@ -267,16 +267,16 @@ static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
 		}
 
 		len = min_t(unsigned long, size, aead_sndbuf(sk));
-		while (len && sgl->cur < ALG_MAX_PAGES) {
+		while (len) {
 			int plen = 0;
-
-			sg = sgl->sg + sgl->cur;
-			plen = min_t(int, len, PAGE_SIZE);
 
 			if (sgl->cur >= ALG_MAX_PAGES) {
 				err = -E2BIG;
 				goto unlock;
 			}
+
+			sg = sgl->sg + sgl->cur;
+			plen = min_t(int, len, PAGE_SIZE);
 
 			sg_assign_page(sg, alloc_page(GFP_KERNEL));
 			err = -ENOMEM;
@@ -304,12 +304,14 @@ static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
 	err = 0;
 
 	ctx->more = msg->msg_flags & MSG_MORE;
+	if (!ctx->more && !aead_sufficient_data(ctx))
+		err = -EINVAL;
 
 unlock:
 	aead_data_wakeup(sk);
 	release_sock(sk);
 
-	return copied ?: err;
+	return err ?: copied;
 }
 
 static ssize_t aead_sendpage(struct socket *sock, struct page *page,
@@ -353,6 +355,8 @@ static ssize_t aead_sendpage(struct socket *sock, struct page *page,
 
 done:
 	ctx->more = flags & MSG_MORE;
+	if (!ctx->more && !aead_sufficient_data(ctx))
+		err = -EINVAL;
 
 unlock:
 	aead_data_wakeup(sk);
@@ -362,7 +366,7 @@ unlock:
 }
 
 static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
-			    struct msghdr *msg, size_t ignored, int flags)
+			struct msghdr *msg, size_t ignored, int flags)
 {
 	struct sock *sk = sock->sk;
 	struct alg_sock *ask = alg_sk(sk);
@@ -371,7 +375,7 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 	unsigned as = crypto_aead_authsize(crypto_aead_reqtfm(&ctx->aead_req));
 	struct aead_sg_list *sgl = &ctx->tsgl;
 	struct scatterlist *sg = sgl->sg;
-	struct scatterlist assoc;
+	struct scatterlist assoc[ALG_MAX_PAGES];
 	size_t assoclen = 0;
 	unsigned int i = 0;
 	int err = -EAGAIN;
@@ -410,6 +414,19 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 	used = ctx->used;
 
 	err = -EINVAL;
+
+	/*
+	 * Make sure sufficient data is present -- note, the same check is
+	 * is also present in sendmsg/sendpage. The checks in sendpage/sendmsg
+	 * shall provide an information to the data sender that something is
+	 * wrong, but they are irrelevant to maintain the kernel integrity.
+	 * We need this check here too in case user space decides to not honor
+	 * the error message in sendmsg/sendpage and still call recvmsg. This
+	 * check here protects the kernel integrity.
+	 */
+	if (!aead_sufficient_data(ctx))
+		goto unlock;
+
 	/*
 	 * The cipher operation input data is reduced by the associated data
 	 * length as this data is processed separately later on.
@@ -439,30 +456,45 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 		goto unlock;
 
 	err = -EINVAL;
-	/*
-	 * first chunk of input is AD -- one scatterlist entry is one page,
-	 * and we process only one scatterlist, the maximum size of AD is
-	 * one page
-	 */
-	sg_init_table(&assoc, 1);
-	sg_set_page(&assoc, sg_page(sg), ctx->aead_assoclen, sg->offset);
-	aead_request_set_assoc(&ctx->aead_req, &assoc, ctx->aead_assoclen);
-
-	/* point sg to cipher/plaintext start */
+	sg_init_table(assoc, ALG_MAX_PAGES);
 	assoclen = ctx->aead_assoclen;
+	/*
+	 * Split scatterlist into two: first part becomes AD, second part
+	 * is plaintext / ciphertext. The first part is assigned to assoc
+	 * scatterlist. When this loop finishes, sg points to the start of the
+	 * plaintext / ciphertext.
+	 */
 	for(i = 0; i < ctx->tsgl.cur; i++) {
 		sg = sgl->sg + i;
 		if (sg->length <= assoclen) {
+			/* AD is larger than one page */
+			sg_set_page(assoc + i, sg_page(sg),
+				    sg->length, sg->offset);
 			assoclen -= sg->length;
 			if (i >= ctx->tsgl.cur)
 				goto unlock;
+		} else if (!assoclen) {
+			/* current page is to start of plaintext / ciphertext */
+			if (i)
+				/* AD terminates at page boundary */
+				sg_mark_end(assoc + i - 1);
+			else
+				/* AD size is zero */
+				sg_mark_end(assoc);
+			break;
 		} else {
+			/* AD does not terminate at page boundary */
+			sg_set_page(assoc + i, sg_page(sg),
+				    assoclen, sg->offset);
+			sg_mark_end(assoc + i);
+			/* plaintext / ciphertext starts after AD */
 			sg->length -= assoclen;
 			sg->offset += assoclen;
 			break;
 		}
 	}
 
+	aead_request_set_assoc(&ctx->aead_req, assoc, ctx->aead_assoclen);
 	aead_request_set_crypt(&ctx->aead_req, sg, ctx->rsgl.sg, used, ctx->iv);
 
 	err = af_alg_wait_for_completion(ctx->enc ?
@@ -472,8 +504,12 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 
 	af_alg_free_sg(&ctx->rsgl);
 
-	if (err)
+	if (err) {
+		/* EBADMSG implies a valid cipher operation took place */
+		if (err == -EBADMSG)
+			aead_put_sgl(sk);
 		goto unlock;
+	}
 
 	aead_put_sgl(sk);
 
