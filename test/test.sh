@@ -278,6 +278,15 @@ AEAD_taglen_12="16"
 AEAD_assoc_12="2a809be85a67c605636ba009e47fde2068d1858c3c505e487e6ca3eb771cffce"
 AEAD_exp_12="85ae7dde17be19dbd126ac77a4a4d3689129ac7de57397a23e66b682308a90d2b103d7659f49e47d57bd3f4297c13ff8"
 
+AEAD_name_13="gcm(aes)"
+AEAD_enc_13="1"
+AEAD_msg_13=""
+AEAD_key_13="593ca25cb6e7d4dc754781ef898259be"
+AEAD_iv_13="34427393d6a50fb5d73d7ba5"
+AEAD_tag_13="e99834b370b6774b25abe7b3f09b08"
+AEAD_taglen_13="15"
+AEAD_assoc_13="8ec635f54062411e73c7824fe2399721"
+AEAD_exp_13=""
 
 ###########################################################################
 ###########################################################################
@@ -379,7 +388,7 @@ aeadfunc()
 {
 	stream=$1
 
-	AEADEXEC="1 2 3 4 5 6 7 8 9 10 11 12"
+	AEADEXEC="1 2 3 4 5 6 7 8 9 10 11 12 13"
 	for i in $AEADEXEC
 	do
 		eval AEAD_name=\$AEAD_name_$i
@@ -402,10 +411,10 @@ aeadfunc()
 		expected=""
 		if [ "$AEAD_enc" = 1  ]
 		then
-			result=$(./kcapi -x 2 $stream -e -c $AEAD_name $iv -k $AEAD_key -a $AEAD_assoc -p $AEAD_msg -l $AEAD_taglen)
+			result=$(./kcapi -x 2 $stream -e -c "$AEAD_name" $iv -k "$AEAD_key" -a "$AEAD_assoc" -p "$AEAD_msg" -l $AEAD_taglen)
 			expected="${AEAD_exp}${AEAD_tag}"
 		else
-			result=$(./kcapi -x 2 $stream -c $AEAD_name $iv -k $AEAD_key -a $AEAD_assoc -t $AEAD_tag -q $AEAD_msg)
+			result=$(./kcapi -x 2 $stream -c "$AEAD_name" $iv -k "$AEAD_key" -a "$AEAD_assoc" -t "$AEAD_tag" -q "$AEAD_msg")
 			expected="${AEAD_exp}"
 		fi
 
@@ -424,6 +433,28 @@ aeadfunc()
 			let failures=($failures+1)
 		fi
 	done
+
+	# AEAD long message test
+	expectedlong="5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d7587eb88661ed4648fb334e725af4c790350"
+	expectedshort="5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d7587959ce22d219ae8a94190ddb4eae7cd28"
+
+	if [ -n "$stream" ]
+	then
+		expected="${expectedlong}
+${expectedshort}"
+	else
+		expected=$expectedshort
+	fi
+	result=$(./kcapi -y $stream)
+	if [ x"$result" = x"$expected" ]
+	then
+		echo "AEAD $sout long AAD test passed"
+	else
+		echo "AEAD $sout long AAD test failed"
+		echo "Exp $exoected"
+		echo "Got $result"
+		let failures=($failures+1)
+	fi
 }
 
 auxtest()

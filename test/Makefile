@@ -3,7 +3,7 @@
 #
 
 CC=gcc
-CFLAGS +=-Wextra -Wall -pedantic -pie -fPIE -Wl,-z,relro,-z,now
+CFLAGS +=-Wextra -Wall -pedantic -Wno-overlength-strings -pie -fPIE -Wl,-z,relro,-z,now
 
 NAME := kcapi
 C_SRCS := $(wildcard *.c) $(wildcard ../*.c)
