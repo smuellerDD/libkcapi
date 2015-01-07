@@ -1,3 +1,13 @@
+Change 0.6.3:
+ * Remove several sanity checks in the API functions. This shall allow
+   the invocation of edge conditions (like no plaintext, but AAD and tag).
+   The kernel contains the appropriate sanity checks too. Therefore there
+   is no harm in removing them.
+ * Add testing of long AAD: fill 16 pages with 65504 bytes AAD and 32 bytes
+   plaintext (stream API) and 15 pages AAD plus 16th page holding plaintext
+   (one-shot API).
+ * Update AEAD interface to allow arbitrary AAD sizes.
+
 Change 0.6.2:
  * update all vmsplice invocations to consider the limitations of the pipe
    buffer of 16 pages (the limitation in the kernel is enforced by
