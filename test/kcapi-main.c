@@ -322,7 +322,7 @@ static void usage(void)
 	fprintf(stderr, "\t-e\tIf set, encrypt otherwise decrypt\n");
 	fprintf(stderr, "\t-c\tKernel Crypto API cipher name to be used for operation\n");
 	fprintf(stderr, "\t-p\tPlaintext used during encryption / message digest\n");
-	fprintf(stderr, "\t-q\tCiphertext used durign decryption\n");
+	fprintf(stderr, "\t-q\tCiphertext used during decryption\n");
 	fprintf(stderr, "\t-i\tIV used for operation\n");
 	fprintf(stderr, "\t-n\tNonce used for CCM operation\n");
 	fprintf(stderr, "\t-k\tSymmetric cipher key / HMAC key\n");
@@ -335,6 +335,8 @@ static void usage(void)
 	fprintf(stderr, "\t\t\t3 for message digest and keyed message digest\n");
 	fprintf(stderr, "\t-z\tAuxiliary tests of the API\n");
 	fprintf(stderr, "\t-s\tUse the stream API\n");
+	fprintf(stderr, "\t-y\tTest long AD with AEAD cipher\n");
+	fprintf(stderr, "\t-d\tNumber of execution loops\n");
 }
 
 enum type {
@@ -372,19 +374,27 @@ struct kcapi_cavs {
  * $ ./kcapi -x 1 -c "cbc(aes)" -k 3023b2418ea59a841757dcf07881b3a8def1c97b659a4dad  -i 95aa5b68130be6fcf5cabe7d9f898a41 -q c313c6b50145b69a77b33404cb422598
  * 836de0065f9d6f6a3dd2c53cd17e33a5
  */
-static int cavs_sym(struct kcapi_cavs *cavs_test)
+static int cavs_sym(struct kcapi_cavs *cavs_test, unsigned int loops)
 {
 	struct kcapi_handle handle;
+	unsigned char *outbuf = NULL;
+	size_t outbuflen = 0;
 	char *outhex = NULL;
 	int ret = -EINVAL;
+	unsigned int i = 0;
 
 	if (cavs_test->enc) {
 		if (!cavs_test->ptlen)
 			return -EINVAL;
+		outbuflen = cavs_test->ptlen;
 	} else {
 		if (!cavs_test->ctlen)
 			return -EINVAL;
+		outbuflen = cavs_test->ctlen;
 	}
+	outbuf = calloc(1, outbuflen);
+	if (!outbuf)
+		goto out;
 
 	if (kcapi_cipher_init(&handle, cavs_test->cipher)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
@@ -408,59 +418,67 @@ static int cavs_sym(struct kcapi_cavs *cavs_test)
 		}
 	}
 
-	if (cavs_test->enc) {
-		ret = kcapi_cipher_encrypt(&handle,
-					   cavs_test->pt, cavs_test->ptlen,
-					   cavs_test->pt, cavs_test->ptlen);
-	} else {
-		ret = kcapi_cipher_decrypt(&handle,
-					   cavs_test->ct, cavs_test->ctlen,
-					   cavs_test->ct, cavs_test->ctlen);
-	}
-	if (0 > ret)  {
-		printf("En/Decryption of buffer failed\n");
-		goto out;
-	}
+	for(i = 0; i < loops; i++) {
+		if (cavs_test->enc) {
+			ret = kcapi_cipher_encrypt(&handle,
+						cavs_test->pt, cavs_test->ptlen,
+						outbuf, outbuflen);
+		} else {
+			ret = kcapi_cipher_decrypt(&handle,
+						cavs_test->ct, cavs_test->ctlen,
+						outbuf, outbuflen);
+		}
+		if (0 > ret)  {
+			printf("En/Decryption of buffer failed\n");
+			goto out;
+		}
 
-	if (cavs_test->enc)
-		outhex = calloc(1, (cavs_test->ptlen) * 2 + 1);
-	else
-		outhex = calloc(1, (cavs_test->ctlen) * 2 + 1);
-	if (!outhex) {
-		ret = -ENOMEM;
-		goto out;
+		outhex = calloc(1, outbuflen * 2 + 1);
+		if (!outhex) {
+			ret = -ENOMEM;
+			goto out;
+		}
+		bin2hex(outbuf, outbuflen, outhex, outbuflen * 2 + 1, 0);
+		printf("%s\n", outhex);
+		free(outhex);
 	}
-	if (cavs_test->enc)
-		bin2hex(cavs_test->pt, cavs_test->ptlen,
-			outhex, (cavs_test->ptlen) * 2 + 1, 0);
-	else
-		bin2hex(cavs_test->ct, cavs_test->ctlen,
-			outhex, (cavs_test->ctlen) * 2 + 1, 0);
-	printf("%s\n", outhex);
-	free(outhex);
 
 	ret = 0;
 
 out:
 	kcapi_cipher_destroy(&handle);
+	if (outbuf)
+		free(outbuf);
 	return ret;
 }
 
-static int cavs_sym_stream(struct kcapi_cavs *cavs_test)
+static int cavs_sym_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 {
 	struct kcapi_handle handle;
 	char *outhex = NULL;
-	int ret = -EINVAL;
+	int ret = -ENOMEM;
+	unsigned char *outbuf = NULL;
+	size_t outbuflen = 0;
+	struct iovec outiov;
 	struct iovec iov;
+	unsigned int i = 0;
 
 	if (cavs_test->enc) {
 		if (!cavs_test->ptlen)
 			return -EINVAL;
+		outbuflen = cavs_test->ptlen;
 	} else {
 		if (!cavs_test->ctlen)
 			return -EINVAL;
+		outbuflen = cavs_test->ctlen;
 	}
+	outbuf = calloc(1, outbuflen);
+	if (!outbuf)
+		goto out;
+	outiov.iov_base = outbuf;
+	outiov.iov_len = outbuflen;
 
+	ret = -EINVAL;
 	if (kcapi_cipher_init(&handle, cavs_test->cipher)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
 		return -EINVAL;
@@ -493,45 +511,40 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test)
 		goto out;
 	}
 
-	if (cavs_test->enc) {
-		iov.iov_base = cavs_test->pt;
-		iov.iov_len = cavs_test->ptlen;
-	} else {
-		iov.iov_base = cavs_test->ct;
-		iov.iov_len = cavs_test->ctlen;
-	}
-	ret = kcapi_cipher_stream_update(&handle, &iov, 1);
-	if (0 > ret) {
-		printf("Sending of data failed\n");
-		goto out;
-	}
-	/* cipher operation on input buffer -- input will be overwritten */
-	ret = kcapi_cipher_stream_op(&handle, &iov, 1);
-	if (0 > ret) {
-		printf("Finalization and cipher operation failed\n");
-		goto out;
-	}
+	for(i = 0; i < loops; i++) {
+		if (cavs_test->enc) {
+			iov.iov_base = cavs_test->pt;
+			iov.iov_len = cavs_test->ptlen;
+		} else {
+			iov.iov_base = cavs_test->ct;
+			iov.iov_len = cavs_test->ctlen;
+		}
+		ret = kcapi_cipher_stream_update(&handle, &iov, 1);
+		if (0 > ret) {
+			printf("Sending of data failed\n");
+			goto out;
+		}
+		ret = kcapi_cipher_stream_op(&handle, &outiov, 1);
+		if (0 > ret) {
+			printf("Finalization and cipher operation failed\n");
+			goto out;
+		}
 
-	if (cavs_test->enc)
-		outhex = calloc(1, (cavs_test->ptlen) * 2 + 1);
-	else
-		outhex = calloc(1, (cavs_test->ctlen) * 2 + 1);
-	if (!outhex) {
-		ret = -ENOMEM;
-		goto out;
+		outhex = calloc(1, outbuflen * 2 + 1);
+		if (!outhex) {
+			ret = -ENOMEM;
+			goto out;
+		}
+		bin2hex(outbuf, outbuflen, outhex, outbuflen * 2 + 1, 0);
+		printf("%s\n", outhex);
+		free(outhex);
 	}
-	if (cavs_test->enc)
-		bin2hex(cavs_test->pt, cavs_test->ptlen,
-			outhex, (cavs_test->ptlen) * 2 + 1, 0);
-	else
-		bin2hex(cavs_test->ct, cavs_test->ctlen,
-			outhex, (cavs_test->ctlen) * 2 + 1, 0);
-	printf("%s\n", outhex);
-	free(outhex);
 
 	ret = 0;
 out:
 	kcapi_cipher_destroy(&handle);
+	if (outbuf)
+		free(outbuf);
 
 	return ret;
 }
@@ -562,7 +575,7 @@ out:
  * the kernel waits for more input data and a read will be blocked until the
  * AAD is supplied.
  */
-static int cavs_aead(struct kcapi_cavs *cavs_test)
+static int cavs_aead(struct kcapi_cavs *cavs_test, unsigned int loops)
 {
 	struct kcapi_handle handle;
 	unsigned char *outbuf = NULL;
@@ -572,6 +585,7 @@ static int cavs_aead(struct kcapi_cavs *cavs_test)
 	unsigned char *newiv = NULL;
 	size_t newivlen = 0;
 	int errsv = 0;
+	unsigned int i = 0;
 
 #if 0
 	if (cavs_test->enc) {
@@ -635,34 +649,36 @@ static int cavs_aead(struct kcapi_cavs *cavs_test)
 	}
 	kcapi_aead_setassoclen(&handle, cavs_test->assoclen);
 
-	if (cavs_test->enc)
-		ret = kcapi_aead_encrypt(&handle,
+	for (i = 0; i < loops; i++) {
+		if (cavs_test->enc)
+			ret = kcapi_aead_encrypt(&handle,
 					 cavs_test->pt, cavs_test->ptlen,
 					 cavs_test->assoc, outbuf, outbuflen);
-	else
-		ret = kcapi_aead_decrypt(&handle,
+		else
+			ret = kcapi_aead_decrypt(&handle,
 					 cavs_test->ct, cavs_test->ctlen,
 					 cavs_test->assoc, cavs_test->tag,
 					 outbuf, outbuflen);
-	errsv = errno;
-	if (0 > ret && EBADMSG != errsv) {
-		printf("Cipher operation of buffer failed: %d %d\n", errno, ret);
-		goto out;
-	}
+		errsv = errno;
+		if (0 > ret && EBADMSG != errsv) {
+			printf("Cipher operation of buffer failed: %d %d\n",
+			       errno, ret);
+			goto out;
+		}
 
-	if (EBADMSG == errsv) {
-		printf("EBADMSG\n");
-		ret = 0;
-		goto out;
+		if (EBADMSG == errsv) {
+			printf("EBADMSG\n");
+		} else {
+			outhex = calloc(1, (ret * 2 + 1));
+			if (!outhex) {
+				ret = -ENOMEM;
+				goto out;
+			}
+			bin2hex(outbuf, ret, outhex, ret * 2 + 1, 0);
+			printf("%s\n", outhex);
+			free(outhex);
+		}
 	}
-
-	outhex = calloc(1, (ret * 2 + 1));
-	if (!outhex) {
-		ret = -ENOMEM;
-		goto out;
-	}
-	bin2hex(outbuf, ret, outhex, ret * 2 + 1, 0);
-	printf("%s\n", outhex);
 
 	ret = 0;
 
@@ -672,12 +688,10 @@ out:
 		free(newiv);
 	if (outbuf)
 		free(outbuf);
-	if (outhex)
-		free(outhex);
 	return ret;
 }
 
-static int cavs_aead_stream(struct kcapi_cavs *cavs_test)
+static int cavs_aead_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 {
 	struct kcapi_handle handle;
 	unsigned char *outbuf = NULL;
@@ -689,6 +703,7 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test)
 	int errsv = 0;
 	struct iovec iov;
 	struct iovec outiov;
+	unsigned int i = 0;
 
 #if 0
 	if (cavs_test->enc) {
@@ -755,69 +770,78 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test)
 	}
 	kcapi_aead_setassoclen(&handle, cavs_test->assoclen);
 
-	iov.iov_base = cavs_test->assoc;
-	iov.iov_len = cavs_test->assoclen;
-	if (cavs_test->enc) {
-		/* send assoc with init call */
-		ret = kcapi_aead_stream_init_enc(&handle, &iov, 1);
-		if (0 > ret) {
-			printf("Initialization of cipher buffer failed\n");
-			goto out;
-		}
-		/* send plaintext with last call */
-		iov.iov_base = cavs_test->pt;
-		iov.iov_len = cavs_test->ptlen;
-		ret = kcapi_aead_stream_update_last(&handle, &iov, 1);
-		if (0 > ret) {
-			printf("Sending last update buffer failed\n");
-			goto out;
-		}
-		ret = kcapi_aead_stream_op(&handle, &outiov, 1);
-	} else {
-		/* send assoc with init call */
-		ret = kcapi_aead_stream_init_dec(&handle, &iov, 1);
-		if (0 > ret) {
-			printf("Initialization of cipher buffer failed\n");
-			goto out;
-		}
-		/* send plaintext with intermediary call */
-		iov.iov_base = cavs_test->ct;
-		iov.iov_len = cavs_test->ctlen;
-		ret = kcapi_aead_stream_update(&handle, &iov, 1);
-		if (0 > ret) {
-			printf("Sending update buffer failed\n");
-			goto out;
-		}
-		/* send tag with last send call */
-		iov.iov_base = cavs_test->tag;
-		iov.iov_len = cavs_test->taglen;
-		ret = kcapi_aead_stream_update_last(&handle, &iov, 1);
-		if (0 > ret) {
-			printf("Sending last update buffer failed\n");
-			goto out;
-		}
-		ret = kcapi_aead_stream_op(&handle, &outiov, 1);
-	}
-	errsv = errno;
-	if (0 > ret && EBADMSG != errsv) {
-		printf("Cipher operation of buffer failed: %d %d\n", errno, ret);
+	if (cavs_test->enc)
+		ret = kcapi_aead_stream_init_enc(&handle, NULL, 0);
+
+	else
+		ret = kcapi_aead_stream_init_dec(&handle, NULL, 0);
+	if (0 > ret) {
+		printf("Initialization of cipher buffer failed\n");
 		goto out;
 	}
 
-	if (EBADMSG == errsv) {
-		printf("EBADMSG\n");
-		ret = 0;
-		goto out;
-	}
+	for(i = 0; i < loops; i++) {
+		iov.iov_base = cavs_test->assoc;
+		iov.iov_len = cavs_test->assoclen;
+		if (cavs_test->enc) {
+			ret = kcapi_aead_stream_update(&handle, &iov, 1);
+			if (0 > ret) {
+				printf("Sending update buffer failed\n");
+				goto out;
+			}
+			/* send plaintext with last call */
+			iov.iov_base = cavs_test->pt;
+			iov.iov_len = cavs_test->ptlen;
+			ret = kcapi_aead_stream_update_last(&handle, &iov, 1);
+			if (0 > ret) {
+				printf("Sending last update buffer failed\n");
+				goto out;
+			}
+			ret = kcapi_aead_stream_op(&handle, &outiov, 1);
+		} else {
+			ret = kcapi_aead_stream_update(&handle, &iov, 1);
+			if (0 > ret) {
+				printf("Sending update buffer failed\n");
+				goto out;
+			}
+			/* send ciphertext with intermediary call */
+			iov.iov_base = cavs_test->ct;
+			iov.iov_len = cavs_test->ctlen;
+			ret = kcapi_aead_stream_update(&handle, &iov, 1);
+			if (0 > ret) {
+				printf("Sending update buffer failed\n");
+				goto out;
+			}
+			/* send tag with last send call */
+			iov.iov_base = cavs_test->tag;
+			iov.iov_len = cavs_test->taglen;
+			ret = kcapi_aead_stream_update_last(&handle, &iov, 1);
+			if (0 > ret) {
+				printf("Sending last update buffer failed\n");
+				goto out;
+			}
+			ret = kcapi_aead_stream_op(&handle, &outiov, 1);
+		}
+		errsv = errno;
+		if (0 > ret && EBADMSG != errsv) {
+			printf("Cipher operation of buffer failed: %d %d\n",
+			       errno, ret);
+			goto out;
+		}
 
-	outhex = calloc(1, (ret * 2 + 1));
-	if (!outhex) {
-		ret = -ENOMEM;
-		goto out;
+		if (EBADMSG == errsv) {
+			printf("EBADMSG\n");
+		} else {
+			outhex = calloc(1, (ret * 2 + 1));
+			if (!outhex) {
+				ret = -ENOMEM;
+				goto out;
+			}
+			bin2hex(outbuf, ret, outhex, ret * 2 + 1, 0);
+			printf("%s\n", outhex);
+			free(outhex);
+		}
 	}
-	bin2hex(outbuf, ret, outhex, ret * 2 + 1, 0);
-	printf("%s\n", outhex);
-
 	ret = 0;
 
 out:
@@ -826,12 +850,10 @@ out:
 		free(newiv);
 	if (outbuf)
 		free(outbuf);
-	if (outhex)
-		free(outhex);
 	return ret;
 }
 
-static int cavs_aead_large(int stream)
+static int cavs_aead_large(int stream, unsigned int loops)
 {
 	struct kcapi_cavs test;
 
@@ -888,11 +910,11 @@ static int cavs_aead_large(int stream)
 	 */
 
 	if (stream) {
-		ret = cavs_aead_stream(&test);
+		ret = cavs_aead_stream(&test, loops);
 		if (ret)
 			goto out;
 		test.assoclen -= 4096;
-		ret = cavs_aead_stream(&test);
+		ret = cavs_aead_stream(&test, loops);
 	} else {
 		/*
 		 * vmsplice: AAD must be at most 15 pages as otherwise the
@@ -904,7 +926,7 @@ static int cavs_aead_large(int stream)
 		 * AAD to 15 pages
 		 */
 		test.assoclen -= 4096;
-		ret = cavs_aead(&test);
+		ret = cavs_aead(&test, loops);
 	}
 out:
 	if (test.pt)
@@ -935,7 +957,7 @@ out:
  * $ ./kcapi -x 3 -c "hmac(sha1)" -k 6e77ebd479da794707bc6cde3694f552ea892dab -p  31b62a797adbff6b8a358d2b5206e01fee079de8cdfc4695138bba163b4efbf30127343e7fd4fbc696c3d38d8f27f57c024b5056f726ceeb4c31d98e57751ec8cbe8904ee0f9b031ae6a0c55da5e062475b3d7832191d4057643ef5fa446801d59a04693e573a8159cd2416b7bd39c7f0fe63c599365e04d596c05736beaab58
  * 7f204ea665666f5bd2b370e546d1b408005e4d85
  */
-static int cavs_hash(struct kcapi_cavs *cavs_test)
+static int cavs_hash(struct kcapi_cavs *cavs_test, unsigned int loops)
 {
 	struct kcapi_handle handle;
 	int rc = 0;
@@ -943,6 +965,7 @@ static int cavs_hash(struct kcapi_cavs *cavs_test)
 	unsigned char md[MAXMD];
 #define MAXMDHEX (MAXMD * 2 + 1)
 	char mdhex[MAXMDHEX];
+	unsigned int i = 0;
 
 	if (cavs_test->outlen > MAXMD)
 		return -EINVAL;
@@ -963,21 +986,24 @@ static int cavs_hash(struct kcapi_cavs *cavs_test)
 			return 1;
 		}
 	}
-	rc = kcapi_md_digest(&handle, cavs_test->pt, cavs_test->ptlen,
-			     md, cavs_test->outlen ? cavs_test->outlen : MAXMD);
-	if (0 > rc) {
-		printf("Message digest generation failed\n");
-		kcapi_md_destroy(&handle);
-		return 1;
+
+	for(i = 0; i < loops; i++) {
+		rc = kcapi_md_digest(&handle, cavs_test->pt, cavs_test->ptlen,
+			md, cavs_test->outlen ? cavs_test->outlen : MAXMD);
+		if (0 > rc) {
+			printf("Message digest generation failed\n");
+			kcapi_md_destroy(&handle);
+			return 1;
+		}
+		bin2hex(md, rc, mdhex, MAXMDHEX, 0);
+		printf("%s\n", mdhex);
 	}
 	kcapi_md_destroy(&handle);
 
-	bin2hex(md, rc, mdhex, MAXMDHEX, 0);
-	printf("%s\n", mdhex);
 	return 0;
 }
 
-static int cavs_hash_stream(struct kcapi_cavs *cavs_test)
+static int cavs_hash_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 {
 	struct kcapi_handle handle;
 	int rc = 0;
@@ -985,6 +1011,7 @@ static int cavs_hash_stream(struct kcapi_cavs *cavs_test)
 	unsigned char md[MAXMD];
 #define MAXMDHEX (MAXMD * 2 + 1)
 	char mdhex[MAXMDHEX];
+	unsigned int i = 0;
 
 	if (cavs_test->outlen > MAXMD)
 		return -EINVAL;
@@ -1005,22 +1032,25 @@ static int cavs_hash_stream(struct kcapi_cavs *cavs_test)
 			return 1;
 		}
 	}
-	if (kcapi_md_update(&handle, cavs_test->pt, cavs_test->ptlen)) {
-		printf("Hash update of buffer failed\n");
-		kcapi_md_destroy(&handle);
-		return 1;
-	}
-	rc = kcapi_md_final(&handle, md,
-			    cavs_test->outlen ? cavs_test->outlen : MAXMD);
-	if (0 > rc) {
-		printf("Hash final failed\n");
-		kcapi_md_destroy(&handle);
-		return 1;
+
+	for(i = 0; i < loops; i++) {
+		if (kcapi_md_update(&handle, cavs_test->pt, cavs_test->ptlen)) {
+			printf("Hash update of buffer failed\n");
+			kcapi_md_destroy(&handle);
+			return 1;
+		}
+		rc = kcapi_md_final(&handle, md,
+				cavs_test->outlen ? cavs_test->outlen : MAXMD);
+		if (0 > rc) {
+			printf("Hash final failed\n");
+			kcapi_md_destroy(&handle);
+			return 1;
+		}
+		bin2hex(md, rc, mdhex, MAXMDHEX, 0);
+		printf("%s\n", mdhex);
 	}
 	kcapi_md_destroy(&handle);
 
-	bin2hex(md, rc, mdhex, MAXMDHEX, 0);
-	printf("%s\n", mdhex);
 	return 0;
 }
 
@@ -1031,6 +1061,7 @@ int main(int argc, char *argv[])
 	int rc = 1;
 	int stream = 0;
 	int large = 0;
+	unsigned int loops = 1;
 	struct kcapi_cavs cavs_test;
 
 	memset(&cavs_test, 0, sizeof(struct kcapi_cavs));
@@ -1055,9 +1086,10 @@ int main(int argc, char *argv[])
 			{"aux", 0, 0, 0},
 			{"stream", 0, 0, 0},
 			{"largeinput", 0, 0, 0},
+			{"execloops", 0, 0, 0},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "ec:p:q:i:n:k:a:l:t:x:zsy", opts, &opt_index);
+		c = getopt_long(argc, argv, "ec:p:q:i:n:k:a:l:t:x:zsyd:", opts, &opt_index);
 		if(-1 == c)
 			break;
 		switch(c)
@@ -1159,6 +1191,9 @@ int main(int argc, char *argv[])
 			case 'y':
 				large = 1;
 				break;
+			case 'd':
+				loops = strtoul(optarg, NULL, 10);
+				break;
 
 			default:
 				usage();
@@ -1167,24 +1202,24 @@ int main(int argc, char *argv[])
 	}
 
 	if (large) {
-		rc = cavs_aead_large(stream);
+		rc = cavs_aead_large(stream, loops);
 	}
 	else if (SYM == cavs_test.type) {
 		if (stream)
-			rc = cavs_sym_stream(&cavs_test);
+			rc = cavs_sym_stream(&cavs_test, loops);
 		else
-			rc = cavs_sym(&cavs_test);
+			rc = cavs_sym(&cavs_test, loops);
 	}
 	else if (AEAD == cavs_test.type) {
 		if (stream)
-			rc = cavs_aead_stream(&cavs_test);
+			rc = cavs_aead_stream(&cavs_test, loops);
 		else
-			rc = cavs_aead(&cavs_test);
+			rc = cavs_aead(&cavs_test, loops);
 	} else if (HASH == cavs_test.type) {
 		if (stream)
-			rc = cavs_hash_stream(&cavs_test);
+			rc = cavs_hash_stream(&cavs_test, loops);
 		else
-			rc = cavs_hash(&cavs_test);
+			rc = cavs_hash(&cavs_test, loops);
 	} else
 		goto out;
 	if (rc)
