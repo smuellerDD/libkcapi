@@ -3,7 +3,10 @@
 #
 
 CC=gcc
-CFLAGS +=-Wextra -Wall -pedantic -Wno-overlength-strings -pie -fPIE -Wl,-z,relro,-z,now
+CFLAGS +=-Wextra -Wall -pedantic -Wno-overlength-strings -pie -fPIE -O2
+#Hardening
+CFLAGS +=-D_FORTIFY_SOURCE=2 -fstack-protector-strong -fwrapv --param ssp-buffer-size=4
+LDFLAGS +=-Wl,-z,relro,-z,now
 
 NAME := kcapi
 C_SRCS := $(wildcard *.c) $(wildcard ../*.c)

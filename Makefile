@@ -3,7 +3,10 @@
 #
 
 CC=gcc
-CFLAGS +=-Wextra -Wall -pedantic -fPIC -Wl,-z,relro,-z,now
+CFLAGS +=-Wextra -Wall -pedantic -fPIC -O2
+#Hardening
+CFLAGS +=-D_FORTIFY_SOURCE=2 -fstack-protector-strong -fwrapv --param ssp-buffer-size=4
+LDFLAGS +=-Wl,-z,relro,-z,now
 
 # Change as necessary
 PREFIX := /usr/local
