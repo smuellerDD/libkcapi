@@ -1,5 +1,5 @@
 /*
- * algif_aeadr: User-space interface for AEAD algorithms
+ * algif_aead: User-space interface for AEAD algorithms
  *
  * Copyright (C) 2014, Stephan Mueller <smueller@chronox.de>
  *
@@ -42,6 +42,7 @@ struct aead_ctx {
 	bool more;
 	bool merge;
 	bool enc;
+	bool trunc;
 
 	size_t aead_assoclen;
 	struct aead_request aead_req;
@@ -87,6 +88,7 @@ static void aead_put_sgl(struct sock *sk)
 	ctx->used = 0;
 	ctx->more = 0;
 	ctx->merge = 0;
+	ctx->trunc = 0;
 }
 
 static int aead_wait_for_wmem(struct sock *sk, unsigned flags)
@@ -234,6 +236,7 @@ static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
 		unsigned long len = size;
 		struct scatterlist *sg = NULL;
 
+		/* use the existing memory in an allocated page */
 		if (ctx->merge) {
 			sg = sgl->sg + sgl->cur - 1;
 			len = min_t(unsigned long, len,
@@ -261,11 +264,13 @@ static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
 			 * prevents a deadlock in user space.
 			 */
 			ctx->more = 0;
+			ctx->trunc = 1;
 			err = aead_wait_for_wmem(sk, msg->msg_flags);
 			if (err)
 				goto unlock;
 		}
 
+		/* allocate a new page */
 		len = min_t(unsigned long, size, aead_sndbuf(sk));
 		while (len) {
 			int plen = 0;
@@ -291,6 +296,7 @@ static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
 				goto unlock;
 			}
 
+			sg->offset = 0;
 			sg->length = plen;
 			len -= plen;
 			ctx->used += plen;
@@ -304,8 +310,10 @@ static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
 	err = 0;
 
 	ctx->more = msg->msg_flags & MSG_MORE;
-	if (!ctx->more && !aead_sufficient_data(ctx))
-		err = -EINVAL;
+	if (!ctx->more && !aead_sufficient_data(ctx)) {
+		aead_put_sgl(sk);
+		err = -EMSGSIZE;
+	}
 
 unlock:
 	aead_data_wakeup(sk);
@@ -339,6 +347,7 @@ static ssize_t aead_sendpage(struct socket *sock, struct page *page,
 	if (!aead_writable(sk)) {
 		/* see aead_sendmsg why more is set to 0 */
 		ctx->more = 0;
+		ctx->trunc = 1;
 		err = aead_wait_for_wmem(sk, flags);
 		if (err)
 			goto unlock;
@@ -355,8 +364,10 @@ static ssize_t aead_sendpage(struct socket *sock, struct page *page,
 
 done:
 	ctx->more = flags & MSG_MORE;
-	if (!ctx->more && !aead_sufficient_data(ctx))
-		err = -EINVAL;
+	if (!ctx->more && !aead_sufficient_data(ctx)) {
+		aead_put_sgl(sk);
+		err = -EMSGSIZE;
+	}
 
 unlock:
 	aead_data_wakeup(sk);
@@ -378,7 +389,7 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 	struct scatterlist assoc[ALG_MAX_PAGES];
 	size_t assoclen = 0;
 	unsigned int i = 0;
-	int err = -EAGAIN;
+	int err = -EINVAL;
 	unsigned long used = 0;
 	unsigned long outlen = 0;
 
@@ -412,8 +423,6 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 	}
 
 	used = ctx->used;
-
-	err = -EINVAL;
 
 	/*
 	 * Make sure sufficient data is present -- note, the same check is
@@ -504,6 +513,10 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 
 	af_alg_free_sg(&ctx->rsgl);
 
+	/* indicate userspace that we processed incomplete data */
+	if (ctx->trunc)
+		msg->msg_flags |= MSG_TRUNC;
+
 	if (err) {
 		/* EBADMSG implies a valid cipher operation took place */
 		if (err == -EBADMSG)
@@ -523,7 +536,7 @@ unlock:
 }
 
 static unsigned int aead_poll(struct file *file, struct socket *sock,
-				  poll_table *wait)
+			      poll_table *wait)
 {
 	struct sock *sk = sock->sk;
 	struct alg_sock *ask = alg_sk(sk);
