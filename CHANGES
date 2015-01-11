@@ -1,3 +1,8 @@
+Change 0.6.4:
+ * Update AEAD interface patch
+ * Add new test invoking cipher instance multiple times (-d flag of test
+   application)
+
 Change 0.6.3:
  * Remove several sanity checks in the API functions. This shall allow
    the invocation of edge conditions (like no plaintext, but AAD and tag).
