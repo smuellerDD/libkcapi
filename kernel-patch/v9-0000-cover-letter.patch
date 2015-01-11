@@ -127,6 +127,7 @@ Changes v9:
   and a recvmsg operation is forced, inform userspace about truncated operation
   via MSG_TRUNC
 * use -EMSGSIZE in case insufficient data was provided in sendmsg/sendpage
+* release all buffers in case insufficient data was provided in sendmsg/sendpage
 * bug fix in sendmsg: when a new page is allocated, reset sg->offset to 0 --
   the error is visible with the new tests in [1] when using the -d flag
   with the test application
