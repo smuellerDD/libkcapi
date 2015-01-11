@@ -467,6 +467,73 @@ auxtest()
 	fi
 }
 
+multipletest() {
+	stream=$1
+
+	sout="one shot"
+	if [ -n "$stream" ]
+	then
+		sout="stream"
+	fi
+
+	result=$(./kcapi $stream -d 2 -x 1 -e -c "cbc(aes)" -k 8d7dd9b0170ce0b5f2f8e1aa768e01e91da8bfc67fd486d081b28254c99eb423 -i 7fbc02ebf5b93322329df9bfccb635af -p 48981da18e4bb9ef7e2e3162d16b1910)
+	if [ -n "$stream" ]
+	then
+		#block chaining
+		expected="8b19050f66582cb7f7e4b6c873819b71
+08afa0eaa7de29bac7d903576b674c32"
+	else
+		expected="8b19050f66582cb7f7e4b6c873819b71
+8b19050f66582cb7f7e4b6c873819b71"
+	fi
+	if [ x"$expected" = x"$result" ]
+	then
+		echo "Symmetric cipher $sout multiple test passed"
+	else
+		echo "Symmetric cipher $sout multiple test failed"
+		echo "Exp $exoected"
+		echo "Got $result"
+		let failures=($failures+1)
+	fi
+
+	result=$(./kcapi $stream -d 4 -x 2 -c "ccm(aes)" -q 4edb58e8d5eb6bc711c43a6f3693daebde2e5524f1b55297abb29f003236e43d -t a7877c99 -n 674742abd0f5ba -k 2861fd0253705d7875c95ba8a53171b4 -a fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d)
+	# there is no block chaining effect here, because GCM/CCM initialize the
+	# counter part for each encryption operation to 1
+	expected="8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
+8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
+8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
+8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723"
+	if [ x"$expected" = x"$result" ]
+	then
+		echo "AEAD $sout multiple test passed"
+	else
+		echo "AEAD $sout multiple test failed"
+		echo "Exp $exoected"
+		echo "Got $result"
+		let failures=($failures+1)
+	fi
+
+	result=$(./kcapi -d 8 -x 3 -c "hmac(sha1)" -k 6e77ebd479da794707bc6cde3694f552ea892dab -p  31b62a797adbff6b8a358d2b5206e01fee079de8cdfc4695138bba163b4efbf30127343e7fd4fbc696c3d38d8f27f57c024b5056f726ceeb4c31d98e57751ec8cbe8904ee0f9b031ae6a0c55da5e062475b3d7832191d4057643ef5fa446801d59a04693e573a8159cd2416b7bd39c7f0fe63c599365e04d596c05736beaab58)
+	expected="7f204ea665666f5bd2b370e546d1b408005e4d85
+7f204ea665666f5bd2b370e546d1b408005e4d85
+7f204ea665666f5bd2b370e546d1b408005e4d85
+7f204ea665666f5bd2b370e546d1b408005e4d85
+7f204ea665666f5bd2b370e546d1b408005e4d85
+7f204ea665666f5bd2b370e546d1b408005e4d85
+7f204ea665666f5bd2b370e546d1b408005e4d85
+7f204ea665666f5bd2b370e546d1b408005e4d85"
+	if [ x"$expected" = x"$result" ]
+	then
+		echo "Hash $sout multiple test passed"
+	else
+		echo "Hash $sout multiple test failed"
+		echo "Exp $exoected"
+		echo "Got $result"
+		let failures=($failures+1)
+	fi
+
+}
+
 hashfunc
 hashfunc -s
 symfunc
@@ -474,4 +541,6 @@ symfunc -s
 aeadfunc
 aeadfunc -s
 auxtest
+multipletest
+multipletest -s
 exit $failures
