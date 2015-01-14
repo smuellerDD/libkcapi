@@ -473,7 +473,7 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 	 * scatterlist. When this loop finishes, sg points to the start of the
 	 * plaintext / ciphertext.
 	 */
-	for(i = 0; i < ctx->tsgl.cur; i++) {
+	for (i = 0; i < ctx->tsgl.cur; i++) {
 		sg = sgl->sg + i;
 		if (sg->length <= assoclen) {
 			/* AD is larger than one page */
@@ -636,6 +636,7 @@ static int aead_accept_parent(void *private, struct sock *sk)
 	ctx->enc = 0;
 	ctx->tsgl.cur = 0;
 	ctx->aead_assoclen = 0;
+	ctx->trunc = 0;
 	af_alg_init_completion(&ctx->completion);
 	sg_init_table(ctx->tsgl.sg, ALG_MAX_PAGES);
 
