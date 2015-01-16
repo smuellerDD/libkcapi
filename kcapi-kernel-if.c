@@ -598,9 +598,9 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
 	if (nivlen == ivlen)
 		return -ERANGE;
 
-	niv = calloc(1, nivlen);
-	if (!niv)
+	if (posix_memalign((void *)&niv, 16, nivlen))
 		return -ENOMEM;
+	memset(niv, 0, nivlen);
 	memcpy(niv, iv, nivlen);
 
 	*newiv = niv;
@@ -667,6 +667,11 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
  *
  * This function requires IV to be exactly IV size. The function verifies
  * the IV size to avoid unnecessary kernel round trips.
+ *
+ * Note - the caller must keep the iv buffer for every kcapi_cipher_encrypt() or
+ * kcapi_cipher_decrypt() operation, or until the last invocation of
+ * kcapi_cipher_stream_init_enc() or kcapi_cipher_stream_init_dec() is
+ * performed.
  *
  * Return: 0 upon success;
  *	   < 0 in case of an error
@@ -1044,6 +1049,10 @@ int kcapi_aead_setkey(struct kcapi_handle *handle,
  *
  * This function requires IV to be exactly IV size. The function verifies
  * the IV size to avoid unnecessary kernel round trips.
+ *
+ * Note - the caller must keep the iv buffer for every kcapi_aead_encrypt() or
+ * kcapi_aead_decrypt() operation, or until the last invocation of
+ * kcapi_aead_stream_init_enc() or kcapi_aead_stream_init_dec() is performed.
  */
 int kcapi_aead_setiv(struct kcapi_handle *handle,
 		     const unsigned char *iv, size_t ivlen)
@@ -1172,6 +1181,8 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 		return ret;
 
 	ret = _kcapi_common_read_data(handle, out, outlen);
+	if (ret < 0)
+		return ret;
 	if ((ret < (ssize_t)handle->aead.taglen))
 		return -E2BIG;
 
@@ -1574,9 +1585,9 @@ int kcapi_aead_ccm_nonce_to_iv(const unsigned char *nonce, size_t noncelen,
 
 	if (noncelen > 16 - 2)
 		return -EINVAL;
-	newiv = calloc(1, 16);
-	if (!newiv)
+	if (posix_memalign((void *)&newiv, 16, 16))
 		return -ENOMEM;
+	memset(newiv, 0, 16);
 	newiv[0] = l;
 	memcpy(newiv + 1, nonce, noncelen);
 
