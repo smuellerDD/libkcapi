@@ -168,7 +168,7 @@ static ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 	if (_buffer)
 		_buffer = '\0';
 	free(buffer);
-	return (ret >= 0) ? ret : errsv;
+	return (ret >= 0) ? ret : -errsv;
 }
 
 static inline ssize_t _kcapi_common_send_data(struct kcapi_handle *handle,
@@ -187,7 +187,7 @@ static inline ssize_t _kcapi_common_send_data(struct kcapi_handle *handle,
 	msg.msg_iovlen = iovlen;
 
 	ret = sendmsg(handle->opfd, &msg, flags);
-	return (ret >= 0) ? ret : errno;
+	return (ret >= 0) ? ret : -errno;
 }
 
 static inline ssize_t _kcapi_common_vmsplice_data(struct kcapi_handle *handle,
@@ -211,7 +211,7 @@ static inline ssize_t _kcapi_common_vmsplice_data(struct kcapi_handle *handle,
 		fprintf(stderr, "vmsplice: not all data received by kernel (data recieved: %ld -- data sent: %lu)\n",
 			(long)ret, (unsigned long)inlen);
 	ret = splice(handle->pipes[0], NULL, handle->opfd, NULL, ret, flags);
-	return (ret >= 0) ? ret : errno;
+	return (ret >= 0) ? ret : -errno;
 }
 
 static inline ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
@@ -235,7 +235,7 @@ static inline ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 		fprintf(stderr, "recvmsg: processed data was truncated by kernel (only %lu bytes processed)\n", (unsigned long)ret);
 		return -EMSGSIZE;
 	}
-	return (ret >= 0) ? ret : errsv;
+	return (ret >= 0) ? ret : -errsv;
 }
 
 static inline ssize_t _kcapi_common_read_data(struct kcapi_handle *handle,
@@ -244,7 +244,7 @@ static inline ssize_t _kcapi_common_read_data(struct kcapi_handle *handle,
 	ssize_t ret = 0;
 
 	ret = read(handle->opfd, out, outlen);
-	return (ret >= 0) ? ret : errno;
+	return (ret >= 0) ? ret : -errno;
 }
 
 static inline int _kcapi_common_setkey(struct kcapi_handle *handle,
@@ -253,7 +253,7 @@ static inline int _kcapi_common_setkey(struct kcapi_handle *handle,
 	int ret = 0;
 
 	ret = setsockopt(handle->tfmfd, SOL_ALG, ALG_SET_KEY, key, keylen);
-	return (ret >= 0) ? ret : errno;
+	return (ret >= 0) ? ret : -errno;
 }
 
 static inline int _kcapi_common_setiv(struct kcapi_handle *handle,
@@ -317,7 +317,7 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	sd =  socket(AF_NETLINK, SOCK_RAW, NETLINK_CRYPTO);
 	if (sd < 0) {
 		perror("Netlink error: cannot open netlink socket");
-		return errno;
+		return -errno;
 	}
 	memset(&nl, 0, sizeof(nl));
 	nl.nl_family = AF_NETLINK;
@@ -455,7 +455,7 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 
 out:
 	close(sd);
-	return (errsv) ? errsv : ret;
+	return (errsv) ? -errsv : ret;
 }
 
 static int _kcapi_common_getinfo(struct kcapi_handle *handle,
@@ -490,7 +490,7 @@ static int _kcapi_handle_init(struct kcapi_handle *handle,
 		perror("AF_ALG: bind failed");
 		close(handle->tfmfd);
 		handle->tfmfd = -1;
-		return errsv;
+		return -errsv;
 	}
 
 	handle->opfd = accept(handle->tfmfd, NULL, 0);
@@ -499,7 +499,7 @@ static int _kcapi_handle_init(struct kcapi_handle *handle,
 		perror("AF_ALG: accept failed");
 		close(handle->tfmfd);
 		handle->tfmfd = -1;
-		return errsv;
+		return -errsv;
 	}
 
 	ret = pipe(handle->pipes);
@@ -507,7 +507,7 @@ static int _kcapi_handle_init(struct kcapi_handle *handle,
 		errsv = errno;
 		close(handle->tfmfd);
 		close(handle->opfd);
-		return errsv;
+		return -errsv;
 	}
 
 	ret = _kcapi_common_getinfo(handle, ciphername);
@@ -520,7 +520,7 @@ static int _kcapi_handle_init(struct kcapi_handle *handle,
 		close(handle->pipes[0]);
 		close(handle->pipes[1]);
 	}
-	return (errsv) ? errsv : ret;
+	return (errsv) ? -errsv : ret;
 }
 
 static inline int _kcapi_handle_destroy(struct kcapi_handle *handle)
@@ -595,20 +595,22 @@ unsigned int kcapi_version(void)
 }
 
 /**
- * kcapi_pad_iv() - realign the key as necessary for cipher
+ * kcapi_pad_iv() - realign the IV as necessary for cipher
  * @handle: cipher handle
  * @iv: current IV buffer - input
  * @ivlen: length of IV buffer - input
  * @newiv: buffer of aligned IV - output
  * @newivlen: length of newly aligned IV - output
  *
+ * The function pads the least significant bits of the provided IV up to the
+ * block size of the cipher with zeros. In case the provided IV is longer than
+ * the block size, the least significant bits are truncated to the block size.
+ *
  * The function allocates memory for @newiv in case the return code indicates
  * success. The consumer must free the memory after use.
  *
  * Return: 0 for success;
- *	   -ERANGE when the provided IV already satisfies the
- *	   the alignment requirement;
- *	   < 0 for any other errors
+ *	   < 0 for any errors
  */
 int kcapi_pad_iv(struct kcapi_handle *handle,
 		 const unsigned char *iv, size_t ivlen,
@@ -616,14 +618,14 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
 {
 	unsigned char *niv = NULL;
 	unsigned int nivlen = handle->info.ivsize;
+	unsigned int copylen = (ivlen > nivlen) ? nivlen : ivlen;
+	int ret = 0;
 
-	if (nivlen == ivlen)
-		return -ERANGE;
-
-	if (posix_memalign((void *)&niv, 16, nivlen))
-		return -ENOMEM;
+	ret = posix_memalign((void *)&niv, 16, nivlen);
+	if (ret)
+		return -ret;
 	memset(niv, 0, nivlen);
-	memcpy(niv, iv, nivlen);
+	memcpy(niv, iv, copylen);
 
 	*newiv = niv;
 	*newivlen = nivlen;
@@ -1623,11 +1625,13 @@ int kcapi_aead_ccm_nonce_to_iv(const unsigned char *nonce, size_t noncelen,
 {
 	unsigned char *newiv = NULL;
 	unsigned char l = 16 - 2 - noncelen;
+	int ret = 0;
 
 	if (noncelen > 16 - 2)
 		return -EINVAL;
-	if (posix_memalign((void *)&newiv, 16, 16))
-		return -ENOMEM;
+	ret = posix_memalign((void *)&newiv, 16, 16);
+	if (ret)
+		return -ret;
 	memset(newiv, 0, 16);
 	newiv[0] = l;
 	memcpy(newiv + 1, nonce, noncelen);
