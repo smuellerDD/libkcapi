@@ -95,6 +95,7 @@ static ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 	ssize_t ret = -EINVAL;
 	char *buffer = NULL;
 	volatile void *_buffer = NULL;
+	int errsv = 0;
 
 	/* plaintext / ciphertext data */
 	struct cmsghdr *header = NULL;
@@ -159,6 +160,7 @@ static ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 	}
 
 	ret = sendmsg(handle->opfd, &msg, flags);
+	errsv = errno;
 
 	memset(buffer, 0, bufferlen);
 	/* magic to convince GCC to memset the buffer */
@@ -166,7 +168,7 @@ static ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 	if (_buffer)
 		_buffer = '\0';
 	free(buffer);
-	return ret;
+	return (ret >= 0) ? ret : errsv;
 }
 
 static inline ssize_t _kcapi_common_send_data(struct kcapi_handle *handle,
@@ -174,6 +176,7 @@ static inline ssize_t _kcapi_common_send_data(struct kcapi_handle *handle,
 				       unsigned int flags)
 {
 	struct msghdr msg;
+	ssize_t ret = 0;
 
 	msg.msg_name = NULL;
 	msg.msg_namelen = 0;
@@ -183,7 +186,8 @@ static inline ssize_t _kcapi_common_send_data(struct kcapi_handle *handle,
 	msg.msg_iov = iov;
 	msg.msg_iovlen = iovlen;
 
-	return sendmsg(handle->opfd, &msg, flags);
+	ret = sendmsg(handle->opfd, &msg, flags);
+	return (ret >= 0) ? ret : errno;
 }
 
 static inline ssize_t _kcapi_common_vmsplice_data(struct kcapi_handle *handle,
@@ -206,7 +210,8 @@ static inline ssize_t _kcapi_common_vmsplice_data(struct kcapi_handle *handle,
 	if ((size_t)ret != inlen)
 		fprintf(stderr, "vmsplice: not all data received by kernel (data recieved: %ld -- data sent: %lu)\n",
 			(long)ret, (unsigned long)inlen);
-	return splice(handle->pipes[0], NULL, handle->opfd, NULL, ret, flags);
+	ret = splice(handle->pipes[0], NULL, handle->opfd, NULL, ret, flags);
+	return (ret >= 0) ? ret : errno;
 }
 
 static inline ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
@@ -214,6 +219,7 @@ static inline ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 {
 	struct msghdr msg;
 	ssize_t ret = 0;
+	int errsv = 0;
 
 	msg.msg_name = NULL;
 	msg.msg_namelen = 0;
@@ -224,25 +230,30 @@ static inline ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 	msg.msg_iovlen = iovlen;
 
 	ret = recvmsg(handle->opfd, &msg, 0);
-	if (msg.msg_flags & MSG_TRUNC)
-		return -ENOMEM;
-	return ret;
+	errsv = errno;
+	if (msg.msg_flags & MSG_TRUNC) {
+		fprintf(stderr, "recvmsg: processed data was truncated by kernel (only %lu bytes processed)\n", (unsigned long)ret);
+		return -EMSGSIZE;
+	}
+	return (ret >= 0) ? ret : errsv;
 }
 
 static inline ssize_t _kcapi_common_read_data(struct kcapi_handle *handle,
 					      unsigned char *out, size_t outlen)
 {
-	return read(handle->opfd, out, outlen);
+	ssize_t ret = 0;
+
+	ret = read(handle->opfd, out, outlen);
+	return (ret >= 0) ? ret : errno;
 }
 
 static inline int _kcapi_common_setkey(struct kcapi_handle *handle,
 				       const unsigned char *key, size_t keylen)
 {
-	if (setsockopt(handle->tfmfd, SOL_ALG, ALG_SET_KEY,
-		       key, keylen) == -1)
-		return -EINVAL;
+	int ret = 0;
 
-	return 0;
+	ret = setsockopt(handle->tfmfd, SOL_ALG, ALG_SET_KEY, key, keylen);
+	return (ret >= 0) ? ret : errno;
 }
 
 static inline int _kcapi_common_setiv(struct kcapi_handle *handle,
@@ -266,6 +277,7 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 				  int drivername)
 {
 	int ret = -EFAULT;
+	int errsv = 0;
 
 	/* NETLINK_CRYPTO specific */
 	char buf[4096];
@@ -305,26 +317,30 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	sd =  socket(AF_NETLINK, SOCK_RAW, NETLINK_CRYPTO);
 	if (sd < 0) {
 		perror("Netlink error: cannot open netlink socket");
-		return -EFAULT;
+		return errno;
 	}
 	memset(&nl, 0, sizeof(nl));
 	nl.nl_family = AF_NETLINK;
 	if (bind(sd, (struct sockaddr*)&nl, sizeof(nl)) < 0) {
+		errsv = errno;
 		perror("Netlink error: cannot bind netlink socket");
 		goto out;
 	}
 	/* sanity check that netlink socket was successfully opened */
 	addr_len = sizeof(nl);
 	if (getsockname(sd, (struct sockaddr*)&nl, &addr_len) < 0) {
+		errsv = errno;
 		perror("Netlink error: cannot getsockname");
 		goto out;
 	}
 	if (addr_len != sizeof(nl)) {
+		errsv = errno;
 		fprintf(stderr, "Netlink error: wrong address length %d\n",
 			addr_len);
 		goto out;
 	}
 	if (nl.nl_family != AF_NETLINK) {
+		errsv = errno;
 		fprintf(stderr, "Netlink error: wrong address family %d\n",
 			nl.nl_family);
 		goto out;
@@ -340,6 +356,7 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	memset(&nl, 0, sizeof(nl));
 	nl.nl_family = AF_NETLINK;
 	if (sendmsg(sd, &msg, 0) < 0) {
+		errsv = errno;
 		perror("Netlink error: sendmsg failed");
 		goto out;
 	}
@@ -351,18 +368,18 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 		if (ret < 0) {
 			if (errno == EINTR || errno == EAGAIN)
 				continue;
+			errsv = errno;
 			perror("Netlink error: netlink receive error");
-			ret = -EFAULT;
 			goto out;
 		}
 		if (ret == 0) {
+			errsv = errno;
 			fprintf(stderr, "Netlink error: no data\n");
-			ret = -EFAULT;
 			goto out;
 		}
 		if ((size_t)ret > sizeof(buf)) {
+			errsv = errno;
 			perror("Netlink error: received too much data\n");
-			ret = -EFAULT;
 			goto out;
 		}
 		break;
@@ -438,7 +455,7 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 
 out:
 	close(sd);
-	return ret;
+	return (errsv) ? errsv : ret;
 }
 
 static int _kcapi_common_getinfo(struct kcapi_handle *handle,
@@ -455,6 +472,7 @@ static int _kcapi_handle_init(struct kcapi_handle *handle,
 {
 	struct sockaddr_alg sa;
 	int ret;
+	int errsv = 0;
 
 	memset(handle, 0, sizeof(struct kcapi_handle));
 
@@ -468,29 +486,33 @@ static int _kcapi_handle_init(struct kcapi_handle *handle,
 		return -EOPNOTSUPP;
 
 	if (bind(handle->tfmfd, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
+		errsv = errno;
 		perror("AF_ALG: bind failed");
 		close(handle->tfmfd);
 		handle->tfmfd = -1;
-		return -ENOENT;
+		return errsv;
 	}
 
 	handle->opfd = accept(handle->tfmfd, NULL, 0);
 	if (handle->opfd == -1) {
+		errsv = errno;
 		perror("AF_ALG: accept failed");
 		close(handle->tfmfd);
 		handle->tfmfd = -1;
-		return -EINVAL;
+		return errsv;
 	}
 
 	ret = pipe(handle->pipes);
 	if (ret) {
+		errsv = errno;
 		close(handle->tfmfd);
 		close(handle->opfd);
-		return ret;
+		return errsv;
 	}
 
 	ret = _kcapi_common_getinfo(handle, ciphername);
 	if(ret) {
+		errsv = errno;
 		fprintf(stderr, "NETLINK_CRYPTO: cannot obtain cipher information for %s (is required crypto_user.c patch missing? see documentation)\n",
 		       ciphername);
 		close(handle->tfmfd);
@@ -498,7 +520,7 @@ static int _kcapi_handle_init(struct kcapi_handle *handle,
 		close(handle->pipes[0]);
 		close(handle->pipes[1]);
 	}
-	return ret;
+	return (errsv) ? errsv : ret;
 }
 
 static inline int _kcapi_handle_destroy(struct kcapi_handle *handle)
@@ -649,6 +671,12 @@ int kcapi_cipher_destroy(struct kcapi_handle *handle)
  * @handle: cipher handle - input
  * @key: key buffer - input
  * @keylen: length of key buffer - input
+ *
+ * With this function, the caller sets the key for subsequent encryption or
+ * decryption operations.
+ *
+ * After the caller provided the key, the caller may securely destroy the key
+ * as it is now maintained by the kernel.
  *
  * Return: 0 upon success;
  *	   < 0 in case of error
@@ -1030,6 +1058,12 @@ int kcapi_aead_destroy(struct kcapi_handle *handle)
  * @key: key buffer - input
  * @keylen: length of key buffer - input
  *
+ * With this function, the caller sets the key for subsequent encryption or
+ * decryption operations.
+ *
+ * After the caller provided the key, the caller may securely destroy the key
+ * as it is now maintained by the kernel.
+ *
  * Return: 0 upon success;
  *	   < 0 in case of error
  */
@@ -1053,6 +1087,7 @@ int kcapi_aead_setkey(struct kcapi_handle *handle,
  * Note - the caller must keep the iv buffer for every kcapi_aead_encrypt() or
  * kcapi_aead_decrypt() operation, or until the last invocation of
  * kcapi_aead_stream_init_enc() or kcapi_aead_stream_init_dec() is performed.
+ * This function only retains a pointer to the user-provided IV buffer.
  */
 int kcapi_aead_setiv(struct kcapi_handle *handle,
 		     const unsigned char *iv, size_t ivlen)
@@ -1086,6 +1121,12 @@ int kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen)
  * kcapi_aead_setassoclen() - Set authentication data size
  * @handle: cipher handle - input
  * @assoclen: length of associated data length
+ *
+ * The associated data is retained in the cipher handle. During initialization
+ * of a cipher handle, it is sent to the kernel. The kernel cipher
+ * implementations may verify the appropriateness of the authentication
+ * data size and may return an error during initialization if the
+ * authentication size is not considered appropriate.
  */
 void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen)
 {
@@ -1636,7 +1677,11 @@ int kcapi_md_destroy(struct kcapi_handle *handle)
  * @key: key buffer - input
  * @keylen: length of key buffer - input
  *
- * This call is applicable for keyed message digests.
+ * With this function, the caller sets the key for subsequent hashing
+ * operations. This call is applicable for keyed message digests.
+ *
+ * After the caller provided the key, the caller may securely destroy the key
+ * as it is now maintained by the kernel.
  *
  * Return: 0 upon success;
  *	   < 0 in case of error
