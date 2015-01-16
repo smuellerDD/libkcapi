@@ -48,10 +48,15 @@
  */
 int cp_exec_test(struct cp_test *test, unsigned int exectime, size_t len)
 {
-	uint64_t testduration = (1UL<<32) * test->exectime;
+	uint64_t testduration = 0;
+	uint64_t nano = 1;
+
+	nano = nano << 32;
+
+	testduration = nano * test->exectime;
 
 	if (exectime)
-		testduration = (1UL<<32) * exectime;
+		testduration = nano * exectime;
 
 	if (test->init_test) {
 		int ret = test->init_test(test, len);
@@ -63,7 +68,7 @@ int cp_exec_test(struct cp_test *test, unsigned int exectime, size_t len)
 	}
 
 	dbg("Starting test %s for %lu seconds\n", test->testname,
-	    testduration / (1UL<<32));
+	    (unsigned long)(testduration / nano));
 	test->results.totaltime = 0;
 	test->results.rounds = 0;
 	test->results.byteperop = test->exec_test(test);
@@ -142,22 +147,27 @@ char *cp_print_status(struct cp_test *test)
 #define VALLEN 10
 	char byteseconds[VALLEN + 1];
 	uint64_t totaltime = test->results.totaltime>>30;
+	uint64_t ops = test->results.rounds / totaltime;
 
 	str = calloc(1, 121);
 	if (!str)
 		return str;
 
 	if (!totaltime) {
-		snprintf(str, 120, "%-50s | untested\n", test->testname);
+		snprintf(str, 120, "%-35s | untested\n", test->testname);
 		return str;
 	}
 
 	memset(byteseconds, 0, sizeof(byteseconds));
 	cp_bytes2string((processed_bytes / totaltime), byteseconds,
 			(VALLEN + 1));
-	snprintf(str, 120, "%-50s | %10lu bytes | %*s/s | %10lu ops/s |\n",
-		 test->testname, test->results.chunksize, VALLEN, byteseconds,
-		 (test->results.rounds / (test->results.totaltime>>30)));
+	snprintf(str, 120, "%-35s%s %10lu bytes | %*s/s | %10lu ops/s |\n",
+		 test->testname,
+		 test->enc ? " | e |" : " | d |",
+		 (unsigned long)test->results.chunksize,
+		 VALLEN,
+		 byteseconds,
+		 (unsigned long)ops);
 
 	return str;
 }

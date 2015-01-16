@@ -159,6 +159,7 @@ void cp_hash_register(struct cp_test **hash_test, size_t *entries)
 	size_t i = 0;
 
 	for (i = i; i < ARRAY_SIZE(testcases); i++) {
+		cp_hash_testdef[i].enc = 0;
 		cp_hash_testdef[i].testname = testcases[i].testname;
 		cp_hash_testdef[i].driver_name = testcases[i].driver_name;
 		cp_hash_testdef[i].type = "hash";

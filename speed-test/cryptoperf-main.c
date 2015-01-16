@@ -38,20 +38,39 @@
 #include <string.h>
 #include "cryptoperf.h"
 
+#define MAXNAMELEN 30
 struct test_array {
 	struct cp_test *array;
 	size_t entries;
 };
 
-struct test_array hash_tests;
-struct test_array skcipher_tests;
-struct test_array rng_tests;
+struct test_array tests[4];
+
+static void print_tests(struct test_array *tests)
+{
+	size_t i = 0;
+
+	for (i = 0; i < tests->entries; i++) {
+		printf("%-9s | %-35s | %s | %s\n", tests->array[i].type,
+		       tests->array[i].testname,
+		       tests->array[i].driver_name,
+		       tests->array[i].enc ? "e" : "d");
+	}
+}
 
 static void register_tests(void)
 {
-	cp_hash_register(&hash_tests.array, &hash_tests.entries);
-	cp_skcipher_register(&skcipher_tests.array, &skcipher_tests.entries);
-	cp_rng_register(&rng_tests.array, &rng_tests.entries);
+	cp_hash_register(&tests[0].array, &tests[0].entries);
+	print_tests(&tests[0]);
+
+	cp_skcipher_register(&tests[1].array, &tests[1].entries);
+	print_tests(&tests[1]);
+
+	cp_rng_register(&tests[2].array, &tests[2].entries);
+	print_tests(&tests[2]);
+
+	cp_aead_register(&tests[3].array, &tests[3].entries);
+	print_tests(&tests[3]);
 }
 
 static int exec_all_tests(struct test_array *tests, unsigned int exectime,
@@ -73,51 +92,60 @@ static int exec_all_tests(struct test_array *tests, unsigned int exectime,
 	return 0;
 }
 
-static int find_test(const char *name, struct test_array *tests,
+static int find_test(const char *name, struct test_array *tests, int start,
 		     struct cp_test **test)
 {
-	size_t i = 0;
+	int i = start;
 
-	for (i = 0; i < tests->entries; i++) {
-		if (!strncmp(tests->array[i].driver_name, name, strlen(name))) {
+	if (i < 0)
+		i = 0;
+
+	for (; (unsigned int)i < tests->entries; i++) {
+		if (!strncmp(tests->array[i].driver_name, name, strlen(name)) ||
+		    !strncmp(tests->array[i].testname, name, strlen(name)) ||
+		    !strncmp(tests->array[i].type, name, strlen(name))) {
 			*test = &tests->array[i];
-			return 0;
+			return i;
 		}
 	}
 	return -EFAULT;
 }
 
-static int exec_one_test(const char *name, unsigned int exectime, size_t len)
+static int exec_subset_test(const char *name, unsigned int exectime, size_t len)
 {
 	struct cp_test *test = NULL;
-	char *out = NULL;
+	int i = 0;
 
-	if (find_test(name, &hash_tests, &test))
-		if (find_test(name, &skcipher_tests, &test))
-			if (find_test(name, &rng_tests, &test))
-				return -EINVAL;
-
-	if (cp_exec_test(test, exectime, len))
-		return -EFAULT;
-	out = cp_print_status(test);
-	if (!out)
-		return -ENOMEM;
-	printf("%s\n", out);
-	free(out);
+	for (i = 0; i < 4; i++) {
+		int ret = 0;
+		char *out = NULL;
+		while (1) {
+			ret = find_test(name, &tests[i], ret, &test);
+			if (ret < 0)
+				break;
+			ret++;
+			if (cp_exec_test(test, exectime, len))
+				return -EFAULT;
+			out = cp_print_status(test);
+			if (!out)
+				return -ENOMEM;
+			printf("%s\n", out);
+			free(out);
+		}
+	}
 
 	return 0;
 }
-
 
 int main(int argc, char *argv[])
 {
 	register_tests();
 	if (argc == 1)
-		return exec_all_tests(&hash_tests, 0, 1);
+		return exec_all_tests(&tests[0], 0, 1);
 	else if (argc == 2)
-		return exec_one_test(argv[1], 0, 1);
+		return exec_subset_test(argv[1], 0, 1);
 	else if (argc == 3)
-		return exec_one_test(argv[1], 0, atoi(argv[2]));
+		return exec_subset_test(argv[1], 0, atoi(argv[2]));
 	else
 		return -1;
 }

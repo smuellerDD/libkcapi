@@ -85,14 +85,21 @@ struct hash_def {
 struct skcipher_def {
 	unsigned int keysize;	/* config option */
 	unsigned char *scratchpad;
+	unsigned char *iv;
 	size_t inputlen;
 	struct kcapi_handle handle;
 };
 
 struct aead_def {
 	unsigned int keysize;	/* config option */
-	unsigned int blocksize; /* config option */
-	unsigned char *scratchpad;
+	unsigned char *input;
+	unsigned char *output;
+	unsigned char *iv;
+	size_t inputlen;
+	size_t outputlen;
+	unsigned char *tag;
+	unsigned char *assoc;
+	size_t assoclen;
 	struct kcapi_handle handle;
 };
 
@@ -115,6 +122,7 @@ struct cp_test {
 	char *testname;
 	char *driver_name;
 	char *type;
+	int enc;
 	unsigned int exectime;
 	struct cp_res results;
 	int (*init_test)(struct cp_test *test, size_t len);
@@ -132,7 +140,10 @@ struct cp_test {
 
 static inline uint64_t cp_ts2u64(struct timespec *ts)
 {
-	return ((ts->tv_sec << 32) | ts->tv_nsec);
+	uint64_t upper = ts->tv_sec;
+
+	upper = upper << 32;
+	return (upper | ts->tv_nsec);
 }
 
 /*
@@ -186,4 +197,5 @@ int cp_read_random(unsigned char *buf, size_t buflen);
 void cp_hash_register(struct cp_test **hash_test, size_t *entries);
 void cp_rng_register(struct cp_test **rng_test, size_t *entries);
 void cp_skcipher_register(struct cp_test **skcipher_test, size_t *entries);
+void cp_aead_register(struct cp_test **aead_test, size_t *entries);
 #endif /* CRYPTOPERF_H */
