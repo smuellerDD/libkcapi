@@ -35,6 +35,7 @@
  */
 
 #include "cryptoperf.h"
+#include <sys/user.h>
 
 /****************************************************************************
  * AEAD ciphers
@@ -126,12 +127,12 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm)
 			&test->u.aead.handle, BLOCKLEN * len,
 			TAGLEN, 0);
 	}
-	if (posix_memalign((void *)&input, BLOCKLEN, test->u.aead.inputlen)) {
+	if (posix_memalign((void *)&input, PAGE_SIZE, test->u.aead.inputlen)) {
 		printf(DRIVER_NAME": could not allocate input buffer for "
 		       "%s\n", test->driver_name);
 		goto out;
 	}
-	if (posix_memalign((void *)&output, BLOCKLEN, test->u.aead.outputlen)) {
+	if (posix_memalign((void *)&output, PAGE_SIZE, test->u.aead.outputlen)) {
 		printf(DRIVER_NAME": could not allocate output buffer for "
 		       "%s\n", test->driver_name);
 		goto out;
