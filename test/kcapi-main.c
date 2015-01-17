@@ -319,24 +319,24 @@ static void usage(void)
 	fprintf(stderr, "\nKernel Crypto API interface library version: %s\n", version);
 	fprintf(stderr, "Reported numeric version number %u\n\n", ver);
 	fprintf(stderr, "Usage:\n");
-	fprintf(stderr, "\t-e\tIf set, encrypt otherwise decrypt\n");
-	fprintf(stderr, "\t-c\tKernel Crypto API cipher name to be used for operation\n");
-	fprintf(stderr, "\t-p\tPlaintext used during encryption / message digest\n");
-	fprintf(stderr, "\t-q\tCiphertext used during decryption\n");
-	fprintf(stderr, "\t-i\tIV used for operation\n");
-	fprintf(stderr, "\t-n\tNonce used for CCM operation\n");
-	fprintf(stderr, "\t-k\tSymmetric cipher key / HMAC key\n");
-	fprintf(stderr, "\t-a\tAssociated data used for AEAD cipher\n");
-	fprintf(stderr, "\t-l\tTag length to be produced during encryption for AEAD cipher\n");
-	fprintf(stderr, "\t-t\tTag to be used for decryption\n");
-	fprintf(stderr, "\t-x\tCipher type with one out of the following\n");
-	fprintf(stderr, "\t\t\t1 for symmetric cipher algorithm\n");
-	fprintf(stderr, "\t\t\t2 for AEAD cipher algorithm\n");
-	fprintf(stderr, "\t\t\t3 for message digest and keyed message digest\n");
-	fprintf(stderr, "\t-z\tAuxiliary tests of the API\n");
-	fprintf(stderr, "\t-s\tUse the stream API\n");
-	fprintf(stderr, "\t-y\tTest long AD with AEAD cipher\n");
-	fprintf(stderr, "\t-d\tNumber of execution loops\n");
+	fprintf(stderr, "\t-e --enc\tIf set, encrypt otherwise decrypt\n");
+	fprintf(stderr, "\t-c --cipher\tKernel Crypto API cipher name to be used for operation\n");
+	fprintf(stderr, "\t-p --pt\t\tPlaintext used during encryption / message digest\n");
+	fprintf(stderr, "\t-q --ct\t\tCiphertext used during decryption\n");
+	fprintf(stderr, "\t-i --iv\t\tIV used for operation\n");
+	fprintf(stderr, "\t-n --nonce\tNonce used for CCM operation\n");
+	fprintf(stderr, "\t-k --key\tSymmetric cipher key / HMAC key\n");
+	fprintf(stderr, "\t-a --assoc\tAssociated data used for AEAD cipher\n");
+	fprintf(stderr, "\t-l --taglen\tTag length to be produced with AEAD encryption\n");
+	fprintf(stderr, "\t-t --tag\tTag to be used for decryption\n");
+	fprintf(stderr, "\t-x --ciphertype\tCipher type with one out of the following\n");
+	fprintf(stderr, "\t\t1 for symmetric cipher algorithm\n");
+	fprintf(stderr, "\t\t2 for AEAD cipher algorithm\n");
+	fprintf(stderr, "\t\t3 for message digest and keyed message digest\n");
+	fprintf(stderr, "\t-z --aux\tAuxiliary tests of the API\n");
+	fprintf(stderr, "\t-s --stream\tUse the stream API\n");
+	fprintf(stderr, "\t-y --largeinput\tTest long AD with AEAD cipher\n");
+	fprintf(stderr, "\t-d --execloops\tNumber of execution loops\n");
 }
 
 enum type {
@@ -1072,21 +1072,21 @@ int main(int argc, char *argv[])
 		size_t len = 0;
 		static struct option opts[] =
 		{
-			{"enc", 0, 0, 0},
-			{"cipher", 1, 0, 0},
-			{"pt", 1, 0, 0},
-			{"ct", 1, 0, 0},
-			{"iv", 1, 0, 0},
-			{"nonce", 1, 0, 0},
-			{"key", 1, 0, 0},
-			{"assoc", 1, 0, 0},
-			{"taglen", 1, 0, 0},
-			{"tag", 1, 0, 0},
-			{"ciphertype", 1, 0, 0},
-			{"aux", 0, 0, 0},
-			{"stream", 0, 0, 0},
-			{"largeinput", 0, 0, 0},
-			{"execloops", 0, 0, 0},
+			{"enc", 0, 0, 'e'},
+			{"cipher", 1, 0, 'c'},
+			{"pt", 1, 0, 'p'},
+			{"ct", 1, 0, 'q'},
+			{"iv", 1, 0, 'i'},
+			{"nonce", 1, 0, 'n'},
+			{"key", 1, 0, 'k'},
+			{"assoc", 1, 0, 'a'},
+			{"taglen", 1, 0, 'l'},
+			{"tag", 1, 0, 't'},
+			{"ciphertype", 1, 0, 'x'},
+			{"aux", 0, 0, 'z'},
+			{"stream", 0, 0, 's'},
+			{"largeinput", 0, 0, 'y'},
+			{"execloops", 0, 0, 'd'},
 			{0, 0, 0, 0}
 		};
 		c = getopt_long(argc, argv, "ec:p:q:i:n:k:a:l:t:x:zsyd:", opts, &opt_index);
