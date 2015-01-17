@@ -140,7 +140,7 @@ static void cp_bytes2string(uint64_t bytes, char *str, size_t strlen)
  * result: pointer to newly allocated character string with formatted output.
  *	   The caller must free that pointer.
  */
-char *cp_print_status(struct cp_test *test)
+char *cp_print_status(struct cp_test *test, int raw)
 {
 	char *str = NULL;
 	uint64_t processed_bytes = test->results.rounds * test->results.byteperop;
@@ -158,16 +158,25 @@ char *cp_print_status(struct cp_test *test)
 		return str;
 	}
 
-	memset(byteseconds, 0, sizeof(byteseconds));
-	cp_bytes2string((processed_bytes / totaltime), byteseconds,
-			(VALLEN + 1));
-	snprintf(str, 120, "%-35s%s %10lu bytes | %*s/s | %10lu ops/s |\n",
-		 test->testname,
-		 test->enc ? " | e |" : " | d |",
-		 (unsigned long)test->results.chunksize,
-		 VALLEN,
-		 byteseconds,
-		 (unsigned long)ops);
+	if (raw) {
+		snprintf(str, 120, "%s,%s,%lu,%lu,%lu",
+			 test->testname,
+			test->enc ? "e" : "d",
+			(unsigned long)test->results.chunksize,
+			(unsigned long)(processed_bytes/totaltime),
+			(unsigned long)ops);
+	} else {
+		memset(byteseconds, 0, sizeof(byteseconds));
+		cp_bytes2string((processed_bytes / totaltime), byteseconds,
+				(VALLEN + 1));
+		snprintf(str, 120, "%-37s|%s|%8lu bytes|%*s/s|%lu ops/s",
+			test->testname,
+			test->enc ? "e" : "d",
+			(unsigned long)test->results.chunksize,
+			VALLEN,
+			byteseconds,
+			(unsigned long)ops);
+	}
 
 	return str;
 }

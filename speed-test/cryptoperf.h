@@ -187,7 +187,7 @@ static inline void cp_zfree(void *ptr, unsigned int len)
 /*
  * general functions
  */
-char *cp_print_status(struct cp_test *test);
+char *cp_print_status(struct cp_test *test, int raw);
 int cp_exec_test(struct cp_test *test, unsigned int exectime, size_t len);
 int cp_read_random(unsigned char *buf, size_t buflen);
 

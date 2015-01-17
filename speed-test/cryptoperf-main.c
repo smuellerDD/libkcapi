@@ -84,7 +84,7 @@ static int exec_all_tests(struct test_array *tests, unsigned int exectime,
 	for (i = 0; i < tests->entries; i++) {
 		if (cp_exec_test(&tests->array[i], exectime, len))
 			return -EFAULT;
-		out = cp_print_status(&tests->array[i]);
+		out = cp_print_status(&tests->array[i], 0);
 		if (!out)
 			return -ENOMEM;
 		printf("%s\n", out);
@@ -113,7 +113,8 @@ static int find_test(const char *name, struct test_array *tests, int start,
 	return -EFAULT;
 }
 
-static int exec_subset_test(const char *name, unsigned int exectime, size_t len)
+static int exec_subset_test(const char *name, unsigned int exectime, size_t len,
+			    int raw)
 {
 	struct cp_test *test = NULL;
 	int i = 0;
@@ -128,7 +129,7 @@ static int exec_subset_test(const char *name, unsigned int exectime, size_t len)
 			ret++;
 			if (cp_exec_test(test, exectime, len))
 				return -EFAULT;
-			out = cp_print_status(test);
+			out = cp_print_status(test, raw);
 			if (!out)
 				return -ENOMEM;
 			printf("%s\n", out);
@@ -156,6 +157,7 @@ static void usage(void)
 	fprintf(stderr, "\t-c --cipher\tCipher/cipher type to test\n");
 	fprintf(stderr, "\t-t --time\tExecution time in seconds\n");
 	fprintf(stderr, "\t-b --blocks\tNumber of blocks to process\n");
+	fprintf(stderr, "\t-r --raw\tPrint out raw numbers for postprocessing\n");
 }
 
 int main(int argc, char *argv[])
@@ -164,6 +166,7 @@ int main(int argc, char *argv[])
 	unsigned int exectime = 0;
 	unsigned long blocks = 1;
 	char *cipher = NULL;
+	int raw = 0;
 	int ret = 1;
 	int i = 0;
 
@@ -179,9 +182,10 @@ int main(int argc, char *argv[])
 			{"cipher", 1, 0, 'c'},
 			{"time", 1, 0, 't'},
 			{"blocks", 1, 0, 'b'},
+			{"raw", 1, 0, 'r'},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "alc:t:b:", opts, &opt_index);
+		c = getopt_long(argc, argv, "alc:t:b:r", opts, &opt_index);
 		if(-1 == c)
 			break;
 		switch(c)
@@ -201,6 +205,9 @@ int main(int argc, char *argv[])
 			case 'b':
 				blocks = (unsigned int)atoi(optarg);
 				break;
+			case 'r':
+				raw = 1;
+				break;
 			default:
 				usage();
 				goto out;
@@ -212,7 +219,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	ret = exec_subset_test(cipher, exectime, blocks);
+	ret = exec_subset_test(cipher, exectime, blocks, raw);
 
 out:
 	if (cipher)
