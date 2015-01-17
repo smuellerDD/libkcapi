@@ -34,8 +34,7 @@
  * DAMAGE.
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <getopt.h>
 #include "cryptoperf.h"
 
 #define MAXNAMELEN 30
@@ -46,9 +45,12 @@ struct test_array {
 
 struct test_array tests[4];
 
-static void print_tests(struct test_array *tests)
+static void print_tests(struct test_array *tests, int print)
 {
 	size_t i = 0;
+
+	if (!print)
+		return;
 
 	for (i = 0; i < tests->entries; i++) {
 		printf("%-9s | %-35s | %s | %s\n", tests->array[i].type,
@@ -58,19 +60,19 @@ static void print_tests(struct test_array *tests)
 	}
 }
 
-static void register_tests(void)
+static void register_tests(int print)
 {
 	cp_hash_register(&tests[0].array, &tests[0].entries);
-	print_tests(&tests[0]);
+	print_tests(&tests[0], print);
 
 	cp_skcipher_register(&tests[1].array, &tests[1].entries);
-	print_tests(&tests[1]);
+	print_tests(&tests[1], print);
 
 	cp_rng_register(&tests[2].array, &tests[2].entries);
-	print_tests(&tests[2]);
+	print_tests(&tests[2], print);
 
 	cp_aead_register(&tests[3].array, &tests[3].entries);
-	print_tests(&tests[3]);
+	print_tests(&tests[3], print);
 }
 
 static int exec_all_tests(struct test_array *tests, unsigned int exectime,
@@ -137,15 +139,83 @@ static int exec_subset_test(const char *name, unsigned int exectime, size_t len)
 	return 0;
 }
 
+static void usage(void)
+{
+	char version[20];
+	unsigned int ver = kcapi_version();
+
+	memset(version, 0, 20);
+	kcapi_versionstring(version, 20);
+
+	fprintf(stderr, "\nAF_ALG Kernel Crypto API Speed Test\n");
+	fprintf(stderr, "\nKernel Crypto API interface library version: %s\n", version);
+	fprintf(stderr, "Reported numeric version number %u\n\n", ver);
+	fprintf(stderr, "Usage:\n");
+	fprintf(stderr, "\t-a --all\tExecute all ciphers\n");
+	fprintf(stderr, "\t-l --list\tList available ciphers\n");
+	fprintf(stderr, "\t-c --cipher\tCipher/cipher type to test\n");
+	fprintf(stderr, "\t-t --time\tExecution time in seconds\n");
+	fprintf(stderr, "\t-b --blocks\tNumber of blocks to process\n");
+}
+
 int main(int argc, char *argv[])
 {
-	register_tests();
-	if (argc == 1)
-		return exec_all_tests(&tests[0], 0, 1);
-	else if (argc == 2)
-		return exec_subset_test(argv[1], 0, 1);
-	else if (argc == 3)
-		return exec_subset_test(argv[1], 0, atoi(argv[2]));
-	else
-		return -1;
+	int c = 0;
+	unsigned int exectime = 0;
+	unsigned long blocks = 1;
+	char *cipher = NULL;
+	int ret = 1;
+	int i = 0;
+
+	register_tests(0);
+
+	while(1)
+	{
+		int opt_index = 0;
+		static struct option opts[] =
+		{
+			{"all", 0, 0, 'a'},
+			{"list", 0, 0, 'l'},
+			{"cipher", 1, 0, 'c'},
+			{"time", 1, 0, 't'},
+			{"blocks", 1, 0, 'b'},
+			{0, 0, 0, 0}
+		};
+		c = getopt_long(argc, argv, "alc:t:b:", opts, &opt_index);
+		if(-1 == c)
+			break;
+		switch(c)
+		{
+			case 'a':
+				return exec_all_tests(&tests[0], 0, 1);
+			case 'l':
+				for (i = 0; i < 4; i++)
+					print_tests(&tests[i], 1);
+				return 0;
+			case 'c':
+				cipher = strndup(optarg, 50);
+				break;
+			case 't':
+				exectime = (unsigned int)atoi(optarg);
+				break;
+			case 'b':
+				blocks = (unsigned int)atoi(optarg);
+				break;
+			default:
+				usage();
+				goto out;
+		}
+	}
+
+	if (!cipher) {
+		usage();
+		goto out;
+	}
+
+	ret = exec_subset_test(cipher, exectime, blocks);
+
+out:
+	if (cipher)
+		free(cipher);
+	return ret;
 }

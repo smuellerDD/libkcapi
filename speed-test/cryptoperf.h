@@ -53,7 +53,7 @@
 
 #define DRIVER_NAME "cryptoperf"
 
-#if 1
+#if 0
 #define dbg(fmt, ...) printf(DRIVER_NAME": " fmt, ##__VA_ARGS__)
 #else
 #define dbg(fmt, ...)
