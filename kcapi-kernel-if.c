@@ -725,6 +725,10 @@ int kcapi_cipher_setiv(struct kcapi_handle *handle,
  * ciphertext pointers. That would mean that after the encryption operation,
  * the plaintext is overwritten with the ciphertext.
  *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
+ * the vmsplice call may not send all data to the kernel.
+ *
  * Return: number of bytes encrypted upon success;
  *	   < 0 in case of error with errno set
  */
@@ -752,21 +756,19 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 	}
 
 	iov.iov_base = (void*)(uintptr_t)in;
-#if 0
+
 	/*
 	 * Using two syscalls with memcpy is faster than four syscalls
 	 * without memcpy below the given threshold.
 	 */
-	/* TODO make heuristic when one syscall is slower than four syscalls */
-	if (inlen < (1<<15)) {
+	if (inlen <= (1<<13)) {
 		iov.iov_len = inlen;
 		ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_ENCRYPT,
 					      0);
 		iov.iov_base = (void*)(uintptr_t)out;
 		iov.iov_len = outlen;
 		return _kcapi_common_recv_data(handle, &iov, 1);
-}
-#endif
+	}
 
 	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT, 0);
 	if (0 > ret)
@@ -799,6 +801,10 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
  * It is perfectly legal to use the same buffer as the plaintext and
  * ciphertext pointers. That would mean that after the encryption operation,
  * the ciphertext is overwritten with the plaintext.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
+ * the vmsplice call may not send all data to the kernel.
  *
  * Return: number of bytes decrypted upon success;
  *	   < 0 in case of error with errno set
@@ -833,13 +839,12 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 	}
 
 	iov.iov_base = (void*)(uintptr_t)in;
-#if 0
+
 	/*
 	 * Using two syscalls with memcpy is faster than four syscalls
 	 * without memcpy below the given threshold.
 	 */
-	/* TODO make heuristic when one syscall is slower than four syscalls */
-	if (inlen < (1<<15)) {
+	if (inlen <= (1<<13)) {
 		iov.iov_len = inlen;
 		ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_DECRYPT,
 					      0);
@@ -847,7 +852,6 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 		iov.iov_len = outlen;
 		return _kcapi_common_recv_data(handle, &iov, 1);
 	}
-#endif
 
 	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_DECRYPT, 0);
 	if (0 > ret)
@@ -1152,6 +1156,10 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen)
  * ciphertext pointers. That would mean that after the encryption operation,
  * the plaintext is overwritten with the ciphertext.
  *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
+ * the vmsplice call may not send all data to the kernel.
+ *
  * After invoking this function the caller should use
  * kcapi_aead_getdata() to obtain the resulting ciphertext and authentication
  * tag references.
@@ -1289,6 +1297,10 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
  * It is perfectly legal to use the same buffer as the plaintext and
  * ciphertext pointers. That would mean that after the encryption operation,
  * the ciphertext is overwritten with the plaintext.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
+ * the vmsplice call may not send all data to the kernel.
  *
  * To catch authentication errors (i.e. integrity violations) during the
  * decryption operation, the errno of this call shall be checked for EBADMSG.
