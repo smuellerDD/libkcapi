@@ -1,3 +1,12 @@
+Change 0.6.5:
+ * Measuring speed of vmsplice vs sendmsg interfaces and added heuristic
+   to select the fastest implementation
+ * Enhance documentation to explain usage of API better
+ * added speed measuring tests in speed-test/
+ * return errno for all syscalls through the API return codes
+   for better error handling
+ * process kernel flag of MSG_TRUNG for AEAD ciphers
+
 Change 0.6.4:
  * Update AEAD interface patch
  * Add new test invoking cipher instance multiple times (-d flag of test
