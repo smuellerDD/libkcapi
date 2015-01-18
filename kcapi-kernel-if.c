@@ -1174,7 +1174,6 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 {
 	struct iovec iov[2];
 	ssize_t ret = 0;
-	size_t len = 0;
 
 	/* require properly sized output data size */
 	if (outlen < _kcapi_aead_encrypt_outlen(handle, inlen,
@@ -1188,33 +1187,38 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 	}
 
 #if 0
-	/* using two syscall */
-	/* TODO make heuristic when one syscall is slower than four syscalls */
-	if (assoc && handle->aead.assoclen) {
-		iov[0].iov_base = (void*)(uintptr_t)assoc;
-		iov[0].iov_len = handle->aead.assoclen;
-		iov[1].iov_base = (void*)(uintptr_t)in;
-		iov[1].iov_len = inlen;
-		ret = _kcapi_common_send_meta(handle, &iov[0], 2,
-					      ALG_OP_ENCRYPT, 0);
-	} else {
-		iov[0].iov_base = (void*)(uintptr_t)in;
-		iov[0].iov_len = inlen;
-		ret = _kcapi_common_send_meta(handle, &iov[0], 1,
-					      ALG_OP_ENCRYPT, 0);
-	}
-	if (0 > ret)
-		return ret;
-
-	iov[0].iov_base = (void*)(uintptr_t)out;
-	iov[0].iov_len = outlen;
-	ret = _kcapi_common_recv_data(handle, &iov[0], 1);
+	if (inlen + handle->aead.assoclen >= (1<<17)) {
 #endif
+		if (assoc && handle->aead.assoclen) {
+			iov[0].iov_base = (void*)(uintptr_t)assoc;
+			iov[0].iov_len = handle->aead.assoclen;
+			iov[1].iov_base = (void*)(uintptr_t)in;
+			iov[1].iov_len = inlen;
+			ret = _kcapi_common_send_meta(handle, &iov[0], 2,
+						ALG_OP_ENCRYPT, 0);
+		} else {
+			iov[0].iov_base = (void*)(uintptr_t)in;
+			iov[0].iov_len = inlen;
+			ret = _kcapi_common_send_meta(handle, &iov[0], 1,
+						ALG_OP_ENCRYPT, 0);
+		}
+		if (0 > ret)
+			return ret;
+		iov[0].iov_base = (void*)(uintptr_t)out;
+		iov[0].iov_len = outlen;
+		return _kcapi_common_recv_data(handle, &iov[0], 1);
+
+#if 0
+	}
+
+	/* using separate pages slows down splice below the speed of sendmsg */
 	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT,
 				      MSG_MORE);
 	if (0 > ret)
 		return ret;
 	if (assoc && handle->aead.assoclen) {
+		size_t len = 0;
+
 		iov[0].iov_base = (void*)(uintptr_t)assoc;
 		iov[0].iov_len = handle->aead.assoclen;
 		len = handle->aead.assoclen;
@@ -1223,6 +1227,8 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 		len += inlen;
 		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 2, len, 0);
 	} else {
+		size_t len = 0;
+
 		iov[0].iov_base = (void*)(uintptr_t)in;
 		iov[0].iov_len = inlen;
 		len = inlen;
@@ -1231,13 +1237,16 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 	if (0 > ret)
 		return ret;
 
-	ret = _kcapi_common_read_data(handle, out, outlen);
+	iov[0].iov_base = (void*)(uintptr_t)out;
+	iov[0].iov_len = outlen;
+	ret = _kcapi_common_recv_data(handle, &iov[0], 1);
 	if (ret < 0)
 		return ret;
 	if ((ret < (ssize_t)handle->aead.taglen))
 		return -E2BIG;
 
 	return ret;
+#endif
 }
 
 /**
@@ -1317,7 +1326,6 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 {
 	struct iovec iov[3];
 	ssize_t ret = 0;
-	size_t len = 0;
 	unsigned int bs = handle->info.blocksize;
 
 	/* require properly sized output data size */
@@ -1330,60 +1338,66 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 	}
 
 #if 0
-	/* using two syscall */
-	/* TODO make heuristic when one syscall is slower than four syscalls */
-	if (assoc && handle->aead.assoclen) {
-		iov[0].iov_base = (void*)(uintptr_t)assoc;
-		iov[0].iov_len = handle->aead.assoclen;
-		iov[1].iov_base = (void*)(uintptr_t)in;
-		iov[1].iov_len = inlen;
-		iov[2].iov_base = (void*)(uintptr_t)tag;
-		iov[2].iov_len = handle->aead.taglen;
-		ret = _kcapi_common_send_meta(handle, &iov[0], 3,
-					      ALG_OP_DECRYPT, 0);
+	if (inlen + handle->aead.assoclen + handle->aead.taglen >= (1<<13s)) {
+#endif
+		if (assoc && handle->aead.assoclen) {
+			iov[0].iov_base = (void*)(uintptr_t)assoc;
+			iov[0].iov_len = handle->aead.assoclen;
+			iov[1].iov_base = (void*)(uintptr_t)in;
+			iov[1].iov_len = inlen;
+			iov[2].iov_base = (void*)(uintptr_t)tag;
+			iov[2].iov_len = handle->aead.taglen;
+			ret = _kcapi_common_send_meta(handle, &iov[0], 3,
+						ALG_OP_DECRYPT, 0);
+		} else {
+			iov[0].iov_base = (void*)(uintptr_t)in;
+			iov[0].iov_len = inlen;
+			iov[1].iov_base = (void*)(uintptr_t)tag;
+			iov[1].iov_len = handle->aead.taglen;
+			ret = _kcapi_common_send_meta(handle, &iov[0], 2,
+						ALG_OP_DECRYPT, 0);
+		}
+		if (0 > ret)
+			return ret;
+#if 0
+	/* using separate pages slows down splice below the speed of sendmsg */
 	} else {
-		iov[0].iov_base = (void*)(uintptr_t)in;
-		iov[0].iov_len = inlen;
-		iov[1].iov_base = (void*)(uintptr_t)tag;
-		iov[1].iov_len = handle->aead.taglen;
-		ret = _kcapi_common_send_meta(handle, &iov[0], 2,
-					      ALG_OP_DECRYPT, 0);
+		size_t len = 0;
+
+		ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_DECRYPT,
+					MSG_MORE);
+		if (0 > ret)
+			return ret;
+		if (assoc && handle->aead.assoclen) {
+			iov[0].iov_base = (void*)(uintptr_t)assoc;
+			iov[0].iov_len = handle->aead.assoclen;
+			len = handle->aead.assoclen;
+			iov[1].iov_base = (void*)(uintptr_t)in;
+			iov[1].iov_len = inlen;
+			len += inlen;
+			iov[2].iov_base = (void*)(uintptr_t)tag;
+			iov[2].iov_len = handle->aead.taglen;
+			len += handle->aead.taglen;
+			ret = _kcapi_common_vmsplice_data(handle, &iov[0], 3,
+							  len, 0);
+		} else {
+			iov[0].iov_base = (void*)(uintptr_t)in;
+			iov[0].iov_len = inlen;
+			len = inlen;
+			iov[1].iov_base = (void*)(uintptr_t)tag;
+			iov[1].iov_len = handle->aead.taglen;
+			len += handle->aead.taglen;
+			ret = _kcapi_common_vmsplice_data(handle, &iov[0], 2,
+							  len, 0);
+		}
+		if (0 > ret)
+			return ret;
 	}
-	if (0 > ret)
-		return ret;
+#endif
 
 	iov[0].iov_base = (void*)(uintptr_t)out;
 	iov[0].iov_len = outlen;
-	ret = _kcapi_common_recv_data(handle, &iov[0], 1);
-#endif
-	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_DECRYPT,
-				      MSG_MORE);
-	if (0 > ret)
-		return ret;
-	if (assoc && handle->aead.assoclen) {
-		iov[0].iov_base = (void*)(uintptr_t)assoc;
-		iov[0].iov_len = handle->aead.assoclen;
-		len = handle->aead.assoclen;
-		iov[1].iov_base = (void*)(uintptr_t)in;
-		iov[1].iov_len = inlen;
-		len += inlen;
-		iov[2].iov_base = (void*)(uintptr_t)tag;
-		iov[2].iov_len = handle->aead.taglen;
-		len += handle->aead.taglen;
-		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 3, len, 0);
-	} else {
-		iov[0].iov_base = (void*)(uintptr_t)in;
-		iov[0].iov_len = inlen;
-		len = inlen;
-		iov[1].iov_base = (void*)(uintptr_t)tag;
-		iov[1].iov_len = handle->aead.taglen;
-		len += handle->aead.taglen;
-		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 2, len, 0);
-	}
-	if (0 > ret)
-		return ret;
-
-	return _kcapi_common_read_data(handle, out, outlen);
+	return _kcapi_common_recv_data(handle, &iov[0], 1);
 }
 
 /**
