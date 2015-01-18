@@ -242,9 +242,24 @@ static const struct cp_aead_tests testcases[] = {
 	{ "AES(G) GCM(G) 128", "gcm(aes-generic)", 16, 0 },
 	{ "AES(G) GCM(G) 192", "gcm(aes-generic)", 24, 0 },
 	{ "AES(G) GCM(G) 256", "gcm(aes-generic)", 32, 0 },
+#if 0
+	/* these tests panic the kernel due to missing setkey callback */
+	{ "AES(AESNI) GCM(ASM) 128", "__driver-gcm-aes-aesni", 16, 0 },
+	{ "AES(AESNI) GCM(ASM) 192", "__driver-gcm-aes-aesni", 24, 0 },
+	{ "AES(AESNI) GCM(ASM) 256", "__driver-gcm-aes-aesni", 32, 0 },
+#endif
+	{ "AES(AESNI) GCM(ASM-RFC) 128", "rfc4106-gcm-aesni", 16, 0 },
+	{ "AES(AESNI) GCM(ASM-RFC) 192", "rfc4106-gcm-aesni", 24, 0 },
+	{ "AES(AESNI) GCM(ASM-RFC) 256", "rfc4106-gcm-aesni", 32, 0 },
+	{ "AES(AESNI) GCM(G) 128", "gcm(__driver-aes-aesni)", 16, 0 },
+	{ "AES(AESNI) GCM(G) 192", "gcm(__driver-aes-aesni)", 24, 0 },
+	{ "AES(AESNI) GCM(G) 256", "gcm(__driver-aes-aesni)", 32, 0 },
 	{ "AES(G) CCM(G) 128", "ccm(aes-generic)", 16, 1 },
 	{ "AES(G) CCM(G) 192", "ccm(aes-generic)", 24, 1 },
 	{ "AES(G) CCM(G) 256", "ccm(aes-generic)", 32, 1 },
+	{ "AES(AESNI) CCM(G) 128", "ccm(__driver-aes-aesni)", 16, 0 },
+	{ "AES(AESNI) CCM(G) 192", "ccm(__driver-aes-aesni)", 24, 0 },
+	{ "AES(AESNI) CCM(G) 256", "ccm(__driver-aes-aesni)", 32, 0 },
 };
 
 static struct cp_test cp_aead_testdef[(2 * (ARRAY_SIZE(testcases)))];
