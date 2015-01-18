@@ -1,8 +1,5 @@
 * Upstream module in aead/ to add kernel-side support for AEAD Netlink interface
 
-* Upstream module in rng/ to add kernel-side support for random number generator
-  Netlink interface
-
 * Include linux/cryptouser.h once available in user space and remove header
   file copy from libkcapi code base.
 
