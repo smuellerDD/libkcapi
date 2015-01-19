@@ -34,6 +34,15 @@
  * DAMAGE.
  */
 
+/* includes for vmsplice tests */
+#define _GNU_SOURCE
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/uio.h>
+#include <asm/types.h>
+#include <sys/socket.h>
+#include <stdint.h>
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -337,6 +346,7 @@ static void usage(void)
 	fprintf(stderr, "\t-s --stream\tUse the stream API\n");
 	fprintf(stderr, "\t-y --largeinput\tTest long AD with AEAD cipher\n");
 	fprintf(stderr, "\t-d --execloops\tNumber of execution loops\n");
+	fprintf(stderr, "\t-v --vmsplice\tUse vmsplice for AEAD oneshot\n");
 }
 
 enum type {
@@ -550,6 +560,141 @@ out:
 }
 
 /*
+ * the vmsplice interface is currently disabled, so re-implement it here
+ * to test it -- invocation is identical to kcapi_aead_decrypt
+ */
+
+static inline ssize_t _kcapi_common_vmsplice_data(struct kcapi_handle *handle,
+						  struct iovec *iov,
+						  size_t iovlen,
+						  size_t inlen,
+						  unsigned int flags)
+{
+	ssize_t ret = 0;
+
+	ret = vmsplice(handle->pipes[1], iov, iovlen, SPLICE_F_GIFT|flags);
+	if (0 > ret)
+		return ret;
+	if ((size_t)ret != inlen)
+		fprintf(stderr, "vmsplice: not all data received by kernel (data recieved: %ld -- data sent: %lu)\n",
+			(long)ret, (unsigned long)inlen);
+	ret = splice(handle->pipes[0], NULL, handle->opfd, NULL, ret, flags);
+	return (ret >= 0) ? ret : -errno;
+}
+
+static inline ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
+					      struct iovec *iov, size_t iovlen)
+{
+	struct msghdr msg;
+	ssize_t ret = 0;
+	int errsv = 0;
+
+	msg.msg_name = NULL;
+	msg.msg_namelen = 0;
+	msg.msg_control = NULL;
+	msg.msg_controllen = 0;
+	msg.msg_flags = 0;
+	msg.msg_iov = iov;
+	msg.msg_iovlen = iovlen;
+
+	ret = recvmsg(handle->opfd, &msg, 0);
+	errsv = errno;
+	if (msg.msg_flags & MSG_TRUNC) {
+		fprintf(stderr, "recvmsg: processed data was truncated by kernel (only %lu bytes processed)\n", (unsigned long)ret);
+		return -EMSGSIZE;
+	}
+	return (ret >= 0) ? ret : -errsv;
+}
+
+ssize_t __kcapi_aead_encrypt_splice(struct kcapi_handle *handle,
+				    const unsigned char *in, size_t inlen,
+				    const unsigned char *assoc,
+				    unsigned char *out,
+				    size_t outlen)
+{
+	struct iovec iov[2];
+	ssize_t ret = 0;
+
+	ret = kcapi_cipher_stream_init_enc(handle, NULL, 0);
+	if (0 > ret)
+		return ret;
+	if (assoc && handle->aead.assoclen) {
+		size_t len = 0;
+
+		iov[0].iov_base = (void*)(uintptr_t)assoc;
+		iov[0].iov_len = handle->aead.assoclen;
+		len = handle->aead.assoclen;
+		iov[1].iov_base = (void*)(uintptr_t)in;
+		iov[1].iov_len = inlen;
+		len += inlen;
+		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 2, len, 0);
+	} else {
+		size_t len = 0;
+
+		iov[0].iov_base = (void*)(uintptr_t)in;
+		iov[0].iov_len = inlen;
+		len = inlen;
+		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 1, len, 0);
+	}
+	if (0 > ret)
+		return ret;
+
+	iov[0].iov_base = (void*)(uintptr_t)out;
+	iov[0].iov_len = outlen;
+	ret = _kcapi_common_recv_data(handle, &iov[0], 1);
+	if (ret < 0)
+		return ret;
+	if ((ret < (ssize_t)handle->aead.taglen))
+		return -E2BIG;
+
+	return ret;
+
+
+}
+ssize_t __kcapi_aead_decrypt_splice(struct kcapi_handle *handle,
+				    const unsigned char *in, size_t inlen,
+				    const unsigned char *assoc,
+				    const unsigned char *tag,
+				    unsigned char *out, size_t outlen)
+{
+	struct iovec iov[3];
+	ssize_t ret = 0;
+	size_t len = 0;
+
+	ret = kcapi_cipher_stream_init_dec(handle, NULL, 0);
+	if (0 > ret)
+		return ret;
+	if (assoc && handle->aead.assoclen) {
+		iov[0].iov_base = (void*)(uintptr_t)assoc;
+		iov[0].iov_len = handle->aead.assoclen;
+		len = handle->aead.assoclen;
+		iov[1].iov_base = (void*)(uintptr_t)in;
+		iov[1].iov_len = inlen;
+		len += inlen;
+		iov[2].iov_base = (void*)(uintptr_t)tag;
+		iov[2].iov_len = handle->aead.taglen;
+		len += handle->aead.taglen;
+		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 3,
+							len, 0);
+	} else {
+		iov[0].iov_base = (void*)(uintptr_t)in;
+		iov[0].iov_len = inlen;
+		len = inlen;
+		iov[1].iov_base = (void*)(uintptr_t)tag;
+		iov[1].iov_len = handle->aead.taglen;
+		len += handle->aead.taglen;
+		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 2,
+							len, 0);
+	}
+	if (0 > ret)
+		return ret;
+
+	iov[0].iov_base = (void*)(uintptr_t)out;
+	iov[0].iov_len = outlen;
+	return _kcapi_common_recv_data(handle, &iov[0], 1);
+}
+
+/*
  * Encryption command line:
  * $ ./kcapi -x 2 -e -c "gcm(aes)" -p 89154d0d4129d322e4487bafaa4f6b46 -k c0ece3e63198af382b5603331cc23fa8 -i 7e489b83622e7228314d878d -a afcd7202d621e06ca53b70c2bdff7fb2 -l 16
  * f4a3eacfbdadd3b1a17117b1d67ffc1f1e21efbbc6d83724a8c296e3bb8cda0c
@@ -559,7 +704,7 @@ out:
  * e8703b9b5ef5b454e295a4bae44c7e62
  *
  * ./kcapi -x 2 -c "ccm(aes)" -q 4edb58e8d5eb6bc711c43a6f3693daebde2e5524f1b55297abb29f003236e43d -t a7877c99 -n 674742abd0f5ba -k 2861fd0253705d7875c95ba8a53171b4 -a fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d
- * 8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
+ * 8dd351509dcf1df9c33987fb31./kcapi -x 1 -c "cbc(aes)" -k 3023b2418ea59a841757dcf07881b3a8def1c97b659a4dad  -i 95aa5b68130be6fcf5cabe7d9f898a41 -q c313c6b50145b69a77b33404cb422598cd708dd60d65d3d4e1baa53581d891d994d723
  *
  * Decryption EBADMSG command line:
  * $ ./kcapi -x 2 -c "gcm(aes)" -q 0fe37040e9b72b2dfc5e9191c2b15681 -t 273021cc6e39f0f8088f48d7ce70fef8 -i 917b8b25ad6e90b7f93b345f -k 8cc6fa539b219221c786b875aa89e4c1 -a 22584d1db91f9f3d3e7308da86228153
@@ -567,15 +712,9 @@ out:
  *
  * $ ./kcapi -x 2 -c "ccm(aes)" -q db5fce3f4ba0ac878b8f18733d7f1a6a1c8c8396667c5235c307e874f5783087 -t 38a263cd -n 99a789af090798 -k 2861fd0253705d7875c95ba8a53171b4 -a 34b7ab892c3f06e0305693ffc5ff9d1238e57241e091c584a3df51b9bbb3bff4
  * EBADMSG
- *
- * The kernel interface does not support zero length plaintext -- in this case
- * the AEAD cipher will simply not be called.
- *
- * The kernel interface does not support zero length AAD -- in this case
- * the kernel waits for more input data and a read will be blocked until the
- * AAD is supplied.
  */
-static int cavs_aead(struct kcapi_cavs *cavs_test, unsigned int loops)
+static int cavs_aead(struct kcapi_cavs *cavs_test, unsigned int loops,
+		     int splice)
 {
 	struct kcapi_handle handle;
 	unsigned char *outbuf = NULL;
@@ -650,15 +789,27 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, unsigned int loops)
 	kcapi_aead_setassoclen(&handle, cavs_test->assoclen);
 
 	for (i = 0; i < loops; i++) {
-		if (cavs_test->enc)
-			ret = kcapi_aead_encrypt(&handle,
+		if (cavs_test->enc) {
+			if (splice)
+				ret = __kcapi_aead_encrypt_splice(&handle,
 					 cavs_test->pt, cavs_test->ptlen,
 					 cavs_test->assoc, outbuf, outbuflen);
-		else
-			ret = kcapi_aead_decrypt(&handle,
+			else
+				ret = kcapi_aead_encrypt(&handle,
+					 cavs_test->pt, cavs_test->ptlen,
+					 cavs_test->assoc, outbuf, outbuflen);
+		} else {
+			if (splice)
+				ret = __kcapi_aead_decrypt_splice(&handle,
 					 cavs_test->ct, cavs_test->ctlen,
 					 cavs_test->assoc, cavs_test->tag,
 					 outbuf, outbuflen);
+			else
+				ret = kcapi_aead_decrypt(&handle,
+					 cavs_test->ct, cavs_test->ctlen,
+					 cavs_test->assoc, cavs_test->tag,
+					 outbuf, outbuflen);
+		}
 		errsv = errno;
 		if (0 > ret && EBADMSG != errsv) {
 			printf("Cipher operation of buffer failed: %d %d\n",
@@ -853,7 +1004,7 @@ out:
 	return ret;
 }
 
-static int cavs_aead_large(int stream, unsigned int loops)
+static int cavs_aead_large(int stream, unsigned int loops, int splice)
 {
 	struct kcapi_cavs test;
 
@@ -926,7 +1077,7 @@ static int cavs_aead_large(int stream, unsigned int loops)
 		 * AAD to 15 pages
 		 */
 		test.assoclen -= 4096;
-		ret = cavs_aead(&test, loops);
+		ret = cavs_aead(&test, loops, splice);
 	}
 out:
 	if (test.pt)
@@ -1062,6 +1213,7 @@ int main(int argc, char *argv[])
 	int stream = 0;
 	int large = 0;
 	unsigned int loops = 1;
+	int splice = 1;
 	struct kcapi_cavs cavs_test;
 
 	memset(&cavs_test, 0, sizeof(struct kcapi_cavs));
@@ -1087,9 +1239,10 @@ int main(int argc, char *argv[])
 			{"stream", 0, 0, 's'},
 			{"largeinput", 0, 0, 'y'},
 			{"execloops", 0, 0, 'd'},
+			{"vmsplice", 0, 0, 'v'},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "ec:p:q:i:n:k:a:l:t:x:zsyd:", opts, &opt_index);
+		c = getopt_long(argc, argv, "ec:p:q:i:n:k:a:l:t:x:zsyd:v", opts, &opt_index);
 		if(-1 == c)
 			break;
 		switch(c)
@@ -1194,6 +1347,9 @@ int main(int argc, char *argv[])
 			case 'd':
 				loops = strtoul(optarg, NULL, 10);
 				break;
+			case 'v':
+				splice = 1;
+				break;
 
 			default:
 				usage();
@@ -1202,7 +1358,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (large) {
-		rc = cavs_aead_large(stream, loops);
+		rc = cavs_aead_large(stream, loops, splice);
 	}
 	else if (SYM == cavs_test.type) {
 		if (stream)
@@ -1214,7 +1370,7 @@ int main(int argc, char *argv[])
 		if (stream)
 			rc = cavs_aead_stream(&cavs_test, loops);
 		else
-			rc = cavs_aead(&cavs_test, loops);
+			rc = cavs_aead(&cavs_test, loops, splice);
 	} else if (HASH == cavs_test.type) {
 		if (stream)
 			rc = cavs_hash_stream(&cavs_test, loops);

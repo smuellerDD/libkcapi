@@ -419,9 +419,13 @@ aeadfunc()
 		fi
 
 		sout="one shot"
-		if [ -n "$stream" ]
+		if [ x"$stream" = x"-s" ]
 		then
 			sout="stream"
+		fi
+		if [ x"$stream" = x"-v" ]
+		then
+			sout="vmsplice"
 		fi
 		if [ x"$result" = x"$expected" ]
 		then
@@ -438,7 +442,8 @@ aeadfunc()
 	expectedlong="5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d7587eb88661ed4648fb334e725af4c790350"
 	expectedshort="5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d7587959ce22d219ae8a94190ddb4eae7cd28"
 
-	if [ -n "$stream" ]
+	# vmsplice does not take long strings
+	if [ x"$stream" = x"-s" ]
 	then
 		expected="${expectedlong}
 ${expectedshort}"
@@ -471,13 +476,17 @@ multipletest() {
 	stream=$1
 
 	sout="one shot"
-	if [ -n "$stream" ]
+	if [ x"$stream" = x"-s" ]
 	then
 		sout="stream"
 	fi
+	if [ x"$stream" = x"-v" ]
+	then
+		sout="vmsplice"
+	fi
 
 	result=$(./kcapi $stream -d 2 -x 1 -e -c "cbc(aes)" -k 8d7dd9b0170ce0b5f2f8e1aa768e01e91da8bfc67fd486d081b28254c99eb423 -i 7fbc02ebf5b93322329df9bfccb635af -p 48981da18e4bb9ef7e2e3162d16b1910)
-	if [ -n "$stream" ]
+	if [ x"$stream" = x"-s" ]
 	then
 		#block chaining
 		expected="8b19050f66582cb7f7e4b6c873819b71
@@ -540,7 +549,9 @@ symfunc
 symfunc -s
 aeadfunc
 aeadfunc -s
+aeadfunc -v
 auxtest
 multipletest
 multipletest -s
+multipletest -v
 exit $failures
