@@ -376,6 +376,78 @@ struct kcapi_cavs {
 };
 
 /*
+ * the vmsplice interface is currently used for large input, so re-implement
+ * it here to test it -- invocation is identical to kcapi_cipher_decrypt
+ */
+
+static inline ssize_t _kcapi_common_vmsplice_data(struct kcapi_handle *handle,
+						  struct iovec *iov,
+						  size_t iovlen,
+						  size_t inlen,
+						  unsigned int flags)
+{
+	ssize_t ret = 0;
+
+	ret = vmsplice(handle->pipes[1], iov, iovlen, SPLICE_F_GIFT|flags);
+	if (0 > ret)
+		return ret;
+	if ((size_t)ret != inlen)
+		fprintf(stderr, "vmsplice: not all data received by kernel (data recieved: %ld -- data sent: %lu)\n",
+			(long)ret, (unsigned long)inlen);
+	ret = splice(handle->pipes[0], NULL, handle->opfd, NULL, ret, flags);
+	return (ret >= 0) ? ret : -errno;
+}
+
+static inline ssize_t _kcapi_common_read_data(struct kcapi_handle *handle,
+					      unsigned char *out, size_t outlen)
+{
+	ssize_t ret = 0;
+
+	ret = read(handle->opfd, out, outlen);
+	return (ret >= 0) ? ret : -errno;
+}
+
+ssize_t __kcapi_cipher_encrypt_splice(struct kcapi_handle *handle,
+				      const unsigned char *in, size_t inlen,
+				      unsigned char *out, size_t outlen)
+{
+	struct iovec iov;
+	ssize_t ret = 0;
+
+	ret = kcapi_cipher_stream_init_enc(handle, NULL, 0);
+	if (0 > ret)
+		return ret;
+
+	iov.iov_len = inlen;
+	iov.iov_base = (void*)(uintptr_t)in;
+	ret = _kcapi_common_vmsplice_data(handle, &iov, 1, inlen,
+					  SPLICE_F_MORE);
+	if (0 > ret)
+		return ret;
+	return _kcapi_common_read_data(handle, out, outlen);
+}
+
+ssize_t __kcapi_cipher_decrypt_splice(struct kcapi_handle *handle,
+				      const unsigned char *in, size_t inlen,
+				      unsigned char *out, size_t outlen)
+{
+	struct iovec iov;
+	ssize_t ret = 0;
+
+	ret = kcapi_cipher_stream_init_dec(handle, NULL, 0);
+	if (0 > ret)
+		return ret;
+
+	iov.iov_len = inlen;
+	iov.iov_base = (void*)(uintptr_t)in;
+	ret = _kcapi_common_vmsplice_data(handle, &iov, 1, inlen,
+					  SPLICE_F_MORE);
+	if (0 > ret)
+		return ret;
+	return _kcapi_common_read_data(handle, out, outlen);
+}
+
+/*
  * Encryption command line:
  * $ ./kcapi -x 1 -e -c "cbc(aes)" -k 8d7dd9b0170ce0b5f2f8e1aa768e01e91da8bfc67fd486d081b28254c99eb423 -i 7fbc02ebf5b93322329df9bfccb635af -p 48981da18e4bb9ef7e2e3162d16b1910
  * 8b19050f66582cb7f7e4b6c873819b71
@@ -384,7 +456,8 @@ struct kcapi_cavs {
  * $ ./kcapi -x 1 -c "cbc(aes)" -k 3023b2418ea59a841757dcf07881b3a8def1c97b659a4dad  -i 95aa5b68130be6fcf5cabe7d9f898a41 -q c313c6b50145b69a77b33404cb422598
  * 836de0065f9d6f6a3dd2c53cd17e33a5
  */
-static int cavs_sym(struct kcapi_cavs *cavs_test, unsigned int loops)
+static int cavs_sym(struct kcapi_cavs *cavs_test, unsigned int loops,
+		    int splice)
 {
 	struct kcapi_handle handle;
 	unsigned char *outbuf = NULL;
@@ -430,11 +503,21 @@ static int cavs_sym(struct kcapi_cavs *cavs_test, unsigned int loops)
 
 	for(i = 0; i < loops; i++) {
 		if (cavs_test->enc) {
-			ret = kcapi_cipher_encrypt(&handle,
+			if (splice)
+				ret = __kcapi_cipher_encrypt_splice(&handle,
+						cavs_test->pt, cavs_test->ptlen,
+						outbuf, outbuflen);
+			else
+				ret = kcapi_cipher_encrypt(&handle,
 						cavs_test->pt, cavs_test->ptlen,
 						outbuf, outbuflen);
 		} else {
-			ret = kcapi_cipher_decrypt(&handle,
+			if (splice)
+				ret = __kcapi_cipher_decrypt_splice(&handle,
+						cavs_test->ct, cavs_test->ctlen,
+						outbuf, outbuflen);
+			else
+				ret = kcapi_cipher_decrypt(&handle,
 						cavs_test->ct, cavs_test->ctlen,
 						outbuf, outbuflen);
 		}
@@ -563,24 +646,6 @@ out:
  * the vmsplice interface is currently disabled, so re-implement it here
  * to test it -- invocation is identical to kcapi_aead_decrypt
  */
-
-static inline ssize_t _kcapi_common_vmsplice_data(struct kcapi_handle *handle,
-						  struct iovec *iov,
-						  size_t iovlen,
-						  size_t inlen,
-						  unsigned int flags)
-{
-	ssize_t ret = 0;
-
-	ret = vmsplice(handle->pipes[1], iov, iovlen, SPLICE_F_GIFT|flags);
-	if (0 > ret)
-		return ret;
-	if ((size_t)ret != inlen)
-		fprintf(stderr, "vmsplice: not all data received by kernel (data recieved: %ld -- data sent: %lu)\n",
-			(long)ret, (unsigned long)inlen);
-	ret = splice(handle->pipes[0], NULL, handle->opfd, NULL, ret, flags);
-	return (ret >= 0) ? ret : -errno;
-}
 
 static inline ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 					      struct iovec *iov, size_t iovlen)
@@ -1213,7 +1278,7 @@ int main(int argc, char *argv[])
 	int stream = 0;
 	int large = 0;
 	unsigned int loops = 1;
-	int splice = 1;
+	int splice = 0;
 	struct kcapi_cavs cavs_test;
 
 	memset(&cavs_test, 0, sizeof(struct kcapi_cavs));
@@ -1364,7 +1429,7 @@ int main(int argc, char *argv[])
 		if (stream)
 			rc = cavs_sym_stream(&cavs_test, loops);
 		else
-			rc = cavs_sym(&cavs_test, loops);
+			rc = cavs_sym(&cavs_test, loops, splice);
 	}
 	else if (AEAD == cavs_test.type) {
 		if (stream)

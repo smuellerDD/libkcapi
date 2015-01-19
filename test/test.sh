@@ -368,9 +368,13 @@ symfunc()
 		fi
 
 		sout="one shot"
-		if [ -n "$stream" ]
+		if [ x"$stream" = x"-s" ]
 		then
 			sout="stream"
+		fi
+		if [ x"$stream" = x"-v" ]
+		then
+			sout="vmsplice"
 		fi
 		if [ x"$result" = x"$SYM_exp" ]
 		then
@@ -547,6 +551,7 @@ hashfunc
 hashfunc -s
 symfunc
 symfunc -s
+symfunc -v
 aeadfunc
 aeadfunc -s
 aeadfunc -v
