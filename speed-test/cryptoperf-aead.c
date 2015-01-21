@@ -91,10 +91,6 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm)
 				 &ivdata, &ivlen))
 			goto out;
 	}
-	if (kcapi_aead_setiv(&test->u.aead.handle, ivdata, ivlen)) {
-		printf(DRIVER_NAME": iv could not be set\n");
-		goto out;
-	}
 	test->u.aead.iv = ivdata;
 
 	if (kcapi_aead_settaglen(&test->u.aead.handle, TAGLEN)) {
@@ -149,6 +145,7 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm)
 		ret = kcapi_aead_encrypt(&test->u.aead.handle,
 					 test->u.aead.output,
 					 test->u.aead.outputlen,
+					 test->u.aead.iv,
 					 test->u.aead.assoc,
 					 test->u.aead.input,
 					 test->u.aead.inputlen);
@@ -212,6 +209,7 @@ static unsigned int cp_ablkcipher_enc_test(struct cp_test *test)
 	kcapi_aead_encrypt(&test->u.aead.handle,
 			   test->u.aead.input,
 			   test->u.aead.inputlen,
+			   test->u.aead.iv,
 			   test->u.aead.assoc,
 			   test->u.aead.output,
 			   test->u.aead.outputlen);
@@ -223,6 +221,7 @@ static unsigned int cp_ablkcipher_dec_test(struct cp_test *test)
 	kcapi_aead_decrypt(&test->u.aead.handle,
 			   test->u.aead.input,
 			   test->u.aead.inputlen,
+			   test->u.aead.iv,
 			   test->u.aead.assoc,
 			   test->u.aead.tag,
 			   test->u.aead.output,

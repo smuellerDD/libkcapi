@@ -105,7 +105,7 @@ static ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 	/* IV data */
 	struct af_alg_iv *alg_iv = NULL;
 	size_t iv_msg_size = handle->cipher.iv ?
-			  CMSG_SPACE(sizeof(*alg_iv) + handle->cipher.ivlen) :
+			  CMSG_SPACE(sizeof(*alg_iv) + handle->info.ivsize) :
 			  0;
 
 	/* AEAD data */
@@ -144,8 +144,8 @@ static ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 		header->cmsg_type = ALG_SET_IV;
 		header->cmsg_len = iv_msg_size;
 		alg_iv = (void*)CMSG_DATA(header);
-		alg_iv->ivlen = handle->cipher.ivlen;
-		memcpy(alg_iv->iv, handle->cipher.iv, handle->cipher.ivlen);
+		alg_iv->ivlen = handle->info.ivsize;
+		memcpy(alg_iv->iv, handle->cipher.iv, handle->info.ivsize);
 	}
 
 	/* set AEAD information */
@@ -254,22 +254,6 @@ static inline int _kcapi_common_setkey(struct kcapi_handle *handle,
 
 	ret = setsockopt(handle->tfmfd, SOL_ALG, ALG_SET_KEY, key, keylen);
 	return (ret >= 0) ? ret : -errno;
-}
-
-static inline int _kcapi_common_setiv(struct kcapi_handle *handle,
-				      const unsigned char *iv, size_t ivlen)
-{
-	int cipher_ivlen = handle->info.ivsize;
-
-	if (cipher_ivlen < 0)
-		return cipher_ivlen;
-	if (!iv || ivlen != (size_t)cipher_ivlen)
-		return -EINVAL;
-
-	handle->cipher.iv = iv;
-	handle->cipher.ivlen = ivlen;
-
-	return 0;
 }
 
 static int __kcapi_common_getinfo(struct kcapi_handle *handle,
@@ -690,34 +674,11 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
 }
 
 /**
- * kcapi_cipher_setiv() -set IV for the cipher operation
- * @handle: cipher handle - input
- * @iv: buffer holding the IV (may be NULL if IV is not needed) - input
- * @ivlen: length of iv (should be zero if iv is NULL) - input
- *
- * This function requires IV to be exactly IV size. The function verifies
- * the IV size to avoid unnecessary kernel round trips.
- *
- * Note - the caller must keep the iv buffer for every kcapi_cipher_encrypt() or
- * kcapi_cipher_decrypt() operation, or until the last invocation of
- * kcapi_cipher_stream_init_enc() or kcapi_cipher_stream_init_dec() is
- * performed.
- *
- * Return: 0 upon success;
- *	   < 0 in case of an error
- *
- */
-int kcapi_cipher_setiv(struct kcapi_handle *handle,
-		       const unsigned char *iv, size_t ivlen)
-{
-	return _kcapi_common_setiv(handle, iv, ivlen);
-}
-
-/**
  * kcapi_cipher_encrypt() - encrypt data (one shot)
  * @handle: cipher handle - input
  * @in: plaintext data buffer - input
  * @inlen: length of in buffer - input
+ * @iv: IV to be used for cipher operation - input
  * @out: ciphertext data buffer - output
  * @outlen: length of out buffer - input
  *
@@ -729,11 +690,14 @@ int kcapi_cipher_setiv(struct kcapi_handle *handle,
  * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
  * the vmsplice call may not send all data to the kernel.
  *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
  * Return: number of bytes encrypted upon success;
  *	   < 0 in case of error with errno set
  */
 ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 			     const unsigned char *in, size_t inlen,
+			     const unsigned char *iv,
 			     unsigned char *out, size_t outlen)
 {
 	struct iovec iov;
@@ -755,8 +719,9 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 		return -EINVAL;
 	}
 
-	iov.iov_base = (void*)(uintptr_t)in;
+	handle->cipher.iv = iv;
 
+	iov.iov_base = (void*)(uintptr_t)in;
 	/*
 	 * Using two syscalls with memcpy is faster than four syscalls
 	 * without memcpy below the given threshold.
@@ -765,6 +730,8 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 		iov.iov_len = inlen;
 		ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_ENCRYPT,
 					      0);
+		if (0 > ret)
+			return ret;
 		iov.iov_base = (void*)(uintptr_t)out;
 		iov.iov_len = outlen;
 		return _kcapi_common_recv_data(handle, &iov, 1);
@@ -773,7 +740,6 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT, 0);
 	if (0 > ret)
 		return ret;
-
 	while (inlen) {
 		size_t datalen = (inlen > MAXPIPELEN) ? MAXPIPELEN : inlen;
 
@@ -795,6 +761,7 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
  * @handle: cipher handle - input
  * @in: ciphertext data buffer - input
  * @inlen: length of in buffer - input
+ * @iv: IV to be used for cipher operation - input
  * @out: plaintext data buffer - output
  * @outlen: length of out buffer - input
  *
@@ -806,11 +773,14 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
  * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
  * the vmsplice call may not send all data to the kernel.
  *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
  * Return: number of bytes decrypted upon success;
  *	   < 0 in case of error with errno set
  */
 ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 			     const unsigned char *in, size_t inlen,
+			     const unsigned char *iv,
 			     unsigned char *out, size_t outlen)
 {
 	struct iovec iov;
@@ -837,6 +807,8 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 			(unsigned long)outlen, (unsigned long)inlen);
 		return -EINVAL;
 	}
+
+	handle->cipher.iv = iv;
 
 	iov.iov_base = (void*)(uintptr_t)in;
 
@@ -876,6 +848,7 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 /**
  * kcapi_cipher_stream_init_enc() - start an encryption operation (stream)
  * @handle: cipher handle - input
+ * @iv: IV to be used for cipher operation - input
  * @iov: scatter/gather list with data to be encrypted. This is the pointer to
  *	 the first @iov entry if an array of @iov entries is supplied. See
  *	 sendmsg(2) for details on how @iov is to be used. This pointer may be
@@ -895,12 +868,16 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
  * kcapi_cipher_stream_op() can be mixed, even by multiple threads of an
  * application.
  *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
  * Return: number of bytes sent to the kernel upon success;
  *	   < 0 in case of error with errno set
  */
 ssize_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
+				     const unsigned char *iv,
 				     struct iovec *iov, size_t iovlen)
 {
+	handle->cipher.iv = iv;
 	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_ENCRYPT,
 				       MSG_MORE);
 }
@@ -908,6 +885,7 @@ ssize_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
 /**
  * kcapi_cipher_stream_init_dec() - start a decryption operation (stream)
  * @handle: cipher handle - input
+ * @iv: IV to be used for cipher operation - input
  * @iov: scatter/gather list with data to be decrypted. This is the pointer to
  *	 the first @iov entry if an array of @iov entries is supplied. See
  *	 sendmsg(2) for details on how @iov is to be used. This pointer may be
@@ -927,12 +905,16 @@ ssize_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
  * kcapi_cipher_stream_op() can be mixed, even by multiple threads of an
  * application.
  *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
  * Return: number of bytes sent to the kernel upon success;
  *	   < 0 in case of error with errno set
  */
 ssize_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
+				     const unsigned char *iv,
 				     struct iovec *iov, size_t iovlen)
 {
+	handle->cipher.iv = iv;
 	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_DECRYPT,
 				       MSG_MORE);
 }
@@ -1080,28 +1062,6 @@ int kcapi_aead_setkey(struct kcapi_handle *handle,
 }
 
 /**
- * kcapi_aead_setiv() - set IV for the AEAD operation
- * @handle: cipher handle - input
- * @iv: buffer holding the IV (may be NULL if IV is not needed) - input
- * @ivlen: length of iv (should be zero if iv is NULL) - input
- *
- * Return: 0 upon success; < 0 in case of an error
- *
- * This function requires IV to be exactly IV size. The function verifies
- * the IV size to avoid unnecessary kernel round trips.
- *
- * Note - the caller must keep the iv buffer for every kcapi_aead_encrypt() or
- * kcapi_aead_decrypt() operation, or until the last invocation of
- * kcapi_aead_stream_init_enc() or kcapi_aead_stream_init_dec() is performed.
- * This function only retains a pointer to the user-provided IV buffer.
- */
-int kcapi_aead_setiv(struct kcapi_handle *handle,
-		     const unsigned char *iv, size_t ivlen)
-{
-	return _kcapi_common_setiv(handle, iv, ivlen);
-}
-
-/**
  * kcapi_aead_settaglen() - Set authentication tag size
  * @handle: cipher handle - input
  * @taglen: length of authentication tag - input
@@ -1144,6 +1104,7 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen)
  * @handle: cipher handle - input
  * @in: plaintext data buffer - input
  * @inlen: length of plaintext buffer - input
+ * @iv: IV to be used for cipher operation - input
  * @assoc: associated data of size set with kcapi_aead_setassoclen() - input
  * @out: data buffer holding cipher text and authentication tag - output
  * @outlen: length of out buffer - input
@@ -1160,6 +1121,8 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen)
  * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
  * the vmsplice call may not send all data to the kernel.
  *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
  * After invoking this function the caller should use
  * kcapi_aead_getdata() to obtain the resulting ciphertext and authentication
  * tag references.
@@ -1169,6 +1132,7 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen)
  */
 ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
+			   const unsigned char *iv,
 			   const unsigned char *assoc, unsigned char *out,
 			   size_t outlen)
 {
@@ -1185,6 +1149,8 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			(unsigned long)handle->aead.taglen);
 		return -EINVAL;
 	}
+
+	handle->cipher.iv = iv;
 
 #if 0
 	if (inlen + handle->aead.assoclen >= (1<<17)) {
@@ -1294,6 +1260,7 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
  * @handle: cipher handle - input
  * @in: ciphertext data buffer - input
  * @inlen: length of in buffer - input
+ * @iv: IV to be used for cipher operation - input
  * @assoc: associated data of size set with kcapi_aead_setassoclen() - input
  * @tag: authentication tag data of size set with kcapi_aead_settaglen() - input
  * @out: plaintext data buffer - output
@@ -1311,6 +1278,8 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
  * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
  * the vmsplice call may not send all data to the kernel.
  *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
  * To catch authentication errors (i.e. integrity violations) during the
  * decryption operation, the errno of this call shall be checked for EBADMSG.
  * If this function returns < 0 and errno is set to EBADMSG, an authentication
@@ -1321,6 +1290,7 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
  */
 ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
+			   const unsigned char *iv,
 			   const unsigned char *assoc, const unsigned char *tag,
 			   unsigned char *out, size_t outlen)
 {
@@ -1336,6 +1306,8 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			(unsigned long)handle->aead.taglen, bs);
 		return -EINVAL;
 	}
+
+	handle->cipher.iv = iv;
 
 #if 0
 	if (inlen + handle->aead.assoclen + handle->aead.taglen >= (1<<13s)) {
@@ -1403,6 +1375,7 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 /**
  * kcapi_aead_stream_init_enc() - start an encryption operation (stream)
  * @handle: cipher handle - input
+ * @iv: IV to be used for cipher operation - input
  * @iov: scatter/gather list with data to be encrypted. This is the pointer to
  *	 the first @iov entry if an array of @iov entries is supplied. See
  *	 sendmsg(2) for details on how @iov is to be used. This pointer may be
@@ -1430,12 +1403,16 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
  * the complete associated data must be provided, followed by (ii) the
  * plaintext.
  *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
  * Return: number of bytes sent to the kernel upon success;
  *	   < 0 in case of error with errno set
  */
 ssize_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
+				   const unsigned char *iv,
 				   struct iovec *iov, size_t iovlen)
 {
+	handle->cipher.iv = iv;
 	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_ENCRYPT,
 				       MSG_MORE);
 }
@@ -1443,6 +1420,7 @@ ssize_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
 /**
  * kcapi_aead_stream_init_dec() - start a decryption operation (stream)
  * @handle: cipher handle - input
+ * @iv: IV to be used for cipher operation - input
  * @iov: scatter/gather list with data to be encrypted. This is the pointer to
  *	 the first @iov entry if an array of @iov entries is supplied. See
  *	 sendmsg(2) for details on how @iov is to be used. This pointer may be
@@ -1470,12 +1448,16 @@ ssize_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
  * the complete associated data must be provided, followed by (ii) the
  * plaintext. For decryption, also (iii) the tag value must be sent.
  *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
  * Return: number of bytes sent to the kernel upon success;
  *	   < 0 in case of error with errno set
  */
 ssize_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
+				   const unsigned char *iv,
 				   struct iovec *iov, size_t iovlen)
 {
+	handle->cipher.iv = iv;
 	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_DECRYPT,
 				       MSG_MORE);
 }

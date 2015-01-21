@@ -83,11 +83,6 @@ static int cp_skcipher_init_test(struct cp_test *test, size_t len)
 		goto out;
 	}
 	cp_read_random(ivdata, kcapi_cipher_blocksize(&test->u.skcipher.handle));
-	if (kcapi_cipher_setiv(&test->u.skcipher.handle, ivdata,
-				kcapi_cipher_blocksize(&test->u.skcipher.handle))) {
-		printf(DRIVER_NAME": key could not be set\n");
-		goto out;
-	}
 	test->u.skcipher.iv = ivdata;
 
 	if (posix_memalign((void *)&scratchpad, PAGE_SIZE,
@@ -128,6 +123,7 @@ static unsigned int cp_ablkcipher_enc_test(struct cp_test *test)
 	kcapi_cipher_encrypt(&test->u.skcipher.handle,
 			     test->u.skcipher.scratchpad,
 			     test->u.skcipher.inputlen,
+			     test->u.skcipher.iv,
 			     test->u.skcipher.scratchpad,
 			     test->u.skcipher.inputlen);
 	return test->u.skcipher.inputlen;
@@ -138,6 +134,7 @@ static unsigned int cp_ablkcipher_dec_test(struct cp_test *test)
 	kcapi_cipher_decrypt(&test->u.skcipher.handle,
 			     test->u.skcipher.scratchpad,
 			     test->u.skcipher.inputlen,
+			     test->u.skcipher.iv,
 			     test->u.skcipher.scratchpad,
 			     test->u.skcipher.inputlen);
 	return test->u.skcipher.inputlen;

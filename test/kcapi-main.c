@@ -409,12 +409,13 @@ static inline ssize_t _kcapi_common_read_data(struct kcapi_handle *handle,
 
 ssize_t __kcapi_cipher_encrypt_splice(struct kcapi_handle *handle,
 				      const unsigned char *in, size_t inlen,
+				      const unsigned char *iv,
 				      unsigned char *out, size_t outlen)
 {
 	struct iovec iov;
 	ssize_t ret = 0;
 
-	ret = kcapi_cipher_stream_init_enc(handle, NULL, 0);
+	ret = kcapi_cipher_stream_init_enc(handle, iv, NULL, 0);
 	if (0 > ret)
 		return ret;
 
@@ -429,12 +430,13 @@ ssize_t __kcapi_cipher_encrypt_splice(struct kcapi_handle *handle,
 
 ssize_t __kcapi_cipher_decrypt_splice(struct kcapi_handle *handle,
 				      const unsigned char *in, size_t inlen,
+				      const unsigned char *iv,
 				      unsigned char *out, size_t outlen)
 {
 	struct iovec iov;
 	ssize_t ret = 0;
 
-	ret = kcapi_cipher_stream_init_dec(handle, NULL, 0);
+	ret = kcapi_cipher_stream_init_dec(handle, iv, NULL, 0);
 	if (0 > ret)
 		return ret;
 
@@ -491,34 +493,28 @@ static int cavs_sym(struct kcapi_cavs *cavs_test, unsigned int loops,
 		goto out;
 	}
 
-	/* Setting the IV for the cipher operations */
-	if (cavs_test->ivlen && cavs_test->iv) {
-		ret = kcapi_cipher_setiv(&handle, cavs_test->iv,
-					 cavs_test->ivlen);
-		if (ret) {
-			printf("Setting of IV failed %d\n", ret);
-			goto out;
-		}
-	}
-
 	for(i = 0; i < loops; i++) {
 		if (cavs_test->enc) {
 			if (splice)
 				ret = __kcapi_cipher_encrypt_splice(&handle,
 						cavs_test->pt, cavs_test->ptlen,
+						cavs_test->iv,
 						outbuf, outbuflen);
 			else
 				ret = kcapi_cipher_encrypt(&handle,
 						cavs_test->pt, cavs_test->ptlen,
+						cavs_test->iv,
 						outbuf, outbuflen);
 		} else {
 			if (splice)
 				ret = __kcapi_cipher_decrypt_splice(&handle,
 						cavs_test->ct, cavs_test->ctlen,
+						cavs_test->iv,
 						outbuf, outbuflen);
 			else
 				ret = kcapi_cipher_decrypt(&handle,
 						cavs_test->ct, cavs_test->ctlen,
+						cavs_test->iv,
 						outbuf, outbuflen);
 		}
 		if (0 > ret)  {
@@ -584,21 +580,12 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 		goto out;
 	}
 
-	/* Setting the IV for the cipher operations */
-	if (cavs_test->ivlen && cavs_test->iv) {
-		ret = kcapi_cipher_setiv(&handle, cavs_test->iv,
-					 cavs_test->ivlen);
-		if (ret) {
-			printf("Setting of IV failed %d\n", ret);
-			goto out;
-		}
-	}
-
-	if (cavs_test->enc) {
-		ret = kcapi_cipher_stream_init_enc(&handle, NULL, 0);
-	} else {
-		ret = kcapi_cipher_stream_init_dec(&handle, NULL, 0);
-	}
+	if (cavs_test->enc)
+		ret = kcapi_cipher_stream_init_enc(&handle, cavs_test->iv,
+						   NULL, 0);
+	else
+		ret = kcapi_cipher_stream_init_dec(&handle, cavs_test->iv,
+						   NULL, 0);
 	if (0 > ret)  {
 		printf("Initialization of cipher buffer failed\n");
 		goto out;
@@ -673,6 +660,7 @@ static inline ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 
 ssize_t __kcapi_aead_encrypt_splice(struct kcapi_handle *handle,
 				    const unsigned char *in, size_t inlen,
+				    const unsigned char *iv,
 				    const unsigned char *assoc,
 				    unsigned char *out,
 				    size_t outlen)
@@ -680,7 +668,7 @@ ssize_t __kcapi_aead_encrypt_splice(struct kcapi_handle *handle,
 	struct iovec iov[2];
 	ssize_t ret = 0;
 
-	ret = kcapi_cipher_stream_init_enc(handle, NULL, 0);
+	ret = kcapi_cipher_stream_init_enc(handle, iv, NULL, 0);
 	if (0 > ret)
 		return ret;
 	if (assoc && handle->aead.assoclen) {
@@ -718,6 +706,7 @@ ssize_t __kcapi_aead_encrypt_splice(struct kcapi_handle *handle,
 }
 ssize_t __kcapi_aead_decrypt_splice(struct kcapi_handle *handle,
 				    const unsigned char *in, size_t inlen,
+				    const unsigned char *iv,
 				    const unsigned char *assoc,
 				    const unsigned char *tag,
 				    unsigned char *out, size_t outlen)
@@ -726,7 +715,7 @@ ssize_t __kcapi_aead_decrypt_splice(struct kcapi_handle *handle,
 	ssize_t ret = 0;
 	size_t len = 0;
 
-	ret = kcapi_cipher_stream_init_dec(handle, NULL, 0);
+	ret = kcapi_cipher_stream_init_dec(handle, iv, NULL, 0);
 	if (0 > ret)
 		return ret;
 	if (assoc && handle->aead.assoclen) {
@@ -836,14 +825,8 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, unsigned int loops,
 	/* set IV */
 	ret = kcapi_pad_iv(&handle, cavs_test->iv, cavs_test->ivlen,
 			   &newiv, &newivlen);
-	if (ret && ret != -ERANGE)
+	if (ret)
 		goto out;
-
-	if (ret == -ERANGE)
-		ret = kcapi_aead_setiv(&handle,
-				       cavs_test->iv, cavs_test->ivlen);
-	else
-		ret = kcapi_aead_setiv(&handle, newiv, newivlen);
 
 	ret = -EIO;
 	/* Setting the tag length */
@@ -858,20 +841,24 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, unsigned int loops,
 			if (splice)
 				ret = __kcapi_aead_encrypt_splice(&handle,
 					 cavs_test->pt, cavs_test->ptlen,
+					 newiv,
 					 cavs_test->assoc, outbuf, outbuflen);
 			else
 				ret = kcapi_aead_encrypt(&handle,
 					 cavs_test->pt, cavs_test->ptlen,
+					 newiv,
 					 cavs_test->assoc, outbuf, outbuflen);
 		} else {
 			if (splice)
 				ret = __kcapi_aead_decrypt_splice(&handle,
 					 cavs_test->ct, cavs_test->ctlen,
+					 newiv,
 					 cavs_test->assoc, cavs_test->tag,
 					 outbuf, outbuflen);
 			else
 				ret = kcapi_aead_decrypt(&handle,
 					 cavs_test->ct, cavs_test->ctlen,
+					 newiv,
 					 cavs_test->assoc, cavs_test->tag,
 					 outbuf, outbuflen);
 		}
@@ -969,14 +956,8 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 	/* set IV */
 	ret = kcapi_pad_iv(&handle, cavs_test->iv, cavs_test->ivlen,
 			   &newiv, &newivlen);
-	if (ret && ret != -ERANGE)
+	if (ret)
 		goto out;
-
-	if (ret == -ERANGE)
-		ret = kcapi_aead_setiv(&handle,
-				       cavs_test->iv, cavs_test->ivlen);
-	else
-		ret = kcapi_aead_setiv(&handle, newiv, newivlen);
 
 	ret = -EIO;
 	/* Setting the tag length */
@@ -987,10 +968,10 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 	kcapi_aead_setassoclen(&handle, cavs_test->assoclen);
 
 	if (cavs_test->enc)
-		ret = kcapi_aead_stream_init_enc(&handle, NULL, 0);
+		ret = kcapi_aead_stream_init_enc(&handle, newiv, NULL, 0);
 
 	else
-		ret = kcapi_aead_stream_init_dec(&handle, NULL, 0);
+		ret = kcapi_aead_stream_init_dec(&handle, newiv, NULL, 0);
 	if (0 > ret) {
 		printf("Initialization of cipher buffer failed\n");
 		goto out;
