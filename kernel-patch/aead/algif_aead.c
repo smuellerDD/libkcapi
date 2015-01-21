@@ -42,7 +42,6 @@ struct aead_ctx {
 	bool more;
 	bool merge;
 	bool enc;
-	bool trunc;
 
 	size_t aead_assoclen;
 	struct aead_request aead_req;
@@ -88,33 +87,6 @@ static void aead_put_sgl(struct sock *sk)
 	ctx->used = 0;
 	ctx->more = 0;
 	ctx->merge = 0;
-	ctx->trunc = 0;
-}
-
-static int aead_wait_for_wmem(struct sock *sk, unsigned flags)
-{
-	long timeout;
-	DEFINE_WAIT(wait);
-	int err = -ERESTARTSYS;
-
-	if (flags & MSG_DONTWAIT)
-		return -EAGAIN;
-
-	set_bit(SOCK_ASYNC_NOSPACE, &sk->sk_socket->flags);
-
-	for (;;) {
-		if (signal_pending(current))
-			break;
-		prepare_to_wait(sk_sleep(sk), &wait, TASK_INTERRUPTIBLE);
-		timeout = MAX_SCHEDULE_TIMEOUT;
-		if (sk_wait_event(sk, &timeout, aead_writable(sk))) {
-			err = 0;
-			break;
-		}
-	}
-	finish_wait(sk_sleep(sk), &wait);
-
-	return err;
 }
 
 static void aead_wmem_wakeup(struct sock *sk)
@@ -257,17 +229,10 @@ static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
 		}
 
 		if (!aead_writable(sk)) {
-			/*
-			 * If there is more data to be expected, but we cannot
-			 * write more data, forcefully define that we do not
-			 * expect more data to invoke the AEAD operation. This
-			 * prevents a deadlock in user space.
-			 */
-			ctx->more = 0;
-			ctx->trunc = 1;
-			err = aead_wait_for_wmem(sk, msg->msg_flags);
-			if (err)
-				goto unlock;
+			/* user space sent too much data */
+			aead_put_sgl(sk);
+			err = -EMSGSIZE;
+			goto unlock;
 		}
 
 		/* allocate a new page */
@@ -345,12 +310,10 @@ static ssize_t aead_sendpage(struct socket *sock, struct page *page,
 		goto done;
 
 	if (!aead_writable(sk)) {
-		/* see aead_sendmsg why more is set to 0 */
-		ctx->more = 0;
-		ctx->trunc = 1;
-		err = aead_wait_for_wmem(sk, flags);
-		if (err)
-			goto unlock;
+		/* user space sent too much data */
+		aead_put_sgl(sk);
+		err = -EMSGSIZE;
+		goto unlock;
 	}
 
 	ctx->merge = 0;
@@ -513,10 +476,6 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 
 	af_alg_free_sg(&ctx->rsgl);
 
-	/* indicate userspace that we processed incomplete data */
-	if (ctx->trunc)
-		msg->msg_flags |= MSG_TRUNC;
-
 	if (err) {
 		/* EBADMSG implies a valid cipher operation took place */
 		if (err == -EBADMSG)
@@ -636,7 +595,6 @@ static int aead_accept_parent(void *private, struct sock *sk)
 	ctx->enc = 0;
 	ctx->tsgl.cur = 0;
 	ctx->aead_assoclen = 0;
-	ctx->trunc = 0;
 	af_alg_init_completion(&ctx->completion);
 	sg_init_table(ctx->tsgl.sg, ALG_MAX_PAGES);
 
