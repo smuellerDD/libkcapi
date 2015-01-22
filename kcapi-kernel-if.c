@@ -1170,9 +1170,12 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 		}
 		if (0 > ret)
 			return ret;
-		iov[0].iov_base = (void*)(uintptr_t)out;
-		iov[0].iov_len = outlen;
-		return _kcapi_common_recv_data(handle, &iov[0], 1);
+		ret = _kcapi_common_read_data(handle, out, outlen);
+		if (ret < 0)
+			return ret;
+		if ((ret < (ssize_t)handle->aead.taglen))
+			return -E2BIG;
+		return ret;
 
 #if 0
 	}
@@ -1203,9 +1206,7 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 	if (0 > ret)
 		return ret;
 
-	iov[0].iov_base = (void*)(uintptr_t)out;
-	iov[0].iov_len = outlen;
-	ret = _kcapi_common_recv_data(handle, &iov[0], 1);
+	ret = _kcapi_common_read_data(handle, out, outlen);
 	if (ret < 0)
 		return ret;
 	if ((ret < (ssize_t)handle->aead.taglen))
@@ -1367,9 +1368,7 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 	}
 #endif
 
-	iov[0].iov_base = (void*)(uintptr_t)out;
-	iov[0].iov_len = outlen;
-	return _kcapi_common_recv_data(handle, &iov[0], 1);
+	return _kcapi_common_read_data(handle, out, outlen);
 }
 
 /**
