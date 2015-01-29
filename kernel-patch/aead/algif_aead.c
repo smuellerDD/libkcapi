@@ -120,9 +120,8 @@ static int aead_wait_for_data(struct sock *sk, unsigned flags)
 	DEFINE_WAIT(wait);
 	int err = -ERESTARTSYS;
 
-	if (flags & MSG_DONTWAIT) {
+	if (flags & MSG_DONTWAIT)
 		return -EAGAIN;
-	}
 
 	set_bit(SOCK_ASYNC_WAITDATA, &sk->sk_socket->flags);
 
@@ -165,7 +164,7 @@ static void aead_data_wakeup(struct sock *sk)
 }
 
 static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
-		        struct msghdr *msg, size_t size)
+			struct msghdr *msg, size_t size)
 {
 	struct sock *sk = sock->sk;
 	struct alg_sock *ask = alg_sk(sk);
@@ -250,7 +249,8 @@ static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
 			int plen = 0;
 
 			if (sgl->cur >= ALG_MAX_PAGES) {
-				err = -EMSGSIZE;
+				aead_put_sgl(sk);
+				err = -E2BIG;
 				goto unlock;
 			}
 
