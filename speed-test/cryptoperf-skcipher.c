@@ -125,7 +125,8 @@ static unsigned int cp_ablkcipher_enc_test(struct cp_test *test)
 			     test->u.skcipher.inputlen,
 			     test->u.skcipher.iv,
 			     test->u.skcipher.scratchpad,
-			     test->u.skcipher.inputlen);
+			     test->u.skcipher.inputlen,
+			     test->accesstype);
 	return test->u.skcipher.inputlen;
 }
 
@@ -136,7 +137,8 @@ static unsigned int cp_ablkcipher_dec_test(struct cp_test *test)
 			     test->u.skcipher.inputlen,
 			     test->u.skcipher.iv,
 			     test->u.skcipher.scratchpad,
-			     test->u.skcipher.inputlen);
+			     test->u.skcipher.inputlen,
+			     test->accesstype);
 	return test->u.skcipher.inputlen;
 }
 

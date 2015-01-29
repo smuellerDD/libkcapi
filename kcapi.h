@@ -40,6 +40,10 @@
 #include <linux/if_alg.h>
 #include <sys/uio.h>
 
+#define KCAPI_ACCESS_HEURISTIC 0
+#define KCAPI_ACCESS_VMSPLICE  1
+#define KCAPI_ACCESS_SENDMSG   2
+
 /**
  * Information obtained for different ciphers during handle init time
  * using the NETLINK_CRYPTO interface.
@@ -121,11 +125,11 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
 ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 			     const unsigned char *in, size_t inlen,
 			     const unsigned char *iv,
-			     unsigned char *out, size_t outlen);
+			     unsigned char *out, size_t outlen, int access);
 ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 			     const unsigned char *in, size_t inlen,
 			     const unsigned char *iv,
-			     unsigned char *out, size_t outlen);
+			     unsigned char *out, size_t outlen, int access);
 ssize_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
 				     const unsigned char *iv,
 				     struct iovec *iov, size_t iovlen);
@@ -150,7 +154,7 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
 			   const unsigned char *iv,
 			   const unsigned char *assoc, unsigned char *out,
-			   size_t outlen);
+			   size_t outlen, int access);
 void kcapi_aead_getdata(struct kcapi_handle *handle,
 			unsigned char *encdata, size_t encdatalen,
 			unsigned char **data, size_t *datalen,
@@ -159,7 +163,7 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
 			   const unsigned char *iv,
 			   const unsigned char *assoc, const unsigned char *tag,
-			   unsigned char *out, size_t outlen);
+			   unsigned char *out, size_t outlen, int access);
 ssize_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
 				   const unsigned char *iv,
 				   struct iovec *iov, size_t iovlen);

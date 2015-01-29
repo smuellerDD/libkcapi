@@ -148,7 +148,7 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm)
 					 test->u.aead.iv,
 					 test->u.aead.assoc,
 					 test->u.aead.input,
-					 test->u.aead.inputlen);
+					 test->u.aead.inputlen, 0);
 		if (ret < 0) {
 			printf(DRIVER_NAME": could not create ciphertext for "
 		       "%s (%d)\n", test->driver_name, ret);
@@ -212,7 +212,8 @@ static unsigned int cp_ablkcipher_enc_test(struct cp_test *test)
 			   test->u.aead.iv,
 			   test->u.aead.assoc,
 			   test->u.aead.output,
-			   test->u.aead.outputlen);
+			   test->u.aead.outputlen,
+			   test->accesstype);
 	return test->u.aead.inputlen;
 }
 
@@ -225,7 +226,8 @@ static unsigned int cp_ablkcipher_dec_test(struct cp_test *test)
 			   test->u.aead.assoc,
 			   test->u.aead.tag,
 			   test->u.aead.output,
-			   test->u.aead.outputlen);
+			   test->u.aead.outputlen,
+			   test->accesstype);
 	return test->u.aead.inputlen;
 }
 

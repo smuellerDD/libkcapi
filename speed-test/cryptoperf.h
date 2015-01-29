@@ -122,6 +122,7 @@ struct cp_test {
 	char *testname;
 	char *driver_name;
 	char *type;
+	int accesstype;
 	int enc;
 	unsigned int exectime;
 	struct cp_res results;

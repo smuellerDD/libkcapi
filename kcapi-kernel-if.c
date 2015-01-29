@@ -681,6 +681,9 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
  * @iv: IV to be used for cipher operation - input
  * @out: ciphertext data buffer - output
  * @outlen: length of out buffer - input
+ * @access: kernel access type (KCAPI_ACCESS_HEURISTIC - use internal heuristic
+ *	    for  fastest kernel access; KCAPI_ACCESS_VMSPLICE - use vmsplice
+ *	    access; KCAPI_ACCESS_SENDMSG - sendmsg access)
  *
  * It is perfectly legal to use the same buffer as the plaintext and
  * ciphertext pointers. That would mean that after the encryption operation,
@@ -698,7 +701,7 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
 ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 			     const unsigned char *in, size_t inlen,
 			     const unsigned char *iv,
-			     unsigned char *out, size_t outlen)
+			     unsigned char *out, size_t outlen, int access)
 {
 	struct iovec iov;
 	ssize_t ret = 0;
@@ -726,7 +729,8 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 	 * Using two syscalls with memcpy is faster than four syscalls
 	 * without memcpy below the given threshold.
 	 */
-	if (inlen <= (1<<13)) {
+	if ((access == KCAPI_ACCESS_HEURISTIC && inlen <= (1<<13)) ||
+	    access == KCAPI_ACCESS_SENDMSG) {
 		iov.iov_len = inlen;
 		ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_ENCRYPT,
 					      0);
@@ -764,6 +768,9 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
  * @iv: IV to be used for cipher operation - input
  * @out: plaintext data buffer - output
  * @outlen: length of out buffer - input
+ * @access: kernel access type (KCAPI_ACCESS_HEURISTIC - use internal heuristic
+ *	    for fastest kernel access; KCAPI_ACCESS_VMSPLICE - use vmsplice
+ *	    access; KCAPI_ACCESS_SENDMSG - sendmsg access)
  *
  * It is perfectly legal to use the same buffer as the plaintext and
  * ciphertext pointers. That would mean that after the encryption operation,
@@ -781,7 +788,7 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 			     const unsigned char *in, size_t inlen,
 			     const unsigned char *iv,
-			     unsigned char *out, size_t outlen)
+			     unsigned char *out, size_t outlen, int access)
 {
 	struct iovec iov;
 	ssize_t ret = 0;
@@ -816,7 +823,8 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 	 * Using two syscalls with memcpy is faster than four syscalls
 	 * without memcpy below the given threshold.
 	 */
-	if (inlen <= (1<<13)) {
+	if ((access == KCAPI_ACCESS_HEURISTIC && inlen <= (1<<13)) ||
+	    access == KCAPI_ACCESS_SENDMSG) {
 		iov.iov_len = inlen;
 		ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_DECRYPT,
 					      0);
@@ -1108,6 +1116,9 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen)
  * @assoc: associated data of size set with kcapi_aead_setassoclen() - input
  * @out: data buffer holding cipher text and authentication tag - output
  * @outlen: length of out buffer - input
+ * @access: kernel access type (KCAPI_ACCESS_HEURISTIC - use internal heuristic
+ *	    for fastest kernel access; KCAPI_ACCESS_VMSPLICE - use vmsplice
+ *	    access; KCAPI_ACCESS_SENDMSG - sendmsg access)
  *
  * The AEAD cipher operation requires the furnishing of the associated
  * authentication data. In case such data is not required, it can be set to
@@ -1134,7 +1145,7 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
 			   const unsigned char *iv,
 			   const unsigned char *assoc, unsigned char *out,
-			   size_t outlen)
+			   size_t outlen, int access)
 {
 	struct iovec iov[2];
 	ssize_t ret = 0;
@@ -1152,9 +1163,8 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 
 	handle->cipher.iv = iv;
 
-#if 0
-	if (inlen + handle->aead.assoclen >= (1<<17)) {
-#endif
+	if (access == KCAPI_ACCESS_HEURISTIC ||
+	    access == KCAPI_ACCESS_SENDMSG) {
 		if (assoc && handle->aead.assoclen) {
 			iov[0].iov_base = (void*)(uintptr_t)assoc;
 			iov[0].iov_len = handle->aead.assoclen;
@@ -1176,11 +1186,8 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 		if ((ret < (ssize_t)handle->aead.taglen))
 			return -E2BIG;
 		return ret;
-
-#if 0
 	}
 
-	/* using separate pages slows down splice below the speed of sendmsg */
 	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT,
 				      MSG_MORE);
 	if (0 > ret)
@@ -1213,7 +1220,6 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 		return -E2BIG;
 
 	return ret;
-#endif
 }
 
 /**
@@ -1266,6 +1272,9 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
  * @tag: authentication tag data of size set with kcapi_aead_settaglen() - input
  * @out: plaintext data buffer - output
  * @outlen: length of out buffer - input
+ * @access: kernel access type (KCAPI_ACCESS_HEURISTIC - use internal heuristic
+ *	    for fastest kernel access; KCAPI_ACCESS_VMSPLICE - use vmsplice
+ *	    access; KCAPI_ACCESS_SENDMSG - sendmsg access)
  *
  * The AEAD cipher operation requires the furnishing of the associated
  * authentication data. In case such data is not required, it can be set to
@@ -1293,7 +1302,7 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
 			   const unsigned char *iv,
 			   const unsigned char *assoc, const unsigned char *tag,
-			   unsigned char *out, size_t outlen)
+			   unsigned char *out, size_t outlen, int access)
 {
 	struct iovec iov[3];
 	ssize_t ret = 0;
@@ -1310,9 +1319,8 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 
 	handle->cipher.iv = iv;
 
-#if 0
-	if (inlen + handle->aead.assoclen + handle->aead.taglen >= (1<<13s)) {
-#endif
+	if (access == KCAPI_ACCESS_HEURISTIC ||
+	    access == KCAPI_ACCESS_SENDMSG) {
 		if (assoc && handle->aead.assoclen) {
 			iov[0].iov_base = (void*)(uintptr_t)assoc;
 			iov[0].iov_len = handle->aead.assoclen;
@@ -1332,8 +1340,6 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 		}
 		if (0 > ret)
 			return ret;
-#if 0
-	/* using separate pages slows down splice below the speed of sendmsg */
 	} else {
 		size_t len = 0;
 
@@ -1366,7 +1372,6 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 		if (0 > ret)
 			return ret;
 	}
-#endif
 
 	return _kcapi_common_read_data(handle, out, outlen);
 }
@@ -1545,11 +1550,13 @@ ssize_t kcapi_aead_stream_op(struct kcapi_handle *handle,
 			"AEAD operation: No buffer for output data provided\n");
 		return -EINVAL;
 	}
+#if 0
 	if (iovlen != 1) {
 		fprintf(stderr,
 			"AEAD operation: Output IOV must contain only one entry\n");
 		return -EINVAL;
 	}
+#endif
 	return _kcapi_common_recv_data(handle, iov, iovlen);
 }
 

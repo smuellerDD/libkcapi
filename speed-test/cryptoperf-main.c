@@ -114,7 +114,7 @@ static int find_test(const char *name, struct test_array *tests, int start,
 }
 
 static int exec_subset_test(const char *name, unsigned int exectime, size_t len,
-			    int raw)
+			    int raw, int access)
 {
 	struct cp_test *test = NULL;
 	int i = 0;
@@ -127,6 +127,7 @@ static int exec_subset_test(const char *name, unsigned int exectime, size_t len,
 			if (ret < 0)
 				break;
 			ret++;
+			test->accesstype = access;
 			if (cp_exec_test(test, exectime, len))
 				return -EFAULT;
 			out = cp_print_status(test, raw);
@@ -158,6 +159,8 @@ static void usage(void)
 	fprintf(stderr, "\t-t --time\tExecution time in seconds\n");
 	fprintf(stderr, "\t-b --blocks\tNumber of blocks to process\n");
 	fprintf(stderr, "\t-r --raw\tPrint out raw numbers for postprocessing\n");
+	fprintf(stderr, "\t-v --vmsplice\tUse vmsplice kernel interface\n");
+	fprintf(stderr, "\t-s --sendmsg\tUse sendmsg kernel interface\n");
 }
 
 int main(int argc, char *argv[])
@@ -169,6 +172,7 @@ int main(int argc, char *argv[])
 	int raw = 0;
 	int ret = 1;
 	int i = 0;
+	int accesstype = KCAPI_ACCESS_HEURISTIC;
 
 	register_tests(0);
 
@@ -183,9 +187,11 @@ int main(int argc, char *argv[])
 			{"time", 1, 0, 't'},
 			{"blocks", 1, 0, 'b'},
 			{"raw", 1, 0, 'r'},
+			{"sendmsg", 0, 0, 's'},
+			{"vmsplice", 0, 0, 'v'},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "alc:t:b:r", opts, &opt_index);
+		c = getopt_long(argc, argv, "alc:t:b:rsv", opts, &opt_index);
 		if(-1 == c)
 			break;
 		switch(c)
@@ -208,6 +214,13 @@ int main(int argc, char *argv[])
 			case 'r':
 				raw = 1;
 				break;
+			case 'v':
+				accesstype = KCAPI_ACCESS_VMSPLICE;
+				break;
+			case 's':
+				accesstype = KCAPI_ACCESS_SENDMSG;
+				break;
+
 			default:
 				usage();
 				goto out;
@@ -219,7 +232,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	ret = exec_subset_test(cipher, exectime, blocks, raw);
+	ret = exec_subset_test(cipher, exectime, blocks, raw, accesstype);
 
 out:
 	if (cipher)
