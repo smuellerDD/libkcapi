@@ -7,6 +7,11 @@ Change 0.7.0:
  * add vmsplice tests to test framework to make sure vmsplice is really
    executed
  * fix documentation style
+ * allow caller to specify which kernel interface (sendmsg / vmsplice)
+   is used for one-shot API calls. This implies extension of one-shot
+   API calls
+ * Update stream API tests for AEAD to use 16 IOVECs to test the latest
+   installment of the recvmsg interface of algif_aead
 
 Change 0.6.5:
  * Measuring speed of vmsplice vs sendmsg interfaces and added heuristic
