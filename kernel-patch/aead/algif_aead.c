@@ -30,7 +30,13 @@ struct aead_sg_list {
 
 struct aead_ctx {
 	struct aead_sg_list tsgl;
-	struct af_alg_sgl rsgl;
+	/*
+	 * RSGL_MAX_ENTRIES is an artificial limit where user space at maximum
+	 * can cause the kernel to allocate RSGL_MAX_ENTRIES * ALG_MAX_PAGES
+	 * bytes
+	 */
+#define RSGL_MAX_ENTRIES ALG_MAX_PAGES
+	struct af_alg_sgl rsgl[RSGL_MAX_ENTRIES];
 
 	void *iv;
 
@@ -145,6 +151,8 @@ static void aead_data_wakeup(struct sock *sk)
 
 	if (ctx->more)
 		return;
+	if (!ctx->used)
+		return;
 
 	rcu_read_lock();
 	wq = rcu_dereference(sk->sk_wq);
@@ -226,6 +234,7 @@ static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
 			ctx->used += len;
 			copied += len;
 			size -= len;
+			continue;
 		}
 
 		if (!aead_writable(sk)) {
@@ -241,7 +250,7 @@ static int aead_sendmsg(struct kiocb *unused, struct socket *sock,
 			int plen = 0;
 
 			if (sgl->cur >= ALG_MAX_PAGES) {
-				err = -E2BIG;
+				err = -EMSGSIZE;
 				goto unlock;
 			}
 
@@ -348,36 +357,37 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 	unsigned bs = crypto_aead_blocksize(crypto_aead_reqtfm(&ctx->aead_req));
 	unsigned as = crypto_aead_authsize(crypto_aead_reqtfm(&ctx->aead_req));
 	struct aead_sg_list *sgl = &ctx->tsgl;
-	struct scatterlist *sg = sgl->sg;
+	struct scatterlist *sg = NULL;
 	struct scatterlist assoc[ALG_MAX_PAGES];
 	size_t assoclen = 0;
 	unsigned int i = 0;
 	int err = -EINVAL;
 	unsigned long used = 0;
 	unsigned long outlen = 0;
+	const struct iovec *iov;
+	unsigned long iovlen = 0;
+	unsigned long usedpages = 0;
 
-	/*
-	 * Require exactly one IOV block as the AEAD operation is a one shot
-	 * due to the authentication tag.
-	 */
-	if (msg->msg_iter.nr_segs != 1)
+	/* Limit number of IOV blocks to be accessed below */
+	if (msg->msg_iter.nr_segs > RSGL_MAX_ENTRIES)
 		return -ENOMSG;
 
 	lock_sock(sk);
+
 	/*
-	* AEAD memory structure: For encryption, the tag is appended to the
-	* ciphertext which implies that the memory allocated for the ciphertext
-	* must be increased by the tag length. For decryption, the tag
-	* is expected to be concatenated to the ciphertext. The plaintext
-	* therefore has a memory size of the ciphertext minus the tag length.
-	*
-	* The memory structure for cipher operation has the following
-	* structure:
-	*	AEAD encryption input:  assoc data || plaintext
-	*	AEAD encryption output: cipherntext || auth tag
-	*	AEAD decryption input:  assoc data || ciphertext || auth tag
-	*	AEAD decryption output: plaintext
-	*/
+	 * AEAD memory structure: For encryption, the tag is appended to the
+	 * ciphertext which implies that the memory allocated for the ciphertext
+	 * must be increased by the tag length. For decryption, the tag
+	 * is expected to be concatenated to the ciphertext. The plaintext
+	 * therefore has a memory size of the ciphertext minus the tag length.
+	 *
+	 * The memory structure for cipher operation has the following
+	 * structure:
+	 *	AEAD encryption input:  assoc data || plaintext
+	 *	AEAD encryption output: cipherntext || auth tag
+	 *	AEAD decryption input:  assoc data || ciphertext || auth tag
+	 *	AEAD decryption output: plaintext
+	 */
 
 	if (ctx->more) {
 		err = aead_wait_for_data(sk, flags);
@@ -417,17 +427,33 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 		outlen = ((outlen + bs - 1) / bs * bs);
 	}
 
-	/* ensure output buffer is sufficiently large */
-	if (msg->msg_iter.iov->iov_len < outlen)
-		goto unlock;
+	/* convert iovecs of output buffers into scatterlists */
+	for (iov = msg->msg_iter.iov, iovlen = 0;
+	     iovlen < msg->msg_iter.nr_segs; iovlen++, iov++) {
+		char __user *from = iov->iov_base;
+		unsigned long seglen = min_t(unsigned long, iov->iov_len,
+					     (outlen - usedpages));
 
-	outlen = af_alg_make_sg(&ctx->rsgl, msg->msg_iter.iov->iov_base,
-				outlen, 1);
-	err = outlen;
-	if (err < 0)
-		goto unlock;
+		/* make one iovec available as scatterlist */
+		err = af_alg_make_sg(&ctx->rsgl[iovlen], from, seglen, 1);
+		if (err < 0)
+			goto unlock;
+		usedpages += err;
+		/* chain the new scatterlist with initial list */
+		if (iovlen)
+			scatterwalk_crypto_chain(ctx->rsgl[0].sg,
+					ctx->rsgl[iovlen].sg, 1,
+					sg_nents(ctx->rsgl[iovlen-1].sg));
+		/* we do not need more iovecs as we have sufficient memory */
+		if (outlen <= usedpages)
+			break;
+	}
 
 	err = -EINVAL;
+	/* ensure output buffer is sufficiently large */
+	if (usedpages < outlen)
+		goto unlock;
+
 	sg_init_table(assoc, ALG_MAX_PAGES);
 	assoclen = ctx->aead_assoclen;
 	/*
@@ -467,14 +493,13 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 	}
 
 	aead_request_set_assoc(&ctx->aead_req, assoc, ctx->aead_assoclen);
-	aead_request_set_crypt(&ctx->aead_req, sg, ctx->rsgl.sg, used, ctx->iv);
+	aead_request_set_crypt(&ctx->aead_req, sg, ctx->rsgl[0].sg, used,
+			       ctx->iv);
 
 	err = af_alg_wait_for_completion(ctx->enc ?
 					 crypto_aead_encrypt(&ctx->aead_req) :
 					 crypto_aead_decrypt(&ctx->aead_req),
 					 &ctx->completion);
-
-	af_alg_free_sg(&ctx->rsgl);
 
 	if (err) {
 		/* EBADMSG implies a valid cipher operation took place */
@@ -488,6 +513,9 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 	err = 0;
 
 unlock:
+	for (i = 0; i < iovlen; i++)
+		af_alg_free_sg(&ctx->rsgl[i]);
+
 	aead_wmem_wakeup(sk);
 	release_sock(sk);
 
