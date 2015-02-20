@@ -433,11 +433,15 @@
     </para>
 
     <para>
-     The official release for the RNG interface is available with the patches
+     The official release for the RNG interface which is imported into the mainline kernel with 3.20-rc1 is available with the patches
      provided with
      https://git.kernel.org/cgit/linux/kernel/git/herbert/cryptodev-2.6.git/commit/?id=2f3755381da8d592656f1ef6868fa9f96c450ba9
      and
      https://git.kernel.org/cgit/linux/kernel/git/herbert/cryptodev-2.6.git/commit/?id=5afdfd22e6ba2260129a2a7113ab0916339c4205
+    </para>
+
+    <para>
+     The code for the AEAD interface is provided with libkcapi as it is currently discussed for inclusion into the kernel.
     </para>
    </sect2>
   </sect1>
@@ -454,6 +458,7 @@
   <sect1><title>Common API</title>
 !Pkcapi-kernel-if.c Common API
 !Pkcapi-kernel-if.c kcapi_versionstring
+!Pkcapi-kernel-if.c kcapi_version
 !Pkcapi-kernel-if.c kcapi_pad_iv
    </sect1>
    <sect1><title>Symmetric Cipher API - Generic</title>
@@ -465,7 +470,6 @@
 !Fkcapi-kernel-if.c kcapi_cipher_init
 !Fkcapi-kernel-if.c kcapi_cipher_destroy
 !Fkcapi-kernel-if.c kcapi_cipher_setkey
-!Fkcapi-kernel-if.c kcapi_cipher_setiv
 !Fkcapi-kernel-if.c kcapi_cipher_ivsize
 !Fkcapi-kernel-if.c kcapi_cipher_blocksize
    </sect1>
@@ -491,7 +495,6 @@
 !Fkcapi-kernel-if.c kcapi_aead_init
 !Fkcapi-kernel-if.c kcapi_aead_destroy
 !Fkcapi-kernel-if.c kcapi_aead_setkey
-!Fkcapi-kernel-if.c kcapi_aead_setiv
 !Fkcapi-kernel-if.c kcapi_aead_setassoclen
 !Fkcapi-kernel-if.c kcapi_aead_settaglen
 !Fkcapi-kernel-if.c kcapi_aead_ivsize
