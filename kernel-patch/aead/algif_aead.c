@@ -363,10 +363,9 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 	unsigned int i = 0;
 	int err = -EINVAL;
 	unsigned long used = 0;
-	unsigned long outlen = 0;
-	const struct iovec *iov;
-	unsigned long iovlen = 0;
-	unsigned long usedpages = 0;
+	size_t outlen = 0;
+	size_t usedpages = 0;
+	unsigned int cnt = 0;
 
 	/* Limit number of IOV blocks to be accessed below */
 	if (msg->msg_iter.nr_segs > RSGL_MAX_ENTRIES)
@@ -428,25 +427,26 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 	}
 
 	/* convert iovecs of output buffers into scatterlists */
-	for (iov = msg->msg_iter.iov, iovlen = 0;
-	     iovlen < msg->msg_iter.nr_segs; iovlen++, iov++) {
-		char __user *from = iov->iov_base;
-		unsigned long seglen = min_t(unsigned long, iov->iov_len,
-					     (outlen - usedpages));
+	while (iov_iter_count(&msg->msg_iter)) {
+		size_t seglen = min_t(size_t, iov_iter_count(&msg->msg_iter),
+				      (outlen - usedpages));
 
 		/* make one iovec available as scatterlist */
-		err = af_alg_make_sg(&ctx->rsgl[iovlen], from, seglen, 1);
+		err = af_alg_make_sg(&ctx->rsgl[cnt], &msg->msg_iter,
+				     seglen);
 		if (err < 0)
 			goto unlock;
 		usedpages += err;
 		/* chain the new scatterlist with initial list */
-		if (iovlen)
+		if (cnt)
 			scatterwalk_crypto_chain(ctx->rsgl[0].sg,
-					ctx->rsgl[iovlen].sg, 1,
-					sg_nents(ctx->rsgl[iovlen-1].sg));
+					ctx->rsgl[cnt].sg, 1,
+					sg_nents(ctx->rsgl[cnt-1].sg));
 		/* we do not need more iovecs as we have sufficient memory */
 		if (outlen <= usedpages)
 			break;
+		iov_iter_advance(&msg->msg_iter, err);
+		cnt++;
 	}
 
 	err = -EINVAL;
@@ -513,7 +513,7 @@ static int aead_recvmsg(struct kiocb *unused, struct socket *sock,
 	err = 0;
 
 unlock:
-	for (i = 0; i < iovlen; i++)
+	for (i = 0; i < cnt; i++)
 		af_alg_free_sg(&ctx->rsgl[i]);
 
 	aead_wmem_wakeup(sk);
