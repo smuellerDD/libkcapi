@@ -50,6 +50,7 @@ int cp_exec_test(struct cp_test *test, unsigned int exectime, size_t len)
 {
 	uint64_t testduration = 0;
 	uint64_t nano = 1;
+	unsigned int i = 0;
 
 	nano = nano << 32;
 
@@ -72,6 +73,11 @@ int cp_exec_test(struct cp_test *test, unsigned int exectime, size_t len)
 	test->results.totaltime = 0;
 	test->results.rounds = 0;
 	test->results.byteperop = test->exec_test(test);
+
+	/* prime the test */
+	for (i = 0; i < 10; i++)
+		test->results.chunksize = test->exec_test(test);
+
 	while (test->results.totaltime < testduration) {
 		struct timespec start;
 		struct timespec end;
