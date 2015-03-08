@@ -352,14 +352,13 @@
     </listitem>
     <listitem>
      <para>
-      kcapi_rng_* kernel interface applied to cryptodev-2.6 staging tree
-      which should be integrated into kernel version 3.20
+      kcapi_rng_* kernel interface integrated into kernel version 3.20
      </para>
     </listitem>
     <listitem>
      <para>
-      kcapi_aead_* kernel interface under review, patches available in
-      the directory kernel-patch applicable against latest cryptodev-2.6 tree
+      kcapi_aead_* kernel interface added to cryptodev-2.6 tree and should be
+      integrated into kernel version 4.1.
      </para>
     </listitem>
    </itemizedlist>
@@ -421,14 +420,14 @@
     </para>
 
     <para>
-     In addition, the following patch must be applied if the current
-     cryptodev-2.6 tree is not used:
+     In addition, the following patch must be applied if a kernel less than
+     3.19-rc1 or the cryptodev-2.6 kernel tree is used:
      https://git.kernel.org/cgit/linux/kernel/git/herbert/cryptodev-2.6.git/commit/?id=af8e80731a94ff9de9508b01d9e5d931d538dc6b
     </para>
 
     <para>
-     In addition, the following patch must be applied if the current
-     cryptodev-2.6 tree is not used:
+     In addition, the following patch must be applied if a kernel less than
+     3.19-rc1 or the cryptodev-2.6 kernel tree is used:
      https://git.kernel.org/cgit/linux/kernel/git/herbert/cryptodev-2.6.git/commit/?id=25fb8638e919bc7431a73f2fb4a9713818ae2c9d
     </para>
 
@@ -441,7 +440,11 @@
     </para>
 
     <para>
-     The code for the AEAD interface is provided with libkcapi as it is currently discussed for inclusion into the kernel.
+     The official release for the RNG interface should be imported into the mainline kernel with 4.1-rc1 is available with the patches
+     provided with
+     https://git.kernel.org/cgit/linux/kernel/git/herbert/cryptodev-2.6.git/commit/?id=44cac4fce9b820c37a8792df52a0e4ce33201949
+     and
+     https://git.kernel.org/cgit/linux/kernel/git/herbert/cryptodev-2.6.git/commit/?id=400c40cf78da00c16e561a3a253ca272455c42ef
     </para>
    </sect2>
   </sect1>
