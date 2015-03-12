@@ -288,6 +288,27 @@ AEAD_taglen_13="15"
 AEAD_assoc_13="8ec635f54062411e73c7824fe2399721"
 AEAD_exp_13=""
 
+AEAD_name_14="rfc4106(gcm(aes))"
+AEAD_enc_14="1"
+AEAD_msg_14="c5f4aac0ff202c4d292fa9732506607f"
+AEAD_key_14="b7369a3ab0e4f219baaf747f650e029f8aeb7394"
+AEAD_iv_14="c4edb5723d2a4029"
+AEAD_tag_14="40d75ea68c8ccfefdde5cfb4"
+AEAD_taglen_14="12"
+AEAD_assoc_14="44c9efe4b0a7b98d"
+AEAD_exp_14="ada6f4f78913d4bc62a8d546bec17036"
+
+AEAD_name_15="rfc4106(gcm(aes))"
+AEAD_enc_15="0"
+AEAD_msg_15="989c4c091c73265ef5bf8a2a32ec642d"
+AEAD_key_15="c53f008512c48a0d6bccf798ffd5b5fbb9e99835"
+AEAD_iv_15="d5f216491cc28e88"
+AEAD_tag_15="52b086ea34e1ee94b32457d7"
+AEAD_taglen_15="12"
+AEAD_assoc_15="1e6e275ca7c93f6d"
+AEAD_exp_15="36303126cc98c832399ae827a853c6a9"
+
+
 ###########################################################################
 ###########################################################################
 ###########################################################################
@@ -392,7 +413,7 @@ aeadfunc()
 {
 	stream=$1
 
-	AEADEXEC="1 2 3 4 5 6 7 8 9 10 11 12 13"
+	AEADEXEC="1 2 3 4 5 6 7 8 9 10 11 12 13 14 15"
 	for i in $AEADEXEC
 	do
 		eval AEAD_name=\$AEAD_name_$i
