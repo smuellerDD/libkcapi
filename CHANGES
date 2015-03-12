@@ -1,3 +1,11 @@
+Change 0.7.1:
+ * AEAD kernel interface is now upstreamed, reference the patches
+   in the documentation appropriately and remove the patches from the
+   kernel patch tree.
+ * Test: add rfc4106(gcm(aes)) tests to general test and to speed test
+ * Speed test: invoke the ciphers 10 times before time measurement to prime
+   the caches.
+
 Change 0.7.0:
  * AEAD kernel part does not relay MSG_TRUNC any more, thus using the
    read syscall is more efficient.
