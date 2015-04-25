@@ -6,11 +6,11 @@ CC=gcc
 CFLAGS +=-Wextra -Wall -pedantic -pie -fPIE -Wl,-z,relro,-z,now
 
 NAME := kcapi
-C_SRCS := $(wildcard *.c) $(wildcard ../*.c)
+C_SRCS := $(wildcard *.c) $(wildcard ../lib/*.c)
 C_OBJS := ${C_SRCS:.c=.o}
 OBJS := $(C_OBJS)
 
-INCLUDE_DIRS := ../
+INCLUDE_DIRS := ../lib
 LIBRARY_DIRS :=
 LIBRARIES :=
 

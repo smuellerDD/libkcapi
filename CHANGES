@@ -1,3 +1,6 @@
+Change 0.7.2:
+ * Move the library code into the directory lib/
+
 Change 0.7.1:
  * AEAD kernel interface is now upstreamed, reference the patches
    in the documentation appropriately and remove the patches from the

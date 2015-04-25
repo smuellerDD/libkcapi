@@ -9,11 +9,11 @@ CFLAGS +=-D_FORTIFY_SOURCE=2 -fstack-protector-strong -fwrapv --param ssp-buffer
 LDFLAGS +=-Wl,-z,relro,-z,now
 
 NAME := kcapi-speed
-C_SRCS := $(wildcard *.c) $(wildcard ../*.c)
+C_SRCS := $(wildcard *.c) $(wildcard ../lib/*.c)
 C_OBJS := ${C_SRCS:.c=.o}
 OBJS := $(C_OBJS)
 
-INCLUDE_DIRS := ../
+INCLUDE_DIRS := ../lib
 LIBRARY_DIRS :=
 LIBRARIES :=
 
