@@ -63,7 +63,7 @@ static char hex_char(unsigned int bin, int u)
 	return 'X';
 }
 
-/*
+/**
  * Convert binary string into hex representation
  * @bin input buffer with binary data
  * @binlen length of bin
@@ -95,7 +95,7 @@ static int bin_char(unsigned char hex)
 	return 0;
 }
 
-/*
+/**
  * Convert hex representation into binary string
  * @hex input buffer with hex representation
  * @hexlen length of hex
