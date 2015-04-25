@@ -117,98 +117,856 @@ struct kcapi_handle {
 	struct kcapi_cipher_info info;
 };
 
-/* Symmetric Cipher API */
+/**
+ * DOC: Symmetric Cipher API
+ *
+ * API function calls used to invoke symmetric ciphers.
+ */
+
+/**
+ * kcapi_cipher_init() - initialize cipher handle
+ * @handle: cipher handle filled during the call - output
+ * @ciphername: kernel crypto API cipher name as specified in
+ *	       /proc/crypto - input
+ *
+ * This function provides the initialization of a symmetric cipher handle and
+ * establishes the connection to the kernel.
+ *
+ * Return: 0 upon success; ENOENT - algorithm not available;
+ *	   -EOPNOTSUPP - AF_ALG family not available;
+ *	   -EINVAL - accept syscall failed
+ */
 int kcapi_cipher_init(struct kcapi_handle *handle, const char *ciphername);
+
+/**
+ * kcapi_cipher_destroy() - close the cipher handle and release resources
+ * @handle: cipher handle to release - input
+ *
+ * Return: 0 upon success
+ */
 int kcapi_cipher_destroy(struct kcapi_handle *handle);
+
+/**
+ * kcapi_cipher_setkey() - set the key for the cipher handle
+ * @handle: cipher handle - input
+ * @key: key buffer - input
+ * @keylen: length of key buffer - input
+ *
+ * With this function, the caller sets the key for subsequent encryption or
+ * decryption operations.
+ *
+ * After the caller provided the key, the caller may securely destroy the key
+ * as it is now maintained by the kernel.
+ *
+ * Return: 0 upon success;
+ *	   < 0 in case of error
+ */
 int kcapi_cipher_setkey(struct kcapi_handle *handle,
 			const unsigned char *key, size_t keylen);
+
+/**
+ * kcapi_cipher_encrypt() - encrypt data (one shot)
+ * @handle: cipher handle - input
+ * @in: plaintext data buffer - input
+ * @inlen: length of in buffer - input
+ * @iv: IV to be used for cipher operation - input
+ * @out: ciphertext data buffer - output
+ * @outlen: length of out buffer - input
+ * @access: kernel access type (KCAPI_ACCESS_HEURISTIC - use internal heuristic
+ *	    for  fastest kernel access; KCAPI_ACCESS_VMSPLICE - use vmsplice
+ *	    access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * It is perfectly legal to use the same buffer as the plaintext and
+ * ciphertext pointers. That would mean that after the encryption operation,
+ * the plaintext is overwritten with the ciphertext.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
+ * the vmsplice call may not send all data to the kernel.
+ *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
+ * Return: number of bytes encrypted upon success;
+ *	   < 0 in case of error with errno set
+ */
 ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 			     const unsigned char *in, size_t inlen,
 			     const unsigned char *iv,
 			     unsigned char *out, size_t outlen, int access);
+
+/**
+ * kcapi_cipher_decrypt() - decrypt data (one shot)
+ * @handle: cipher handle - input
+ * @in: ciphertext data buffer - input
+ * @inlen: length of in buffer - input
+ * @iv: IV to be used for cipher operation - input
+ * @out: plaintext data buffer - output
+ * @outlen: length of out buffer - input
+ * @access: kernel access type (KCAPI_ACCESS_HEURISTIC - use internal heuristic
+ *	    for fastest kernel access; KCAPI_ACCESS_VMSPLICE - use vmsplice
+ *	    access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * It is perfectly legal to use the same buffer as the plaintext and
+ * ciphertext pointers. That would mean that after the encryption operation,
+ * the ciphertext is overwritten with the plaintext.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
+ * the vmsplice call may not send all data to the kernel.
+ *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
+ * Return: number of bytes decrypted upon success;
+ *	   < 0 in case of error with errno set
+ */
 ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 			     const unsigned char *in, size_t inlen,
 			     const unsigned char *iv,
 			     unsigned char *out, size_t outlen, int access);
+
+/**
+ * kcapi_cipher_stream_init_enc() - start an encryption operation (stream)
+ * @handle: cipher handle - input
+ * @iv: IV to be used for cipher operation - input
+ * @iov: scatter/gather list with data to be encrypted. This is the pointer to
+ *	 the first @iov entry if an array of @iov entries is supplied. See
+ *	 sendmsg(2) for details on how @iov is to be used. This pointer may be
+ *	 NULL if no data to be encrypted is available at the point of the call.
+ *	  - input
+ * @iovlen: number of scatter/gather list elements. If @iov is NULL, this value
+ *	    must be zero. - input
+ *
+ * A stream encryption operation is started with this call. Multiple
+ * successive kcapi_cipher_stream_update() function calls can be invoked to
+ * send more plaintext data to be encrypted. The kernel buffers the input
+ * until kcapi_cipher_stream_op() picks up the encrypted data. Once plaintext
+ * is encrypted during the kcapi_cipher_stream_op() it is removed from the
+ * kernel buffer.
+ *
+ * The function calls of kcapi_cipher_stream_update() and
+ * kcapi_cipher_stream_op() can be mixed, even by multiple threads of an
+ * application.
+ *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
+ * Return: number of bytes sent to the kernel upon success;
+ *	   < 0 in case of error with errno set
+ */
 ssize_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
 				     const unsigned char *iv,
 				     struct iovec *iov, size_t iovlen);
+/**
+ * kcapi_cipher_stream_init_dec() - start a decryption operation (stream)
+ * @handle: cipher handle - input
+ * @iv: IV to be used for cipher operation - input
+ * @iov: scatter/gather list with data to be decrypted. This is the pointer to
+ *	 the first @iov entry if an array of @iov entries is supplied. See
+ *	 sendmsg(2) for details on how @iov is to be used. This pointer may be
+ *	 NULL if no data to be decrypted is available at the point of the call.
+ *	 - input
+ * @iovlen: number of scatter/gather list elements. If @iov is NULL, this value
+ *	    must be zero. - input
+ *
+ * A stream decryption operation is started with this call. Multiple
+ * successive kcapi_cipher_stream_update() function calls can be invoked to
+ * send more ciphertext data to be decrypted. The kernel buffers the input
+ * until kcapi_cipher_stream_op() picks up the decrypted data. Once ciphertext
+ * is decrypted during the kcapi_cipher_stream_op() it is removed from the
+ * kernel buffer.
+ *
+ * The function calls of kcapi_cipher_stream_update() and
+ * kcapi_cipher_stream_op() can be mixed, even by multiple threads of an
+ * application.
+ *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
+ * Return: number of bytes sent to the kernel upon success;
+ *	   < 0 in case of error with errno set
+ */
 ssize_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
 				     const unsigned char *iv,
 				     struct iovec *iov, size_t iovlen);
+
+/**
+ * kcapi_cipher_stream_update() - send more data for processing (stream)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list with data to be processed by the cipher operation.
+ *	 - input
+ * @iovlen: number of scatter/gather list elements. - input
+ *
+ * Using this function call, more plaintext for encryption or ciphertext for
+ * decryption can be submitted to the kernel.
+ *
+ * This function may cause the caller to sleep if the kernel buffer holding
+ * the data is getting full. The process will be woken up once more buffer
+ * space becomes available by calling kcapi_cipher_stream_op().
+ *
+ * Note: with the separate API calls of kcapi_cipher_stream_update() and
+ * kcapi_cipher_stream_op() a multi-threaded application can be implemented
+ * where one thread sends data to be processed and one thread picks up data
+ * processed by the cipher operation.
+ *
+ * Return: number of bytes sent to the kernel upon success;
+ *	   < 0 in case of error with errno set
+ */
 ssize_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
 				   struct iovec *iov, size_t iovlen);
+
+/**
+ * kcapi_cipher_stream_op() - obtain processed data (stream)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list pointing to buffers to be filled with the resulting
+ *	 data from a cipher operation. - output
+ * @iovlen: number of scatter/gather list elements. - input
+ *
+ * This call can be called interleaved with kcapi_cipher_stream_update() to
+ * fetch the processed data.
+ *
+ * This function may cause the caller to sleep if the kernel buffer holding
+ * the data is empty. The process will be woken up once more data is sent
+ * by calling kcapi_cipher_stream_update().
+ *
+ * Note, when supplying buffers that are not multiple of block size, the buffers
+ * will only be filled up to the maximum number of full block sizes that fit
+ * into the buffer.
+ *
+ * Return: number of bytes obtained from the kernel upon success;
+ *	   < 0 in case of error with errno set
+ */
 ssize_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
 			       struct iovec *iov, size_t iovlen);
+
+/**
+ * kcapi_cipher_ivsize() - return size of IV required for cipher
+ * @handle: cipher handle - input
+ *
+ * Return: > 0 specifying the IV size;
+ *	   0 on error
+ */
 unsigned int kcapi_cipher_ivsize(struct kcapi_handle *handle);
+
+/**
+ * kcapi_cipher_blocksize() - return size of one block of the cipher
+ * @handle: cipher handle - input
+ *
+ * Return: > 0 specifying the block size;
+ *	   0 on error
+ */
 unsigned int kcapi_cipher_blocksize(struct kcapi_handle *handle);
 
-/* AEAD Cipher API */
+
+/**
+ * DOC: AEAD Cipher API
+ *
+ * The following API calls allow using the Authenticated Encryption with
+ * Associated Data.
+ */
+
+/**
+ * kcapi_aead_init() - initialization of cipher handle
+ * @handle: cipher handle filled during the call - output
+ * @ciphername: kernel crypto API cipher name as specified in
+ *	       /proc/crypto - input
+ *
+ * This function initializes an AEAD cipher handle and establishes the
+ * connection to the kernel.
+ *
+ * Return: 0 upon success;
+ *	   -ENOENT - algorithm not available;
+ *	   -EOPNOTSUPP - AF_ALG family not available;
+ *	   -EINVAL - accept syscall failed
+ */
 int kcapi_aead_init(struct kcapi_handle *handle, const char *ciphername);
+
+/**
+ * kcapi_aead_destroy() - close the AEAD handle and release resources
+ * @handle: cipher handle to release - input
+ *
+ * Return: 0 upon success
+ */
 int kcapi_aead_destroy(struct kcapi_handle *handle);
+
+/**
+ * kcapi_aead_setkey() - set the key for the AEAD handle
+ * @handle: cipher handle - input
+ * @key: key buffer - input
+ * @keylen: length of key buffer - input
+ *
+ * With this function, the caller sets the key for subsequent encryption or
+ * decryption operations.
+ *
+ * After the caller provided the key, the caller may securely destroy the key
+ * as it is now maintained by the kernel.
+ *
+ * Return: 0 upon success;
+ *	   < 0 in case of error
+ */
 int kcapi_aead_setkey(struct kcapi_handle *handle,
 		      const unsigned char *key, size_t keylen);
+
+/**
+ * kcapi_aead_settaglen() - Set authentication tag size
+ * @handle: cipher handle - input
+ * @taglen: length of authentication tag - input
+ *
+ * Set the authentication tag size needed for encryption operation. The tag is
+ * created during encryption operation with the size provided with this call.
+ *
+ * Return: 0 upon success;
+ *	   < 0 in case of error with errno set
+ */
 int kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen);
+
+/**
+ * kcapi_aead_setassoclen() - Set authentication data size
+ * @handle: cipher handle - input
+ * @assoclen: length of associated data length
+ *
+ * The associated data is retained in the cipher handle. During initialization
+ * of a cipher handle, it is sent to the kernel. The kernel cipher
+ * implementations may verify the appropriateness of the authentication
+ * data size and may return an error during initialization if the
+ * authentication size is not considered appropriate.
+ */
 void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen);
+
+/**
+ * kcapi_aead_encrypt() - encrypt AEAD data (one shot)
+ * @handle: cipher handle - input
+ * @in: plaintext data buffer - input
+ * @inlen: length of plaintext buffer - input
+ * @iv: IV to be used for cipher operation - input
+ * @assoc: associated data of size set with kcapi_aead_setassoclen() - input
+ * @out: data buffer holding cipher text and authentication tag - output
+ * @outlen: length of out buffer - input
+ * @access: kernel access type (KCAPI_ACCESS_HEURISTIC - use internal heuristic
+ *	    for fastest kernel access; KCAPI_ACCESS_VMSPLICE - use vmsplice
+ *	    access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * The AEAD cipher operation requires the furnishing of the associated
+ * authentication data. In case such data is not required, it can be set to
+ * NULL and length value must be set to zero.
+ *
+ * It is perfectly legal to use the same buffer as the plaintext and
+ * ciphertext pointers. That would mean that after the encryption operation,
+ * the plaintext is overwritten with the ciphertext.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
+ * the vmsplice call may not send all data to the kernel.
+ *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
+ * After invoking this function the caller should use
+ * kcapi_aead_getdata() to obtain the resulting ciphertext and authentication
+ * tag references.
+ *
+ * Return: number of bytes encrypted upon success;
+ *	   < 0 in case of error with errno set
+ */
 ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
 			   const unsigned char *iv,
 			   const unsigned char *assoc, unsigned char *out,
 			   size_t outlen, int access);
+
+/**
+ * kcapi_aead_getdata() - Get the resulting data from encryption
+ * @handle: cipher handle - input
+ * @encdata: data buffer returned by the encryption operation - input
+ * @encdatalen: size of the encryption data buffer - input
+ * @data: pointer to output buffer from AEAD encryption operation when set to
+ *	  NULL, no data pointer is returned - output
+ * @datalen: length of data buffer; when @data was set to NULL, no information
+ * 	     is returned - output
+ * @tag: tag buffer pointer;  when set to NULL, no data pointer is returned
+ *	 - output
+ * @taglen: length of tag; when @tag was set to NULL, no information is returned
+ *	    - output
+ *
+ * This function is a service function to the consumer to locate the right
+ * ciphertext buffer offset holding the authentication tag. In addition, it
+ * provides the consumer with the length of the tag and the length of the
+ * ciphertext.
+ */
 void kcapi_aead_getdata(struct kcapi_handle *handle,
 			unsigned char *encdata, size_t encdatalen,
 			unsigned char **data, size_t *datalen,
 			unsigned char **tag, size_t *taglen);
+
+/**
+ * kcapi_aead_decrypt() - decrypt AEAD data (one shot)
+ * @handle: cipher handle - input
+ * @in: ciphertext data buffer - input
+ * @inlen: length of in buffer - input
+ * @iv: IV to be used for cipher operation - input
+ * @assoc: associated data of size set with kcapi_aead_setassoclen() - input
+ * @tag: authentication tag data of size set with kcapi_aead_settaglen() - input
+ * @out: plaintext data buffer - output
+ * @outlen: length of out buffer - input
+ * @access: kernel access type (KCAPI_ACCESS_HEURISTIC - use internal heuristic
+ *	    for fastest kernel access; KCAPI_ACCESS_VMSPLICE - use vmsplice
+ *	    access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * The AEAD cipher operation requires the furnishing of the associated
+ * authentication data. In case such data is not required, it can be set to
+ * NULL and length value must be set to zero.
+ *
+ * It is perfectly legal to use the same buffer as the plaintext and
+ * ciphertext pointers. That would mean that after the encryption operation,
+ * the ciphertext is overwritten with the plaintext.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
+ * the vmsplice call may not send all data to the kernel.
+ *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
+ * To catch authentication errors (i.e. integrity violations) during the
+ * decryption operation, the errno of this call shall be checked for EBADMSG.
+ * If this function returns < 0 and errno is set to EBADMSG, an authentication
+ * error is detected.
+ *
+ * Return: number of bytes decrypted upon success;
+ *	   < 0 in case of error with errno set
+ */
 ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   const unsigned char *in, size_t inlen,
 			   const unsigned char *iv,
 			   const unsigned char *assoc, const unsigned char *tag,
 			   unsigned char *out, size_t outlen, int access);
+
+/**
+ * kcapi_aead_stream_init_enc() - start an encryption operation (stream)
+ * @handle: cipher handle - input
+ * @iv: IV to be used for cipher operation - input
+ * @iov: scatter/gather list with data to be encrypted. This is the pointer to
+ *	 the first @iov entry if an array of @iov entries is supplied. See
+ *	 sendmsg(2) for details on how @iov is to be used. This pointer may be
+ *	 NULL if no data to be encrypted is available at the point of the call.
+ *	  - input
+ * @iovlen: number of scatter/gather list elements. If @iov is NULL, this value
+ *	    must be zero. - input
+ *
+ * A stream encryption operation is started with this call. Multiple
+ * successive kcapi_aead_stream_update() function calls can be invoked to
+ * send more plaintext data to be encrypted. The kernel buffers the input
+ * until kcapi_aead_stream_op() picks up the encrypted data. Once plaintext
+ * is encrypted during the kcapi_aead_stream_op() it is removed from the
+ * kernel buffer.
+ *
+ * Note, unlike the corresponding symmetric cipher API, the function calls of
+ * kcapi_aead_stream_update() and kcapi_aead_stream_op() cannot be mixed! This
+ * due to the nature of AEAD where the cipher operation ensures the integrity
+ * of the entire data (decryption) or calculates a message digest over the
+ * entire data (encryption).
+ *
+ * When using the stream API, the caller must ensure that data is sent
+ * in the correct order (regardless whether data is sent in multiple chunks
+ * using kcapi_aead_stream_init_enc() or kcapi_cipher_stream_update()): (i)
+ * the complete associated data must be provided, followed by (ii) the
+ * plaintext.
+ *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
+ * Return: number of bytes sent to the kernel upon success;
+ *	   < 0 in case of error with errno set
+ */
 ssize_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
 				   const unsigned char *iv,
 				   struct iovec *iov, size_t iovlen);
+
+/**
+ * kcapi_aead_stream_init_dec() - start a decryption operation (stream)
+ * @handle: cipher handle - input
+ * @iv: IV to be used for cipher operation - input
+ * @iov: scatter/gather list with data to be encrypted. This is the pointer to
+ *	 the first @iov entry if an array of @iov entries is supplied. See
+ *	 sendmsg(2) for details on how @iov is to be used. This pointer may be
+ *	 NULL if no data to be encrypted is available at the point of the call.
+ *	  - input
+ * @iovlen: number of scatter/gather list elements. If @iov is NULL, this value
+ *	    must be zero. - input
+ *
+ * A stream decryption operation is started with this call. Multiple
+ * successive kcapi_aead_stream_update() function calls can be invoked to
+ * send more ciphertext data to be encrypted. The kernel buffers the input
+ * until kcapi_aead_stream_op() picks up the decrypted data. Once ciphertext
+ * is decrypted during the kcapi_aead_stream_op() it is removed from the
+ * kernel buffer.
+ *
+ * Note, unlike the corresponding symmetric cipher API, the function calls of
+ * kcapi_aead_stream_update() and kcapi_aead_stream_op() cannot be mixed! This
+ * due to the nature of AEAD where the cipher operation ensures the integrity
+ * of the entire data (decryption) or calculates a message digest over the
+ * entire data (encryption).
+ *
+ * When using the stream API, the caller must ensure that data is sent
+ * in the correct order (regardless whether data is sent in multiple chunks
+ * using kcapi_aead_stream_init_enc() or kcapi_cipher_stream_update()): (i)
+ * the complete associated data must be provided, followed by (ii) the
+ * plaintext. For decryption, also (iii) the tag value must be sent.
+ *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
+ * Return: number of bytes sent to the kernel upon success;
+ *	   < 0 in case of error with errno set
+ */
 ssize_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
 				   const unsigned char *iv,
 				   struct iovec *iov, size_t iovlen);
+
+/**
+ * kcapi_aead_stream_update() - send more data for processing (stream)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list with data to be processed by the cipher operation.
+ *	 - input
+ * @iovlen: number of scatter/gather list elements. - input
+ *
+ * Using this function call, more plaintext for encryption or ciphertext for
+ * decryption can be submitted to the kernel.
+ *
+ * Note, see the order of input data as outlined in
+ * kcapi_aead_stream_init_dec().
+ *
+ * This function may cause the caller to sleep if the kernel buffer holding
+ * the data is getting full. The process will be woken up once more buffer
+ * space becomes available by calling kcapi_aead_stream_op().
+ *
+ * Note: The last block of input data MUST be provided with
+ * kcapi_aead_stream_update_last() as the kernel must be informed about the
+ * completion of the input data.
+ *
+ * With the separate API calls of kcapi_aead_stream_update() and
+ * kcapi_aead_stream_op() a multi-threaded application can be implemented
+ * where one thread sends data to be processed and one thread picks up data
+ * processed by the cipher operation.
+ *
+ * Return: number of bytes sent to the kernel upon success;
+ *	   < 0 in case of error with errno set
+ */
 ssize_t kcapi_aead_stream_update(struct kcapi_handle *handle,
 				 struct iovec *iov, size_t iovlen);
+
+/**
+ * kcapi_aead_stream_update_last() - send last data for processing (stream)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list with data to be processed by the cipher operation.
+ *	 - input
+ * @iovlen: number of scatter/gather list elements. - input
+ *
+ * Using this function call, more plaintext for encryption or ciphertext for
+ * decryption can be submitted to the kernel.
+ *
+ * This call is identical to the kcapi_aead_stream_update() call with the
+ * exception that it marks the last data buffer before the cipher operation
+ * is triggered. Typically, the tag value is provided with this call.
+ *
+ * Return: number of bytes sent to the kernel upon success;
+ *	   < 0 in case of error with errno set
+ */
 ssize_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
 				      struct iovec *iov, size_t iovlen);
+
+/**
+ * kcapi_aead_stream_op() - obtain processed data (stream)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list pointing to buffers to be filled with the
+ *	 resulting data from a cipher operation. - output
+ * @iovlen: number of @outiov scatter/gather list elements. - input
+ *
+ * This function may cause the caller to sleep if the kernel buffer holding
+ * the data is empty. The process will be woken up once more data is sent
+ * by calling kcapi_cipher_stream_update().
+ *
+ * Note, when supplying buffers that are not multiple of block size, the buffers
+ * will only be filled up to the maximum number of full block sizes that fit
+ * into the buffer.
+ *
+ * Return: number of bytes obtained from the kernel upon success;
+ *	   < 0 in case of error with errno set
+ */
 ssize_t kcapi_aead_stream_op(struct kcapi_handle *handle,
 			     struct iovec *iov, size_t iovlen);
+
+/**
+ * kcapi_aead_ivsize() - return size of IV required for cipher
+ * @handle: cipher handle - input
+ *
+ * Return: > 0 specifying the IV size;
+ *	   0 on error
+ */
 unsigned int kcapi_aead_ivsize(struct kcapi_handle *handle);
+
+/**
+ * kcapi_aead_blocksize() - return size of one block of the cipher
+ * @handle: cipher handle - input
+ *
+ * Return: > 0 specifying the block size;
+ *	   0 on error
+ */
 unsigned int kcapi_aead_blocksize(struct kcapi_handle *handle);
+
+/**
+ * kcapi_aead_authsize() - return the maximum size of the tag
+ * @handle: cipher handle - input
+ *
+ * The returned maximum is the largest size of the authenticaation tag that can
+ * be produced by the AEAD cipher. Smaller tag sizes may be chosen depending on
+ * the AEAD cipher type.
+ *
+ * Return: > 0 specifying the block size;
+ *	   0 on error
+ */
 unsigned int kcapi_aead_authsize(struct kcapi_handle *handle);
+
+/**
+ * kcapi_aead_outbuflen() - return minimum output buffer length
+ * @handle: cipher handle - input
+ * @inlen: size of plaintext (if @enc is one) or size of ciphertext (if @enc
+ * 	   is zero)
+ * @taglen: size of authentication tag
+ * @enc: type of cipher operation (1 == encryption, 0 == decryption)
+ *
+ * Return: minimum size of output data length in bytes
+ */
 size_t kcapi_aead_outbuflen(struct kcapi_handle *handle,
 			    size_t inlen, size_t taglen, int enc);
+
+/**
+ * kcapi_aead_ccm_nonce_to_iv() - convert CCM nonce into IV
+ * @nonce: buffer with nonce - input
+ * @noncelen: length of nonce - input
+ * @iv: newly allocated buffer with IV - output
+ * @ivlen: length of IV - output
+ *
+ * This service function converts a CCM nonce value into an IV usable by
+ * the kernel crypto API.
+ *
+ * Caller must free iv.
+ *
+ * Return: 0 upon success;
+ *	   < 0 upon failure
+ */
 int kcapi_aead_ccm_nonce_to_iv(const unsigned char *nonce, size_t noncelen,
 			       unsigned char **iv, size_t *ivlen);
 
-/* Message Digest Cipher API */
+
+/**
+ * DOC: Message Digest Cipher API
+ */
+
+/**
+ * kcapi_md_init() - initialize cipher handle
+ * @handle: cipher handle filled during the call - output
+ * @ciphername: kernel crypto API cipher name as specified in
+ *	       /proc/crypto - input
+ *
+ * This function provides the initialization of a (keyed) message digest handle
+ * and establishes the connection to the kernel.
+ *
+ * Return: 0 upon success; ENOENT - algorithm not available;
+ *	   -EOPNOTSUPP - AF_ALG family not available;
+ *	   -EINVAL - accept syscall failed
+ */
 int kcapi_md_init(struct kcapi_handle *handle, const char *ciphername);
+
+/**
+ * kcapi_md_destroy() - close the message digest handle and release resources
+ * @handle: cipher handle to release - input
+ *
+ * Return: 0 upon success
+ */
 int kcapi_md_destroy(struct kcapi_handle *handle);
+
+/**
+ * kcapi_md_setkey() - set the key for the message digest handle
+ * @handle: cipher handle - input
+ * @key: key buffer - input
+ * @keylen: length of key buffer - input
+ *
+ * With this function, the caller sets the key for subsequent hashing
+ * operations. This call is applicable for keyed message digests.
+ *
+ * After the caller provided the key, the caller may securely destroy the key
+ * as it is now maintained by the kernel.
+ *
+ * Return: 0 upon success;
+ *	   < 0 in case of error
+ */
 int kcapi_md_setkey(struct kcapi_handle *handle,
 		    const unsigned char *key, size_t keylen);
+
+/**
+ * kcapi_md_update() - message digest update function (stream)
+ * @handle: cipher handle - input
+ * @buffer: holding the data to add to the message digest - input
+ * @len: buffer length - input
+ *
+ * Return: 0 upon success;
+ *	   < 0 in case of error
+ */
 ssize_t kcapi_md_update(struct kcapi_handle *handle,
 			const unsigned char *buffer, size_t len);
+
+/**
+ * kcapi_md_final() - message digest finalization function (stream)
+ * @handle: cipher handle - input
+ * @buffer: filled with the message digest - output
+ * @len: buffer length - input
+ *
+ * Return: size of message digest upon success;
+ *	   -EIO - data cannot be obtained;
+ * 	   -ENOMEM - buffer is too small for the complete message digest,
+ * 	   the buffer is filled with the truncated message digest
+ */
 ssize_t kcapi_md_final(struct kcapi_handle *handle,
 		       unsigned char *buffer, size_t len);
+
+/**
+ * kcapi_md_digest() - calculate message digest on buffer (one-shot)
+ * @handle: cipher handle - input
+ * @in: buffer with input data - input
+ * @inlen: length of input buffer
+ * @out: buffer for message digest - output
+ * @outlen: length of @out
+ *
+ * With this one-shot function, a message digest of the given buffer is
+ * generated. The output buffer must be allocated by the caller and have at
+ * least the length of the message digest size for the chosen message digest.
+ *
+ * The message digest handle must have been initialized, potentially by also
+ * setting the key using the generic message digest API functions.
+ *
+ * Return: size of message digest upon success;
+ *	   -EIO - data cannot be obtained;
+ * 	   -ENOMEM - buffer is too small for the complete message digest,
+ * 	   the buffer is filled with the truncated message digest
+ */
 ssize_t kcapi_md_digest(struct kcapi_handle *handle,
 		       const unsigned char *in, size_t inlen,
 		       unsigned char *out, size_t outlen);
+
+/**
+ * kcapi_md_digestsize() - return the size of the message digest
+ * @handle: cipher handle - input
+ *
+ * The returned message digest size can be used before the @kcapi_md_final
+ * function invocation to determine the right memory size to be allocated for
+ * this call.
+ *
+ * Return: > 0 specifying the block size;
+ *	   0 on error
+ */
 unsigned int kcapi_md_digestsize(struct kcapi_handle *handle);
+
+/**
+ * kcapi_md_blocksize() - return size of one block of the message digest
+ * @handle: cipher handle - input
+ *
+ * Return: > 0 specifying the block size;
+ *	   0 on error
+ */
 unsigned int kcapi_md_blocksize(struct kcapi_handle *handle);
 
-/* Random Number API */
+
+/**
+ * DOC: Random Number API
+ */
+
+/**
+ * kcapi_rng_init() - initialize cipher handle
+ * @handle: cipher handle filled during the call - output
+ * @ciphername: kernel crypto API cipher name as specified in
+ *	       /proc/crypto - input
+ *
+ * This function provides the initialization of a random number generator handle
+ * and establishes the connection to the kernel.
+ *
+ * Return: 0 upon success; ENOENT - algorithm not available;
+ *	   -EOPNOTSUPP - AF_ALG family not available;
+ *	   -EINVAL - accept syscall failed
+ */
 int kcapi_rng_init(struct kcapi_handle *handle, const char *ciphername);
+
+/**
+ * kcapi_rng_destroy() - Close the RNG handle and release resources
+ * @handle: cipher handle to release - input
+ *
+ * Return: 0 upon success
+ */
 int kcapi_rng_destroy(struct kcapi_handle *handle);
+
+/**
+ * kcapi_rng_seed() - Seed the RNG
+ * @handle: cipher handle - input
+ * @seed: seed data - input
+ * @seedlen: size of @seed
+ *
+ * Return: 0 upon success;
+ * 	   < 0 upon error
+ */
 int kcapi_rng_seed(struct kcapi_handle *handle, unsigned char *seed,
 		   size_t seedlen);
+
+/**
+ * kcapi_rng_generate() - generate a random number
+ * @handle: cipher handle - input
+ * @buffer: filled with the random number - output
+ * @len: buffer length - input
+ *
+ * Return: size of random number generated upon success;
+ *	   -EIO - data cannot be obtained
+ */
 ssize_t kcapi_rng_generate(struct kcapi_handle *handle,
 			   unsigned char *buffer, size_t len);
 
+/**
+ * DOC: Common API
+ *
+ * The following API calls are common to all cipher types.
+ */
+
+/**
+ * kcapi_versionstring() - Obtain version string of kcapi library
+ * @buf: buffer to place version string into - output
+ * @buflen: length of buffer - input
+ */
 void kcapi_versionstring(char *buf, size_t buflen);
+
+/**
+ * kcapi_version() - Return machine-usable version number of kcapi library
+ *
+ * The function returns a version number that is monotonic increasing
+ * for newer versions. The version numbers are multiples of 100. For example,
+ * version 1.2.3 is converted to 1020300 -- the last two digits are reserved
+ * for future use.
+ *
+ * The result of this function can be used in comparing the version number
+ * in a calling program if version-specific calls need to be make.
+ *
+ * Return: Version number of kcapi library
+ */
 unsigned int kcapi_version(void);
+
+/**
+ * kcapi_pad_iv() - realign the IV as necessary for cipher
+ * @handle: cipher handle
+ * @iv: current IV buffer - input
+ * @ivlen: length of IV buffer - input
+ * @newiv: buffer of aligned IV - output
+ * @newivlen: length of newly aligned IV - output
+ *
+ * The function pads the least significant bits of the provided IV up to the
+ * block size of the cipher with zeros. In case the provided IV is longer than
+ * the block size, the least significant bits are truncated to the block size.
+ *
+ * The function allocates memory for @newiv in case the return code indicates
+ * success. The consumer must free the memory after use.
+ *
+ * Return: 0 for success;
+ *	   < 0 for any errors
+ */
 int kcapi_pad_iv(struct kcapi_handle *handle,
 		 const unsigned char *iv, size_t ivlen,
 		 unsigned char **newiv, size_t *newivlen);
