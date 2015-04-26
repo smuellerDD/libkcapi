@@ -3,7 +3,7 @@
 #
 
 CC=gcc
-CFLAGS +=-Wextra -Wall -pedantic -Wno-overlength-strings -pie -fPIE -O2
+CFLAGS +=-Wextra -Wall -pedantic -Wno-overlength-strings -pie -fPIE -O2 -g
 #Hardening
 CFLAGS +=-D_FORTIFY_SOURCE=2 -fstack-protector-strong -fwrapv --param ssp-buffer-size=4
 LDFLAGS +=-Wl,-z,relro,-z,now

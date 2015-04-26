@@ -140,7 +140,7 @@ void cp_rng_register(struct cp_test **rng_test, size_t *entries)
 {
 	size_t i = 0;
 
-	for (i = i; i < ARRAY_SIZE(testcases); i++) {
+	for (i = 0; i < ARRAY_SIZE(testcases); i++) {
 		cp_rng_testdef[i].enc = 0;
 		cp_rng_testdef[i].testname = testcases[i].testname;
 		cp_rng_testdef[i].driver_name = testcases[i].driver_name;

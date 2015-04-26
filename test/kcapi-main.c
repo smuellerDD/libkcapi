@@ -156,13 +156,13 @@ static int aux_stress_init_error(const char *name, int type)
 	printf("FAIL Allocation of nonsense string \"%s\" passed\n", name);
 
 	if (type == 0)
-		ret = kcapi_cipher_destroy(&handle);
+		kcapi_cipher_destroy(&handle);
 	else if (type == 1)
-		ret = kcapi_aead_destroy(&handle);
+		kcapi_aead_destroy(&handle);
 	else if (type == 2)
-		ret = kcapi_md_destroy(&handle);
+		kcapi_md_destroy(&handle);
 	else
-		ret = kcapi_rng_destroy(&handle);
+		kcapi_rng_destroy(&handle);
 
 	return 1;
 }
@@ -409,7 +409,7 @@ static int cavs_sym(struct kcapi_cavs *cavs_test, unsigned int loops,
 
 	if (kcapi_cipher_init(&handle, cavs_test->cipher)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
-		return -EINVAL;
+		goto out;
 	}
 
 	/* Set key */
@@ -984,7 +984,6 @@ out:
 static int cavs_hash(struct kcapi_cavs *cavs_test, unsigned int loops)
 {
 	struct kcapi_handle handle;
-	int rc = 0;
 #define MAXMD 64
 	unsigned char md[MAXMD];
 #define MAXMDHEX (MAXMD * 2 + 1)
@@ -1012,6 +1011,8 @@ static int cavs_hash(struct kcapi_cavs *cavs_test, unsigned int loops)
 	}
 
 	for(i = 0; i < loops; i++) {
+		int rc = 0;
+
 		rc = kcapi_md_digest(&handle, cavs_test->pt, cavs_test->ptlen,
 			md, cavs_test->outlen ? cavs_test->outlen : MAXMD);
 		if (0 > rc) {
@@ -1030,7 +1031,6 @@ static int cavs_hash(struct kcapi_cavs *cavs_test, unsigned int loops)
 static int cavs_hash_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 {
 	struct kcapi_handle handle;
-	int rc = 0;
 #define MAXMD 64
 	unsigned char md[MAXMD];
 #define MAXMDHEX (MAXMD * 2 + 1)
@@ -1058,6 +1058,8 @@ static int cavs_hash_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 	}
 
 	for(i = 0; i < loops; i++) {
+		int rc = 0;
+
 		if (kcapi_md_update(&handle, cavs_test->pt, cavs_test->ptlen)) {
 			printf("Hash update of buffer failed\n");
 			kcapi_md_destroy(&handle);

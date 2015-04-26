@@ -811,7 +811,7 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 	if (outlen < _kcapi_aead_encrypt_outlen(handle, inlen,
 						handle->aead.taglen) ) {
 		fprintf(stderr,
-			"AEAD Encryption: Ciphertext buffer (%lu) is not plaintext buffer (%lu) rounded up to multiple of block size %d plus tag length %lu\n",
+			"AEAD Encryption: Ciphertext buffer (%lu) is not plaintext buffer (%lu) rounded up to multiple of block size %u plus tag length %lu\n",
 			(unsigned long)outlen, (unsigned long)inlen,
 			handle->info.blocksize,
 			(unsigned long)handle->aead.taglen);
@@ -1135,7 +1135,6 @@ ssize_t kcapi_md_digest(struct kcapi_handle *handle,
 		       unsigned char *out, size_t outlen)
 {
 	struct iovec iov;
-	ssize_t ret = 0;
 	size_t processed = 0;
 
 	if (!out || !outlen) {
@@ -1164,6 +1163,8 @@ ssize_t kcapi_md_digest(struct kcapi_handle *handle,
 	iov.iov_base = (void*)(uintptr_t)in;
 
 	while (inlen) {
+		ssize_t ret = 0;
+
 		size_t datalen = (inlen > MAXPIPELEN) ? MAXPIPELEN : inlen;
 
 		iov.iov_len = datalen;

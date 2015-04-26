@@ -79,9 +79,10 @@ static int exec_all_tests(struct test_array *tests, unsigned int exectime,
 			  size_t len)
 {
 	size_t i = 0;
-	char *out = NULL;
 
 	for (i = 0; i < tests->entries; i++) {
+		char *out = NULL;
+
 		if (cp_exec_test(&tests->array[i], exectime, len))
 			return -EFAULT;
 		out = cp_print_status(&tests->array[i], 0);
@@ -121,8 +122,10 @@ static int exec_subset_test(const char *name, unsigned int exectime, size_t len,
 
 	for (i = 0; i < 4; i++) {
 		int ret = 0;
-		char *out = NULL;
+
 		while (1) {
+			char *out = NULL;
+
 			ret = find_test(name, &tests[i], ret, &test);
 			if (ret < 0)
 				break;

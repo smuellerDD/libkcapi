@@ -150,10 +150,8 @@ char *cp_print_status(struct cp_test *test, int raw)
 {
 	char *str = NULL;
 	uint64_t processed_bytes = test->results.rounds * test->results.byteperop;
-#define VALLEN 10
-	char byteseconds[VALLEN + 1];
 	uint64_t totaltime = test->results.totaltime>>30;
-	uint64_t ops = test->results.rounds / totaltime;
+	uint64_t ops = 0;
 
 	str = calloc(1, 121);
 	if (!str)
@@ -164,6 +162,8 @@ char *cp_print_status(struct cp_test *test, int raw)
 		return str;
 	}
 
+	ops = test->results.rounds / totaltime;
+
 	if (raw) {
 		snprintf(str, 120, "%s,%s,%lu,%lu,%lu",
 			 test->testname,
@@ -172,6 +172,9 @@ char *cp_print_status(struct cp_test *test, int raw)
 			(unsigned long)(processed_bytes/totaltime),
 			(unsigned long)ops);
 	} else {
+		#define VALLEN 10
+		char byteseconds[VALLEN + 1];
+
 		memset(byteseconds, 0, sizeof(byteseconds));
 		cp_bytes2string((processed_bytes / totaltime), byteseconds,
 				(VALLEN + 1));
