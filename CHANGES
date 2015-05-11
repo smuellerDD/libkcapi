@@ -1,5 +1,9 @@
 Change 0.7.2:
  * Move the library code into the directory lib/
+ * Fix issues reported by cppcheck
+ * AEAD: allow encrypt/decrypt invocations with NULL AAD and NULL PT/CT
+ * AEAD: add test for NULL AAD and NULL PT/CT
+ * RNG: always invoke seeding operation, even when seed is NULL
 
 Change 0.7.1:
  * AEAD kernel interface is now upstreamed, reference the patches
