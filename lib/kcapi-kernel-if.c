@@ -82,8 +82,6 @@
 #define SOL_ALG 279
 #endif
 
-#define MAXPIPELEN (16 * PAGE_SIZE)
-
 /************************************************************
  * Internal logic
  ************************************************************/
@@ -197,12 +195,6 @@ static inline ssize_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 						 unsigned int flags)
 {
 	ssize_t ret = 0;
-
-	if (inlen > MAXPIPELEN) {
-		fprintf(stderr, "Splice operation: input data exceeds maximum allowed size of %lu\n",
-			MAXPIPELEN);
-		return -E2BIG;
-	}
 
 	ret = vmsplice(handle->pipes[1], iov, iovlen, SPLICE_F_GIFT|flags);
 	if (0 > ret)
