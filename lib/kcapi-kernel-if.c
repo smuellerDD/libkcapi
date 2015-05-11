@@ -846,7 +846,7 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 	}
 
 	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT,
-				      MSG_MORE);
+			(handle->aead.assoclen || inlen) ? MSG_MORE : 0);
 	if (0 > ret)
 		return ret;
 	if (assoc && handle->aead.assoclen) {
@@ -859,7 +859,7 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 		iov[1].iov_len = inlen;
 		len += inlen;
 		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 2, len, 0);
-	} else {
+	} else if (inlen) {
 		size_t len = 0;
 
 		iov[0].iov_base = (void*)(uintptr_t)in;
@@ -950,6 +950,7 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 		if (0 > ret)
 			return ret;
 		if (assoc && handle->aead.assoclen) {
+			/* AAD, ciphertext and tag available */
 			iov[0].iov_base = (void*)(uintptr_t)assoc;
 			iov[0].iov_len = handle->aead.assoclen;
 			len = handle->aead.assoclen;
@@ -961,7 +962,8 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			len += handle->aead.taglen;
 			ret = _kcapi_common_vmsplice_data(handle, &iov[0], 3,
 							  len, 0);
-		} else {
+		} else if (in && inlen) {
+			/* no AAD, but ciphertext and tag available */
 			iov[0].iov_base = (void*)(uintptr_t)in;
 			iov[0].iov_len = inlen;
 			len = inlen;
@@ -970,12 +972,25 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			len += handle->aead.taglen;
 			ret = _kcapi_common_vmsplice_data(handle, &iov[0], 2,
 							  len, 0);
+		} else {
+			/* only tag available */
+			iov[0].iov_base = (void*)(uintptr_t)tag;
+			iov[0].iov_len = handle->aead.taglen;
+			len = handle->aead.taglen;
+			ret = _kcapi_common_vmsplice_data(handle, &iov[0], 1,
+							  len, 0);
 		}
 		if (0 > ret)
 			return ret;
 	}
 
-	return _kcapi_common_read_data(handle, out, outlen);
+	if (outlen) {
+		return _kcapi_common_read_data(handle, out, outlen);
+	} else {
+		iov[0].iov_base = (void*)(uintptr_t)out;
+		iov[0].iov_len = outlen;
+		return _kcapi_common_recv_data(handle, &iov[0], 1);
+	}
 }
 
 ssize_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
