@@ -190,11 +190,11 @@ static inline ssize_t _kcapi_common_send_data(struct kcapi_handle *handle,
 	return (ret >= 0) ? ret : -errno;
 }
 
-static inline ssize_t _kcapi_common_vmsplice_data(struct kcapi_handle *handle,
-						  struct iovec *iov,
-						  size_t iovlen,
-						  size_t inlen,
-						  unsigned int flags)
+static inline ssize_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
+						 struct iovec *iov,
+						 size_t iovlen,
+						 size_t inlen,
+						 unsigned int flags)
 {
 	ssize_t ret = 0;
 
@@ -212,6 +212,34 @@ static inline ssize_t _kcapi_common_vmsplice_data(struct kcapi_handle *handle,
 			(long)ret, (unsigned long)inlen);
 	ret = splice(handle->pipes[0], NULL, handle->opfd, NULL, ret, flags);
 	return (ret >= 0) ? ret : -errno;
+}
+
+static inline ssize_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
+						   const unsigned char *in,
+						   size_t inlen)
+{
+	ssize_t ret = 0;
+	struct iovec iov;
+	size_t processed = 0;
+
+	iov.iov_base = (void*)(uintptr_t)in;
+	while (inlen) {
+		iov.iov_len = inlen;
+		ret = vmsplice(handle->pipes[1], &iov, 1,
+			       SPLICE_F_GIFT|SPLICE_F_MORE);
+		if (0 > ret)
+			return ret;
+		ret = splice(handle->pipes[0], NULL, handle->opfd, NULL, ret,
+			     SPLICE_F_MORE);
+		if (0 > ret)
+			return ret;
+
+		processed += ret;
+		iov.iov_base = (void*)(uintptr_t)(in + processed);
+		inlen -= ret;
+	}
+
+	return processed;
 }
 
 static inline ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
@@ -598,7 +626,6 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 {
 	struct iovec iov;
 	ssize_t ret = 0;
-	size_t processed = 0;
 	unsigned int bs = handle->info.blocksize;
 
 	if (!in || !inlen || !out || !outlen) {
@@ -637,19 +664,9 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT, 0);
 	if (0 > ret)
 		return ret;
-	while (inlen) {
-		size_t datalen = (inlen > MAXPIPELEN) ? MAXPIPELEN : inlen;
-
-		iov.iov_len = datalen;
-		ret = _kcapi_common_vmsplice_data(handle, &iov, 1, datalen,
-						  SPLICE_F_MORE);
-		if (0 > ret)
-			return ret;
-		processed += ret;
-		iov.iov_base = (void*)(uintptr_t)(in + processed);
-		inlen -= ret;
-	}
-
+	ret = _kcapi_common_vmsplice_chunk(handle, in, inlen);
+	if (0 > ret)
+		return ret;
 	return _kcapi_common_read_data(handle, out, outlen);
 }
 
@@ -660,7 +677,6 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 {
 	struct iovec iov;
 	ssize_t ret = 0;
-	size_t processed = 0;
 
 	if (!in || !inlen || !out || !outlen) {
 		fprintf(stderr,
@@ -704,20 +720,9 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_DECRYPT, 0);
 	if (0 > ret)
 		return ret;
-
-	while (inlen) {
-		size_t datalen = (inlen > MAXPIPELEN) ? MAXPIPELEN : inlen;
-
-		iov.iov_len = datalen;
-		ret = _kcapi_common_vmsplice_data(handle, &iov, 1, datalen,
-						  SPLICE_F_MORE);
-		if (0 > ret)
-			return ret;
-		processed += ret;
-		iov.iov_base = (void*)(uintptr_t)(in + processed);
-		inlen -= ret;
-	}
-
+	ret = _kcapi_common_vmsplice_chunk(handle, in, inlen);
+	if (0 > ret)
+		return ret;
 	return _kcapi_common_read_data(handle, out, outlen);
 }
 
@@ -858,14 +863,14 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 		iov[1].iov_base = (void*)(uintptr_t)in;
 		iov[1].iov_len = inlen;
 		len += inlen;
-		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 2, len, 0);
+		ret = _kcapi_common_vmsplice_iov(handle, &iov[0], 2, len, 0);
 	} else if (inlen) {
 		size_t len = 0;
 
 		iov[0].iov_base = (void*)(uintptr_t)in;
 		iov[0].iov_len = inlen;
 		len = inlen;
-		ret = _kcapi_common_vmsplice_data(handle, &iov[0], 1, len, 0);
+		ret = _kcapi_common_vmsplice_iov(handle, &iov[0], 1, len, 0);
 	}
 	if (0 > ret)
 		return ret;
@@ -960,7 +965,7 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			iov[2].iov_base = (void*)(uintptr_t)tag;
 			iov[2].iov_len = handle->aead.taglen;
 			len += handle->aead.taglen;
-			ret = _kcapi_common_vmsplice_data(handle, &iov[0], 3,
+			ret = _kcapi_common_vmsplice_iov(handle, &iov[0], 3,
 							  len, 0);
 		} else if (in && inlen) {
 			/* no AAD, but ciphertext and tag available */
@@ -970,14 +975,14 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			iov[1].iov_base = (void*)(uintptr_t)tag;
 			iov[1].iov_len = handle->aead.taglen;
 			len += handle->aead.taglen;
-			ret = _kcapi_common_vmsplice_data(handle, &iov[0], 2,
+			ret = _kcapi_common_vmsplice_iov(handle, &iov[0], 2,
 							  len, 0);
 		} else {
 			/* only tag available */
 			iov[0].iov_base = (void*)(uintptr_t)tag;
 			iov[0].iov_len = handle->aead.taglen;
 			len = handle->aead.taglen;
-			ret = _kcapi_common_vmsplice_data(handle, &iov[0], 1,
+			ret = _kcapi_common_vmsplice_iov(handle, &iov[0], 1,
 							  len, 0);
 		}
 		if (0 > ret)
@@ -1149,8 +1154,7 @@ ssize_t kcapi_md_digest(struct kcapi_handle *handle,
 		       const unsigned char *in, size_t inlen,
 		       unsigned char *out, size_t outlen)
 {
-	struct iovec iov;
-	size_t processed = 0;
+	ssize_t ret = 0;
 
 	if (!out || !outlen) {
 		fprintf(stderr,
@@ -1174,23 +1178,9 @@ ssize_t kcapi_md_digest(struct kcapi_handle *handle,
 		return _kcapi_md_final(handle, out, outlen);
 	}
 
-	/* normal zero copy */
-	iov.iov_base = (void*)(uintptr_t)in;
-
-	while (inlen) {
-		ssize_t ret = 0;
-
-		size_t datalen = (inlen > MAXPIPELEN) ? MAXPIPELEN : inlen;
-
-		iov.iov_len = datalen;
-		ret = _kcapi_common_vmsplice_data(handle, &iov, 1, datalen,
-						  SPLICE_F_MORE);
-		if (0 > ret)
-			return ret;
-		processed += ret;
-		iov.iov_base = (void*)(uintptr_t)(in + processed);
-		inlen -= ret;
-	}
+	ret = _kcapi_common_vmsplice_chunk(handle, in, inlen);
+	if (0 > ret)
+		return ret;
 	return _kcapi_common_read_data(handle, out, outlen);
 }
 
