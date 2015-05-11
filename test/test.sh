@@ -308,6 +308,25 @@ AEAD_taglen_15="12"
 AEAD_assoc_15="1e6e275ca7c93f6d"
 AEAD_exp_15="36303126cc98c832399ae827a853c6a9"
 
+AEAD_name_16="gcm(aes)"
+AEAD_enc_16="1"
+AEAD_msg_16=""
+AEAD_key_16="d04f54e831ebb8ce19793e2619e7d279"
+AEAD_iv_16="421b8b72834f5003cfab19d9"
+AEAD_tag_16="b031d2fa2aa91c31d88c824bca8064a7"
+AEAD_taglen_16="16"
+AEAD_assoc_16=""
+AEAD_exp_16=""
+
+AEAD_name_17="gcm(aes)"
+AEAD_enc_17="0"
+AEAD_msg_17=""
+AEAD_key_17="f4a6a5e5f2066f6dd9ec6fc5169c29043560ef595c9e81e76f42d29212cc581c"
+AEAD_iv_17="0d92aa861746b324f20ee6b7"
+AEAD_tag_17="5f24c68cbe6f32c29652442bf5d483ad"
+AEAD_taglen_17="16"
+AEAD_assoc_17=""
+AEAD_exp_17="EBADMSG"
 
 ###########################################################################
 ###########################################################################
@@ -413,7 +432,7 @@ aeadfunc()
 {
 	stream=$1
 
-	AEADEXEC="1 2 3 4 5 6 7 8 9 10 11 12 13 14 15"
+	AEADEXEC="1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17"
 	for i in $AEADEXEC
 	do
 		eval AEAD_name=\$AEAD_name_$i
@@ -462,6 +481,7 @@ aeadfunc()
 			let failures=($failures+1)
 		fi
 	done
+	return
 
 	# AEAD long message test
 	expectedlong="5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d7587eb88661ed4648fb334e725af4c790350"

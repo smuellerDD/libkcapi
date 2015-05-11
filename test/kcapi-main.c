@@ -199,13 +199,12 @@ static int aux_test_rng(char *name, unsigned char *seed, size_t seedlen)
                 return 1;
         }
 
-	if (seed && seedlen) {
-		ret = kcapi_rng_seed(&handle, seed, seedlen);
-		if (0 > ret) {
-			printf("Failure to seed RNG %d\n", (int)ret);
-			kcapi_rng_destroy(&handle);
-			return 1;
-		}
+	/* invocation of seeding is mandatory even when seed is NuLL */
+	ret = kcapi_rng_seed(&handle, seed, seedlen);
+	if (0 > ret) {
+		printf("Failure to seed RNG %d\n", (int)ret);
+		kcapi_rng_destroy(&handle);
+		return 1;
 	}
 
 	ret = kcapi_rng_generate(&handle, outbuf, RNGOUTBUF);
@@ -778,7 +777,7 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 				printf("Sending last update buffer failed\n");
 				goto out;
 			}
-			if (outbuflen >= 16) {
+			if ((outbuflen - cavs_test->taglen) >= 16) {
 				/* test of multiple iovecs */
 				outiov[0].iov_base = outbuf;
 				outiov[0].iov_len = 1;
@@ -809,7 +808,7 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 				outiov[13].iov_base = outbuf + 13;
 				outiov[13].iov_len = 1;
 				outiov[14].iov_base = outbuf + 14;
-				outiov[14].iov_len = (outbuflen - 14  - cavs_test->taglen);
+				outiov[14].iov_len = (outbuflen - 14 - cavs_test->taglen);
 				outiov[15].iov_base = outbuf +
 						(outbuflen - cavs_test->taglen);
 				outiov[15].iov_len = cavs_test->taglen;
