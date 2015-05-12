@@ -216,10 +216,10 @@ static inline ssize_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 	struct iovec iov;
 	size_t processed = 0;
 
-	iov.iov_base = (void*)(uintptr_t)in;
 	while (inlen) {
 		ssize_t ret = 0;
 
+		iov.iov_base = (void*)(uintptr_t)(in + processed);
 		iov.iov_len = inlen;
 		ret = vmsplice(handle->pipes[1], &iov, 1,
 			       SPLICE_F_GIFT|SPLICE_F_MORE);
@@ -231,7 +231,6 @@ static inline ssize_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 			return ret;
 
 		processed += ret;
-		iov.iov_base = (void*)(uintptr_t)(in + processed);
 		inlen -= ret;
 	}
 
