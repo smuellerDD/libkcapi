@@ -1,7 +1,7 @@
 #!/bin/bash
 
 MAX=8388608
-OUTFILE=testfile
+OUTFILE=/dev/shm/testfile.$$
 
 i=1
 error=""
