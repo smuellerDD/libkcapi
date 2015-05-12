@@ -1086,20 +1086,25 @@ int kcapi_md_setkey(struct kcapi_handle *handle,
 	return _kcapi_common_setkey(handle, key, keylen);
 }
 
-static ssize_t _kcapi_md_update(struct kcapi_handle *handle,
-				const unsigned char *buffer, size_t len)
+static inline ssize_t _kcapi_md_update(struct kcapi_handle *handle,
+				       const unsigned char *buffer, size_t len)
 {
 	ssize_t r;
 
-	r = send(handle->opfd, buffer, len, MSG_MORE);
+	/* zero buffer length cannot be handled via splice */
+	/* TODO check that heuristic for sendmsg is appropriate */
+	if(len == 0 /* < (1<<15) */)
+		r = send(handle->opfd, buffer, len, MSG_MORE);
+	else
+		r = _kcapi_common_vmsplice_chunk(handle, buffer, len);
+
 	if (r < 0 || (size_t)r < len)
 		return -EIO;
-
 	return 0;
 }
 
 ssize_t kcapi_md_update(struct kcapi_handle *handle,
-		    const unsigned char *buffer, size_t len)
+			const unsigned char *buffer, size_t len)
 {
 	return _kcapi_md_update(handle, buffer, len);
 }
@@ -1109,7 +1114,7 @@ static ssize_t _kcapi_md_final(struct kcapi_handle *handle,
 {
 	struct iovec iov;
 
-	if (len < (unsigned long)handle->info.hash_digestsize) {
+	if (!buffer || len < (unsigned long)handle->info.hash_digestsize) {
 		fprintf(stderr,
 			"Message digest: output buffer too small (seen %lu - required %u)\n",
 			(unsigned long)len,
@@ -1134,32 +1139,10 @@ ssize_t kcapi_md_digest(struct kcapi_handle *handle,
 {
 	ssize_t ret = 0;
 
-	if (!out || !outlen) {
-		fprintf(stderr,
-			"Message digest: Empty plaintext or message digest buffer provided\n");
-		return -EINVAL;
-	}
-
-	if (outlen < (unsigned int)handle->info.hash_digestsize) {
-		fprintf(stderr,
-			"Message digest: output buffer too small (seen %lu - required %u)\n",
-			(unsigned long)outlen,
-			handle->info.hash_digestsize);
-		return -EINVAL;
-	}
-
-	/* zero buffer length cannot be handled via splice */
-	/* TODO check that heuristic for sendmsg is appropriate */
-	if(inlen == 0 /* < (1<<15) */) {
-		if (_kcapi_md_update(handle, in, inlen))
-			return -EIO;
-		return _kcapi_md_final(handle, out, outlen);
-	}
-
-	ret = _kcapi_common_vmsplice_chunk(handle, in, inlen);
+	ret = _kcapi_md_update(handle, in, inlen);
 	if (0 > ret)
 		return ret;
-	return _kcapi_common_read_data(handle, out, outlen);
+	return _kcapi_md_final(handle, out, outlen);
 }
 
 unsigned int kcapi_md_digestsize(struct kcapi_handle *handle)
