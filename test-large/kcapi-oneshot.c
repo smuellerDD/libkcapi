@@ -10,11 +10,11 @@
 
 #include <kcapi.h>
 
-void pt(unsigned char *md)
+void pt(unsigned char *md, unsigned int len)
 {
-	int i;
+	unsigned int i;
 
-	for (i=0; i<20; i++)
+	for (i = 0; i < len; i++)
 		printf("%02x",md[i]);
 	printf("\n");
 }
@@ -26,14 +26,14 @@ int main( int argc, char **argv )
 	struct stat sb;
 	const char* memblock;
 	struct kcapi_handle handle;
-	unsigned char md[20];
+	unsigned char md[64];
 
-	if (argc != 2) {
+	if (argc != 3) {
 		printf("argc failed\n");
 		return -1;
 	}
 
-	ret = kcapi_md_init(&handle, "sha1");
+	ret = kcapi_md_init(&handle, argv[1]);
 	if (ret) {
 		printf("Allocation of sha1 cipher failed (ret=%d)\n", ret);
 		return 1;
@@ -45,7 +45,7 @@ int main( int argc, char **argv )
 	}
 
 	/* mmap file */
-	fd = open(argv[1], O_RDONLY);
+	fd = open(argv[2], O_RDONLY);
 	fstat(fd, &sb);
 	/* printf("Size: %lu\n", (uint64_t)sb.st_size); */
 	memblock = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
@@ -57,10 +57,10 @@ int main( int argc, char **argv )
 	}
 
 	/* Compute hash */
-	memset(md, 0, 20);
-	ret = kcapi_md_digest(&handle, (unsigned char*) memblock, sb.st_size, md, 20);
+	memset(md, 0, sizeof(md));
+	ret = kcapi_md_digest(&handle, (unsigned char*) memblock, sb.st_size, md, sizeof(md));
 	/* printf("Size of message digest computed=%d\n", ret);*/
-	pt(md);
+	pt(md, ret);
 
 	/* Clean up */
 	kcapi_md_destroy(&handle);
