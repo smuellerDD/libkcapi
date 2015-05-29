@@ -569,26 +569,19 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, unsigned int loops,
 	struct kcapi_handle handle;
 	unsigned char *outbuf = NULL;
 	size_t outbuflen = 0;
-	char *outhex = NULL;
 	int ret = -ENOMEM;
 	unsigned char *newiv = NULL;
 	size_t newivlen = 0;
 	int errsv = 0;
 	unsigned int i = 0;
 
-#if 0
-	if (cavs_test->enc) {
-		if (!cavs_test->ptlen)
-			return -EINVAL;
-	} else {
-		if (!cavs_test->ctlen)
-			return -EINVAL;
-	}
-	if (!cavs_test->taglen || (!cavs_test->enc && !cavs_test->tag)) {
-		printf("Missing tag data\n");
-		return -EINVAL;
-	}
-#endif
+	unsigned char *assoc = NULL;
+	size_t assoclen = 0;
+	unsigned char *data = NULL;
+	size_t datalen = 0;
+	unsigned char *tag = NULL;
+	size_t taglen = 0;
+
 	if (!cavs_test->ivlen || !cavs_test->iv)
 		return -EINVAL;
 
@@ -598,18 +591,27 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, unsigned int loops,
 		goto out;
 	}
 
-	ret = -ENOMEM;
-	if (cavs_test->enc) {
-		outbuflen = kcapi_aead_outbuflen(&handle, cavs_test->ptlen,
-						 cavs_test->taglen, 1);
-		outbuf = calloc(1, outbuflen);
-	} else {
-		outbuflen = kcapi_aead_outbuflen(&handle, cavs_test->ctlen,
-						 cavs_test->taglen, 0);
-		outbuf = calloc(1, outbuflen);
-	}
-	if (!outbuf)
+	/* Setting the tag length */
+	if (kcapi_aead_settaglen(&handle, cavs_test->taglen)) {
+		printf("Setting of authentication tag length failed\n");
 		goto out;
+	}
+	kcapi_aead_setassoclen(&handle, cavs_test->assoclen);
+
+	ret = -ENOMEM;
+	if (cavs_test->enc)
+		outbuflen = kcapi_aead_outbuflen(&handle, cavs_test->ptlen,
+						 cavs_test->assoclen,
+						 cavs_test->taglen);
+	else
+		outbuflen = kcapi_aead_outbuflen(&handle, cavs_test->ctlen,
+						 cavs_test->assoclen,
+						 cavs_test->taglen);
+	if (posix_memalign((void *)&outbuf, PAGE_SIZE, outbuflen))
+		goto out;
+	memset(outbuf, 0, outbuflen);
+	kcapi_aead_getdata(&handle, outbuf, outbuflen,
+			   &assoc, &assoclen, &data, &datalen, &tag, &taglen);
 
 	/* Set key */
 	if (!cavs_test->keylen || !cavs_test->key ||
@@ -625,46 +627,61 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, unsigned int loops,
 		goto out;
 
 	ret = -EIO;
-	/* Setting the tag length */
-	if (kcapi_aead_settaglen(&handle, cavs_test->taglen)) {
-		printf("Setting of authentication tag length failed\n");
-		goto out;
-	}
-	kcapi_aead_setassoclen(&handle, cavs_test->assoclen);
 
 	for (i = 0; i < loops; i++) {
+		memcpy(assoc, cavs_test->assoc, assoclen);
 		if (cavs_test->enc) {
-			ret = kcapi_aead_encrypt(&handle,
-				 cavs_test->pt, cavs_test->ptlen,
-				 newiv,
-				 cavs_test->assoc, outbuf, outbuflen,
-				 splice);
+			memcpy(data, cavs_test->pt, datalen);
+			ret = kcapi_aead_encrypt(&handle, outbuf, outbuflen,
+						newiv,
+						outbuf, outbuflen,
+						splice);
 		} else {
+			memcpy(data, cavs_test->ct, datalen);
+			memcpy(tag, cavs_test->tag, taglen);
 			ret = kcapi_aead_decrypt(&handle,
-				 cavs_test->ct, cavs_test->ctlen,
+				 outbuf, outbuflen,
 				 newiv,
-				 cavs_test->assoc, cavs_test->tag,
 				 outbuf, outbuflen,
 				 splice);
 		}
+
 		errsv = errno;
 		if (0 > ret && EBADMSG != errsv) {
 			printf("Cipher operation of buffer failed: %d %d\n",
 			       errno, ret);
 			goto out;
 		}
+		if (ret > 0 && (size_t)ret != outbuflen) {
+			printf("Cipher operation did not fill entire buffer %d\n",
+			       ret);
+			goto out;
+		}
 
 		if (EBADMSG == errsv) {
 			printf("EBADMSG\n");
 		} else {
-			outhex = calloc(1, (ret * 2 + 1));
-			if (!outhex) {
+			char *datahex = NULL;
+			char *taghex = NULL;
+
+			/* we are not interested in the AD */
+			datahex = calloc(1, (datalen  * 2 + 1));
+			if (!datahex) {
 				ret = -ENOMEM;
 				goto out;
 			}
-			bin2hex(outbuf, ret, outhex, ret * 2 + 1, 0);
-			printf("%s\n", outhex);
-			free(outhex);
+			bin2hex(data, datalen, datahex, datalen * 2 + 1, 0);
+			if (cavs_test->enc) {
+				taghex = calloc(1, (taglen  * 2 + 1));
+				if (!taghex) {
+					ret = -ENOMEM;
+					free(datahex);
+					goto out;
+				}
+				bin2hex(tag, taglen, taghex, taglen * 2 + 1, 0);
+			}
+			printf("%s%s\n", datahex, (taghex) ? taghex : "");
+			free(datahex);
 		}
 	}
 
@@ -684,7 +701,6 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 	struct kcapi_handle handle;
 	unsigned char *outbuf = NULL;
 	size_t outbuflen = 0;
-	char *outhex = NULL;
 	int ret = -ENOMEM;
 	unsigned char *newiv = NULL;
 	size_t newivlen = 0;
@@ -692,6 +708,13 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 	struct iovec iov;
 	struct iovec outiov[16];
 	unsigned int i = 0;
+
+	unsigned char *assoc = NULL;
+	size_t assoclen = 0;
+	unsigned char *data = NULL;
+	size_t datalen = 0;
+	unsigned char *tag = NULL;
+	size_t taglen = 0;
 
 #if 0
 	if (cavs_test->enc) {
@@ -716,18 +739,27 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 		goto out;
 	}
 
-	ret = -ENOMEM;
-	if (cavs_test->enc) {
-		outbuflen = kcapi_aead_outbuflen(&handle, cavs_test->ptlen,
-						 cavs_test->taglen, 1);
-		outbuf = calloc(1, outbuflen);
-	} else {
-		outbuflen = kcapi_aead_outbuflen(&handle, cavs_test->ctlen,
-						 cavs_test->taglen, 0);
-		outbuf = calloc(1, outbuflen);
-	}
-	if (!outbuf)
+	/* Setting the tag length */
+	if (kcapi_aead_settaglen(&handle, cavs_test->taglen)) {
+		printf("Setting of authentication tag length failed\n");
 		goto out;
+	}
+	kcapi_aead_setassoclen(&handle, cavs_test->assoclen);
+
+	ret = -ENOMEM;
+	if (cavs_test->enc)
+		outbuflen = kcapi_aead_outbuflen(&handle, cavs_test->ptlen,
+						 cavs_test->assoclen,
+						 cavs_test->taglen);
+	else
+		outbuflen = kcapi_aead_outbuflen(&handle, cavs_test->ctlen,
+						 cavs_test->assoclen,
+						 cavs_test->taglen);
+	if (posix_memalign((void *)&outbuf, PAGE_SIZE, outbuflen))
+		goto out;
+	memset(outbuf, 0, outbuflen);
+	kcapi_aead_getdata(&handle, outbuf, outbuflen,
+			   &assoc, &assoclen, &data, &datalen, &tag, &taglen);
 
 	/* Set key */
 	if (!cavs_test->keylen || !cavs_test->key ||
@@ -741,14 +773,6 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 			   &newiv, &newivlen);
 	if (ret)
 		goto out;
-
-	ret = -EIO;
-	/* Setting the tag length */
-	if (kcapi_aead_settaglen(&handle, cavs_test->taglen)) {
-		printf("Setting of authentication tag length failed\n");
-		goto out;
-	}
-	kcapi_aead_setassoclen(&handle, cavs_test->assoclen);
 
 	if (cavs_test->enc)
 		ret = kcapi_aead_stream_init_enc(&handle, newiv, NULL, 0);
@@ -764,15 +788,20 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 		iov.iov_base = cavs_test->assoc;
 		iov.iov_len = cavs_test->assoclen;
 		if (cavs_test->enc) {
+			struct iovec pttag[2];
+
 			ret = kcapi_aead_stream_update(&handle, &iov, 1);
 			if (0 > ret) {
 				printf("Sending update buffer failed\n");
 				goto out;
 			}
 			/* send plaintext with last call */
-			iov.iov_base = cavs_test->pt;
-			iov.iov_len = cavs_test->ptlen;
-			ret = kcapi_aead_stream_update_last(&handle, &iov, 1);
+			pttag[0].iov_base = cavs_test->pt;
+			pttag[0].iov_len = cavs_test->ptlen;
+			pttag[1].iov_base = tag;
+			pttag[1].iov_len = taglen;
+			ret = kcapi_aead_stream_update_last(&handle, &pttag[0],
+							    2);
 			if (0 > ret) {
 				printf("Sending last update buffer failed\n");
 				goto out;
@@ -808,7 +837,8 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 				outiov[13].iov_base = outbuf + 13;
 				outiov[13].iov_len = 1;
 				outiov[14].iov_base = outbuf + 14;
-				outiov[14].iov_len = (outbuflen - 14 - cavs_test->taglen);
+				outiov[14].iov_len = (outbuflen - 14 -
+						      cavs_test->taglen);
 				outiov[15].iov_base = outbuf +
 						(outbuflen - cavs_test->taglen);
 				outiov[15].iov_len = cavs_test->taglen;
@@ -855,14 +885,27 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 		if (EBADMSG == errsv) {
 			printf("EBADMSG\n");
 		} else {
-			outhex = calloc(1, (ret * 2 + 1));
-			if (!outhex) {
+			char *datahex = NULL;
+			char *taghex = NULL;
+
+			/* we are not interested in the AD */
+			datahex = calloc(1, (datalen  * 2 + 1));
+			if (!datahex) {
 				ret = -ENOMEM;
 				goto out;
 			}
-			bin2hex(outbuf, ret, outhex, ret * 2 + 1, 0);
-			printf("%s\n", outhex);
-			free(outhex);
+			bin2hex(data, datalen, datahex, datalen * 2 + 1, 0);
+			if (cavs_test->enc) {
+				taghex = calloc(1, (taglen  * 2 + 1));
+				if (!taghex) {
+					ret = -ENOMEM;
+					free(datahex);
+					goto out;
+				}
+				bin2hex(tag, taglen, taghex, taglen * 2 + 1, 0);
+			}
+			printf("%s%s\n", datahex, (taghex) ? taghex : "");
+			free(datahex);
 		}
 	}
 	ret = 0;
@@ -921,34 +964,30 @@ static int cavs_aead_large(int stream, unsigned int loops, int splice)
 	hex2bin(aad, len, test.assoc, (PAGE_SIZE * 16));
 	test.assoclen = len / 2;
 
-	if ((test.ptlen + test.assoclen) != (16 * PAGE_SIZE)) {
-		printf("Input size not equal to max size\n");
-		goto out;
-	}
-
 	test.taglen = 16;
 
-	/* expected: full AAD: 5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d7587eb88661ed4648fb334e725af4c790350
-	 * partial AAD: 5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d7587959ce22d219ae8a94190ddb4eae7cd28
+	/* expected: full AAD: 5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d75874d85cb992b7e7aeab81ba7cf77285969
+	 * partial AAD: 5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d7587ba4476227a7f2ac0122758b4b41c8e33
 	 */
 
 	if (stream) {
+		test.assoclen -= test.taglen;
 		ret = cavs_aead_stream(&test, loops);
 		if (ret)
 			goto out;
-		test.assoclen -= 4096;
+		test.assoclen -= (8192 - test.taglen);
 		ret = cavs_aead_stream(&test, loops);
 	} else {
 		/*
-		 * vmsplice: AAD must be at most 15 pages as otherwise the
-		 * plaintext cannot be sent - shrink the AAD by one page
-		 * for sendmsg, this would not be necessary
+		 * vmsplice: AAD must be at most 14 pages as otherwise the
+		 * plaintext and tag cannot be sent - shrink the AAD by two
+		 * pages - for sendmsg, this would not be necessary
 		 *
 		 * AAD is 65504 bytes (in stream mode together with the 32 bytes
 		 * plaintext we have 65536 bytes, i.e. 16 pages). We shrink the
-		 * AAD to 15 pages
+		 * AAD to 14 pages
 		 */
-		test.assoclen -= 4096;
+		test.assoclen -= 8192;
 		ret = cavs_aead(&test, loops, splice);
 	}
 out:

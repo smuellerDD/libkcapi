@@ -39,10 +39,12 @@
 
 #include <linux/if_alg.h>
 #include <sys/uio.h>
+#include "kcapi_aio.h"
 
-#define KCAPI_ACCESS_HEURISTIC 0
-#define KCAPI_ACCESS_VMSPLICE  1
-#define KCAPI_ACCESS_SENDMSG   2
+#define KCAPI_ACCESS_HEURISTIC 	0x0
+#define KCAPI_ACCESS_VMSPLICE  	0x1
+#define KCAPI_ACCESS_SENDMSG   	0x2
+#define KCAPI_ACCESS_FORCE_AIO	0x10
 
 /**
  * Information obtained for different ciphers during handle init time
@@ -107,6 +109,7 @@ struct kcapi_aead_data {
  * @skdata: Common data for all ciphers
  * @aead: AEAD cipher specific data
  * @info: properties of ciphers
+ * @aio: AIO information
  */
 struct kcapi_handle {
 	int tfmfd;
@@ -115,6 +118,7 @@ struct kcapi_handle {
 	struct kcapi_cipher_data cipher;
 	struct kcapi_aead_data aead;
 	struct kcapi_cipher_info info;
+	struct kcapi_aio aio;
 };
 
 /**
@@ -141,10 +145,8 @@ int kcapi_cipher_init(struct kcapi_handle *handle, const char *ciphername);
 /**
  * kcapi_cipher_destroy() - close the cipher handle and release resources
  * @handle: cipher handle to release - input
- *
- * Return: 0 upon success
  */
-int kcapi_cipher_destroy(struct kcapi_handle *handle);
+void kcapi_cipher_destroy(struct kcapi_handle *handle);
 
 /**
  * kcapi_cipher_setkey() - set the key for the cipher handle
@@ -381,10 +383,8 @@ int kcapi_aead_init(struct kcapi_handle *handle, const char *ciphername);
 /**
  * kcapi_aead_destroy() - close the AEAD handle and release resources
  * @handle: cipher handle to release - input
- *
- * Return: 0 upon success
  */
-int kcapi_aead_destroy(struct kcapi_handle *handle);
+void kcapi_aead_destroy(struct kcapi_handle *handle);
 
 /**
  * kcapi_aead_setkey() - set the key for the AEAD handle
@@ -436,7 +436,6 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen);
  * @in: plaintext data buffer - input
  * @inlen: length of plaintext buffer - input
  * @iv: IV to be used for cipher operation - input
- * @assoc: associated data of size set with kcapi_aead_setassoclen() - input
  * @out: data buffer holding cipher text and authentication tag - output
  * @outlen: length of out buffer - input
  * @access: kernel access type (KCAPI_ACCESS_HEURISTIC - use internal heuristic
@@ -465,16 +464,20 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen);
  *	   < 0 in case of error with errno set
  */
 ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
-			   const unsigned char *in, size_t inlen,
+			   unsigned char *in, size_t inlen,
 			   const unsigned char *iv,
-			   const unsigned char *assoc, unsigned char *out,
-			   size_t outlen, int access);
+			   unsigned char *out, size_t outlen,
+			   int access);
 
 /**
  * kcapi_aead_getdata() - Get the resulting data from encryption
  * @handle: cipher handle - input
  * @encdata: data buffer returned by the encryption operation - input
  * @encdatalen: size of the encryption data buffer - input
+ * @aad: AD buffer pointer;  when set to NULL, no data pointer is returned
+ *	 - output
+ * @aadlen: length of AD; when @aad was set to NULL, no information is returned
+ *	    - output
  * @data: pointer to output buffer from AEAD encryption operation when set to
  *	  NULL, no data pointer is returned - output
  * @datalen: length of data buffer; when @data was set to NULL, no information
@@ -491,6 +494,7 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
  */
 void kcapi_aead_getdata(struct kcapi_handle *handle,
 			unsigned char *encdata, size_t encdatalen,
+			unsigned char **aad, size_t *aadlen,
 			unsigned char **data, size_t *datalen,
 			unsigned char **tag, size_t *taglen);
 
@@ -500,8 +504,6 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
  * @in: ciphertext data buffer - input
  * @inlen: length of in buffer - input
  * @iv: IV to be used for cipher operation - input
- * @assoc: associated data of size set with kcapi_aead_setassoclen() - input
- * @tag: authentication tag data of size set with kcapi_aead_settaglen() - input
  * @out: plaintext data buffer - output
  * @outlen: length of out buffer - input
  * @access: kernel access type (KCAPI_ACCESS_HEURISTIC - use internal heuristic
@@ -531,9 +533,8 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
  *	   < 0 in case of error with errno set
  */
 ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
-			   const unsigned char *in, size_t inlen,
+			   unsigned char *in, size_t inlen,
 			   const unsigned char *iv,
-			   const unsigned char *assoc, const unsigned char *tag,
 			   unsigned char *out, size_t outlen, int access);
 
 /**
@@ -723,15 +724,14 @@ unsigned int kcapi_aead_authsize(struct kcapi_handle *handle);
 /**
  * kcapi_aead_outbuflen() - return minimum output buffer length
  * @handle: cipher handle - input
- * @inlen: size of plaintext (if @enc is one) or size of ciphertext (if @enc
- * 	   is zero)
+ * @inlen: size of plaintext or size of ciphertext
+ * @assoclen: size of associated data (AD)
  * @taglen: size of authentication tag
- * @enc: type of cipher operation (1 == encryption, 0 == decryption)
  *
  * Return: minimum size of output data length in bytes
  */
 size_t kcapi_aead_outbuflen(struct kcapi_handle *handle,
-			    size_t inlen, size_t taglen, int enc);
+			    size_t inlen, size_t assoclen, size_t taglen);
 
 /**
  * kcapi_aead_ccm_nonce_to_iv() - convert CCM nonce into IV
@@ -774,10 +774,8 @@ int kcapi_md_init(struct kcapi_handle *handle, const char *ciphername);
 /**
  * kcapi_md_destroy() - close the message digest handle and release resources
  * @handle: cipher handle to release - input
- *
- * Return: 0 upon success
  */
-int kcapi_md_destroy(struct kcapi_handle *handle);
+void kcapi_md_destroy(struct kcapi_handle *handle);
 
 /**
  * kcapi_md_setkey() - set the key for the message digest handle
@@ -892,10 +890,8 @@ int kcapi_rng_init(struct kcapi_handle *handle, const char *ciphername);
 /**
  * kcapi_rng_destroy() - Close the RNG handle and release resources
  * @handle: cipher handle to release - input
- *
- * Return: 0 upon success
  */
-int kcapi_rng_destroy(struct kcapi_handle *handle);
+void kcapi_rng_destroy(struct kcapi_handle *handle);
 
 /**
  * kcapi_rng_seed() - Seed the RNG

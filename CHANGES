@@ -1,3 +1,9 @@
+Changes 0.8.0:
+ * Fix test.sh to invoke large AEAD test
+ * all kcapi_*_destroy functions are void now
+ * Update AEAD code to new kernel interface and update the AEAD API
+ * Simplify the code for AEAD
+
 Change 0.7.2:
  * Move the library code into the directory lib/
  * Fix issues reported by cppcheck

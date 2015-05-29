@@ -481,11 +481,10 @@ aeadfunc()
 			let failures=($failures+1)
 		fi
 	done
-	return
 
 	# AEAD long message test
-	expectedlong="5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d7587eb88661ed4648fb334e725af4c790350"
-	expectedshort="5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d7587959ce22d219ae8a94190ddb4eae7cd28"
+	expectedlong="5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d75874d85cb992b7e7aeab81ba7cf77285969"
+	expectedshort="5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d7587ba4476227a7f2ac0122758b4b41c8e33"
 
 	# vmsplice does not take long strings
 	if [ x"$stream" = x"-s" ]

@@ -52,6 +52,7 @@
 #include <linux/rtnetlink.h>
 #include <unistd.h>
 #include <sys/user.h>
+#include <sys/eventfd.h>
 #include "cryptouser.h"
 
 #include "kcapi.h"
@@ -474,6 +475,32 @@ static int _kcapi_common_getinfo(struct kcapi_handle *handle,
 	return 0;
 }
 
+/* Initialize AIO -- on error, AIO is simply not used, but lib lives on */
+static void _kcapi_aio_init(struct kcapi_handle *handle)
+{
+	/* TODO add AIO support */
+	handle->aio.skcipher_aio_disable = 1;
+	if (handle->aio.skcipher_aio_disable)
+		return;
+
+	handle->aio.efd = eventfd(0, EFD_CLOEXEC);
+	if (handle->aio.efd < 0)
+		goto err;
+
+	if (io_setup(KCAPI_AIO_CONCURRENT, &handle->aio.aio_ctx) < 0) {
+		perror("io_setup error");
+		goto err;
+	}
+	return;
+
+err:
+	handle->aio.skcipher_aio_disable = 1;
+	if (handle->aio.efd != -1)
+		close(handle->aio.efd);
+	handle->aio.efd = -1;
+	return;
+}
+
 static int _kcapi_handle_init(struct kcapi_handle *handle,
 			      const char *type, const char *ciphername)
 {
@@ -527,10 +554,22 @@ static int _kcapi_handle_init(struct kcapi_handle *handle,
 		close(handle->pipes[0]);
 		close(handle->pipes[1]);
 	}
+
+	_kcapi_aio_init(handle);
+
 	return (errsv) ? -errsv : ret;
 }
 
-static inline int _kcapi_handle_destroy(struct kcapi_handle *handle)
+static inline void _kcapi_aio_destroy(struct kcapi_handle *handle)
+{
+	if (handle->aio.skcipher_aio_disable)
+		return;
+	if (handle->aio.efd != -1)
+		close(handle->aio.efd);
+	io_destroy(handle->aio.aio_ctx);
+}
+
+static inline void _kcapi_handle_destroy(struct kcapi_handle *handle)
 {
 	if (handle->tfmfd != -1)
 		close(handle->tfmfd);
@@ -540,24 +579,8 @@ static inline int _kcapi_handle_destroy(struct kcapi_handle *handle)
 		close(handle->pipes[0]);
 	if (handle->pipes[1] != -1)
 		close(handle->pipes[1]);
+	_kcapi_aio_destroy(handle);
 	memset(handle, 0, sizeof(struct kcapi_handle));
-	return 0;
-}
-
-static inline size_t _kcapi_aead_encrypt_outlen(struct kcapi_handle *handle,
-						size_t inlen, size_t taglen)
-{
-	int bs = handle->info.blocksize;
-
-	return ((inlen + bs - 1) / bs * bs + taglen);
-}
-
-static inline size_t _kcapi_aead_decrypt_outlen(struct kcapi_handle *handle,
-						size_t inlen)
-{
-	int bs = handle->info.blocksize;
-
-	return ((inlen + bs - 1) / bs * bs);
 }
 
 void kcapi_versionstring(char *buf, size_t buflen)
@@ -604,9 +627,9 @@ int kcapi_cipher_init(struct kcapi_handle *handle, const char *ciphername)
 	return _kcapi_handle_init(handle, "skcipher", ciphername);
 }
 
-int kcapi_cipher_destroy(struct kcapi_handle *handle)
+void kcapi_cipher_destroy(struct kcapi_handle *handle)
 {
-	return _kcapi_handle_destroy(handle);
+	_kcapi_handle_destroy(handle);
 }
 
 int kcapi_cipher_setkey(struct kcapi_handle *handle,
@@ -615,13 +638,49 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
 	return _kcapi_common_setkey(handle, key, keylen);
 }
 
+static ssize_t _kcapi_cipher_crypt(struct kcapi_handle *handle,
+				   const unsigned char *in, size_t inlen,
+				   unsigned char *out, size_t outlen,
+				   int access, int enc)
+{
+	struct iovec iov;
+	ssize_t ret = 0;
+
+	iov.iov_base = (void*)(uintptr_t)in;
+	/*
+	 * Using two syscalls with memcpy is faster than four syscalls
+	 * without memcpy below the given threshold.
+	 */
+	if ((access == KCAPI_ACCESS_HEURISTIC && inlen <= (1<<13)) ||
+	    access == KCAPI_ACCESS_SENDMSG) {
+		iov.iov_len = inlen;
+		ret = _kcapi_common_send_meta(handle, &iov, 1, enc, 0);
+		if (0 > ret)
+			return ret;
+		iov.iov_base = (void*)(uintptr_t)out;
+		iov.iov_len = outlen;
+		if (handle->aio.skcipher_aio_disable)
+			return _kcapi_common_recv_data(handle, &iov, 1);
+	} else {
+		ret = _kcapi_common_send_meta(handle, NULL, 0, enc, 0);
+		if (0 > ret)
+			return ret;
+		ret = _kcapi_common_vmsplice_chunk(handle, in, inlen);
+		if (0 > ret)
+			return ret;
+		if (handle->aio.skcipher_aio_disable)
+			return _kcapi_common_read_data(handle, out, outlen);
+	}
+
+	/* TODO add AIO support */
+	return -EOPNOTSUPP;
+}
+
 ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 			     const unsigned char *in, size_t inlen,
 			     const unsigned char *iv,
 			     unsigned char *out, size_t outlen, int access)
 {
-	struct iovec iov;
-	ssize_t ret = 0;
 	unsigned int bs = handle->info.blocksize;
 
 	if (!in || !inlen || !out || !outlen) {
@@ -639,31 +698,8 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 	}
 
 	handle->cipher.iv = iv;
-
-	iov.iov_base = (void*)(uintptr_t)in;
-	/*
-	 * Using two syscalls with memcpy is faster than four syscalls
-	 * without memcpy below the given threshold.
-	 */
-	if ((access == KCAPI_ACCESS_HEURISTIC && inlen <= (1<<13)) ||
-	    access == KCAPI_ACCESS_SENDMSG) {
-		iov.iov_len = inlen;
-		ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_ENCRYPT,
-					      0);
-		if (0 > ret)
-			return ret;
-		iov.iov_base = (void*)(uintptr_t)out;
-		iov.iov_len = outlen;
-		return _kcapi_common_recv_data(handle, &iov, 1);
-	}
-
-	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT, 0);
-	if (0 > ret)
-		return ret;
-	ret = _kcapi_common_vmsplice_chunk(handle, in, inlen);
-	if (0 > ret)
-		return ret;
-	return _kcapi_common_read_data(handle, out, outlen);
+	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
+				   ALG_OP_ENCRYPT);
 }
 
 ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
@@ -671,9 +707,6 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 			     const unsigned char *iv,
 			     unsigned char *out, size_t outlen, int access)
 {
-	struct iovec iov;
-	ssize_t ret = 0;
-
 	if (!in || !inlen || !out || !outlen) {
 		fprintf(stderr,
 			"Symmetric Decryption: Empty plaintext or ciphertext buffer provided\n");
@@ -696,30 +729,8 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 	}
 
 	handle->cipher.iv = iv;
-
-	iov.iov_base = (void*)(uintptr_t)in;
-
-	/*
-	 * Using two syscalls with memcpy is faster than four syscalls
-	 * without memcpy below the given threshold.
-	 */
-	if ((access == KCAPI_ACCESS_HEURISTIC && inlen <= (1<<13)) ||
-	    access == KCAPI_ACCESS_SENDMSG) {
-		iov.iov_len = inlen;
-		ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_DECRYPT,
-					      0);
-		iov.iov_base = (void*)(uintptr_t)out;
-		iov.iov_len = outlen;
-		return _kcapi_common_recv_data(handle, &iov, 1);
-	}
-
-	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_DECRYPT, 0);
-	if (0 > ret)
-		return ret;
-	ret = _kcapi_common_vmsplice_chunk(handle, in, inlen);
-	if (0 > ret)
-		return ret;
-	return _kcapi_common_read_data(handle, out, outlen);
+	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
+				   ALG_OP_DECRYPT);
 }
 
 ssize_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
@@ -772,9 +783,9 @@ int kcapi_aead_init(struct kcapi_handle *handle, const char *ciphername)
 	return _kcapi_handle_init(handle, "aead", ciphername);
 }
 
-int kcapi_aead_destroy(struct kcapi_handle *handle)
+void kcapi_aead_destroy(struct kcapi_handle *handle)
 {
-	return _kcapi_handle_destroy(handle);
+	_kcapi_handle_destroy(handle);
 }
 
 int kcapi_aead_setkey(struct kcapi_handle *handle,
@@ -799,70 +810,92 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen)
 	handle->aead.assoclen = assoclen;
 }
 
-ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
-			   const unsigned char *in, size_t inlen,
-			   const unsigned char *iv,
-			   const unsigned char *assoc, unsigned char *out,
-			   size_t outlen, int access)
+void kcapi_aead_getdata(struct kcapi_handle *handle,
+			unsigned char *encdata, size_t encdatalen,
+			unsigned char **aad, size_t *aadlen,
+			unsigned char **data, size_t *datalen,
+			unsigned char **tag, size_t *taglen)
 {
-	struct iovec iov[2];
+	if (encdatalen <  handle->aead.taglen + handle->aead.assoclen) {
+		fprintf(stderr, "Result of encryption operation (%lu) is smaller than tag and AAD length (%lu)\n",
+			(unsigned long)encdatalen,
+			(unsigned long)handle->aead.taglen +
+			(unsigned long)handle->aead.assoclen);
+		return;
+	}
+	if (aad) {
+		*aad = encdata;
+		*aadlen = handle->aead.assoclen;
+	}
+	if (data) {
+		*data = encdata + handle->aead.assoclen;
+		*datalen = encdatalen - handle->aead.assoclen -
+			   handle->aead.taglen;
+	}
+	if (tag) {
+		*tag = encdata + encdatalen - handle->aead.taglen;
+		*taglen = handle->aead.taglen;
+	}
+}
+
+ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
+			   unsigned char *in, size_t inlen,
+			   const unsigned char *iv,
+			   unsigned char *out, size_t outlen, int access)
+{
+	struct iovec iov[3];
 	ssize_t ret = 0;
+	int i = 0;
+	unsigned char *assoc = NULL;
+	size_t assoclen = 0;
+	unsigned char *data = NULL;
+	size_t datalen = 0;
+	unsigned char *tag = NULL;
+	size_t taglen = 0;
 
 	/* require properly sized output data size */
-	if (outlen < _kcapi_aead_encrypt_outlen(handle, inlen,
-						handle->aead.taglen) ) {
+	if (outlen < inlen) {
 		fprintf(stderr,
-			"AEAD Encryption: Ciphertext buffer (%lu) is not plaintext buffer (%lu) rounded up to multiple of block size %u plus tag length %lu\n",
-			(unsigned long)outlen, (unsigned long)inlen,
-			handle->info.blocksize,
-			(unsigned long)handle->aead.taglen);
+			"AEAD Encryption: Ciphertext buffer (%lu) is smaller than plaintext buffer (%lu)\n",
+			(unsigned long)outlen, (unsigned long)inlen);
 		return -EINVAL;
 	}
 
 	handle->cipher.iv = iv;
 
-	if (access == KCAPI_ACCESS_HEURISTIC ||
-	    access == KCAPI_ACCESS_SENDMSG) {
-		if (assoc && handle->aead.assoclen) {
-			iov[0].iov_base = (void*)(uintptr_t)assoc;
-			iov[0].iov_len = handle->aead.assoclen;
-			iov[1].iov_base = (void*)(uintptr_t)in;
-			iov[1].iov_len = inlen;
-			ret = _kcapi_common_send_meta(handle, &iov[0], 2,
-						ALG_OP_ENCRYPT, 0);
-		} else {
-			iov[0].iov_base = (void*)(uintptr_t)in;
-			iov[0].iov_len = inlen;
-			ret = _kcapi_common_send_meta(handle, &iov[0], 1,
-						ALG_OP_ENCRYPT, 0);
-		}
-		if (0 > ret)
-			return ret;
-		ret = _kcapi_common_read_data(handle, out, outlen);
-		if (ret < 0)
-			return ret;
-		if ((ret < (ssize_t)handle->aead.taglen))
-			return -E2BIG;
-		return ret;
+	kcapi_aead_getdata(handle, in, inlen,
+			   &assoc, &assoclen, &data, &datalen, &tag, &taglen);
+	if (assoclen) {
+		iov[i].iov_base = (void *)assoc;
+		iov[i].iov_len = assoclen;
+		i++;
+	}
+	if (datalen) {
+		iov[i].iov_base = (void *)data;
+		iov[i].iov_len = datalen;
+		i++;
+	}
+	if (taglen) {
+		iov[i].iov_base = (void *)tag;
+		iov[i].iov_len = taglen;
+		i++;
 	}
 
-	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT,
+	if (access == KCAPI_ACCESS_HEURISTIC ||
+	    access == KCAPI_ACCESS_SENDMSG) {
+		ret = _kcapi_common_send_meta(handle, &iov[0], i,
+					      ALG_OP_ENCRYPT, 0);
+		if (0 > ret)
+			return ret;
+	} else {
+		ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT,
 			(handle->aead.assoclen || inlen) ? MSG_MORE : 0);
-	if (0 > ret)
-		return ret;
-	if (assoc && handle->aead.assoclen) {
-		iov[0].iov_base = (void*)(uintptr_t)assoc;
-		iov[0].iov_len = handle->aead.assoclen;
-		iov[1].iov_base = (void*)(uintptr_t)in;
-		iov[1].iov_len = inlen;
-		ret = _kcapi_common_vmsplice_iov(handle, &iov[0], 2);
-	} else if (inlen) {
-		iov[0].iov_base = (void*)(uintptr_t)in;
-		iov[0].iov_len = inlen;
-		ret = _kcapi_common_vmsplice_iov(handle, &iov[0], 1);
+		if (0 > ret)
+			return ret;
+		ret = _kcapi_common_vmsplice_iov(handle, &iov[0], i);
+		if (0 > ret)
+			return ret;
 	}
-	if (0 > ret)
-		return ret;
 
 	ret = _kcapi_common_read_data(handle, out, outlen);
 	if (ret < 0)
@@ -873,67 +906,53 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 	return ret;
 }
 
-void kcapi_aead_getdata(struct kcapi_handle *handle,
-			unsigned char *encdata, size_t encdatalen,
-			unsigned char **data, size_t *datalen,
-			unsigned char **tag, size_t *taglen)
-{
-	if (encdatalen <  handle->aead.taglen) {
-		fprintf(stderr, "Result of encryption operation (%lu) is smaller than tag length (%lu)\n",
-			(unsigned long)encdatalen,
-			(unsigned long)handle->aead.taglen);
-		return;
-	}
-	if (data) {
-		*data = encdata;
-		*datalen = encdatalen - handle->aead.taglen;
-	}
-	if (tag) {
-		*tag = encdata + encdatalen - handle->aead.taglen;
-		*taglen = handle->aead.taglen;
-	}
-}
-
 ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
-			   const unsigned char *in, size_t inlen,
+			   unsigned char *in, size_t inlen,
 			   const unsigned char *iv,
-			   const unsigned char *assoc, const unsigned char *tag,
 			   unsigned char *out, size_t outlen, int access)
 {
 	struct iovec iov[3];
 	ssize_t ret = 0;
-	unsigned int bs = handle->info.blocksize;
+	int i = 0;
+	unsigned char *assoc = NULL;
+	size_t assoclen = 0;
+	unsigned char *data = NULL;
+	size_t datalen = 0;
+	unsigned char *tag = NULL;
+	size_t taglen = 0;
 
 	/* require properly sized output data size */
-	if (outlen < _kcapi_aead_decrypt_outlen(handle, inlen)) {
+	if (outlen < inlen) {
 		fprintf(stderr,
-			"AEAD Decryption: Plaintext buffer (%lu) is not ciphertext buffer (%lu) reduced by tag length (%lu) routed up to multiple of block size %u\n",
-			(unsigned long)outlen, (unsigned long) inlen,
-			(unsigned long)handle->aead.taglen, bs);
+			"AEAD Decryption: Plaintext buffer (%lu) is smaller than ciphertext buffer (%lu)\n",
+			(unsigned long)outlen, (unsigned long) inlen);
 		return -EINVAL;
 	}
 
 	handle->cipher.iv = iv;
 
+	kcapi_aead_getdata(handle, in, inlen,
+			   &assoc, &assoclen, &data, &datalen, &tag, &taglen);
+	if (assoclen) {
+		iov[i].iov_base = (void *)assoc;
+		iov[i].iov_len = assoclen;
+		i++;
+	}
+	if (datalen) {
+		iov[i].iov_base = (void *)data;
+		iov[i].iov_len = datalen;
+		i++;
+	}
+	if (taglen) {
+		iov[i].iov_base = (void *)tag;
+		iov[i].iov_len = taglen;
+		i++;
+	}
+
 	if (access == KCAPI_ACCESS_HEURISTIC ||
 	    access == KCAPI_ACCESS_SENDMSG) {
-		if (assoc && handle->aead.assoclen) {
-			iov[0].iov_base = (void*)(uintptr_t)assoc;
-			iov[0].iov_len = handle->aead.assoclen;
-			iov[1].iov_base = (void*)(uintptr_t)in;
-			iov[1].iov_len = inlen;
-			iov[2].iov_base = (void*)(uintptr_t)tag;
-			iov[2].iov_len = handle->aead.taglen;
-			ret = _kcapi_common_send_meta(handle, &iov[0], 3,
-						ALG_OP_DECRYPT, 0);
-		} else {
-			iov[0].iov_base = (void*)(uintptr_t)in;
-			iov[0].iov_len = inlen;
-			iov[1].iov_base = (void*)(uintptr_t)tag;
-			iov[1].iov_len = handle->aead.taglen;
-			ret = _kcapi_common_send_meta(handle, &iov[0], 2,
-						ALG_OP_DECRYPT, 0);
-		}
+		ret = _kcapi_common_send_meta(handle, &iov[0], i,
+					      ALG_OP_DECRYPT, 0);
 		if (0 > ret)
 			return ret;
 	} else {
@@ -941,32 +960,12 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 					MSG_MORE);
 		if (0 > ret)
 			return ret;
-		if (assoc && handle->aead.assoclen) {
-			/* AAD, ciphertext and tag available */
-			iov[0].iov_base = (void*)(uintptr_t)assoc;
-			iov[0].iov_len = handle->aead.assoclen;
-			iov[1].iov_base = (void*)(uintptr_t)in;
-			iov[1].iov_len = inlen;
-			iov[2].iov_base = (void*)(uintptr_t)tag;
-			iov[2].iov_len = handle->aead.taglen;
-			ret = _kcapi_common_vmsplice_iov(handle, &iov[0], 3);
-		} else if (in && inlen) {
-			/* no AAD, but ciphertext and tag available */
-			iov[0].iov_base = (void*)(uintptr_t)in;
-			iov[0].iov_len = inlen;
-			iov[1].iov_base = (void*)(uintptr_t)tag;
-			iov[1].iov_len = handle->aead.taglen;
-			ret = _kcapi_common_vmsplice_iov(handle, &iov[0], 2);
-		} else {
-			/* only tag available */
-			iov[0].iov_base = (void*)(uintptr_t)tag;
-			iov[0].iov_len = handle->aead.taglen;
-			ret = _kcapi_common_vmsplice_iov(handle, &iov[0], 1);
-		}
+		ret = _kcapi_common_vmsplice_iov(handle, &iov[0], i);
 		if (0 > ret)
 			return ret;
 	}
 
+	/* handle null test vectors */
 	if (outlen) {
 		return _kcapi_common_read_data(handle, out, outlen);
 	} else {
@@ -1040,12 +1039,11 @@ unsigned int kcapi_aead_authsize(struct kcapi_handle *handle)
 }
 
 size_t kcapi_aead_outbuflen(struct kcapi_handle *handle,
-			    size_t inlen, size_t taglen, int enc)
+			    size_t inlen, size_t assoclen, size_t taglen)
 {
-	if (enc)
-		return _kcapi_aead_encrypt_outlen(handle, inlen, taglen);
-	else
-		return _kcapi_aead_decrypt_outlen(handle, inlen);
+	int bs = handle->info.blocksize;
+
+	return ((inlen + bs - 1) / bs * bs + taglen + assoclen);
 }
 
 int kcapi_aead_ccm_nonce_to_iv(const unsigned char *nonce, size_t noncelen,
@@ -1075,9 +1073,9 @@ int kcapi_md_init(struct kcapi_handle *handle, const char *ciphername)
 	return _kcapi_handle_init(handle, "hash", ciphername);
 }
 
-int kcapi_md_destroy(struct kcapi_handle *handle)
+void kcapi_md_destroy(struct kcapi_handle *handle)
 {
-	return _kcapi_handle_destroy(handle);
+	_kcapi_handle_destroy(handle);
 }
 
 int kcapi_md_setkey(struct kcapi_handle *handle,
@@ -1160,9 +1158,9 @@ int kcapi_rng_init(struct kcapi_handle *handle, const char *ciphername)
 	return _kcapi_handle_init(handle, "rng", ciphername);
 }
 
-int kcapi_rng_destroy(struct kcapi_handle *handle)
+void kcapi_rng_destroy(struct kcapi_handle *handle)
 {
-	return _kcapi_handle_destroy(handle);
+	_kcapi_handle_destroy(handle);
 }
 
 int kcapi_rng_seed(struct kcapi_handle *handle, unsigned char *seed,
