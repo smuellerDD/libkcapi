@@ -385,6 +385,14 @@ hashfunc()
 symfunc()
 {
 	stream=$1
+	aligned=$2
+
+	if [ x"$stream" = x"X" ]
+	then
+		stream=""
+	fi
+
+
 	SYMEXEC="1 2 3 4 5 6 7 8 9 10 11"
 	for i in $SYMEXEC
 	do
@@ -402,12 +410,13 @@ symfunc()
 		fi
 		if [ "$SYM_enc" = 1  ]
 		then
-			result=$(./kcapi -x 1 $stream -e -c $SYM_name $iv -k $SYM_key -p $SYM_msg)
+			result=$(./kcapi -x 1 $stream $aligned -e -c $SYM_name $iv -k $SYM_key -p $SYM_msg)
 		else
-			result=$(./kcapi -x 1 $stream -c $SYM_name $iv -k $SYM_key -q $SYM_msg)
+			result=$(./kcapi -x 1 $stream $aligned -c $SYM_name $iv -k $SYM_key -q $SYM_msg)
 		fi
 
 		sout="one shot"
+		aout="non-aligned"
 		if [ x"$stream" = x"-s" ]
 		then
 			sout="stream"
@@ -416,11 +425,15 @@ symfunc()
 		then
 			sout="vmsplice"
 		fi
+		if [ x"$aligned" = x"-m" ]
+		then
+			aout="aligned"
+		fi
 		if [ x"$result" = x"$SYM_exp" ]
 		then
-			echo "Symmetric $sout test $i passed"
+			echo "Symmetric $sout $aout test $i passed"
 		else
-			echo "Symmetric $sout test $i failed"
+			echo "Symmetric $sout $aout test $i failed"
 			echo " Exp $SYM_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -431,6 +444,12 @@ symfunc()
 aeadfunc()
 {
 	stream=$1
+	aligned=$2
+
+	if [ x"$stream" = x"X" ]
+	then
+		stream=""
+	fi
 
 	AEADEXEC="1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17"
 	for i in $AEADEXEC
@@ -455,14 +474,15 @@ aeadfunc()
 		expected=""
 		if [ "$AEAD_enc" = 1  ]
 		then
-			result=$(./kcapi -x 2 $stream -e -c "$AEAD_name" $iv -k "$AEAD_key" -a "$AEAD_assoc" -p "$AEAD_msg" -l $AEAD_taglen)
+			result=$(./kcapi -x 2 $stream $aligned -e -c "$AEAD_name" $iv -k "$AEAD_key" -a "$AEAD_assoc" -p "$AEAD_msg" -l $AEAD_taglen)
 			expected="${AEAD_exp}${AEAD_tag}"
 		else
-			result=$(./kcapi -x 2 $stream -c "$AEAD_name" $iv -k "$AEAD_key" -a "$AEAD_assoc" -t "$AEAD_tag" -q "$AEAD_msg")
+			result=$(./kcapi -x 2 $stream $aligned -c "$AEAD_name" $iv -k "$AEAD_key" -a "$AEAD_assoc" -t "$AEAD_tag" -q "$AEAD_msg")
 			expected="${AEAD_exp}"
 		fi
 
 		sout="one shot"
+		aout="non-aligned"
 		if [ x"$stream" = x"-s" ]
 		then
 			sout="stream"
@@ -471,16 +491,26 @@ aeadfunc()
 		then
 			sout="vmsplice"
 		fi
+		if [ x"$aligned" = x"-m" ]
+		then
+			aout="aligned"
+		fi
 		if [ x"$result" = x"$expected" ]
 		then
-			echo "AEAD $sout test $i passed"
+			echo "AEAD $sout $aout test $i passed"
 		else
-			echo "AEAD $sout test $i failed"
+			echo "AEAD $sout $aout test $i failed"
 			echo " Exp $expected"
 			echo " Got $result"
 			let failures=($failures+1)
 		fi
 	done
+
+	# AEAD long test only supported for aligned data
+	if [ x"$aligned" = x"-m" ]
+	then
+		return
+	fi
 
 	# AEAD long message test
 	expectedlong="5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d75874d85cb992b7e7aeab81ba7cf77285969"
@@ -595,6 +625,15 @@ symfunc -v
 aeadfunc
 aeadfunc -s
 aeadfunc -v
+
+symfunc X -m
+symfunc -s -m
+symfunc -v -m
+aeadfunc X -m
+aeadfunc -s -m
+aeadfunc -v -m
+
+
 auxtest
 multipletest
 multipletest -s

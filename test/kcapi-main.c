@@ -327,6 +327,7 @@ static void usage(void)
 	fprintf(stderr, "\nKernel Crypto API interface library version: %s\n", version);
 	fprintf(stderr, "Reported numeric version number %u\n\n", ver);
 	fprintf(stderr, "Usage:\n");
+	fprintf(stderr, "\t-m --aligned\tIf set, AEAD/sym cipher buffers are aligned at PAGE_SIZE\n");
 	fprintf(stderr, "\t-e --enc\tIf set, encrypt otherwise decrypt\n");
 	fprintf(stderr, "\t-c --cipher\tKernel Crypto API cipher name to be used for operation\n");
 	fprintf(stderr, "\t-p --pt\t\tPlaintext used during encryption / message digest\n");
@@ -357,6 +358,7 @@ enum type {
 struct kcapi_cavs {
 #define CIPHERMAXNAME 30
 	char cipher[CIPHERMAXNAME];
+	int aligned;
 	int enc;
 	int type;
 	unsigned char *pt;
@@ -402,9 +404,15 @@ static int cavs_sym(struct kcapi_cavs *cavs_test, unsigned int loops,
 			return -EINVAL;
 		outbuflen = cavs_test->ctlen;
 	}
-	outbuf = calloc(1, outbuflen);
-	if (!outbuf)
-		goto out;
+	if (cavs_test->aligned) {
+		if (posix_memalign((void *)&outbuf, PAGE_SIZE, outbuflen))
+			goto out;
+		memset(outbuf, 0, outbuflen);
+	} else {
+		outbuf = calloc(1, outbuflen);
+		if (!outbuf)
+			goto out;
+	}
 
 	if (kcapi_cipher_init(&handle, cavs_test->cipher)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
@@ -476,9 +484,15 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 			return -EINVAL;
 		outbuflen = cavs_test->ctlen;
 	}
-	outbuf = calloc(1, outbuflen);
-	if (!outbuf)
-		goto out;
+	if (cavs_test->aligned) {
+		if (posix_memalign((void *)&outbuf, PAGE_SIZE, outbuflen))
+			goto out;
+		memset(outbuf, 0, outbuflen);
+	} else {
+		outbuf = calloc(1, outbuflen);
+		if (!outbuf)
+			goto out;
+	}
 	outiov.iov_base = outbuf;
 	outiov.iov_len = outbuflen;
 
@@ -607,9 +621,16 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, unsigned int loops,
 		outbuflen = kcapi_aead_outbuflen(&handle, cavs_test->ctlen,
 						 cavs_test->assoclen,
 						 cavs_test->taglen);
-	if (posix_memalign((void *)&outbuf, PAGE_SIZE, outbuflen))
-		goto out;
-	memset(outbuf, 0, outbuflen);
+
+	if (cavs_test->aligned) {
+		if (posix_memalign((void *)&outbuf, PAGE_SIZE, outbuflen))
+			goto out;
+		memset(outbuf, 0, outbuflen);
+	} else {
+		outbuf = calloc(1, outbuflen);
+		if (!outbuf)
+			goto out;
+	}
 	kcapi_aead_getdata(&handle, outbuf, outbuflen,
 			   &assoc, &assoclen, &data, &datalen, &tag, &taglen);
 
@@ -755,9 +776,15 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 		outbuflen = kcapi_aead_outbuflen(&handle, cavs_test->ctlen,
 						 cavs_test->assoclen,
 						 cavs_test->taglen);
-	if (posix_memalign((void *)&outbuf, PAGE_SIZE, outbuflen))
-		goto out;
-	memset(outbuf, 0, outbuflen);
+	if (cavs_test->aligned) {
+		if (posix_memalign((void *)&outbuf, PAGE_SIZE, outbuflen))
+			goto out;
+		memset(outbuf, 0, outbuflen);
+	} else {
+		outbuf = calloc(1, outbuflen);
+		if (!outbuf)
+			goto out;
+	}
 	kcapi_aead_getdata(&handle, outbuf, outbuflen,
 			   &assoc, &assoclen, &data, &datalen, &tag, &taglen);
 
@@ -1153,13 +1180,17 @@ int main(int argc, char *argv[])
 			{"largeinput", 0, 0, 'y'},
 			{"execloops", 0, 0, 'd'},
 			{"vmsplice", 0, 0, 'v'},
+			{"aligned", 0, 0, 'm'},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "ec:p:q:i:n:k:a:l:t:x:zsyd:v", opts, &opt_index);
+		c = getopt_long(argc, argv, "ec:p:q:i:mn:k:a:l:t:x:zsyd:v", opts, &opt_index);
 		if(-1 == c)
 			break;
 		switch(c)
 		{
+			case 'm':
+				cavs_test.aligned = 1;
+				break;
 			case 'e':
 				cavs_test.enc = 1;
 				break;
