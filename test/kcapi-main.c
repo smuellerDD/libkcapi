@@ -994,7 +994,7 @@ static int cavs_aead_large(int stream, unsigned int loops, int splice)
 	test.taglen = 16;
 
 	/* expected: full AAD: 5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d75874d85cb992b7e7aeab81ba7cf77285969
-	 * partial AAD: 5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d7587ba4476227a7f2ac0122758b4b41c8e33
+	 * partial AAD: 5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d75874da5e05a23b8902677480ee92c7ff6bc
 	 */
 
 	if (stream) {
@@ -1002,7 +1002,7 @@ static int cavs_aead_large(int stream, unsigned int loops, int splice)
 		ret = cavs_aead_stream(&test, loops);
 		if (ret)
 			goto out;
-		test.assoclen -= (8192 - test.taglen);
+		test.assoclen -= (8192);
 		ret = cavs_aead_stream(&test, loops);
 	} else {
 		/*
@@ -1014,7 +1014,7 @@ static int cavs_aead_large(int stream, unsigned int loops, int splice)
 		 * plaintext we have 65536 bytes, i.e. 16 pages). We shrink the
 		 * AAD to 14 pages
 		 */
-		test.assoclen -= 8192;
+		test.assoclen -= 8192 + test.taglen;
 		ret = cavs_aead(&test, loops, splice);
 	}
 out:
