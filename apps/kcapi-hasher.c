@@ -172,6 +172,13 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 	}
 	
 	fstat(fd, &sb);
+
+	if ((sb.st_mode & S_IFMT) != S_IFREG &&
+	    (sb.st_mode & S_IFMT) != S_IFLNK) {
+		fprintf(stderr, "%s is no regular file or symlink\n", filename);
+		goto out;
+	}
+
 	if (sb.st_size) {
 		memblock = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
 		if (memblock == MAP_FAILED)
