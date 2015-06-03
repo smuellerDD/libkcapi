@@ -61,10 +61,10 @@
 		      * require consumer to be updated (as long as this number
 		      * is zero, the API is not considered stable and can
 		      * change without a bump of the major version) */
-#define MINVERSION 7 /* API compatible, ABI may change, functional
+#define MINVERSION 8 /* API compatible, ABI may change, functional
 		      * enhancements only, consumer can be left unchanged if
 		      * enhancements are not considered */
-#define PATCHLEVEL 3 /* API / ABI compatible, no functional changes, no
+#define PATCHLEVEL 0 /* API / ABI compatible, no functional changes, no
 		      * enhancements, bug fixes only */
 
 /* remove once in if_alg.h */
@@ -93,7 +93,6 @@ static ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 {
 	ssize_t ret = -EINVAL;
 	char *buffer = NULL;
-	volatile void *_buffer = NULL;
 	int errsv = 0;
 
 	/* plaintext / ciphertext data */
@@ -161,11 +160,7 @@ static ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 	ret = sendmsg(handle->opfd, &msg, flags);
 	errsv = errno;
 
-	memset(buffer, 0, bufferlen);
-	/* magic to convince GCC to memset the buffer */
-	_buffer = memchr(buffer, 1, bufferlen);
-	if (_buffer)
-		_buffer = '\0';
+	kcapi_memset_secure(buffer, 0, bufferlen);
 	free(buffer);
 	return (ret >= 0) ? ret : -errsv;
 }
@@ -478,8 +473,6 @@ static int _kcapi_common_getinfo(struct kcapi_handle *handle,
 /* Initialize AIO -- on error, AIO is simply not used, but lib lives on */
 static void _kcapi_aio_init(struct kcapi_handle *handle)
 {
-	/* TODO add AIO support */
-	handle->aio.skcipher_aio_disable = 1;
 	if (handle->aio.skcipher_aio_disable)
 		return;
 
@@ -501,8 +494,8 @@ err:
 	return;
 }
 
-static int _kcapi_handle_init(struct kcapi_handle *handle,
-			      const char *type, const char *ciphername)
+static int _kcapi_handle_init(struct kcapi_handle *handle, const char *type,
+			      const char *ciphername, unsigned int flags)
 {
 	struct sockaddr_alg sa;
 	int ret;
@@ -555,7 +548,10 @@ static int _kcapi_handle_init(struct kcapi_handle *handle,
 		close(handle->pipes[1]);
 	}
 
-	_kcapi_aio_init(handle);
+	if (flags & KCAPI_INIT_AIO)
+		_kcapi_aio_init(handle);
+	else
+		handle->aio.skcipher_aio_disable = 1;
 
 	return (errsv) ? -errsv : ret;
 }
@@ -581,6 +577,14 @@ static inline void _kcapi_handle_destroy(struct kcapi_handle *handle)
 		close(handle->pipes[1]);
 	_kcapi_aio_destroy(handle);
 	memset(handle, 0, sizeof(struct kcapi_handle));
+}
+
+/*********** Generic Helper functions *************************/
+
+void kcapi_memset_secure(void *s, int c, size_t n)
+{
+	memset(s, c, n);
+	__asm__ __volatile__("" : : "r" (s) : "memory");
 }
 
 void kcapi_versionstring(char *buf, size_t buflen)
@@ -622,9 +626,10 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
 	return 0;
 }
 
-int kcapi_cipher_init(struct kcapi_handle *handle, const char *ciphername)
+int kcapi_cipher_init(struct kcapi_handle *handle, const char *ciphername,
+		      unsigned int flags)
 {
-	return _kcapi_handle_init(handle, "skcipher", ciphername);
+	return _kcapi_handle_init(handle, "skcipher", ciphername, flags);
 }
 
 void kcapi_cipher_destroy(struct kcapi_handle *handle)
@@ -638,6 +643,45 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
 	return _kcapi_common_setkey(handle, key, keylen);
 }
 
+static inline ssize_t _kcapi_aio_read(struct kcapi_handle *handle,
+				     unsigned char *out, size_t outlen)
+{
+	return -EOPNOTSUPP;
+#if 0
+	struct iocb *cb = NULL;
+	int r = 0;
+
+	cb = &cbt[handle->aio.curr_cio];
+        while (cb->aio_fildes)
+		poll_data(10);
+
+        memset(cb, 0, sizeof(*cb));
+        cb->aio_fildes = handle->opfd;
+        cb->aio_lio_opcode = IOCB_CMD_PREAD;
+        cb->aio_buf = out;
+        cb->aio_offset = 0;
+        cb->aio_data = i;
+        cb->aio_nbytes = outlen;
+        cb->aio_flags = IOCB_FLAG_RESFD;
+        cb->aio_resfd = handle->aio.efd;
+        r = io_read(handle->aio.aio_ctx, 1, &cb);
+        if (r != 1) {
+		if (r < 0) {
+			fprintf(stderr, "io_read Error: %d\n", errno);
+			return -EFAULT;
+		} else {
+			fprintf(stderr, "Could not sumbit AIO read\n");
+			return -EIO;
+		}
+	}
+
+        if (handle->aio.curr_cio) >= KCAPI_AIO_CONCURRENT / 2)
+		poll_data(1);
+
+	return 0;
+#endif
+}
+
 static ssize_t _kcapi_cipher_crypt(struct kcapi_handle *handle,
 				   const unsigned char *in, size_t inlen,
 				   unsigned char *out, size_t outlen,
@@ -645,6 +689,7 @@ static ssize_t _kcapi_cipher_crypt(struct kcapi_handle *handle,
 {
 	struct iovec iov;
 	ssize_t ret = 0;
+
 
 	iov.iov_base = (void*)(uintptr_t)in;
 	/*
@@ -659,8 +704,6 @@ static ssize_t _kcapi_cipher_crypt(struct kcapi_handle *handle,
 			return ret;
 		iov.iov_base = (void*)(uintptr_t)out;
 		iov.iov_len = outlen;
-		if (handle->aio.skcipher_aio_disable)
-			return _kcapi_common_recv_data(handle, &iov, 1);
 	} else {
 		ret = _kcapi_common_send_meta(handle, NULL, 0, enc, 0);
 		if (0 > ret)
@@ -668,12 +711,20 @@ static ssize_t _kcapi_cipher_crypt(struct kcapi_handle *handle,
 		ret = _kcapi_common_vmsplice_chunk(handle, in, inlen);
 		if (0 > ret)
 			return ret;
-		if (handle->aio.skcipher_aio_disable)
-			return _kcapi_common_read_data(handle, out, outlen);
 	}
 
-	/* TODO add AIO support */
-	return -EOPNOTSUPP;
+	if (handle->aio.skcipher_aio_disable) {
+		return _kcapi_common_recv_data(handle, &iov, 1);
+	} else {
+		ret = _kcapi_aio_read(handle, out, outlen);
+		if (ret == -EIO) {
+			/* AIO not available for specific interface */
+			handle->aio.skcipher_aio_disable = 1;
+			_kcapi_aio_destroy(handle);
+			return _kcapi_common_recv_data(handle, &iov, 1);
+		}
+		return ret;
+	}
 }
 
 ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
@@ -778,9 +829,10 @@ unsigned int kcapi_cipher_blocksize(struct kcapi_handle *handle)
 	return handle->info.blocksize;
 }
 
-int kcapi_aead_init(struct kcapi_handle *handle, const char *ciphername)
+int kcapi_aead_init(struct kcapi_handle *handle, const char *ciphername,
+		    unsigned int flags)
 {
-	return _kcapi_handle_init(handle, "aead", ciphername);
+	return _kcapi_handle_init(handle, "aead", ciphername, flags);
 }
 
 void kcapi_aead_destroy(struct kcapi_handle *handle)
@@ -1013,13 +1065,7 @@ ssize_t kcapi_aead_stream_op(struct kcapi_handle *handle,
 			"AEAD operation: No buffer for output data provided\n");
 		return -EINVAL;
 	}
-#if 0
-	if (iovlen != 1) {
-		fprintf(stderr,
-			"AEAD operation: Output IOV must contain only one entry\n");
-		return -EINVAL;
-	}
-#endif
+
 	return _kcapi_common_recv_data(handle, iov, iovlen);
 }
 
@@ -1068,9 +1114,10 @@ int kcapi_aead_ccm_nonce_to_iv(const unsigned char *nonce, size_t noncelen,
 	return 0;
 }
 
-int kcapi_md_init(struct kcapi_handle *handle, const char *ciphername)
+int kcapi_md_init(struct kcapi_handle *handle, const char *ciphername,
+		  unsigned int flags)
 {
-	return _kcapi_handle_init(handle, "hash", ciphername);
+	return _kcapi_handle_init(handle, "hash", ciphername, flags);
 }
 
 void kcapi_md_destroy(struct kcapi_handle *handle)
@@ -1153,9 +1200,10 @@ unsigned int kcapi_md_blocksize(struct kcapi_handle *handle)
 	return handle->info.blocksize;
 }
 
-int kcapi_rng_init(struct kcapi_handle *handle, const char *ciphername)
+int kcapi_rng_init(struct kcapi_handle *handle, const char *ciphername,
+		   unsigned int flags)
 {
-	return _kcapi_handle_init(handle, "rng", ciphername);
+	return _kcapi_handle_init(handle, "rng", ciphername, flags);
 }
 
 void kcapi_rng_destroy(struct kcapi_handle *handle)

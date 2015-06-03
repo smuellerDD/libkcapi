@@ -33,7 +33,7 @@ int main( int argc, char **argv )
 		return -1;
 	}
 
-	ret = kcapi_md_init(&handle, argv[1]);
+	ret = kcapi_md_init(&handle, argv[1], 0);
 	if (ret) {
 		printf("Allocation of sha1 cipher failed (ret=%d)\n", ret);
 		return 1;

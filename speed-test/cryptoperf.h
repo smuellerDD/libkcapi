@@ -95,10 +95,7 @@ struct aead_def {
 	unsigned char *input;
 	unsigned char *output;
 	unsigned char *iv;
-	size_t inputlen;
-	size_t outputlen;
-	unsigned char *tag;
-	unsigned char *assoc;
+	size_t datalen;
 	size_t assoclen;
 	struct kcapi_handle handle;
 };

@@ -261,25 +261,12 @@
     </orderedlist>
 
     <para>
-     To read data, the caller must provide one buffer referenced to with a
-     scatterlist holding one entry that can hold the entire output of the AAD
-     with the following memory structure:
-    </para>
-
-    <itemizedlist>
-     <listitem>
-      <para>Encryption: Ciphertext followed by the authentication tag</para>
-     </listitem>
-     <listitem>
-      <para>Decryption: Plaintext</para>
-     </listitem>
-    </itemizedlist>
-
-    <para>
-     To allow the caller to initialize sufficient memory for the destination
-     buffer, the API call of kcapi_aead_outbuflen() can be used. To locate
-     the ciphertext and authentication tag components in the returned data,
-     the API call of kcapi_aead_getdata() can be used.
+     The caller must provide memory that is identical in size for the input and
+     output data, even parts of the memory is unused. For example, forl
+     encryption, the AEAD cipher operation only needs the AAD and the plaintext.
+     Nonetheless, the interface requires that the memory is big enough to
+     hold the tag as well. This requirement particularly aids the in-place
+     cipher operation.
     </para>
    </sect2>
   </sect1>
@@ -310,6 +297,11 @@
 
    <programlisting>
     unsigned char buf[4096] __attribute__((__aligned__(4096)));
+   </programlisting>
+   
+   <programlisting>
+    unsigned char *buf;
+    posix_memalign((void *)&buf, PAGE_SIZE, buflen);
    </programlisting>
   </sect1>
 

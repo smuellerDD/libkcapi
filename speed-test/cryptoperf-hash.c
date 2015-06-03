@@ -55,7 +55,7 @@ static int cp_hash_init_test(struct cp_test *test, size_t len)
 		return -EFAULT;
 	}
 
-	if (kcapi_md_init(&test->u.hash.handle, test->driver_name)) {
+	if (kcapi_md_init(&test->u.hash.handle, test->driver_name, 0)) {
 		printf(DRIVER_NAME": could not allocate shash handle for "
 		       "%s\n", test->driver_name);
 		goto out;

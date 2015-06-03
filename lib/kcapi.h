@@ -41,10 +41,26 @@
 #include <sys/uio.h>
 #include "kcapi_aio.h"
 
+/**
+ * Flags for the encrypt / decrypt operations
+ * 
+ * @KCAPI_ACCESS_HEURISTIC: Allow the libkcapi heuristic to determine the
+ * optimal kernel access type
+ * @KCAPI_ACCESS_VMSPLICE: Require libkcapi to always use the vmsplice zero
+ * copy kernel interface
+ * @KCAPI_ACCESS_SENDMSG: Require libkcapi to always use the sendmsg kernel
+ * interface
+ */
 #define KCAPI_ACCESS_HEURISTIC 	0x0
 #define KCAPI_ACCESS_VMSPLICE  	0x1
 #define KCAPI_ACCESS_SENDMSG   	0x2
-#define KCAPI_ACCESS_FORCE_AIO	0x10
+
+/**
+ * Flags for initializing a cipher handle
+ * 
+ * @KCAPI_INIT_AIO: Handle uses AIO kernel interface if available
+ */
+#define KCAPI_INIT_AIO	0x1
 
 /**
  * Information obtained for different ciphers during handle init time
@@ -132,6 +148,7 @@ struct kcapi_handle {
  * @handle: cipher handle filled during the call - output
  * @ciphername: kernel crypto API cipher name as specified in
  *	       /proc/crypto - input
+ * @flags: flags specifying the type of cipher handle
  *
  * This function provides the initialization of a symmetric cipher handle and
  * establishes the connection to the kernel.
@@ -140,7 +157,8 @@ struct kcapi_handle {
  *	   -EOPNOTSUPP - AF_ALG family not available;
  *	   -EINVAL - accept syscall failed
  */
-int kcapi_cipher_init(struct kcapi_handle *handle, const char *ciphername);
+int kcapi_cipher_init(struct kcapi_handle *handle, const char *ciphername,
+		      unsigned int flags);
 
 /**
  * kcapi_cipher_destroy() - close the cipher handle and release resources
@@ -369,6 +387,7 @@ unsigned int kcapi_cipher_blocksize(struct kcapi_handle *handle);
  * @handle: cipher handle filled during the call - output
  * @ciphername: kernel crypto API cipher name as specified in
  *	       /proc/crypto - input
+ * @flags: flags specifying the type of cipher handle
  *
  * This function initializes an AEAD cipher handle and establishes the
  * connection to the kernel.
@@ -378,7 +397,8 @@ unsigned int kcapi_cipher_blocksize(struct kcapi_handle *handle);
  *	   -EOPNOTSUPP - AF_ALG family not available;
  *	   -EINVAL - accept syscall failed
  */
-int kcapi_aead_init(struct kcapi_handle *handle, const char *ciphername);
+int kcapi_aead_init(struct kcapi_handle *handle, const char *ciphername,
+		    unsigned int flags);
 
 /**
  * kcapi_aead_destroy() - close the AEAD handle and release resources
@@ -761,6 +781,7 @@ int kcapi_aead_ccm_nonce_to_iv(const unsigned char *nonce, size_t noncelen,
  * @handle: cipher handle filled during the call - output
  * @ciphername: kernel crypto API cipher name as specified in
  *	       /proc/crypto - input
+ * @flags: flags specifying the type of cipher handle
  *
  * This function provides the initialization of a (keyed) message digest handle
  * and establishes the connection to the kernel.
@@ -769,7 +790,8 @@ int kcapi_aead_ccm_nonce_to_iv(const unsigned char *nonce, size_t noncelen,
  *	   -EOPNOTSUPP - AF_ALG family not available;
  *	   -EINVAL - accept syscall failed
  */
-int kcapi_md_init(struct kcapi_handle *handle, const char *ciphername);
+int kcapi_md_init(struct kcapi_handle *handle, const char *ciphername,
+		  unsigned int flags);
 
 /**
  * kcapi_md_destroy() - close the message digest handle and release resources
@@ -877,6 +899,7 @@ unsigned int kcapi_md_blocksize(struct kcapi_handle *handle);
  * @handle: cipher handle filled during the call - output
  * @ciphername: kernel crypto API cipher name as specified in
  *	       /proc/crypto - input
+ * @flags: flags specifying the type of cipher handle
  *
  * This function provides the initialization of a random number generator handle
  * and establishes the connection to the kernel.
@@ -885,7 +908,8 @@ unsigned int kcapi_md_blocksize(struct kcapi_handle *handle);
  *	   -EOPNOTSUPP - AF_ALG family not available;
  *	   -EINVAL - accept syscall failed
  */
-int kcapi_rng_init(struct kcapi_handle *handle, const char *ciphername);
+int kcapi_rng_init(struct kcapi_handle *handle, const char *ciphername,
+		   unsigned int flags);
 
 /**
  * kcapi_rng_destroy() - Close the RNG handle and release resources
@@ -966,5 +990,13 @@ unsigned int kcapi_version(void);
 int kcapi_pad_iv(struct kcapi_handle *handle,
 		 const unsigned char *iv, size_t ivlen,
 		 unsigned char **newiv, size_t *newivlen);
+
+/**
+ * kcapi_memset_secure() - memset() implementation that will not be optimized
+ *			   away by the compiler
+ * 
+ * The parameters, he logic and the return code is identical to memset(3).
+ */
+void kcapi_memset_secure(void *s, int c, size_t n);
 
 #endif /* _KCAPI_H */

@@ -140,13 +140,13 @@ static int aux_stress_init_error(const char *name, int type)
 	int ret = 0;
 
 	if (type == 0)
-		ret = kcapi_cipher_init(&handle, name);
+		ret = kcapi_cipher_init(&handle, name, 0);
 	else if (type == 1)
-		ret = kcapi_aead_init(&handle, name);
+		ret = kcapi_aead_init(&handle, name, 0);
 	else if (type == 2)
-		ret = kcapi_md_init(&handle, name);
+		ret = kcapi_md_init(&handle, name, 0);
 	else
-		ret = kcapi_rng_init(&handle, name);
+		ret = kcapi_rng_init(&handle, name, 0);
 
 	if (ret) {
 		printf("PASS: Allocation of nonsense string \"%s\" failed\n",
@@ -194,7 +194,7 @@ static int aux_test_rng(char *name, unsigned char *seed, size_t seedlen)
 	char hex[RNGOUTBUF * 2 + 1];
 	ssize_t ret = 0;
 
-	if (kcapi_rng_init(&handle, name)) {
+	if (kcapi_rng_init(&handle, name, 0)) {
                 printf("Allocation of cipher %s failed\n", name);
                 return 1;
         }
@@ -231,7 +231,7 @@ static int auxiliary_tests(void)
 	struct kcapi_handle handle;
 	int ret = 0;
 
-        if (kcapi_aead_init(&handle, "ccm(aes)")) {
+        if (kcapi_aead_init(&handle, "ccm(aes)", 0)) {
                 printf("Allocation of ccm(aes) cipher failed\n");
                 ret++;
         } else {
@@ -247,7 +247,7 @@ static int auxiliary_tests(void)
 	}
 	kcapi_aead_destroy(&handle);
 
-        if (kcapi_cipher_init(&handle, "cbc(aes)")) {
+        if (kcapi_cipher_init(&handle, "cbc(aes)", 0)) {
                 printf("Allocation of cbc(aes) cipher failed\n");
                 return 1;
         } else {
@@ -262,7 +262,7 @@ static int auxiliary_tests(void)
 	}
 	kcapi_cipher_destroy(&handle);
 
-	if (kcapi_md_init(&handle, "sha256")) {
+	if (kcapi_md_init(&handle, "sha256", 0)) {
                 printf("Allocation of sha256 cipher failed\n");
                 return 1;
         } else {
@@ -414,7 +414,7 @@ static int cavs_sym(struct kcapi_cavs *cavs_test, unsigned int loops,
 			goto out;
 	}
 
-	if (kcapi_cipher_init(&handle, cavs_test->cipher)) {
+	if (kcapi_cipher_init(&handle, cavs_test->cipher, 0)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
 		goto out;
 	}
@@ -497,7 +497,7 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 	outiov.iov_len = outbuflen;
 
 	ret = -EINVAL;
-	if (kcapi_cipher_init(&handle, cavs_test->cipher)) {
+	if (kcapi_cipher_init(&handle, cavs_test->cipher, 0)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
 		return -EINVAL;
 	}
@@ -600,7 +600,7 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, unsigned int loops,
 		return -EINVAL;
 
 	ret = -EINVAL;
-	if (kcapi_aead_init(&handle, cavs_test->cipher)) {
+	if (kcapi_aead_init(&handle, cavs_test->cipher, 0)) {
 		printf("Allocation of cipher failed\n");
 		goto out;
 	}
@@ -755,7 +755,7 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 		return -EINVAL;
 
 	ret = -EINVAL;
-	if (kcapi_aead_init(&handle, cavs_test->cipher)) {
+	if (kcapi_aead_init(&handle, cavs_test->cipher, 0)) {
 		printf("Allocation of cipher failed\n");
 		goto out;
 	}
@@ -1061,7 +1061,7 @@ static int cavs_hash(struct kcapi_cavs *cavs_test, unsigned int loops)
 	memset(md, 0, MAXMD);
 	memset(mdhex, 0, MAXMDHEX);
 
-	if (kcapi_md_init(&handle, cavs_test->cipher)) {
+	if (kcapi_md_init(&handle, cavs_test->cipher, 0)) {
 		printf("Allocation of hash %s failed\n", cavs_test->cipher);
 		return 1;
 	}
@@ -1108,7 +1108,7 @@ static int cavs_hash_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 	memset(md, 0, MAXMD);
 	memset(mdhex, 0, MAXMDHEX);
 
-	if (kcapi_md_init(&handle, cavs_test->cipher)) {
+	if (kcapi_md_init(&handle, cavs_test->cipher, 0)) {
 		printf("Allocation of hash %s failed\n", cavs_test->cipher);
 		return 1;
 	}

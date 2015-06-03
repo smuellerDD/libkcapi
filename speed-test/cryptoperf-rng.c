@@ -52,7 +52,7 @@ static int cp_rng_init_test(struct cp_test *test, size_t len)
 		return -EFAULT;
 	}
 
-	if (kcapi_rng_init(&test->u.rng.handle, test->driver_name)) {
+	if (kcapi_rng_init(&test->u.rng.handle, test->driver_name, 0)) {
 		printf(DRIVER_NAME": could not allocate rng handle for "
 		       "%s\n", test->driver_name);
 		goto out;

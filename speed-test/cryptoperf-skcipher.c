@@ -56,7 +56,7 @@ static int cp_skcipher_init_test(struct cp_test *test, size_t len)
 		return -EFAULT;
 	}
 
-	if (kcapi_cipher_init(&test->u.skcipher.handle, test->driver_name)) {
+	if (kcapi_cipher_init(&test->u.skcipher.handle, test->driver_name, 0)) {
 		printf(DRIVER_NAME": could not allocate skcipher handle for "
 		       "%s\n", test->driver_name);
 		goto out;
