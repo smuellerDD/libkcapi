@@ -149,12 +149,14 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 	}
 	
 	fstat(fd, &sb);
-	memblock = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
-	if (memblock == MAP_FAILED)
-	{
-		fprintf(stderr, "Use of mmap failed\n");
-		ret = -4;
-		goto out;
+	if (sb.st_size) {
+		memblock = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
+		if (memblock == MAP_FAILED)
+		{
+			fprintf(stderr, "Use of mmap failed\n");
+			ret = -4;
+			goto out;
+		}
 	}
 
 	/* Compute hash */
@@ -248,7 +250,7 @@ static int process_checkfile(char *hashname, char *checkfile, int log)
 
 		/* remove trailing CR */
 		for (i = linelen; i > 0; i--) {
-			if (!isalpha(buf[i]))
+			if (!isprint(buf[i]))
 				buf[i] = 0;
 			else
 				break;
