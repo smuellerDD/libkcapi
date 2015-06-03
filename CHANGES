@@ -5,6 +5,8 @@ Changes 0.8.0:
  * Simplify the code for AEAD
  * Add and use kcapi_memset_secure
  * Add AIO logic
+ * Add drop in replacements for sha1sum, sha224sum, sha256sum, sha384sum,
+   sha512sum and md5sum
 
 Change 0.7.2:
  * Move the library code into the directory lib/

@@ -56,10 +56,12 @@ static void usage(char *hashname)
 	fprintf(stderr, "\nUsage:\n");
 	fprintf(stderr, "\t%ssum [OPTION] ... [FILE] ...\n", hashname);
 	fprintf(stderr, "Options:\n");
-	fprintf(stderr, "\t-c --check\tVerify hash sums from file\n");
-	fprintf(stderr, "\t-q --quiet\tDo not print out verification result for every file\n");
-	fprintf(stderr, "\t-s --status\tResult of verification given with return code\n");
-	fprintf(stderr, "\t-v --version\tShow version\n");
+	fprintf(stderr, "\t-c --check [FILE]\tVerify hash sums from file\n");
+	fprintf(stderr, "\t-q --quiet\t\tDo not print out verification result for every file\n");
+	fprintf(stderr, "\t-s --status\t\tResult of verification given with return code\n");
+	fprintf(stderr, "\t-k --key [HEX HMAC KEY]\tPerform HMAC verification with given key\n");
+	fprintf(stderr, "\t-h --help\t\tPrint this help text\n");
+	fprintf(stderr, "\t-v --version\t\tShow version\n");
 }
 
 static void version(char *hashname)
@@ -116,6 +118,27 @@ static void hex2bin(const char *hex, size_t hexlen,
 		bin[i] = bin_char(hex[(i*2)]) << 4;
 		bin[i] |= bin_char(hex[((i*2)+1)]);
 	}
+}
+
+static int hex2bin_alloc(const char *hex, size_t hexlen,
+			 unsigned char **bin, size_t *binlen)
+{
+	unsigned char *out = NULL;
+	size_t outlen = 0;
+
+	if (!hexlen)
+		return -EINVAL;
+
+	outlen = (hexlen + 1) / 2;
+
+	out = calloc(1, outlen);
+	if (!out)
+		return -errno;
+
+	hex2bin(hex, hexlen, out, outlen);
+	*bin = out;
+	*binlen = outlen;
+	return 0;
 }
 
 static void bin2print(const unsigned char *bin, size_t binlen,
@@ -195,7 +218,8 @@ out:
 	return ret;
 }
 
-static int hash_files(char *hashname, char *filename[], unsigned int files)
+static int hash_files(char *hashname, char *filename[], unsigned int files,
+		      unsigned char *hmackey, size_t hmackeylen)
 {
 	struct kcapi_handle handle;
 	unsigned int i = 0;
@@ -206,6 +230,14 @@ static int hash_files(char *hashname, char *filename[], unsigned int files)
 		fprintf(stderr, "Allocation of %s cipher failed (ret=%d)\n",
 			hashname, ret);
 		return -2;
+	}
+	if (hmackey) {
+		ret = kcapi_md_setkey(&handle, hmackey, hmackeylen);
+		if (ret) {
+			fprintf(stderr, "Setting HMAC key for %s failed (%d)\n",
+				hashname, ret);
+			return -2;
+		}
 	}
 	
 	for (i = 0; i < files; i++) {
@@ -221,7 +253,8 @@ static int hash_files(char *hashname, char *filename[], unsigned int files)
 #define CHK_QUIET (1)
 #define CHK_STATUS (2)
 
-static int process_checkfile(char *hashname, char *checkfile, int log)
+static int process_checkfile(char *hashname, char *checkfile, int log,
+			     unsigned char *hmackey, size_t hmackeylen)
 {
 	FILE *file = NULL;
 	int ret = 0;
@@ -230,9 +263,17 @@ static int process_checkfile(char *hashname, char *checkfile, int log)
 
 	ret = kcapi_md_init(&handle, hashname, 0);
 	if (ret) {
-		fprintf(stderr, "Allocation of %s cipher failed (ret=%d)\n",
+		fprintf(stderr, "Allocation of %s cipher failed (%d)\n",
 			hashname, ret);
 		return -2;
+	}
+	if (hmackey) {
+		ret = kcapi_md_setkey(&handle, hmackey, hmackeylen);
+		if (ret) {
+			fprintf(stderr, "Setting HMAC key for %s failed (%d)\n",
+				hashname, ret);
+			return -2;
+		}
 	}
 
 	file = fopen(checkfile, "r");
@@ -295,12 +336,16 @@ int main(int argc, char *argv[])
 {
 	char *basec = NULL;
         char *basen = NULL;
-#define HASHNAMESIZE 6
+#define HASHNAMESIZE 12
 	char hash[(HASHNAMESIZE + 1)];
 	int ret = 255;
 
 	char *checkfile = NULL;
+	unsigned char *hmackey = NULL;
+	size_t hmackeylen = 0;
 	int loglevel = 0;
+
+	char *tmpbuf = NULL;
 	
 	static struct option opts[] =
 	{
@@ -308,6 +353,8 @@ int main(int argc, char *argv[])
 		{"quiet", 0, 0, 'q'},
 		{"status", 0, 0, 's'},
 		{"version", 0, 0, 'v'},
+		{"key", 1, 0, 'k'},
+		{"help", 1, 0, 'h'},
 		{0, 0, 0, 0}
 	};
 
@@ -339,7 +386,7 @@ int main(int argc, char *argv[])
 	
 	while (1) {
 		int opt_index = 0;
-		int c = getopt_long(argc, argv, "c:qsv", opts, &opt_index);
+		int c = getopt_long(argc, argv, "c:qsvk:h", opts, &opt_index);
 		
 		if (-1 == c)
 			break;
@@ -361,6 +408,25 @@ int main(int argc, char *argv[])
 			case 's':
 				loglevel = CHK_STATUS;
 				break;
+			case 'h':
+				usage(hash);
+				ret = 0;
+				goto out;
+			case 'k':
+				if (hex2bin_alloc(optarg, strlen(optarg),
+						  &hmackey, &hmackeylen)) {
+					fprintf(stderr, "Cannot allocate memory for HMAC key\n");
+					goto out;
+				}
+				tmpbuf = strdup(hash);
+				if (!tmpbuf) {
+					fprintf(stderr, "Cannot allocate memory for HMAC key\n");
+					goto out;
+				}
+				snprintf(hash, HASHNAMESIZE, "hmac(%s)",
+					 tmpbuf);
+				free(tmpbuf);
+				break;
 			default:
 				usage(hash);
 				goto out;
@@ -368,19 +434,25 @@ int main(int argc, char *argv[])
 	}
 	
 	if (checkfile) {
-		ret = process_checkfile(hash, checkfile, loglevel);
+		ret = process_checkfile(hash, checkfile, loglevel,
+					hmackey, hmackeylen);
 		if (ret)
 			goto out;
 	}
 
 	if (optind < argc)
-		ret = hash_files(hash, argv + optind, (argc - optind));
+		ret = hash_files(hash, argv + optind, (argc - optind),
+				 hmackey, hmackeylen);
 
 out:
 	if (basec)
 		free(basec);
 	if (checkfile)
 		free(checkfile);
+	if (hmackey) {
+		kcapi_memset_secure(hmackey, 0, hmackeylen);
+		free(hmackey);
+	}
 	
 	return ret;
 }
