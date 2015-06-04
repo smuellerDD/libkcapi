@@ -7,6 +7,8 @@ Changes 0.8.0:
  * Add AIO logic
  * Add drop in replacements for sha1sum, sha224sum, sha256sum, sha384sum,
    sha512sum and md5sum
+ * Remove the kernel-patch/ directory as its code is not consistent with
+   the library any more. Use the current cryptodev-2.6 tree from Herbert Xu.
 
 Change 0.7.2:
  * Move the library code into the directory lib/

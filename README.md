@@ -18,6 +18,29 @@ does not perform any memcpy for processing the cryptographic data! The library
 uses scatter / gather lists to eliminate the need for moving data around in
 memory.
 
+Applications
+============
+
+The libkcapi distribution contains the following applications which are
+intended as a drop-in replacement for the respective applications commonly
+available in all Linux distributions:
+
+* sha512sum
+
+* sha384sum
+
+* sha256sum
+
+* sha224sum
+
+* sha1sum
+
+* md5sum
+
+The output as well as the command line options are modeled according to the
+commands found in the coreutils package.
+
+
 Version Numbers
 ===============
 The version numbers for this library have the following schema:
@@ -40,6 +63,7 @@ consumer can be left unchanged and does not need to be recompiled.
 
 Make Targets
 ============
+
 The following make targets are applicable:
 
 * make              # compile library
@@ -58,6 +82,7 @@ The following make targets are applicable:
 
 * make html         # generate documentation as HTML in doc/html
 
+
 Compilation
 ===========
 
@@ -65,6 +90,7 @@ The Makefile compiles libkcapi as a shared library.
 
 The "install" Makefile target installs libkcapi under /usr/local/lib or
 /usr/local/lib64. The header file is installed to /usr/local/include.
+
 
 Test cases
 ==========
@@ -75,18 +101,12 @@ of the kernel crypto API.
 
 The test cases are documented in test/README.
 
+
 Kernel Patches
 ==============
 
-The following kernel patches are distributed with this library. There is no
-need to add them to the kernel unless you want to use the following
-functionality that is already supported by this library:
+With the current cryptodev-2.6 tree from Herbert Xu, all patches are integrated.
 
-	* AEAD cipher
-
-	* Random number generator
-
-Use the latest patch set in the kernel-patch/ directory.
 
 Author
 ======
