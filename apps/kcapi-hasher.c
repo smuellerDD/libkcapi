@@ -173,6 +173,7 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 	
 	fstat(fd, &sb);
 
+	/* Do not return an error in case we cannot validate the data. */
 	if ((sb.st_mode & S_IFMT) != S_IFREG &&
 	    (sb.st_mode & S_IFMT) != S_IFLNK) {
 		fprintf(stderr, "%s is no regular file or symlink\n", filename);
@@ -195,6 +196,7 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 	if (ret > 0) {
 		if (comphash && comphashlen) {
 			unsigned char compmd[64];
+
 			memset(compmd, 0, sizeof(compmd));
 			hex2bin(comphash, comphashlen, compmd, sizeof(compmd));
 			if ((comphashlen != (unsigned int)(ret * 2)) ||
@@ -215,7 +217,6 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 			filename, ret);
 	}
 
-	/* Clean up */
 out:
 	if (memblock)
 		munmap(memblock, sb.st_size);
@@ -266,7 +267,12 @@ static int process_checkfile(char *hashname, char *checkfile, int log,
 	FILE *file = NULL;
 	int ret = 0;
 	struct kcapi_handle handle;
-	char buf[(4096 + 64 + 2)];
+	/*
+	 * A file can have up to 4096 characters, so a complete line has at most
+	 * 4096 bytes (file name) + 128 bytes (SHA512 hex value) + 2 spaces +
+	 * one byte for the CR.
+	 */
+	char buf[(4096 + 128 + 2 + 1)];
 
 	ret = kcapi_md_init(&handle, hashname, 0);
 	if (ret) {
