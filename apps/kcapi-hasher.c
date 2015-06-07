@@ -34,6 +34,28 @@
  * DAMAGE.
  */
 
+/*
+ * Program implements a drop-in replacement (i.e. same output, behavior and
+ * command line switches) for:
+ *	* sha1sum
+ *	* sha224sum
+ *	* sha256sum
+ *	* sha384sum
+ *	* sha512sum
+ *	* md5sum
+ *	* fipscheck with hard coded key from libfipscheck
+ *	* fipshmac with hard coded key from libfipscheck
+ *	* sha1hmac
+ *	* sha224hmac
+ *	* sha256hmac
+ *	* sha384hmac
+ *	* sha512hmac
+ *
+ * Once the application is compiled, a symlink or hardlink to the
+ * aforementioned application would turn the binary into behaving like the
+ * respective application.
+ */
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,6 +72,9 @@
 
 #include <kcapi.h>
 
+static unsigned char fipscheck_hmackey[] = "orboDeJITITejsirpADONivirpUkvarP";
+static unsigned char hmaccalc_hmackey[] = "FIPS-FTW-RHT2009";
+
 static void usage(char *hashname)
 {
 	fprintf(stderr, "\n%ssum - calculation of hash sum (Using Linux Kernel Crypto API)\n", hashname);
@@ -59,7 +84,8 @@ static void usage(char *hashname)
 	fprintf(stderr, "\t-c --check [FILE]\tVerify hash sums from file\n");
 	fprintf(stderr, "\t-q --quiet\t\tDo not print out verification result for every file\n");
 	fprintf(stderr, "\t-s --status\t\tResult of verification given with return code\n");
-	fprintf(stderr, "\t-k --key [HEX HMAC KEY]\tPerform HMAC verification with given key\n");
+	fprintf(stderr, "\t-k --hkey [HEX HMAC KEY]\tPerform HMAC verification with given key\n");
+	fprintf(stderr, "\t-b --bkey [HMAC KEY]\tPerform HMAC verification with given key\n");
 	fprintf(stderr, "\t-h --help\t\tPrint this help text\n");
 	fprintf(stderr, "\t-v --version\t\tShow version\n");
 }
@@ -142,7 +168,7 @@ static int hex2bin_alloc(const char *hex, size_t hexlen,
 }
 
 static void bin2print(const unsigned char *bin, size_t binlen,
-		      const char *filename)
+		      const char *filename, FILE *outfile)
 {
 	char *hex;
 	size_t hexlen = binlen * 2 + 1;
@@ -151,12 +177,18 @@ static void bin2print(const unsigned char *bin, size_t binlen,
 	if (!hex)
 		return;
 	bin2hex(bin, binlen, hex, hexlen - 1 , 0);
-	fprintf(stdout, "%s  %s\n", hex, filename);
+	/* fipshmac does not want the file name :-( */
+	if (outfile != stdout) {
+		fprintf(outfile, "%s\n", hex);
+	} else {
+		fprintf(outfile, "%s  %s\n", hex, filename);
+	}
 	free(hex);
 }
 
 static int hasher(struct kcapi_handle *handle, char *filename,
-		  const char *comphash, unsigned int comphashlen)
+		  const char *comphash, unsigned int comphashlen,
+		  FILE *outfile)
 {	
 	int fd;
 	int ret = 0;
@@ -168,7 +200,7 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 	if (fd < 0) {
 		fprintf(stderr, "Cannot open file %s: %s\n", filename,
 			strerror(errno));
-		return -3;
+		return -EIO;
 	}
 	
 	fstat(fd, &sb);
@@ -185,7 +217,7 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 		if (memblock == MAP_FAILED)
 		{
 			fprintf(stderr, "Use of mmap failed\n");
-			ret = -4;
+			ret = -ENOMEM;
 			goto out;
 		}
 	}
@@ -193,6 +225,7 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 	/* Compute hash */
 	ret = kcapi_md_digest(handle, (unsigned char*)memblock, sb.st_size, md,
 			      sizeof(md));
+
 	if (ret > 0) {
 		if (comphash && comphashlen) {
 			unsigned char compmd[64];
@@ -201,7 +234,6 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 			hex2bin(comphash, comphashlen, compmd, sizeof(compmd));
 			if ((comphashlen != (unsigned int)(ret * 2)) ||
 			    memcmp(compmd, md, ret)) {
-
 				ret = 1;
 			} else {
 
@@ -209,7 +241,7 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 			}
 
 		} else {
-			bin2print(md, ret, filename);
+			bin2print(md, ret, filename, outfile);
 			ret = 0;
 		}
 	} else {
@@ -226,8 +258,46 @@ out:
 	return ret;
 }
 
+/*
+ * Convert a given file name into its respective HMAC file name
+ *
+ * return: NULL when malloc failed, a pointer that the caller must free
+ * otherwise.
+ */
+static char *get_hmac_file(char *filename)
+{
+	size_t basenamestart = 0;
+	size_t i;
+	size_t filelen;
+	char *checkfile = NULL;
+
+	filelen = strlen(filename);
+	if (filelen > 4096) {
+		fprintf(stderr, "File too long\n");
+		return NULL;
+	}
+	checkfile = malloc(filelen + 6);
+	if (!checkfile)
+		return NULL;
+
+	for (i = 0; i < filelen; i++) {
+		if (!strncmp(filename + i, "/", 1))
+			basenamestart = i + 1;
+	}
+	if (basenamestart > 0)
+		strncpy(checkfile, filename, basenamestart);
+	strncpy(checkfile + basenamestart, ".", 1);
+	strncpy(checkfile + basenamestart + 1,
+		filename + basenamestart,
+		filelen - basenamestart);
+	strncpy(checkfile + filelen + 1, ".hmac", 5);
+	strncpy(checkfile + filelen + 6, "\0", 1);
+	return checkfile;
+}
+
 static int hash_files(char *hashname, char *filename[], unsigned int files,
-		      unsigned char *hmackey, size_t hmackeylen)
+		      const unsigned char *hmackey, size_t hmackeylen,
+		      int fipshmac)
 {
 	struct kcapi_handle handle;
 	unsigned int i = 0;
@@ -237,19 +307,39 @@ static int hash_files(char *hashname, char *filename[], unsigned int files,
 	if (ret) {
 		fprintf(stderr, "Allocation of %s cipher failed (ret=%d)\n",
 			hashname, ret);
-		return -2;
+		return -EFAULT;
 	}
 	if (hmackey) {
 		ret = kcapi_md_setkey(&handle, hmackey, hmackeylen);
 		if (ret) {
 			fprintf(stderr, "Setting HMAC key for %s failed (%d)\n",
 				hashname, ret);
-			return -2;
+			return -EINVAL;
 		}
 	}
 	
 	for (i = 0; i < files; i++) {
-		ret = hasher(&handle, filename[i], NULL, 0);
+		FILE *out = stdout;
+
+		if (fipshmac) {
+			char *outfile = get_hmac_file(filename[i]);
+
+			if (!outfile) {
+				fprintf(stderr, "Cannot create HMAC file name\n");
+				continue;
+			}
+			out = fopen(outfile, "w");
+			if (!out) {
+				fprintf(stderr, "Cannot open HMAC file %s\n",
+					outfile);
+				free(outfile);
+				continue;
+			}
+			free(outfile);
+		}
+		ret = hasher(&handle, filename[i], NULL, 0, out);
+		if (fipshmac)
+			fclose(out);
 		if (ret)
 			break;
 	}
@@ -261,11 +351,12 @@ static int hash_files(char *hashname, char *filename[], unsigned int files,
 #define CHK_QUIET (1)
 #define CHK_STATUS (2)
 
-static int process_checkfile(char *hashname, char *checkfile, int log,
-			     unsigned char *hmackey, size_t hmackeylen)
+static int process_checkfile(char *hashname, char *checkfile, char *targetfile,
+			     int log,
+			     const unsigned char *hmackey, size_t hmackeylen)
 {
 	FILE *file = NULL;
-	int ret = 0;
+	int ret = -EFAULT;
 	struct kcapi_handle handle;
 	/*
 	 * A file can have up to 4096 characters, so a complete line has at most
@@ -278,14 +369,14 @@ static int process_checkfile(char *hashname, char *checkfile, int log,
 	if (ret) {
 		fprintf(stderr, "Allocation of %s cipher failed (%d)\n",
 			hashname, ret);
-		return -2;
+		return -EFAULT;
 	}
 	if (hmackey) {
 		ret = kcapi_md_setkey(&handle, hmackey, hmackeylen);
 		if (ret) {
 			fprintf(stderr, "Setting HMAC key for %s failed (%d)\n",
 				hashname, ret);
-			return -2;
+			return -EINVAL;
 		}
 	}
 
@@ -296,6 +387,7 @@ static int process_checkfile(char *hashname, char *checkfile, int log,
 		goto out;
 	}
 
+	ret = -EFAULT;
 	while (fgets(buf, sizeof(buf), file)) {
 		int foundsep = 0;
 		unsigned int hashlen = 0;
@@ -320,7 +412,8 @@ static int process_checkfile(char *hashname, char *checkfile, int log,
 				hashlen++;
 			} else {
 				char *filename = buf + i;
-				int r = hasher(&handle, filename, buf, hashlen);
+				int r = hasher(&handle, filename, buf, hashlen,
+					       stdout);
 
 				if (r == 0) {
 					if (log < CHK_QUIET)
@@ -335,6 +428,12 @@ static int process_checkfile(char *hashname, char *checkfile, int log,
 				break;
 			}
 		}
+
+		/* fipscheck does not have the filename in the check file */
+		if (!foundsep && targetfile) {
+			return hasher(&handle, targetfile,
+				      buf, hashlen - 1, stdout);
+		}
 	}
 
 out:
@@ -345,28 +444,108 @@ out:
 
 }
 
+static int get_hmac_cipherstring(char *hash, size_t hashlen)
+{
+	char *tmpbuf = strdup(hash);
+
+	if (!tmpbuf) {
+		fprintf(stderr, "Cannot allocate memory for HMAC key\n");
+			return -ENOMEM;
+	}
+	snprintf(hash, hashlen, "hmac(%s)", tmpbuf);
+	free(tmpbuf);
+	return 0;
+}
+
+static int fipscheck_self(char *hash,
+			  const unsigned char *hmackey, size_t hmackeylen)
+{
+	char *checkfile = NULL;
+	size_t n = 0;
+	int ret = -EINVAL;
+	FILE *fipsfile = NULL;
+	char fipsflag[1];
+#define BUFSIZE 4096
+	char selfname[BUFSIZE];
+	ssize_t selfnamesize = 0;
+
+	fipsfile = fopen("/proc/sys/crypto/fips_enabled", "r");
+	if (!fipsfile) {
+		fprintf(stderr, "Cannot open fips_enabled file: %s\n",
+			strerror(errno));
+		return -EIO;
+	}
+
+	n = fread((void *)fipsflag, 1, 1, fipsfile);
+	if (n != 1) {
+		fprintf(stderr, "Cannot read FIPS flag\n");
+		goto out;
+	}
+
+	if (fipsflag[0] == '0') {
+		ret = 0;
+		goto out;
+	}
+
+	memset(selfname, 0, sizeof(selfname));
+	selfnamesize = readlink("/proc/self/exe", selfname, BUFSIZE);
+	if (selfnamesize >= BUFSIZE || selfnamesize < 0) {
+		fprintf(stderr, "Cannot obtain my filename\n");
+		ret = -EFAULT;
+		goto out;
+	}
+
+	ret = -ENOMEM;
+	checkfile = get_hmac_file(selfname);
+	if (!checkfile)
+		goto out;
+
+	ret = process_checkfile(hash, checkfile, selfname, CHK_STATUS,
+				hmackey, hmackeylen);
+
+out:
+	if (checkfile)
+		free(checkfile);
+	if (fipsfile)
+		fclose(fipsfile);
+	return ret;
+}
+
 int main(int argc, char *argv[])
 {
 	char *basec = NULL;
         char *basen = NULL;
-#define HASHNAMESIZE 12
+#define HASHNAMESIZE 13
 	char hash[(HASHNAMESIZE + 1)];
-	int ret = 255;
+	int ret = -EFAULT;
 
 	char *checkfile = NULL;
+	char *targetfile = NULL;
 	unsigned char *hmackey = NULL;
 	size_t hmackeylen = 0;
 	int loglevel = 0;
+	int fipscheck = 0;
+	int fipshmac = 0;
 
-	char *tmpbuf = NULL;
-	
+	/*
+	 * Self-integrity check:
+	 *	* fipscheck/fipshmac and sha*sum equivalents are using the
+	 *	  fipscheck key and hmac(sha256)
+	 *	* hmaccalc applications are using the hmaccalc key and
+	 *	  hmac(sha512)
+	 */
+	unsigned char *check_hmackey = fipscheck_hmackey;
+	size_t check_hmackeylen = strlen((char *)fipscheck_hmackey);
+	char check_hash[(HASHNAMESIZE + 1)];
+
 	static struct option opts[] =
 	{
 		{"check", 1, 0, 'c'},
 		{"quiet", 0, 0, 'q'},
 		{"status", 0, 0, 's'},
 		{"version", 0, 0, 'v'},
-		{"key", 1, 0, 'k'},
+		{"hkey", 1, 0, 'k'},
+		{"bkey", 1, 0, 'b'},
 		{"help", 1, 0, 'h'},
 		{0, 0, 0, 0}
 	};
@@ -378,8 +557,10 @@ int main(int argc, char *argv[])
 		return 255;
 	}
 	basen = basename(basec);
-	
+
 	memset(hash, 0, sizeof(hash));
+	memset(check_hash, 0, sizeof(check_hash));
+	strncpy(check_hash, "hmac(sha256)", HASHNAMESIZE);
 	if (0 == strncmp(basen, "sha256sum", 9))
 		strncpy(hash, "sha256", HASHNAMESIZE);
 	else if (0 == strncmp(basen, "sha512sum", 9))
@@ -392,14 +573,59 @@ int main(int argc, char *argv[])
 		strncpy(hash, "sha384", HASHNAMESIZE);
 	else if (0 == strncmp(basen, "md5sum", 6))
 		strncpy(hash, "md5", HASHNAMESIZE);
-	else {
+	else if (0 == strncmp(basen, "fipshmac", 8)) {
+		strncpy(hash, "hmac(sha256)", HASHNAMESIZE);
+		hmackey = fipscheck_hmackey;
+		hmackeylen = strlen((char *)fipscheck_hmackey);
+		fipshmac = 1;
+	} else if (0 == strncmp(basen, "fipscheck", 9)) {
+		strncpy(hash, "hmac(sha256)", HASHNAMESIZE);
+		hmackey = fipscheck_hmackey;
+		hmackeylen = strlen((char *)fipscheck_hmackey);
+		fipscheck = 1;
+	} else if (0 == strncmp(basen, "sha1hmac", 8)) {
+		strncpy(hash, "hmac(sha1)", HASHNAMESIZE);
+		hmackey = hmaccalc_hmackey;
+		hmackeylen = strlen((char *)hmaccalc_hmackey);
+		strncpy(check_hash, "hmac(sha512)", HASHNAMESIZE);
+		check_hmackey = hmaccalc_hmackey;
+		check_hmackeylen = strlen((char *)hmaccalc_hmackey);
+	} else if (0 == strncmp(basen, "sha224hmac", 10)) {
+		strncpy(hash, "hmac(sha224)", HASHNAMESIZE);
+		hmackey = hmaccalc_hmackey;
+		hmackeylen = strlen((char *)hmaccalc_hmackey);
+		strncpy(check_hash, "hmac(sha512)", HASHNAMESIZE);
+		check_hmackey = hmaccalc_hmackey;
+		check_hmackeylen = strlen((char *)hmaccalc_hmackey);
+	} else if (0 == strncmp(basen, "sha256hmac", 10)) {
+		strncpy(hash, "hmac(sha256)", HASHNAMESIZE);
+		hmackey = hmaccalc_hmackey;
+		hmackeylen = strlen((char *)hmaccalc_hmackey);
+		strncpy(check_hash, "hmac(sha512)", HASHNAMESIZE);
+		check_hmackey = hmaccalc_hmackey;
+		check_hmackeylen = strlen((char *)hmaccalc_hmackey);
+	} else if (0 == strncmp(basen, "sha384hmac", 10)) {
+		strncpy(hash, "hmac(sha384)", HASHNAMESIZE);
+		hmackey = hmaccalc_hmackey;
+		hmackeylen = strlen((char *)hmaccalc_hmackey);
+		strncpy(check_hash, "hmac(sha512)", HASHNAMESIZE);
+		check_hmackey = hmaccalc_hmackey;
+		check_hmackeylen = strlen((char *)hmaccalc_hmackey);
+	} else if (0 == strncmp(basen, "sha512hmac", 10)) {
+		strncpy(hash, "hmac(sha512)", HASHNAMESIZE);
+		hmackey = hmaccalc_hmackey;
+		hmackeylen = strlen((char *)hmaccalc_hmackey);
+		strncpy(check_hash, "hmac(sha512)", HASHNAMESIZE);
+		check_hmackey = hmaccalc_hmackey;
+		check_hmackeylen = strlen((char *)hmaccalc_hmackey);
+	} else {
 		fprintf(stderr, "Unknown invocation name: %s\n", basen);
 		goto out;
 	}
-	
+
 	while (1) {
 		int opt_index = 0;
-		int c = getopt_long(argc, argv, "c:qsvk:h", opts, &opt_index);
+		int c = getopt_long(argc, argv, "c:qsvk:b:h", opts, &opt_index);
 		
 		if (-1 == c)
 			break;
@@ -431,23 +657,46 @@ int main(int argc, char *argv[])
 					fprintf(stderr, "Cannot allocate memory for HMAC key\n");
 					goto out;
 				}
-				tmpbuf = strdup(hash);
-				if (!tmpbuf) {
+				if (get_hmac_cipherstring(hash, HASHNAMESIZE))
+					goto out;
+				break;
+			case 'b':
+				hmackey = (unsigned char *)strdup(optarg);
+				if (!hmackey) {
 					fprintf(stderr, "Cannot allocate memory for HMAC key\n");
 					goto out;
 				}
-				snprintf(hash, HASHNAMESIZE, "hmac(%s)",
-					 tmpbuf);
-				free(tmpbuf);
+				hmackeylen = strlen(optarg);
+				if (get_hmac_cipherstring(hash, HASHNAMESIZE))
+					goto out;
 				break;
 			default:
 				usage(hash);
 				goto out;
 		}
 	}
+
+	if (fipscheck_self(check_hash, check_hmackey, check_hmackeylen)) {
+		fprintf(stderr, "Integrity check of application %s failed\n",
+			basen);
+		goto out;
+	}
+
+	if (fipscheck) {
+		if (optind >= argc) {
+			fprintf(stderr, "No file to check given for fipscheck\n");
+			goto out;
+		}
+
+		targetfile = argv[optind];
+		checkfile = get_hmac_file(targetfile);
+		if (!checkfile)
+			goto out;
+		optind++;
+	}
 	
 	if (checkfile) {
-		ret = process_checkfile(hash, checkfile, loglevel,
+		ret = process_checkfile(hash, checkfile, targetfile, loglevel,
 					hmackey, hmackeylen);
 		if (ret)
 			goto out;
@@ -455,14 +704,15 @@ int main(int argc, char *argv[])
 
 	if (optind < argc)
 		ret = hash_files(hash, argv + optind, (argc - optind),
-				 hmackey, hmackeylen);
+				 hmackey, hmackeylen, fipshmac);
 
 out:
 	if (basec)
 		free(basec);
 	if (checkfile)
 		free(checkfile);
-	if (hmackey) {
+	if (hmackey && hmackey != fipscheck_hmackey &&
+	    hmackey != hmaccalc_hmackey) {
 		kcapi_memset_secure(hmackey, 0, hmackeylen);
 		free(hmackey);
 	}

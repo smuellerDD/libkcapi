@@ -23,7 +23,7 @@ LDFLAGS += $(foreach library,$(LIBRARIES),-l$(library))
 all: $(NAME)
 
 cleanlinks:
-	@- $(RM) sha1sum sha224sum sha256sum sha384sum sha512sum md5sum
+	@- $(RM) sha1sum sha224sum sha256sum sha384sum sha512sum md5sum fipscheck fipshmac sha1hmac sha224hmac sha256hmac sha384hmac sha512hmac
 
 $(NAME): cleanlinks $(OBJS)
 	$(CC) $(OBJS) -o $(NAME) $(LDFLAGS)
@@ -33,12 +33,19 @@ $(NAME): cleanlinks $(OBJS)
 	@- ln -s $(NAME) sha384sum
 	@- ln -s $(NAME) sha512sum
 	@- ln -s $(NAME) md5sum
+	@- ln -s $(NAME) fipscheck
+	@- ln -s $(NAME) fipshmac
+	@- ln -s $(NAME) sha1hmac
+	@- ln -s $(NAME) sha224hmac
+	@- ln -s $(NAME) sha256hmac
+	@- ln -s $(NAME) sha384hmac
+	@- ln -s $(NAME) sha512hmac
 
 scan:	$(OBJS)
 	scan-build --use-analyzer=/usr/bin/clang $(CC) $(OBJS) -o $(NAME) $(LDFLAGS)
 
 clean:
-	@- $(RM) $(NAME) sha1sum sha224sum sha256sum sha384sum sha512sum md5sum
+	@- $(RM) $(NAME) sha1sum sha224sum sha256sum sha384sum sha512sum md5sum fipscheck fipshmac sha1hmac sha224hmac sha256hmac sha384hmac sha512hmac
 	@- $(RM) $(OBJS)
 
 distclean: clean
