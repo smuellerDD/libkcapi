@@ -646,6 +646,10 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
 static inline ssize_t _kcapi_aio_read(struct kcapi_handle *handle,
 				     unsigned char *out, size_t outlen)
 {
+	(void)handle;
+	(void)out;
+	(void)outlen;
+	fprintf(stderr, "AIO support not complete\n");
 	return -EOPNOTSUPP;
 #if 0
 	struct iocb *cb = NULL;
@@ -714,7 +718,7 @@ static ssize_t _kcapi_cipher_crypt(struct kcapi_handle *handle,
 	}
 
 	if (handle->aio.skcipher_aio_disable) {
-		return _kcapi_common_recv_data(handle, &iov, 1);
+		return _kcapi_common_read_data(handle, out, outlen);
 	} else {
 		ret = _kcapi_aio_read(handle, out, outlen);
 		if (ret == -EIO) {

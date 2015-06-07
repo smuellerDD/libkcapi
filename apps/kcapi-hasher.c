@@ -356,7 +356,7 @@ static int process_checkfile(char *hashname, char *checkfile, char *targetfile,
 			     const unsigned char *hmackey, size_t hmackeylen)
 {
 	FILE *file = NULL;
-	int ret = -EFAULT;
+	int ret = 0;
 	struct kcapi_handle handle;
 	/*
 	 * A file can have up to 4096 characters, so a complete line has at most
@@ -387,7 +387,6 @@ static int process_checkfile(char *hashname, char *checkfile, char *targetfile,
 		goto out;
 	}
 
-	ret = -EFAULT;
 	while (fgets(buf, sizeof(buf), file)) {
 		int foundsep = 0;
 		unsigned int hashlen = 0;
@@ -434,6 +433,9 @@ static int process_checkfile(char *hashname, char *checkfile, char *targetfile,
 			return hasher(&handle, targetfile,
 				      buf, hashlen - 1, stdout);
 		}
+
+		if (!foundsep)
+			ret++;
 	}
 
 out:
