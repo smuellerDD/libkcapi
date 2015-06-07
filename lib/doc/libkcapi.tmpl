@@ -268,6 +268,15 @@
      hold the tag as well. This requirement particularly aids the in-place
      cipher operation.
     </para>
+    <para>
+     If the caller chooses to not implement an in-place operation, the kernel
+     will not copy the AAD data into the output buffer, but only the ciphertext
+     or plaintext and the authentication tag (encryption only). Nonetheless,
+     the kernel will place the plaintext / ciphertext and the authentication
+     tag at the aforementioned locations, leaving room for the AAD. If a
+     user requires the AAD to be present in the output buffer, the caller
+     must memcpy it from the input buffer to the output buffer.
+    </para>
    </sect2>
   </sect1>
 
@@ -301,7 +310,7 @@
    
    <programlisting>
     unsigned char *buf;
-    posix_memalign((void *)&buf, PAGE_SIZE, buflen);
+    posix_memalign((void *)&amp;buf, PAGE_SIZE, buflen);
    </programlisting>
   </sect1>
 

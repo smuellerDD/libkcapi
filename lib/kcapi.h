@@ -994,6 +994,9 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
 /**
  * kcapi_memset_secure() - memset() implementation that will not be optimized
  *			   away by the compiler
+ * @s: see memset(3)
+ * @c: see memset(3)
+ * @n: see memset(3)
  * 
  * The parameters, he logic and the return code is identical to memset(3).
  */
