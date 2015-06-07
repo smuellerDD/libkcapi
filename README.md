@@ -25,20 +25,17 @@ The libkcapi distribution contains the following applications which are
 intended as a drop-in replacement for the respective applications commonly
 available in all Linux distributions:
 
-* sha512sum
+* coreutils: sha512sum, sha384sum, sha256sum, sha224sum, sha1sum, md5sum
 
-* sha384sum
+* libfipscheck: fipscheck / fipshmac
 
-* sha256sum
-
-* sha224sum
-
-* sha1sum
-
-* md5sum
+* hmaccalc: sha512hmac, sha384hmac, sha256hmac, sha224hmac, sha1hmac
 
 The output as well as the command line options are modeled according to the
 commands found in the coreutils package.
+
+These applications do not depend on any user space library other than the
+C-lib.
 
 
 Version Numbers
