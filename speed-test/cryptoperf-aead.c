@@ -133,6 +133,22 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm)
 		       "%s (%d)\n", test->driver_name, ret);
 			goto out;
 		}
+		/* copy the AAD as this is not copied by the kernel */
+		memcpy(test->u.aead.input, test->u.aead.output,
+		       test->u.aead.assoclen);
+		/* just a verification to avoid being fooled */
+		ret = kcapi_aead_decrypt(&test->u.aead.handle,
+					 test->u.aead.input,
+					 test->u.aead.datalen,
+					 test->u.aead.iv,
+					 test->u.aead.output,
+					 test->u.aead.datalen,
+					 test->accesstype);
+		if (ret < 0) {
+			printf(DRIVER_NAME": could not decrypt ciphertext for "
+		       "%s (%d)\n", test->driver_name, ret);
+			goto out;
+		}
 	}
 
 	return 0;
@@ -214,24 +230,21 @@ static const struct cp_aead_tests testcases[] = {
 	{ "AES(G) GCM(G) 128", "gcm(aes-generic)", 16, 16, 0 },
 	{ "AES(G) GCM(G) 192", "gcm(aes-generic)", 24, 16, 0 },
 	{ "AES(G) GCM(G) 256", "gcm(aes-generic)", 32, 16, 0 },
-#if 0
-	/* these tests panic the kernel due to missing setkey callback */
-	{ "AES(AESNI) GCM(ASM) 128", "__driver-gcm-aes-aesni", 16, 0 },
-	{ "AES(AESNI) GCM(ASM) 192", "__driver-gcm-aes-aesni", 24, 0 },
-	{ "AES(AESNI) GCM(ASM) 256", "__driver-gcm-aes-aesni", 32, 0 },
-#endif
+	{ "AES(AESNI) GCM(ASM) 128", "__driver-gcm-aes-aesni", 16, 16, 0 },
+	{ "AES(AESNI) GCM(ASM) 192", "__driver-gcm-aes-aesni", 24, 16, 0 },
+	{ "AES(AESNI) GCM(ASM) 256", "__driver-gcm-aes-aesni", 32, 16, 0 },
 	{ "AES(AESNI) GCM(ASM-RFC) 128", "rfc4106-gcm-aesni", 20, 12, 0 },
 	{ "AES(AESNI) GCM(ASM-RFC) 192", "rfc4106-gcm-aesni", 28, 12, 0 },
 	{ "AES(AESNI) GCM(ASM-RFC) 256", "rfc4106-gcm-aesni", 36, 12, 0 },
-	{ "AES(AESNI) GCM(G) 128", "gcm(__driver-aes-aesni)", 16, 16, 0 },
-	{ "AES(AESNI) GCM(G) 192", "gcm(__driver-aes-aesni)", 24, 16, 0 },
-	{ "AES(AESNI) GCM(G) 256", "gcm(__driver-aes-aesni)", 32, 16, 0 },
+	{ "AES(AESNI) GCM(G) 128", "gcm(aes-aesni)", 16, 16, 0 },
+	{ "AES(AESNI) GCM(G) 192", "gcm(aes-aesni)", 24, 16, 0 },
+	{ "AES(AESNI) GCM(G) 256", "gcm(aes-aesni)", 32, 16, 0 },
 	{ "AES(G) CCM(G) 128", "ccm(aes-generic)", 16, 16, 1 },
 	{ "AES(G) CCM(G) 192", "ccm(aes-generic)", 24, 16, 1 },
 	{ "AES(G) CCM(G) 256", "ccm(aes-generic)", 32, 16, 1 },
-	{ "AES(AESNI) CCM(G) 128", "ccm(__driver-aes-aesni)", 16, 16, 0 },
-	{ "AES(AESNI) CCM(G) 192", "ccm(__driver-aes-aesni)", 24, 16, 0 },
-	{ "AES(AESNI) CCM(G) 256", "ccm(__driver-aes-aesni)", 32, 16, 0 },
+	{ "AES(AESNI) CCM(G) 128", "ccm(aes-aesni)", 16, 16, 1 },
+	{ "AES(AESNI) CCM(G) 192", "ccm(aes-aesni)", 24, 16, 1 },
+	{ "AES(AESNI) CCM(G) 256", "ccm(aes-aesni)", 32, 16, 1 },
 };
 
 static struct cp_test cp_aead_testdef[(2 * (ARRAY_SIZE(testcases)))];
