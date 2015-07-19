@@ -329,12 +329,18 @@ static void usage(void)
 	fprintf(stderr, "Usage:\n");
 	fprintf(stderr, "\t-m --aligned\tIf set, AEAD/sym cipher buffers are aligned at PAGE_SIZE\n");
 	fprintf(stderr, "\t-e --enc\tIf set, encrypt otherwise decrypt\n");
+	fprintf(stderr, "\t-o --operation\tAsymmetric operation:\n");
+	fprintf(stderr, "\t\t0 for encryption\n");
+	fprintf(stderr, "\t\t1 for decryption\n");
+	fprintf(stderr, "\t\t2 for signing\n");
+	fprintf(stderr, "\t\t2 for verification\n");
 	fprintf(stderr, "\t-c --cipher\tKernel Crypto API cipher name to be used for operation\n");
 	fprintf(stderr, "\t-p --pt\t\tPlaintext used during encryption / message digest\n");
 	fprintf(stderr, "\t-q --ct\t\tCiphertext used during decryption\n");
 	fprintf(stderr, "\t-i --iv\t\tIV used for operation\n");
 	fprintf(stderr, "\t-n --nonce\tNonce used for CCM operation\n");
 	fprintf(stderr, "\t-k --key\tSymmetric cipher key / HMAC key\n");
+	fprintf(stderr, "\t-j --asymkey\tAsymmetric cipher key in BER format\n");
 	fprintf(stderr, "\t-a --assoc\tAssociated data used for AEAD cipher\n");
 	fprintf(stderr, "\t-l --taglen\tTag length to be produced with AEAD encryption\n");
 	fprintf(stderr, "\t-t --tag\tTag to be used for decryption\n");
@@ -352,7 +358,8 @@ static void usage(void)
 enum type {
 	SYM = 1,
 	AEAD,
-	HASH
+	HASH,
+	ASYM
 };
 
 struct kcapi_cavs {
@@ -374,6 +381,9 @@ struct kcapi_cavs {
 	unsigned char *tag;
 	size_t taglen;
 	size_t outlen;
+
+	/* asym  key */
+	unsigned char *asymkey;
 };
 
 /*
@@ -725,7 +735,6 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 	int ret = -ENOMEM;
 	unsigned char *newiv = NULL;
 	size_t newivlen = 0;
-	int errsv = 0;
 	struct iovec iov;
 	struct iovec outiov[16];
 	unsigned int i = 0;
@@ -812,6 +821,8 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 	}
 
 	for(i = 0; i < loops; i++) {
+		int errsv = 0;
+
 		iov.iov_base = cavs_test->assoc;
 		iov.iov_len = cavs_test->assoclen;
 		if (cavs_test->enc) {
@@ -1145,6 +1156,110 @@ static int cavs_hash_stream(struct kcapi_cavs *cavs_test, unsigned int loops)
 	return 0;
 }
 
+/*
+ * Encryption command line:
+ * $ ./kcapi -x 4 -o 0 -c "rsa" -j 3082020D02820100DB101AC2A3F1DCFF136BED44DFF0026D13C788DA706B54F1E827DCC30F996AFAC667FF1D1E3C1DC1B55F6CC0B2073A6D41E42599ACFCD20F02D3D154061A5177BDB6BFEAA75C06A95D698445D7F505BA47F01BD72B24ECCB9B1B108D81A0BEB18C33E436B843EB192A818DDE810A9948B6F6BCCD49343A8F2694E328821A7C8F599F45E85D1A4576045605A1D01B8C776DAF53FA71E267E09AFE03A985D2C9AABA2ABCF4A008F51398135DF0D933342A61C38955F0AE1A9C22EE19058D32FEEC9C84BAB7F96C3A4F07FC45EB12E57BFD55E62969D1C2E8B97859F67910C64EEB6A5EB99AC7C45B63DAA33F5E927A815ED6B0E2628F7426C20CD39A1747E68EAB0203010001028201005241F4DA7BB75955CAD42F0F3ACBA40D936CCC9DC1B2FBFDAE4031AC69522192B327DFEAEE2C82BBF74032D514C49412ECB81FCA59E3C178F385D847A5D7021A6579970D24F4F0676E752DBF103DA87DEF7F60E4E60582895DDFC6D26C0791339842F002002538C585698A7D2F956C439AB881E2D00735AA0541C91EAFE4043B19B873A2AC4B1E6648D8721FACF6CBBC9009CAEC0CDCF92CD7EBAEA3A447D7332F8ACABC5EF077E4979897C710917D2AA6FF468397DEE9E217030614E2D7B11D77AF51275B5E69B881E611C54323810462FFE946B8D844DBA5CC315434CE3E82D6BF7A0B64216D887E5B45121E638D49A71DD91E06CDE8BA2C8C6932EABE6071 -p 54859b342c49ea2a
+ * b29776b4ae3e383c7e641fcca27ff6becf49bc48d36c8f0a0ec173bd7b5579360ea18788b92c90a6535ee9efc4e24dddf7a669823f56a47bfb62e0aeb8d304b3ac5a152ae3199b039a0b41da64ec0a69fcf21092f3c1bf847ffd2caec8b5f64170c547038af8ff6f3fd26f09b422f330bea985cb9c8df98feb3291a225848ff5dcc7069c2de5112c09098709a9f6337390f160f265dd30a566ce627bd0f82d3d198277e30a5f752f8eb1e5e891351b3b33b76692d1f28e6fe5750cad36fb4ed06661bd49fef41aa22b49fe034c74478d9a66b249464d77ea334d6b3cb4494ac67d3db5b9564115670f943c936527e0215d59c362d5a6da3826225e341c94af98
+ *
+ * Decryption command line:
+ * $ ./kcapi -x 4 -o 1 -c "rsa" -j 3082020D02820100DB101AC2A3F1DCFF136BED44DFF0026D13C788DA706B54F1E827DCC30F996AFAC667FF1D1E3C1DC1B55F6CC0B2073A6D41E42599ACFCD20F02D3D154061A5177BDB6BFEAA75C06A95D698445D7F505BA47F01BD72B24ECCB9B1B108D81A0BEB18C33E436B843EB192A818DDE810A9948B6F6BCCD49343A8F2694E328821A7C8F599F45E85D1A4576045605A1D01B8C776DAF53FA71E267E09AFE03A985D2C9AABA2ABCF4A008F51398135DF0D933342A61C38955F0AE1A9C22EE19058D32FEEC9C84BAB7F96C3A4F07FC45EB12E57BFD55E62969D1C2E8B97859F67910C64EEB6A5EB99AC7C45B63DAA33F5E927A815ED6B0E2628F7426C20CD39A1747E68EAB0203010001028201005241F4DA7BB75955CAD42F0F3ACBA40D936CCC9DC1B2FBFDAE4031AC69522192B327DFEAEE2C82BBF74032D514C49412ECB81FCA59E3C178F385D847A5D7021A6579970D24F4F0676E752DBF103DA87DEF7F60E4E60582895DDFC6D26C0791339842F002002538C585698A7D2F956C439AB881E2D00735AA0541C91EAFE4043B19B873A2AC4B1E6648D8721FACF6CBBC9009CAEC0CDCF92CD7EBAEA3A447D7332F8ACABC5EF077E4979897C710917D2AA6FF468397DEE9E217030614E2D7B11D77AF51275B5E69B881E611C54323810462FFE946B8D844DBA5CC315434CE3E82D6BF7A0B64216D887E5B45121E638D49A71DD91E06CDE8BA2C8C6932EABE6071 -p b29776b4ae3e383c7e641fcca27ff6becf49bc48d36c8f0a0ec173bd7b5579360ea18788b92c90a6535ee9efc4e24dddf7a669823f56a47bfb62e0aeb8d304b3ac5a152ae3199b039a0b41da64ec0a69fcf21092f3c1bf847ffd2caec8b5f64170c547038af8ff6f3fd26f09b422f330bea985cb9c8df98feb3291a225848ff5dcc7069c2de5112c09098709a9f6337390f160f265dd30a566ce627bd0f82d3d198277e30a5f752f8eb1e5e891351b3b33b76692d1f28e6fe5750cad36fb4ed06661bd49fef41aa22b49fe034c74478d9a66b249464d77ea334d6b3cb4494ac67d3db5b9564115670f943c936527e0215d59c362d5a6da3826225e341c94af98
+ * 54859b342c49ea2a
+ */
+static int asym(struct kcapi_cavs *cavs_test, unsigned int loops,
+		int splice)
+{
+	struct kcapi_handle handle;
+	unsigned char *outbuf = NULL;
+	size_t outbuflen = 0;
+	char *outhex = NULL;
+	int ret = -EINVAL;
+	unsigned int i = 0;
+
+	if (!cavs_test->ptlen)
+		return -EINVAL;
+	/* TODO */
+	outbuflen = 256;
+
+	if (cavs_test->aligned) {
+		if (posix_memalign((void *)&outbuf, PAGE_SIZE, outbuflen))
+			goto out;
+		memset(outbuf, 0, outbuflen);
+	} else {
+		outbuf = calloc(1, outbuflen);
+		if (!outbuf)
+			goto out;
+	}
+
+	if (kcapi_akcipher_init(&handle, cavs_test->cipher, 0)) {
+		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
+		goto out;
+	}
+
+	/* Set key */
+	if (!cavs_test->keylen || !cavs_test->asymkey ||
+	    kcapi_akcipher_setkey(&handle, cavs_test->asymkey,
+				cavs_test->keylen)) {
+		printf("Asymmetric cipher setkey failed\n");
+		goto out;
+	}
+
+	for(i = 0; i < loops; i++) {
+		int errsv = 0;
+
+		if (cavs_test->enc == 0) {
+			ret = kcapi_akcipher_encrypt(&handle,
+					cavs_test->pt, cavs_test->ptlen,
+					outbuf, outbuflen,
+					splice);
+		} else if (cavs_test->enc == 1) {
+			ret = kcapi_akcipher_decrypt(&handle,
+					cavs_test->pt, cavs_test->ptlen,
+					outbuf, outbuflen,
+					splice);
+		} else if (cavs_test->enc == 2) {
+			ret = kcapi_akcipher_sign(&handle,
+					cavs_test->pt, cavs_test->ptlen,
+					outbuf, outbuflen,
+					splice);
+		} else if (cavs_test->enc == 3) {
+			ret = kcapi_akcipher_sign(&handle,
+					cavs_test->pt, cavs_test->ptlen,
+					outbuf, outbuflen,
+					splice);
+		} else
+			ret = -EINVAL;
+
+		errsv = errno;
+		if (0 > ret && EBADMSG != errsv) {
+			printf("Cipher operation of buffer failed: %d %d\n",
+			       errno, ret);
+			goto out;
+		}
+
+		if (EBADMSG == errsv) {
+			printf("EBADMSG\n");
+		} else {
+
+			outhex = calloc(1, ret * 2 + 1);
+			if (!outhex) {
+				ret = -ENOMEM;
+				goto out;
+			}
+			bin2hex(outbuf, outbuflen, outhex, ret * 2 + 1, 0);
+			printf("%s\n", outhex);
+			free(outhex);
+		}
+	}
+
+	ret = 0;
+
+out:
+	kcapi_akcipher_destroy(&handle);
+	if (outbuf)
+		free(outbuf);
+	return ret;
+}
+
 int main(int argc, char *argv[])
 {
 	int c = 0;
@@ -1181,9 +1296,11 @@ int main(int argc, char *argv[])
 			{"execloops", 0, 0, 'd'},
 			{"vmsplice", 0, 0, 'v'},
 			{"aligned", 0, 0, 'm'},
+			{"asymkey", 0, 0, 'j'},
+			{"operation", 0, 0, 'o'},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "ec:p:q:i:mn:k:a:l:t:x:zsyd:v", opts, &opt_index);
+		c = getopt_long(argc, argv, "ec:p:q:i:mn:k:a:l:t:x:zsyd:vj:o:", opts, &opt_index);
 		if(-1 == c)
 			break;
 		switch(c)
@@ -1245,6 +1362,14 @@ int main(int argc, char *argv[])
 					goto out;
 				cavs_test.keylen = len / 2;
 				break;
+			case 'j':
+				len = strlen(optarg);
+				ret = hex2bin_m(optarg, len,
+						&cavs_test.asymkey, len / 2);
+				if (ret)
+					goto out;
+				cavs_test.keylen = len / 2;
+				break;
 			case 'a':
 				len = strlen(optarg);
 				ret = hex2bin_m(optarg, len,
@@ -1278,6 +1403,13 @@ int main(int argc, char *argv[])
 			case 'x':
 				cavs_test.type = atoi(optarg);
 				break;
+			case 'o':
+				cavs_test.enc = atoi(optarg);
+				if (cavs_test.enc < 0 || cavs_test.enc > 3) {
+					usage();
+					goto out;
+				}
+				break;
 			case 'z':
 				rc = auxiliary_tests();
 				goto out;
@@ -1303,14 +1435,12 @@ int main(int argc, char *argv[])
 
 	if (large) {
 		rc = cavs_aead_large(stream, loops, splice);
-	}
-	else if (SYM == cavs_test.type) {
+	} else if (SYM == cavs_test.type) {
 		if (stream)
 			rc = cavs_sym_stream(&cavs_test, loops);
 		else
 			rc = cavs_sym(&cavs_test, loops, splice);
-	}
-	else if (AEAD == cavs_test.type) {
+	} else if (AEAD == cavs_test.type) {
 		if (stream)
 			rc = cavs_aead_stream(&cavs_test, loops);
 		else
@@ -1320,6 +1450,8 @@ int main(int argc, char *argv[])
 			rc = cavs_hash_stream(&cavs_test, loops);
 		else
 			rc = cavs_hash(&cavs_test, loops);
+	} else if (ASYM == cavs_test.type) {
+		rc = asym(&cavs_test, loops, splice);
 	} else
 		goto out;
 	if (rc)
@@ -1335,6 +1467,8 @@ out:
 		free(cavs_test.iv);
 	if (cavs_test.key)
 		free(cavs_test.key);
+	if (cavs_test.asymkey)
+		free(cavs_test.asymkey);
 	if (cavs_test.assoc)
 		free(cavs_test.assoc);
 	if (cavs_test.tag)

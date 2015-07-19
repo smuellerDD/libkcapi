@@ -1002,4 +1002,35 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
  */
 void kcapi_memset_secure(void *s, int c, size_t n);
 
+
+int kcapi_akcipher_init(struct kcapi_handle *handle, const char *ciphername,
+			unsigned int flags);
+void kcapi_akcipher_destroy(struct kcapi_handle *handle);
+int kcapi_akcipher_setkey(struct kcapi_handle *handle,
+			  const unsigned char *key, size_t keylen);
+ssize_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
+			       const unsigned char *in, size_t inlen,
+			       unsigned char *out, size_t outlen, int access);
+ssize_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
+			       const unsigned char *in, size_t inlen,
+			       unsigned char *out, size_t outlen, int access);
+ssize_t kcapi_akcipher_sign(struct kcapi_handle *handle,
+			    const unsigned char *in, size_t inlen,
+			    unsigned char *out, size_t outlen, int access);
+ssize_t kcapi_akcipher_verify(struct kcapi_handle *handle,
+			      const unsigned char *in, size_t inlen,
+			      unsigned char *out, size_t outlen, int access);
+ssize_t kcapi_akcipher_stream_init_enc(struct kcapi_handle *handle,
+				     struct iovec *iov, size_t iovlen);
+ssize_t kcapi_akcipher_stream_init_dec(struct kcapi_handle *handle,
+				     struct iovec *iov, size_t iovlen);
+ssize_t kcapi_akcipher_stream_init_sign(struct kcapi_handle *handle,
+					struct iovec *iov, size_t iovlen);
+ssize_t kcapi_akcipher_stream_init_verify(struct kcapi_handle *handle,
+					  struct iovec *iov, size_t iovlen);
+ssize_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
+				   struct iovec *iov, size_t iovlen);
+ssize_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
+			       struct iovec *iov, size_t iovlen);
+
 #endif /* _KCAPI_H */

@@ -61,7 +61,7 @@
 		      * require consumer to be updated (as long as this number
 		      * is zero, the API is not considered stable and can
 		      * change without a bump of the major version) */
-#define MINVERSION 8 /* API compatible, ABI may change, functional
+#define MINVERSION 9 /* API compatible, ABI may change, functional
 		      * enhancements only, consumer can be left unchanged if
 		      * enhancements are not considered */
 #define PATCHLEVEL 0 /* API / ABI compatible, no functional changes, no
@@ -73,6 +73,13 @@
 #endif
 #ifndef ALG_SET_AEAD_AUTHSIZE
 #define ALG_SET_AEAD_AUTHSIZE		5
+#endif
+
+#ifndef ALG_OP_SIGN
+#define ALG_OP_SIGN			2
+#endif
+#ifndef ALG_OP_VERIFY
+#define ALG_OP_VERIFY			3
 #endif
 
 /* remove once in socket.h */
@@ -207,7 +214,8 @@ static inline ssize_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 
 static inline ssize_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 						   const unsigned char *in,
-						   size_t inlen)
+						   size_t inlen,
+						   unsigned int flags)
 {
 	struct iovec iov;
 	size_t processed = 0;
@@ -218,11 +226,11 @@ static inline ssize_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 		iov.iov_base = (void*)(uintptr_t)(in + processed);
 		iov.iov_len = inlen;
 		ret = vmsplice(handle->pipes[1], &iov, 1,
-			       SPLICE_F_GIFT|SPLICE_F_MORE);
+			       SPLICE_F_GIFT|flags);
 		if (0 > ret)
 			return ret;
 		ret = splice(handle->pipes[0], NULL, handle->opfd, NULL, ret,
-			     SPLICE_F_MORE);
+			     flags);
 		if (0 > ret)
 			return ret;
 
@@ -694,6 +702,11 @@ static ssize_t _kcapi_cipher_crypt(struct kcapi_handle *handle,
 	struct iovec iov;
 	ssize_t ret = 0;
 
+	if (!in || !inlen || !out || !outlen) {
+		fprintf(stderr,
+			"Symmetric Encryption: Empty plaintext or ciphertext buffer provided\n");
+		return -EINVAL;
+	}
 
 	iov.iov_base = (void*)(uintptr_t)in;
 	/*
@@ -712,7 +725,7 @@ static ssize_t _kcapi_cipher_crypt(struct kcapi_handle *handle,
 		ret = _kcapi_common_send_meta(handle, NULL, 0, enc, 0);
 		if (0 > ret)
 			return ret;
-		ret = _kcapi_common_vmsplice_chunk(handle, in, inlen);
+		ret = _kcapi_common_vmsplice_chunk(handle, in, inlen, 0);
 		if (0 > ret)
 			return ret;
 	}
@@ -738,12 +751,6 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 {
 	unsigned int bs = handle->info.blocksize;
 
-	if (!in || !inlen || !out || !outlen) {
-		fprintf(stderr,
-			"Symmetric Encryption: Empty plaintext or ciphertext buffer provided\n");
-		return -EINVAL;
-	}
-
 	/* require properly sized output data size */
 	if (outlen < ((inlen + bs - 1) / bs * bs)) {
 		fprintf(stderr,
@@ -762,12 +769,6 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 			     const unsigned char *iv,
 			     unsigned char *out, size_t outlen, int access)
 {
-	if (!in || !inlen || !out || !outlen) {
-		fprintf(stderr,
-			"Symmetric Decryption: Empty plaintext or ciphertext buffer provided\n");
-		return -EINVAL;
-	}
-
 	/* require properly sized output data size */
 	if (inlen % handle->info.blocksize) {
 		fprintf(stderr,
@@ -1145,7 +1146,8 @@ static inline ssize_t _kcapi_md_update(struct kcapi_handle *handle,
 	if(len == 0 /* < (1<<15) */)
 		r = send(handle->opfd, buffer, len, MSG_MORE);
 	else
-		r = _kcapi_common_vmsplice_chunk(handle, buffer, len);
+		r = _kcapi_common_vmsplice_chunk(handle, buffer, len,
+						 SPLICE_F_MORE);
 
 	if (r < 0 || (size_t)r < len)
 		return -EIO;
@@ -1242,4 +1244,98 @@ ssize_t kcapi_rng_generate(struct kcapi_handle *handle,
 	}
 
 	return out;
+}
+
+int kcapi_akcipher_init(struct kcapi_handle *handle, const char *ciphername,
+			unsigned int flags)
+{
+	return _kcapi_handle_init(handle, "akcipher", ciphername, flags);
+}
+
+void kcapi_akcipher_destroy(struct kcapi_handle *handle)
+{
+	_kcapi_handle_destroy(handle);
+}
+
+int kcapi_akcipher_setkey(struct kcapi_handle *handle,
+			  const unsigned char *key, size_t keylen)
+{
+	return _kcapi_common_setkey(handle, key, keylen);
+}
+
+ssize_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
+			       const unsigned char *in, size_t inlen,
+			       unsigned char *out, size_t outlen, int access)
+{
+	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
+				   ALG_OP_ENCRYPT);
+}
+
+ssize_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
+			       const unsigned char *in, size_t inlen,
+			       unsigned char *out, size_t outlen, int access)
+{
+	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
+				   ALG_OP_DECRYPT);
+}
+
+ssize_t kcapi_akcipher_sign(struct kcapi_handle *handle,
+			    const unsigned char *in, size_t inlen,
+			    unsigned char *out, size_t outlen, int access)
+{
+	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
+				   ALG_OP_SIGN);
+}
+
+ssize_t kcapi_akcipher_verify(struct kcapi_handle *handle,
+			      const unsigned char *in, size_t inlen,
+			      unsigned char *out, size_t outlen, int access)
+{
+	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
+				   ALG_OP_VERIFY);
+}
+
+ssize_t kcapi_akcipher_stream_init_enc(struct kcapi_handle *handle,
+				     struct iovec *iov, size_t iovlen)
+{
+	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_ENCRYPT,
+				       MSG_MORE);
+}
+
+ssize_t kcapi_akcipher_stream_init_dec(struct kcapi_handle *handle,
+				     struct iovec *iov, size_t iovlen)
+{
+	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_DECRYPT,
+				       MSG_MORE);
+}
+
+ssize_t kcapi_akcipher_stream_init_sign(struct kcapi_handle *handle,
+					struct iovec *iov, size_t iovlen)
+{
+	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_SIGN,
+				       MSG_MORE);
+}
+
+ssize_t kcapi_akcipher_stream_init_verify(struct kcapi_handle *handle,
+					  struct iovec *iov, size_t iovlen)
+{
+	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_VERIFY,
+				       MSG_MORE);
+}
+
+ssize_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
+				   struct iovec *iov, size_t iovlen)
+{
+	return _kcapi_common_send_data(handle, iov, iovlen, MSG_MORE);
+}
+
+ssize_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
+			       struct iovec *iov, size_t iovlen)
+{
+	if (!iov || !iovlen) {
+		fprintf(stderr,
+			"Symmetric operation: No buffer for output data provided\n");
+		return -EINVAL;
+	}
+	return _kcapi_common_recv_data(handle, iov, iovlen);
 }
