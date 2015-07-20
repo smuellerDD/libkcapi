@@ -1177,8 +1177,7 @@ static int asym(struct kcapi_cavs *cavs_test, unsigned int loops,
 
 	if (!cavs_test->ptlen)
 		return -EINVAL;
-	/* TODO */
-	outbuflen = 256;
+	outbuflen = 2048;
 
 	if (cavs_test->aligned) {
 		if (posix_memalign((void *)&outbuf, PAGE_SIZE, outbuflen))
