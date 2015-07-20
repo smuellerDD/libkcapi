@@ -287,6 +287,13 @@
    </para>
   </sect1>
 
+  <sect1><title>Asymmetric Cipher API</title>
+   <para>
+    The asymmetric cipher API provides access to the raw asymmetric operations
+    (i.e. modular exponentiation).
+   </para>
+  </sect1>
+
   <sect1><title>Zero Copy</title>
    <para>
     When using the one-shot API for symmetric ciphers, AEAD ciphers,
@@ -359,7 +366,13 @@
     <listitem>
      <para>
       kcapi_aead_* kernel interface added to cryptodev-2.6 tree and should be
-      integrated into kernel version 4.1.
+      usable with kernel version 4.2.
+     </para>
+    </listitem>
+    <listitem>
+     <para>
+      kcapi_akcipher_* kernel interface is discussed for inclusion to the
+      cryptodev-2.6 kernel tree.
      </para>
     </listitem>
    </itemizedlist>
@@ -400,16 +413,21 @@
       <para>
        CONFIG_CRYPTO_USER_API_AEAD enables the "aead" interface to use AEAD
        cipher algorithms. This support is currently discussed on LKML and
-       therefore not present in the mainline kernel. The patches in the
-       kernel-patch/ directory add that support.
+       therefore not present in the mainline kernel.
       </para>
      </listitem>
      <listitem>
       <para>
        CONFIG_CRYPTO_USER_API_RNG enables the "rng" interface to use the
-       random number generators. This support is currently discussed on LKML
-       and therefore not present in the mainline kernel. The patches in the
-       kernel-patch/ directory add that support.
+       random number generators.
+      </para>
+     </listitem>
+
+     <listitem>
+      <para>
+       CONFIG_CRYPTO_USER_API_AKCIPHER enables the "akcipher" interface to use
+       the asymmetric ciphers. This support is currently discussed on LKML
+       and therefore not present in the mainline kernel.
       </para>
      </listitem>
     </itemizedlist>
@@ -431,22 +449,6 @@
      3.19-rc1 or the cryptodev-2.6 kernel tree is used:
      https://git.kernel.org/cgit/linux/kernel/git/herbert/cryptodev-2.6.git/commit/?id=25fb8638e919bc7431a73f2fb4a9713818ae2c9d
     </para>
-
-    <para>
-     The official release for the RNG interface which is imported into the mainline kernel with 3.20-rc1 is available with the patches
-     provided with
-     https://git.kernel.org/cgit/linux/kernel/git/herbert/cryptodev-2.6.git/commit/?id=2f3755381da8d592656f1ef6868fa9f96c450ba9
-     and
-     https://git.kernel.org/cgit/linux/kernel/git/herbert/cryptodev-2.6.git/commit/?id=5afdfd22e6ba2260129a2a7113ab0916339c4205
-    </para>
-
-    <para>
-     The official release for the AEAD interface should be imported into the mainline kernel with 4.1-rc1 is available with the patches
-     provided with
-     https://git.kernel.org/cgit/linux/kernel/git/herbert/cryptodev-2.6.git/commit/?id=44cac4fce9b820c37a8792df52a0e4ce33201949
-     and
-     https://git.kernel.org/cgit/linux/kernel/git/herbert/cryptodev-2.6.git/commit/?id=400c40cf78da00c16e561a3a253ca272455c42ef
-    </para>
    </sect2>
   </sect1>
 
@@ -464,6 +466,7 @@
 !Pkcapi.h kcapi_versionstring
 !Pkcapi.h kcapi_version
 !Pkcapi.h kcapi_pad_iv
+!Pkcapi.h kcapi_memset_secure
    </sect1>
    <sect1><title>Symmetric Cipher API - Generic</title>
     <para>
@@ -538,6 +541,16 @@
 !Fkcapi.h kcapi_rng_destroy
 !Fkcapi.h kcapi_rng_seed
 !Fkcapi.h kcapi_rng_generate
-  </sect1>
+   </sect1>
+   <sect1><title>Asymmetric Cipher API</title>
+!Pkcapi.h Asymmetric Cipher API
+!Fkcapi.h kcapi_akcipher_init
+!Fkcapi.h kcapi_akcipher_destroy
+!Fkcapi.h kcapi_akcipher_setkey
+!Fkcapi.h kcapi_akcipher_encrypt
+!Fkcapi.h kcapi_akcipher_decrypt
+!Fkcapi.h kcapi_akcipher_sign
+!Fkcapi.h kcapi_akcipher_verify
+   </sect1>
  </chapter>
 </book>

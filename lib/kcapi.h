@@ -997,40 +997,177 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
  * @s: see memset(3)
  * @c: see memset(3)
  * @n: see memset(3)
- * 
+ *
  * The parameters, he logic and the return code is identical to memset(3).
  */
 void kcapi_memset_secure(void *s, int c, size_t n);
 
+/**
+ * DOC: Asymmetric Cipher API
+ *
+ * API function calls used to invoke symmetric ciphers.
+ */
 
+/**
+ * kcapi_akcipher_init() - initialize cipher handle
+ * @handle: cipher handle filled during the call - output
+ * @ciphername: kernel crypto API cipher name as specified in
+ *	       /proc/crypto - input
+ * @flags: flags specifying the type of cipher handle
+ *
+ * This function provides the initialization of an asymmetric cipher handle and
+ * establishes the connection to the kernel.
+ *
+ * Return: 0 upon success; ENOENT - algorithm not available;
+ *	   -EOPNOTSUPP - AF_ALG family not available;
+ *	   -EINVAL - accept syscall failed
+ */
 int kcapi_akcipher_init(struct kcapi_handle *handle, const char *ciphername,
 			unsigned int flags);
+
+/**
+ * kcapi_akcipher_destroy() - close the cipher handle and release resources
+ * @handle: cipher handle to release - input
+ */
 void kcapi_akcipher_destroy(struct kcapi_handle *handle);
+
+/**
+ * kcapi_akcipher_setkey() - set the key for the cipher handle
+ * @handle: cipher handle - input
+ * @key: key buffer in BER format - input
+ * @keylen: length of key buffer - input
+ *
+ * With this function, the caller sets the key for subsequent cipher operations.
+ *
+ * The key must be in BER format,
+ *
+ * After the caller provided the key, the caller may securely destroy the key
+ * as it is now maintained by the kernel.
+ *
+ * Return: 0 upon success;
+ *	   < 0 in case of error
+ */
 int kcapi_akcipher_setkey(struct kcapi_handle *handle,
 			  const unsigned char *key, size_t keylen);
+
+/**
+ * kcapi_akcipher_encrypt() - encrypt data
+ * @handle: cipher handle - input
+ * @in: plaintext data buffer - input
+ * @inlen: length of in buffer - input
+ * @out: ciphertext data buffer - output
+ * @outlen: length of out buffer - input
+ * @access: kernel access type (KCAPI_ACCESS_HEURISTIC - use internal heuristic
+ *	    for  fastest kernel access; KCAPI_ACCESS_VMSPLICE - use vmsplice
+ *	    access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * It is perfectly legal to use the same buffer as the plaintext and
+ * ciphertext pointers. That would mean that after the encryption operation,
+ * the plaintext is overwritten with the ciphertext.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
+ * the vmsplice call may not send all data to the kernel.
+ *
+ * If the output size is insufficiently large, -EINVAL is returned. The
+ * output buffer must be at least as large as the modululs of the uses key.
+ *
+ * Return: number of bytes returned by the encryption operation upon success;
+ *	   < 0 in case of error with errno set
+ */
 ssize_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
 			       const unsigned char *in, size_t inlen,
 			       unsigned char *out, size_t outlen, int access);
+
+/**
+ * kcapi_akcipher_decrypt() - decrypt data
+ * @handle: cipher handle - input
+ * @in: ciphertext data buffer - input
+ * @inlen: length of in buffer - input
+ * @out: plaintext data buffer - output
+ * @outlen: length of out buffer - input
+ * @access: kernel access type (KCAPI_ACCESS_HEURISTIC - use internal heuristic
+ *	    for  fastest kernel access; KCAPI_ACCESS_VMSPLICE - use vmsplice
+ *	    access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * It is perfectly legal to use the same buffer as the plaintext and
+ * ciphertext pointers. That would mean that after the decryption operation,
+ * the ciphertext is overwritten with the plaintext.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
+ * the vmsplice call may not send all data to the kernel.
+ *
+ * If the output size is insufficiently large, -EINVAL is returned. The
+ * output buffer must be at least as large as the modululs of the uses key.
+ *
+ * Return: number of bytes returned by the decryption operation upon success;
+ *	   < 0 in case of error with errno set
+ */
 ssize_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
 			       const unsigned char *in, size_t inlen,
 			       unsigned char *out, size_t outlen, int access);
+
+/**
+ * kcapi_akcipher_sign() - signature generation
+ * @handle: cipher handle - input
+ * @in: message data buffer - input
+ * @inlen: length of in buffer - input
+ * @out: signature data buffer - output
+ * @outlen: length of out buffer - input
+ * @access: kernel access type (KCAPI_ACCESS_HEURISTIC - use internal heuristic
+ *	    for  fastest kernel access; KCAPI_ACCESS_VMSPLICE - use vmsplice
+ *	    access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * It is perfectly legal to use the same buffer as the message and
+ * signature pointers. That would mean that after the signature generation
+ * operation, the message is overwritten with the signature.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
+ * the vmsplice call may not send all data to the kernel.
+ *
+ * If the output size is insufficiently large, -EINVAL is returned. The
+ * output buffer must be at least as large as the modululs of the uses key.
+ *
+ * Return: number of bytes returned by the signature gen operation upon success;
+ *	   < 0 in case of error with errno set
+ */
 ssize_t kcapi_akcipher_sign(struct kcapi_handle *handle,
 			    const unsigned char *in, size_t inlen,
 			    unsigned char *out, size_t outlen, int access);
+
+/**
+ * kcapi_akcipher_verify() - signature verification
+ * @handle: cipher handle - input
+ * @in: message data buffer - input
+ * @inlen: length of in buffer - input
+ * @out: signature data buffer - output
+ * @outlen: length of out buffer - input
+ * @access: kernel access type (KCAPI_ACCESS_HEURISTIC - use internal heuristic
+ *	    for  fastest kernel access; KCAPI_ACCESS_VMSPLICE - use vmsplice
+ *	    access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * It is perfectly legal to use the same buffer as the message and
+ * signature pointers. That would mean that after the signature generation
+ * operation, the message is overwritten with the signature.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
+ * the vmsplice call may not send all data to the kernel.
+ *
+ * If the output size is insufficiently large, -EINVAL is returned. The
+ * output buffer must be at least as large as the modululs of the uses key.
+ *
+ * To catch signature verification errors, the errno of this call shall be
+ * checked for EBADMSG. If this function returns < 0 and errno is set to
+ * EBADMSG, the verification of the signature failed.
+ *
+ * Return: number of bytes returned by the signature ver operation upon success;
+ *	   < 0 in case of error with errno set
+ */
 ssize_t kcapi_akcipher_verify(struct kcapi_handle *handle,
 			      const unsigned char *in, size_t inlen,
 			      unsigned char *out, size_t outlen, int access);
-ssize_t kcapi_akcipher_stream_init_enc(struct kcapi_handle *handle,
-				     struct iovec *iov, size_t iovlen);
-ssize_t kcapi_akcipher_stream_init_dec(struct kcapi_handle *handle,
-				     struct iovec *iov, size_t iovlen);
-ssize_t kcapi_akcipher_stream_init_sign(struct kcapi_handle *handle,
-					struct iovec *iov, size_t iovlen);
-ssize_t kcapi_akcipher_stream_init_verify(struct kcapi_handle *handle,
-					  struct iovec *iov, size_t iovlen);
-ssize_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
-				   struct iovec *iov, size_t iovlen);
-ssize_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
-			       struct iovec *iov, size_t iovlen);
 
 #endif /* _KCAPI_H */
