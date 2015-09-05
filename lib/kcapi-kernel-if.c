@@ -258,10 +258,17 @@ static inline ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 
 	ret = recvmsg(handle->opfd, &msg, 0);
 	errsv = errno;
+
+#if 0
+	/*
+	 * Truncated message digests can be identified with this check.
+	 */
 	if (msg.msg_flags & MSG_TRUNC) {
 		fprintf(stderr, "recvmsg: processed data was truncated by kernel (only %lu bytes processed)\n", (unsigned long)ret);
 		return -EMSGSIZE;
 	}
+#endif
+
 	return (ret >= 0) ? ret : -errsv;
 }
 
@@ -900,15 +907,8 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   const unsigned char *iv,
 			   unsigned char *out, size_t outlen, int access)
 {
-	struct iovec iov[3];
+	struct iovec iov;
 	ssize_t ret = 0;
-	int i = 0;
-	unsigned char *assoc = NULL;
-	size_t assoclen = 0;
-	unsigned char *data = NULL;
-	size_t datalen = 0;
-	unsigned char *tag = NULL;
-	size_t taglen = 0;
 
 	/* require properly sized output data size */
 	if (outlen < inlen) {
@@ -920,36 +920,20 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 
 	handle->cipher.iv = iv;
 
-	kcapi_aead_getdata(handle, in, inlen,
-			   &assoc, &assoclen, &data, &datalen, &tag, &taglen);
-	if (assoclen) {
-		iov[i].iov_base = (void *)assoc;
-		iov[i].iov_len = assoclen;
-		i++;
-	}
-	if (datalen) {
-		iov[i].iov_base = (void *)data;
-		iov[i].iov_len = datalen;
-		i++;
-	}
-	if (taglen) {
-		iov[i].iov_base = (void *)tag;
-		iov[i].iov_len = taglen;
-		i++;
-	}
-
+	iov.iov_base = in;
+	iov.iov_len = inlen;
 	if (access == KCAPI_ACCESS_HEURISTIC ||
 	    access == KCAPI_ACCESS_SENDMSG) {
-		ret = _kcapi_common_send_meta(handle, &iov[0], i,
+		ret = _kcapi_common_send_meta(handle, &iov, 1,
 					      ALG_OP_ENCRYPT, 0);
 		if (0 > ret)
 			return ret;
 	} else {
 		ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT,
-			(handle->aead.assoclen || inlen) ? MSG_MORE : 0);
+			inlen ? MSG_MORE : 0);
 		if (0 > ret)
 			return ret;
-		ret = _kcapi_common_vmsplice_iov(handle, &iov[0], i);
+		ret = _kcapi_common_vmsplice_iov(handle, &iov, 1);
 		if (0 > ret)
 			return ret;
 	}
@@ -968,15 +952,8 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   const unsigned char *iv,
 			   unsigned char *out, size_t outlen, int access)
 {
-	struct iovec iov[3];
+	struct iovec iov;
 	ssize_t ret = 0;
-	int i = 0;
-	unsigned char *assoc = NULL;
-	size_t assoclen = 0;
-	unsigned char *data = NULL;
-	size_t datalen = 0;
-	unsigned char *tag = NULL;
-	size_t taglen = 0;
 
 	/* require properly sized output data size */
 	if (outlen < inlen) {
@@ -988,27 +965,11 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 
 	handle->cipher.iv = iv;
 
-	kcapi_aead_getdata(handle, in, inlen,
-			   &assoc, &assoclen, &data, &datalen, &tag, &taglen);
-	if (assoclen) {
-		iov[i].iov_base = (void *)assoc;
-		iov[i].iov_len = assoclen;
-		i++;
-	}
-	if (datalen) {
-		iov[i].iov_base = (void *)data;
-		iov[i].iov_len = datalen;
-		i++;
-	}
-	if (taglen) {
-		iov[i].iov_base = (void *)tag;
-		iov[i].iov_len = taglen;
-		i++;
-	}
-
+	iov.iov_base = in;
+	iov.iov_len = inlen;
 	if (access == KCAPI_ACCESS_HEURISTIC ||
 	    access == KCAPI_ACCESS_SENDMSG) {
-		ret = _kcapi_common_send_meta(handle, &iov[0], i,
+		ret = _kcapi_common_send_meta(handle, &iov, 1,
 					      ALG_OP_DECRYPT, 0);
 		if (0 > ret)
 			return ret;
@@ -1017,7 +978,7 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 					MSG_MORE);
 		if (0 > ret)
 			return ret;
-		ret = _kcapi_common_vmsplice_iov(handle, &iov[0], i);
+		ret = _kcapi_common_vmsplice_iov(handle, &iov, 1);
 		if (0 > ret)
 			return ret;
 	}
@@ -1026,9 +987,9 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 	if (outlen) {
 		return _kcapi_common_read_data(handle, out, outlen);
 	} else {
-		iov[0].iov_base = (void*)(uintptr_t)out;
-		iov[0].iov_len = outlen;
-		return _kcapi_common_recv_data(handle, &iov[0], 1);
+		iov.iov_base = (void*)(uintptr_t)out;
+		iov.iov_len = outlen;
+		return _kcapi_common_recv_data(handle, &iov, 1);
 	}
 }
 
@@ -1165,7 +1126,7 @@ static ssize_t _kcapi_md_final(struct kcapi_handle *handle,
 {
 	struct iovec iov;
 
-	if (!buffer || len < (unsigned long)handle->info.hash_digestsize) {
+	if (!buffer || !len) {
 		fprintf(stderr,
 			"Message digest: output buffer too small (seen %lu - required %u)\n",
 			(unsigned long)len,
