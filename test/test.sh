@@ -441,6 +441,19 @@ symfunc()
 	done
 }
 
+rfc4106_aad_iv() {
+	assoc=$1
+	iv=$2
+	# New name with 4.2
+	if [ $(uname -r | cut -d"." -f1) -ge 4 ]; then
+		if [ $(uname -r | cut -d"." -f2) -ge 2 ]; then
+			assoc="${assoc}${iv}"
+		fi
+	fi
+
+	echo $assoc
+}
+
 aeadfunc()
 {
 	stream=$1
@@ -464,6 +477,12 @@ aeadfunc()
 		eval AEAD_nonce=\$AEAD_nonce_$i
 		eval AEAD_msg=\$AEAD_msg_$i
 		eval AEAD_exp=\$AEAD_exp_$i
+
+		# append IV to AAD in case of RFC4106 on newer kernels
+		if [ "$AEAD_name" != "${AEAD_name##rfc4106}" ]
+		then
+			AEAD_assoc=$(rfc4106_aad_iv "$AEAD_assoc" "$AEAD_iv")
+		fi
 
 		iv="-i $AEAD_iv"
 		if [ -z "$AEAD_iv" ]
