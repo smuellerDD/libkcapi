@@ -72,8 +72,8 @@
 
 #include <kcapi.h>
 
-static unsigned char fipscheck_hmackey[] = "orboDeJITITejsirpADONivirpUkvarP";
-static unsigned char hmaccalc_hmackey[] = "FIPS-FTW-RHT2009";
+static uint8_t fipscheck_hmackey[] = "orboDeJITITejsirpADONivirpUkvarP";
+static uint8_t hmaccalc_hmackey[] = "FIPS-FTW-RHT2009";
 
 static void usage(char *hashname)
 {
@@ -104,18 +104,18 @@ static char hex_char_map_l[] = { '0', '1', '2', '3', '4', '5', '6', '7',
 				 '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
 static char hex_char_map_u[] = { '0', '1', '2', '3', '4', '5', '6', '7',
 				 '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
-static char hex_char(unsigned int bin, int u)
+static char hex_char(uint32_t bin, int u)
 {
 	if (bin < sizeof(hex_char_map_l))
 		return (u) ? hex_char_map_u[bin] : hex_char_map_l[bin];
 	return 'X';
 }
 
-static void bin2hex(const unsigned char *bin, size_t binlen,
-		    char *hex, size_t hexlen, int u)
+static void bin2hex(const uint8_t *bin, uint32_t binlen,
+		    char *hex, uint32_t hexlen, int u)
 {
-	size_t i = 0;
-	size_t chars = (binlen > (hexlen / 2)) ? (hexlen / 2) : binlen;
+	uint32_t i = 0;
+	uint32_t chars = (binlen > (hexlen / 2)) ? (hexlen / 2) : binlen;
 
 	for (i = 0; i < chars; i++) {
 		hex[(i*2)] = hex_char((bin[i] >> 4), u);
@@ -123,7 +123,7 @@ static void bin2hex(const unsigned char *bin, size_t binlen,
 	}
 }
 
-static int bin_char(unsigned char hex)
+static int bin_char(uint8_t hex)
 {
 	if (48 <= hex && 57 >= hex)
 		return (hex - 48);
@@ -134,11 +134,11 @@ static int bin_char(unsigned char hex)
 	return 0;
 }
 
-static void hex2bin(const char *hex, size_t hexlen,
-		    unsigned char *bin, size_t binlen)
+static void hex2bin(const char *hex, uint32_t hexlen,
+		    uint8_t *bin, uint32_t binlen)
 {
-	size_t i = 0;
-	size_t chars = (binlen > (hexlen / 2)) ? (hexlen / 2) : binlen;
+	uint32_t i = 0;
+	uint32_t chars = (binlen > (hexlen / 2)) ? (hexlen / 2) : binlen;
 
 	for (i = 0; i < chars; i++) {
 		bin[i] = bin_char(hex[(i*2)]) << 4;
@@ -146,11 +146,11 @@ static void hex2bin(const char *hex, size_t hexlen,
 	}
 }
 
-static int hex2bin_alloc(const char *hex, size_t hexlen,
-			 unsigned char **bin, size_t *binlen)
+static int hex2bin_alloc(const char *hex, uint32_t hexlen,
+			 uint8_t **bin, uint32_t *binlen)
 {
-	unsigned char *out = NULL;
-	size_t outlen = 0;
+	uint8_t *out = NULL;
+	uint32_t outlen = 0;
 
 	if (!hexlen)
 		return -EINVAL;
@@ -167,11 +167,11 @@ static int hex2bin_alloc(const char *hex, size_t hexlen,
 	return 0;
 }
 
-static void bin2print(const unsigned char *bin, size_t binlen,
+static void bin2print(const uint8_t *bin, uint32_t binlen,
 		      const char *filename, FILE *outfile)
 {
 	char *hex;
-	size_t hexlen = binlen * 2 + 1;
+	uint32_t hexlen = binlen * 2 + 1;
 
 	hex = calloc(1, hexlen);
 	if (!hex)
@@ -187,14 +187,14 @@ static void bin2print(const unsigned char *bin, size_t binlen,
 }
 
 static int hasher(struct kcapi_handle *handle, char *filename,
-		  const char *comphash, unsigned int comphashlen,
+		  const char *comphash, uint32_t comphashlen,
 		  FILE *outfile)
 {	
 	int fd;
 	int ret = 0;
 	struct stat sb;
 	char *memblock = NULL;
-	unsigned char md[64];
+	uint8_t md[64];
 
 	fd = open(filename, O_RDONLY | O_CLOEXEC);
 	if (fd < 0) {
@@ -223,16 +223,16 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 	}
 
 	/* Compute hash */
-	ret = kcapi_md_digest(handle, (unsigned char*)memblock, sb.st_size, md,
+	ret = kcapi_md_digest(handle, (uint8_t*)memblock, sb.st_size, md,
 			      sizeof(md));
 
 	if (ret > 0) {
 		if (comphash && comphashlen) {
-			unsigned char compmd[64];
+			uint8_t compmd[64];
 
 			memset(compmd, 0, sizeof(compmd));
 			hex2bin(comphash, comphashlen, compmd, sizeof(compmd));
-			if ((comphashlen != (unsigned int)(ret * 2)) ||
+			if ((comphashlen != (uint32_t)(ret * 2)) ||
 			    memcmp(compmd, md, ret)) {
 				ret = 1;
 			} else {
@@ -266,9 +266,9 @@ out:
  */
 static char *get_hmac_file(char *filename)
 {
-	size_t basenamestart = 0;
-	size_t i;
-	size_t filelen;
+	uint32_t basenamestart = 0;
+	uint32_t i;
+	uint32_t filelen;
 	char *checkfile = NULL;
 
 	filelen = strlen(filename);
@@ -295,12 +295,12 @@ static char *get_hmac_file(char *filename)
 	return checkfile;
 }
 
-static int hash_files(char *hashname, char *filename[], unsigned int files,
-		      const unsigned char *hmackey, size_t hmackeylen,
+static int hash_files(char *hashname, char *filename[], uint32_t files,
+		      const uint8_t *hmackey, uint32_t hmackeylen,
 		      int fipshmac)
 {
 	struct kcapi_handle handle;
-	unsigned int i = 0;
+	uint32_t i = 0;
 	int ret = 0;
 	
 	ret = kcapi_md_init(&handle, hashname, 0);
@@ -353,7 +353,7 @@ static int hash_files(char *hashname, char *filename[], unsigned int files,
 
 static int process_checkfile(char *hashname, char *checkfile, char *targetfile,
 			     int log,
-			     const unsigned char *hmackey, size_t hmackeylen)
+			     const uint8_t *hmackey, uint32_t hmackeylen)
 {
 	FILE *file = NULL;
 	int ret = 0;
@@ -389,9 +389,9 @@ static int process_checkfile(char *hashname, char *checkfile, char *targetfile,
 
 	while (fgets(buf, sizeof(buf), file)) {
 		int foundsep = 0;
-		unsigned int hashlen = 0;
-		size_t linelen = strlen(buf);
-		size_t i;
+		uint32_t hashlen = 0;
+		uint32_t linelen = strlen(buf);
+		uint32_t i;
 
 		/* remove trailing CR */
 		for (i = linelen; i > 0; i--) {
@@ -446,7 +446,7 @@ out:
 
 }
 
-static int get_hmac_cipherstring(char *hash, size_t hashlen)
+static int get_hmac_cipherstring(char *hash, uint32_t hashlen)
 {
 	char *tmpbuf = strdup(hash);
 
@@ -460,16 +460,16 @@ static int get_hmac_cipherstring(char *hash, size_t hashlen)
 }
 
 static int fipscheck_self(char *hash,
-			  const unsigned char *hmackey, size_t hmackeylen)
+			  const uint8_t *hmackey, uint32_t hmackeylen)
 {
 	char *checkfile = NULL;
-	size_t n = 0;
+	uint32_t n = 0;
 	int ret = -EINVAL;
 	FILE *fipsfile = NULL;
 	char fipsflag[1];
 #define BUFSIZE 4096
 	char selfname[BUFSIZE];
-	ssize_t selfnamesize = 0;
+	int32_t selfnamesize = 0;
 
 	fipsfile = fopen("/proc/sys/crypto/fips_enabled", "r");
 	if (!fipsfile) {
@@ -523,8 +523,8 @@ int main(int argc, char *argv[])
 
 	char *checkfile = NULL;
 	char *targetfile = NULL;
-	unsigned char *hmackey = NULL;
-	size_t hmackeylen = 0;
+	uint8_t *hmackey = NULL;
+	uint32_t hmackeylen = 0;
 	int loglevel = 0;
 	int fipscheck = 0;
 	int fipshmac = 0;
@@ -536,8 +536,8 @@ int main(int argc, char *argv[])
 	 *	* hmaccalc applications are using the hmaccalc key and
 	 *	  hmac(sha512)
 	 */
-	unsigned char *check_hmackey = fipscheck_hmackey;
-	size_t check_hmackeylen = strlen((char *)fipscheck_hmackey);
+	uint8_t *check_hmackey = fipscheck_hmackey;
+	uint32_t check_hmackeylen = strlen((char *)fipscheck_hmackey);
 	char check_hash[(HASHNAMESIZE + 1)];
 
 	static struct option opts[] =
@@ -663,7 +663,7 @@ int main(int argc, char *argv[])
 					goto out;
 				break;
 			case 'b':
-				hmackey = (unsigned char *)strdup(optarg);
+				hmackey = (uint8_t *)strdup(optarg);
 				if (!hmackey) {
 					fprintf(stderr, "Cannot allocate memory for HMAC key\n");
 					goto out;
