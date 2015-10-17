@@ -728,9 +728,9 @@ multipletest() {
 54859b342c49ea2a"
 	if [ x"$expected" = x"$result" ]
 	then
-		echo "Hash $sout multiple test passed"
+		echo "Asymmetric $sout multiple test passed"
 	else
-		echo "Hash $sout multiple test failed"
+		echo "Asymmetric $sout multiple test failed"
 		echo "Exp $exoected"
 		echo "Got $result"
 		let failures=($failures+1)
@@ -739,30 +739,30 @@ multipletest() {
 
 }
 
-#hashfunc
-#hashfunc -s
-#symfunc
-#symfunc -s
-#symfunc -v
-#aeadfunc
-#aeadfunc -s
-#aeadfunc -v
+hashfunc
+hashfunc -s
+symfunc
+symfunc -s
+symfunc -v
+aeadfunc
+aeadfunc -s
+aeadfunc -v
 asymfunc
 asymfunc -s
 asymfunc -v
 
-#symfunc X -m
-#symfunc -s -m
-#symfunc -v -m
-#aeadfunc X -m
-#aeadfunc -s -m
-#aeadfunc -v -m
+symfunc X -m
+symfunc -s -m
+symfunc -v -m
+aeadfunc X -m
+aeadfunc -s -m
+aeadfunc -v -m
 asymfunc X -m
 asymfunc -s -m
 asymfunc -v -m
 
-#auxtest
-#multipletest
-#multipletest -s
-#multipletest -v
+auxtest
+multipletest
+multipletest -s
+multipletest -v
 exit $failures
