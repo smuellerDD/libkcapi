@@ -37,6 +37,8 @@
 #ifndef _KCAPI_AIO_H
 #define _KCAPI_AIO_H
 
+#define _GNU_SOURCE
+#include <unistd.h>
 #include <sys/syscall.h>
 #include <linux/aio_abi.h>
 

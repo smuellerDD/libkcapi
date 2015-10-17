@@ -37,6 +37,8 @@
 #ifndef _KCAPI_H
 #define _KCAPI_H
 
+#include <stdint.h>
+
 #include <linux/if_alg.h>
 #include <sys/uio.h>
 #include "kcapi_aio.h"
@@ -75,17 +77,17 @@
  */
 struct kcapi_cipher_info {
 	/* generic */
-	unsigned int blocksize;
-	unsigned int ivsize;
+	uint32_t blocksize;
+	uint32_t ivsize;
 	/* hash */
-	unsigned int hash_digestsize;
+	uint32_t hash_digestsize;
 	/* blkcipher */
-	unsigned int blk_min_keysize;
-	unsigned int blk_max_keysize;
+	uint32_t blk_min_keysize;
+	uint32_t blk_max_keysize;
 	/* aead */
-	unsigned int aead_maxauthsize;
+	uint32_t aead_maxauthsize;
 	/* rng */
-	unsigned int rng_seedsize;
+	uint32_t rng_seedsize;
 };
 
 /**
@@ -93,7 +95,7 @@ struct kcapi_cipher_info {
  * @iv: IV with length of kcapi_cipher_info->ivsize - input
  */
 struct kcapi_cipher_data {
-	const unsigned char *iv;
+	const uint8_t *iv;
 };
 
 /**
@@ -110,12 +112,12 @@ struct kcapi_cipher_data {
  *	    the read system call
  */
 struct kcapi_aead_data {
-	size_t datalen;
-	unsigned char *data;
-	size_t assoclen;
-	unsigned char *assoc;
-	size_t taglen;
-	unsigned char *tag;
+	uint32_t datalen;
+	uint8_t *data;
+	uint32_t assoclen;
+	uint8_t *assoc;
+	uint32_t taglen;
+	uint8_t *tag;
 };
 
 /**
@@ -158,7 +160,7 @@ struct kcapi_handle {
  *	   -EINVAL - accept syscall failed
  */
 int kcapi_cipher_init(struct kcapi_handle *handle, const char *ciphername,
-		      unsigned int flags);
+		      uint32_t flags);
 
 /**
  * kcapi_cipher_destroy() - close the cipher handle and release resources
@@ -182,7 +184,7 @@ void kcapi_cipher_destroy(struct kcapi_handle *handle);
  *	   < 0 in case of error
  */
 int kcapi_cipher_setkey(struct kcapi_handle *handle,
-			const unsigned char *key, size_t keylen);
+			const uint8_t *key, uint32_t keylen);
 
 /**
  * kcapi_cipher_encrypt() - encrypt data (one shot)
@@ -209,10 +211,10 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
  * Return: number of bytes encrypted upon success;
  *	   < 0 in case of error with errno set
  */
-ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
-			     const unsigned char *in, size_t inlen,
-			     const unsigned char *iv,
-			     unsigned char *out, size_t outlen, int access);
+int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
+			     const uint8_t *in, uint32_t inlen,
+			     const uint8_t *iv,
+			     uint8_t *out, uint32_t outlen, int access);
 
 /**
  * kcapi_cipher_decrypt() - decrypt data (one shot)
@@ -239,10 +241,10 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
  * Return: number of bytes decrypted upon success;
  *	   < 0 in case of error with errno set
  */
-ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
-			     const unsigned char *in, size_t inlen,
-			     const unsigned char *iv,
-			     unsigned char *out, size_t outlen, int access);
+int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
+			     const uint8_t *in, uint32_t inlen,
+			     const uint8_t *iv,
+			     uint8_t *out, uint32_t outlen, int access);
 
 /**
  * kcapi_cipher_stream_init_enc() - start an encryption operation (stream)
@@ -272,9 +274,9 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
  * Return: number of bytes sent to the kernel upon success;
  *	   < 0 in case of error with errno set
  */
-ssize_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
-				     const unsigned char *iv,
-				     struct iovec *iov, size_t iovlen);
+int32_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
+				     const uint8_t *iv,
+				     struct iovec *iov, uint32_t iovlen);
 /**
  * kcapi_cipher_stream_init_dec() - start a decryption operation (stream)
  * @handle: cipher handle - input
@@ -303,9 +305,9 @@ ssize_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
  * Return: number of bytes sent to the kernel upon success;
  *	   < 0 in case of error with errno set
  */
-ssize_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
-				     const unsigned char *iv,
-				     struct iovec *iov, size_t iovlen);
+int32_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
+				     const uint8_t *iv,
+				     struct iovec *iov, uint32_t iovlen);
 
 /**
  * kcapi_cipher_stream_update() - send more data for processing (stream)
@@ -329,8 +331,8 @@ ssize_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
  * Return: number of bytes sent to the kernel upon success;
  *	   < 0 in case of error with errno set
  */
-ssize_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
-				   struct iovec *iov, size_t iovlen);
+int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
+				   struct iovec *iov, uint32_t iovlen);
 
 /**
  * kcapi_cipher_stream_op() - obtain processed data (stream)
@@ -353,8 +355,8 @@ ssize_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
  * Return: number of bytes obtained from the kernel upon success;
  *	   < 0 in case of error with errno set
  */
-ssize_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
-			       struct iovec *iov, size_t iovlen);
+int32_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
+			       struct iovec *iov, uint32_t iovlen);
 
 /**
  * kcapi_cipher_ivsize() - return size of IV required for cipher
@@ -363,7 +365,7 @@ ssize_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
  * Return: > 0 specifying the IV size;
  *	   0 on error
  */
-unsigned int kcapi_cipher_ivsize(struct kcapi_handle *handle);
+uint32_t kcapi_cipher_ivsize(struct kcapi_handle *handle);
 
 /**
  * kcapi_cipher_blocksize() - return size of one block of the cipher
@@ -372,7 +374,7 @@ unsigned int kcapi_cipher_ivsize(struct kcapi_handle *handle);
  * Return: > 0 specifying the block size;
  *	   0 on error
  */
-unsigned int kcapi_cipher_blocksize(struct kcapi_handle *handle);
+uint32_t kcapi_cipher_blocksize(struct kcapi_handle *handle);
 
 
 /**
@@ -398,7 +400,7 @@ unsigned int kcapi_cipher_blocksize(struct kcapi_handle *handle);
  *	   -EINVAL - accept syscall failed
  */
 int kcapi_aead_init(struct kcapi_handle *handle, const char *ciphername,
-		    unsigned int flags);
+		    uint32_t flags);
 
 /**
  * kcapi_aead_destroy() - close the AEAD handle and release resources
@@ -422,7 +424,7 @@ void kcapi_aead_destroy(struct kcapi_handle *handle);
  *	   < 0 in case of error
  */
 int kcapi_aead_setkey(struct kcapi_handle *handle,
-		      const unsigned char *key, size_t keylen);
+		      const uint8_t *key, uint32_t keylen);
 
 /**
  * kcapi_aead_settaglen() - Set authentication tag size
@@ -435,7 +437,7 @@ int kcapi_aead_setkey(struct kcapi_handle *handle,
  * Return: 0 upon success;
  *	   < 0 in case of error with errno set
  */
-int kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen);
+int kcapi_aead_settaglen(struct kcapi_handle *handle, uint32_t taglen);
 
 /**
  * kcapi_aead_setassoclen() - Set authentication data size
@@ -448,7 +450,7 @@ int kcapi_aead_settaglen(struct kcapi_handle *handle, size_t taglen);
  * data size and may return an error during initialization if the
  * authentication size is not considered appropriate.
  */
-void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen);
+void kcapi_aead_setassoclen(struct kcapi_handle *handle, uint32_t assoclen);
 
 /**
  * kcapi_aead_encrypt() - encrypt AEAD data (one shot)
@@ -483,10 +485,10 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen);
  * Return: number of bytes encrypted upon success;
  *	   < 0 in case of error with errno set
  */
-ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
-			   unsigned char *in, size_t inlen,
-			   const unsigned char *iv,
-			   unsigned char *out, size_t outlen,
+int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
+			   uint8_t *in, uint32_t inlen,
+			   const uint8_t *iv,
+			   uint8_t *out, uint32_t outlen,
 			   int access);
 
 /**
@@ -513,10 +515,10 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
  * ciphertext.
  */
 void kcapi_aead_getdata(struct kcapi_handle *handle,
-			unsigned char *encdata, size_t encdatalen,
-			unsigned char **aad, size_t *aadlen,
-			unsigned char **data, size_t *datalen,
-			unsigned char **tag, size_t *taglen);
+			uint8_t *encdata, uint32_t encdatalen,
+			uint8_t **aad, uint32_t *aadlen,
+			uint8_t **data, uint32_t *datalen,
+			uint8_t **tag, uint32_t *taglen);
 
 /**
  * kcapi_aead_decrypt() - decrypt AEAD data (one shot)
@@ -552,10 +554,10 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
  * Return: number of bytes decrypted upon success;
  *	   < 0 in case of error with errno set
  */
-ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
-			   unsigned char *in, size_t inlen,
-			   const unsigned char *iv,
-			   unsigned char *out, size_t outlen, int access);
+int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
+			   uint8_t *in, uint32_t inlen,
+			   const uint8_t *iv,
+			   uint8_t *out, uint32_t outlen, int access);
 
 /**
  * kcapi_aead_stream_init_enc() - start an encryption operation (stream)
@@ -593,9 +595,9 @@ ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
  * Return: number of bytes sent to the kernel upon success;
  *	   < 0 in case of error with errno set
  */
-ssize_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
-				   const unsigned char *iv,
-				   struct iovec *iov, size_t iovlen);
+int32_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
+				   const uint8_t *iv,
+				   struct iovec *iov, uint32_t iovlen);
 
 /**
  * kcapi_aead_stream_init_dec() - start a decryption operation (stream)
@@ -633,9 +635,9 @@ ssize_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
  * Return: number of bytes sent to the kernel upon success;
  *	   < 0 in case of error with errno set
  */
-ssize_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
-				   const unsigned char *iv,
-				   struct iovec *iov, size_t iovlen);
+int32_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
+				   const uint8_t *iv,
+				   struct iovec *iov, uint32_t iovlen);
 
 /**
  * kcapi_aead_stream_update() - send more data for processing (stream)
@@ -666,8 +668,8 @@ ssize_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
  * Return: number of bytes sent to the kernel upon success;
  *	   < 0 in case of error with errno set
  */
-ssize_t kcapi_aead_stream_update(struct kcapi_handle *handle,
-				 struct iovec *iov, size_t iovlen);
+int32_t kcapi_aead_stream_update(struct kcapi_handle *handle,
+				 struct iovec *iov, uint32_t iovlen);
 
 /**
  * kcapi_aead_stream_update_last() - send last data for processing (stream)
@@ -686,8 +688,8 @@ ssize_t kcapi_aead_stream_update(struct kcapi_handle *handle,
  * Return: number of bytes sent to the kernel upon success;
  *	   < 0 in case of error with errno set
  */
-ssize_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
-				      struct iovec *iov, size_t iovlen);
+int32_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
+				      struct iovec *iov, uint32_t iovlen);
 
 /**
  * kcapi_aead_stream_op() - obtain processed data (stream)
@@ -707,8 +709,8 @@ ssize_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
  * Return: number of bytes obtained from the kernel upon success;
  *	   < 0 in case of error with errno set
  */
-ssize_t kcapi_aead_stream_op(struct kcapi_handle *handle,
-			     struct iovec *iov, size_t iovlen);
+int32_t kcapi_aead_stream_op(struct kcapi_handle *handle,
+			     struct iovec *iov, uint32_t iovlen);
 
 /**
  * kcapi_aead_ivsize() - return size of IV required for cipher
@@ -717,7 +719,7 @@ ssize_t kcapi_aead_stream_op(struct kcapi_handle *handle,
  * Return: > 0 specifying the IV size;
  *	   0 on error
  */
-unsigned int kcapi_aead_ivsize(struct kcapi_handle *handle);
+uint32_t kcapi_aead_ivsize(struct kcapi_handle *handle);
 
 /**
  * kcapi_aead_blocksize() - return size of one block of the cipher
@@ -726,7 +728,7 @@ unsigned int kcapi_aead_ivsize(struct kcapi_handle *handle);
  * Return: > 0 specifying the block size;
  *	   0 on error
  */
-unsigned int kcapi_aead_blocksize(struct kcapi_handle *handle);
+uint32_t kcapi_aead_blocksize(struct kcapi_handle *handle);
 
 /**
  * kcapi_aead_authsize() - return the maximum size of the tag
@@ -739,7 +741,7 @@ unsigned int kcapi_aead_blocksize(struct kcapi_handle *handle);
  * Return: > 0 specifying the block size;
  *	   0 on error
  */
-unsigned int kcapi_aead_authsize(struct kcapi_handle *handle);
+uint32_t kcapi_aead_authsize(struct kcapi_handle *handle);
 
 /**
  * kcapi_aead_outbuflen() - return minimum output buffer length
@@ -750,8 +752,8 @@ unsigned int kcapi_aead_authsize(struct kcapi_handle *handle);
  *
  * Return: minimum size of output data length in bytes
  */
-size_t kcapi_aead_outbuflen(struct kcapi_handle *handle,
-			    size_t inlen, size_t assoclen, size_t taglen);
+uint32_t kcapi_aead_outbuflen(struct kcapi_handle *handle,
+			    uint32_t inlen, uint32_t assoclen, uint32_t taglen);
 
 /**
  * kcapi_aead_ccm_nonce_to_iv() - convert CCM nonce into IV
@@ -768,8 +770,8 @@ size_t kcapi_aead_outbuflen(struct kcapi_handle *handle,
  * Return: 0 upon success;
  *	   < 0 upon failure
  */
-int kcapi_aead_ccm_nonce_to_iv(const unsigned char *nonce, size_t noncelen,
-			       unsigned char **iv, size_t *ivlen);
+int kcapi_aead_ccm_nonce_to_iv(const uint8_t *nonce, uint32_t noncelen,
+			       uint8_t **iv, uint32_t *ivlen);
 
 
 /**
@@ -791,7 +793,7 @@ int kcapi_aead_ccm_nonce_to_iv(const unsigned char *nonce, size_t noncelen,
  *	   -EINVAL - accept syscall failed
  */
 int kcapi_md_init(struct kcapi_handle *handle, const char *ciphername,
-		  unsigned int flags);
+		  uint32_t flags);
 
 /**
  * kcapi_md_destroy() - close the message digest handle and release resources
@@ -815,7 +817,7 @@ void kcapi_md_destroy(struct kcapi_handle *handle);
  *	   < 0 in case of error
  */
 int kcapi_md_setkey(struct kcapi_handle *handle,
-		    const unsigned char *key, size_t keylen);
+		    const uint8_t *key, uint32_t keylen);
 
 /**
  * kcapi_md_update() - message digest update function (stream)
@@ -826,8 +828,8 @@ int kcapi_md_setkey(struct kcapi_handle *handle,
  * Return: 0 upon success;
  *	   < 0 in case of error
  */
-ssize_t kcapi_md_update(struct kcapi_handle *handle,
-			const unsigned char *buffer, size_t len);
+int32_t kcapi_md_update(struct kcapi_handle *handle,
+			const uint8_t *buffer, uint32_t len);
 
 /**
  * kcapi_md_final() - message digest finalization function (stream)
@@ -840,8 +842,8 @@ ssize_t kcapi_md_update(struct kcapi_handle *handle,
  * 	   -ENOMEM - buffer is too small for the complete message digest,
  * 	   the buffer is filled with the truncated message digest
  */
-ssize_t kcapi_md_final(struct kcapi_handle *handle,
-		       unsigned char *buffer, size_t len);
+int32_t kcapi_md_final(struct kcapi_handle *handle,
+		       uint8_t *buffer, uint32_t len);
 
 /**
  * kcapi_md_digest() - calculate message digest on buffer (one-shot)
@@ -863,9 +865,9 @@ ssize_t kcapi_md_final(struct kcapi_handle *handle,
  * 	   -ENOMEM - buffer is too small for the complete message digest,
  * 	   the buffer is filled with the truncated message digest
  */
-ssize_t kcapi_md_digest(struct kcapi_handle *handle,
-		       const unsigned char *in, size_t inlen,
-		       unsigned char *out, size_t outlen);
+int32_t kcapi_md_digest(struct kcapi_handle *handle,
+		       const uint8_t *in, uint32_t inlen,
+		       uint8_t *out, uint32_t outlen);
 
 /**
  * kcapi_md_digestsize() - return the size of the message digest
@@ -878,7 +880,7 @@ ssize_t kcapi_md_digest(struct kcapi_handle *handle,
  * Return: > 0 specifying the block size;
  *	   0 on error
  */
-unsigned int kcapi_md_digestsize(struct kcapi_handle *handle);
+uint32_t kcapi_md_digestsize(struct kcapi_handle *handle);
 
 /**
  * kcapi_md_blocksize() - return size of one block of the message digest
@@ -887,7 +889,7 @@ unsigned int kcapi_md_digestsize(struct kcapi_handle *handle);
  * Return: > 0 specifying the block size;
  *	   0 on error
  */
-unsigned int kcapi_md_blocksize(struct kcapi_handle *handle);
+uint32_t kcapi_md_blocksize(struct kcapi_handle *handle);
 
 
 /**
@@ -909,7 +911,7 @@ unsigned int kcapi_md_blocksize(struct kcapi_handle *handle);
  *	   -EINVAL - accept syscall failed
  */
 int kcapi_rng_init(struct kcapi_handle *handle, const char *ciphername,
-		   unsigned int flags);
+		   uint32_t flags);
 
 /**
  * kcapi_rng_destroy() - Close the RNG handle and release resources
@@ -926,8 +928,8 @@ void kcapi_rng_destroy(struct kcapi_handle *handle);
  * Return: 0 upon success;
  * 	   < 0 upon error
  */
-int kcapi_rng_seed(struct kcapi_handle *handle, unsigned char *seed,
-		   size_t seedlen);
+int kcapi_rng_seed(struct kcapi_handle *handle, uint8_t *seed,
+		   uint32_t seedlen);
 
 /**
  * kcapi_rng_generate() - generate a random number
@@ -938,8 +940,8 @@ int kcapi_rng_seed(struct kcapi_handle *handle, unsigned char *seed,
  * Return: size of random number generated upon success;
  *	   -EIO - data cannot be obtained
  */
-ssize_t kcapi_rng_generate(struct kcapi_handle *handle,
-			   unsigned char *buffer, size_t len);
+int32_t kcapi_rng_generate(struct kcapi_handle *handle,
+			   uint8_t *buffer, uint32_t len);
 
 /**
  * DOC: Common API
@@ -952,7 +954,7 @@ ssize_t kcapi_rng_generate(struct kcapi_handle *handle,
  * @buf: buffer to place version string into - output
  * @buflen: length of buffer - input
  */
-void kcapi_versionstring(char *buf, size_t buflen);
+void kcapi_versionstring(char *buf, uint32_t buflen);
 
 /**
  * kcapi_version() - Return machine-usable version number of kcapi library
@@ -967,7 +969,7 @@ void kcapi_versionstring(char *buf, size_t buflen);
  *
  * Return: Version number of kcapi library
  */
-unsigned int kcapi_version(void);
+uint32_t kcapi_version(void);
 
 /**
  * kcapi_pad_iv() - realign the IV as necessary for cipher
@@ -988,8 +990,8 @@ unsigned int kcapi_version(void);
  *	   < 0 for any errors
  */
 int kcapi_pad_iv(struct kcapi_handle *handle,
-		 const unsigned char *iv, size_t ivlen,
-		 unsigned char **newiv, size_t *newivlen);
+		 const uint8_t *iv, uint32_t ivlen,
+		 uint8_t **newiv, uint32_t *newivlen);
 
 /**
  * kcapi_memset_secure() - memset() implementation that will not be optimized
@@ -1000,7 +1002,7 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
  *
  * The parameters, he logic and the return code is identical to memset(3).
  */
-void kcapi_memset_secure(void *s, int c, size_t n);
+void kcapi_memset_secure(void *s, int c, uint32_t n);
 
 /**
  * DOC: Asymmetric Cipher API
@@ -1023,7 +1025,7 @@ void kcapi_memset_secure(void *s, int c, size_t n);
  *	   -EINVAL - accept syscall failed
  */
 int kcapi_akcipher_init(struct kcapi_handle *handle, const char *ciphername,
-			unsigned int flags);
+			uint32_t flags);
 
 /**
  * kcapi_akcipher_destroy() - close the cipher handle and release resources
@@ -1032,14 +1034,26 @@ int kcapi_akcipher_init(struct kcapi_handle *handle, const char *ciphername,
 void kcapi_akcipher_destroy(struct kcapi_handle *handle);
 
 /**
- * kcapi_akcipher_setkey() - set the key for the cipher handle
+ * kcapi_akcipher_setkey() - set the private key for the cipher handle
  * @handle: cipher handle - input
- * @key: key buffer in BER format - input
+ * @key: key buffer in DER format - input
  * @keylen: length of key buffer - input
  *
  * With this function, the caller sets the key for subsequent cipher operations.
  *
- * The key must be in BER format,
+ * The key must be in DER format:
+ *
+ * RsaPrivKey ::= SEQUENCE {
+ *        version         INTEGER,
+ *        n               INTEGER ({ rsa_get_n }),
+ *        e               INTEGER ({ rsa_get_e }),
+ *        d               INTEGER ({ rsa_get_d }),
+ *        prime1          INTEGER,
+ *        prime2          INTEGER,
+ *        exponent1       INTEGER,
+ *        exponent2       INTEGER,
+ *        coefficient     INTEGER
+ *}
  *
  * After the caller provided the key, the caller may securely destroy the key
  * as it is now maintained by the kernel.
@@ -1048,7 +1062,31 @@ void kcapi_akcipher_destroy(struct kcapi_handle *handle);
  *	   < 0 in case of error
  */
 int kcapi_akcipher_setkey(struct kcapi_handle *handle,
-			  const unsigned char *key, size_t keylen);
+			  const uint8_t *key, uint32_t keylen);
+
+/**
+ * kcapi_akcipher_setpubkey() - set the public key for the cipher handle
+ * @handle: cipher handle - input
+ * @key: key buffer in DER format - input
+ * @keylen: length of key buffer - input
+ *
+ * With this function, the caller sets the key for subsequent cipher operations.
+ *
+ * The key must be in DER format:
+ *
+ * RsaPubKey ::= SEQUENCE {
+ *        n INTEGER ({ rsa_get_n }),
+ *        e INTEGER ({ rsa_get_e })
+ *}
+ *
+ * After the caller provided the key, the caller may securely destroy the key
+ * as it is now maintained by the kernel.
+ *
+ * Return: 0 upon success;
+ *	   < 0 in case of error
+ */
+int kcapi_akcipher_setpubkey(struct kcapi_handle *handle,
+			     const uint8_t *key, uint32_t keylen);
 
 /**
  * kcapi_akcipher_encrypt() - encrypt data
@@ -1075,9 +1113,9 @@ int kcapi_akcipher_setkey(struct kcapi_handle *handle,
  * Return: number of bytes returned by the encryption operation upon success;
  *	   < 0 in case of error with errno set
  */
-ssize_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
-			       const unsigned char *in, size_t inlen,
-			       unsigned char *out, size_t outlen, int access);
+int32_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
+			       const uint8_t *in, uint32_t inlen,
+			       uint8_t *out, uint32_t outlen, int access);
 
 /**
  * kcapi_akcipher_decrypt() - decrypt data
@@ -1104,9 +1142,9 @@ ssize_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
  * Return: number of bytes returned by the decryption operation upon success;
  *	   < 0 in case of error with errno set
  */
-ssize_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
-			       const unsigned char *in, size_t inlen,
-			       unsigned char *out, size_t outlen, int access);
+int32_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
+			       const uint8_t *in, uint32_t inlen,
+			       uint8_t *out, uint32_t outlen, int access);
 
 /**
  * kcapi_akcipher_sign() - signature generation
@@ -1133,9 +1171,9 @@ ssize_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
  * Return: number of bytes returned by the signature gen operation upon success;
  *	   < 0 in case of error with errno set
  */
-ssize_t kcapi_akcipher_sign(struct kcapi_handle *handle,
-			    const unsigned char *in, size_t inlen,
-			    unsigned char *out, size_t outlen, int access);
+int32_t kcapi_akcipher_sign(struct kcapi_handle *handle,
+			    const uint8_t *in, uint32_t inlen,
+			    uint8_t *out, uint32_t outlen, int access);
 
 /**
  * kcapi_akcipher_verify() - signature verification
@@ -1166,8 +1204,8 @@ ssize_t kcapi_akcipher_sign(struct kcapi_handle *handle,
  * Return: number of bytes returned by the signature ver operation upon success;
  *	   < 0 in case of error with errno set
  */
-ssize_t kcapi_akcipher_verify(struct kcapi_handle *handle,
-			      const unsigned char *in, size_t inlen,
-			      unsigned char *out, size_t outlen, int access);
+int32_t kcapi_akcipher_verify(struct kcapi_handle *handle,
+			      const uint8_t *in, uint32_t inlen,
+			      uint8_t *out, uint32_t outlen, int access);
 
 #endif /* _KCAPI_H */
