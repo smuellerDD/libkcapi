@@ -359,6 +359,42 @@ ASYM_exp_3="54859b342c49ea2a"
 
 failures=0
 
+# color -- emit ansi color codes
+color()
+{
+	declare bg=0
+	echo -ne "\033[0m"
+	while [[ $# -gt 0 ]]; do
+		declare code
+		case $1 in
+			black) code=30 ;;
+			red) code=31 ;;
+			green) code=32 ;;
+			yellow) code=33 ;;
+			blue) code=34 ;;
+			magenta) code=35 ;;
+			cyan) code=36 ;;
+			white) code=37 ;;
+			background|bg) bg=10 ;;
+			foreground|fg) bg=0 ;;
+			reset|off|default) code=0 ;;
+			bold|bright) code=1 ;;
+		esac
+		[[ $code == 0 ]] || echo -ne "\033[$(printf "%02d" $((code+bg)))m"
+		shift
+	done
+}
+
+echo_pass()
+{
+	echo $(color "green")[PASSED]$(color off) $@
+}
+
+echo_fail()
+{
+	echo $(color "red")[FAILED]$(color off) $@
+}
+
 hashfunc()
 {
 	stream=$1
@@ -397,9 +433,9 @@ hashfunc()
 		fi
 		if [ x"$result" = x"$HASH_exp" ]
 		then
-			echo "Hash $sout test $i passed"
+			echo_pass "Hash $sout test $i"
 		else
-			echo "Hash $sout test $i failed"
+			echo_fail "Hash $sout test $i"
 			echo " Exp $HASH_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -456,9 +492,9 @@ symfunc()
 		fi
 		if [ x"$result" = x"$SYM_exp" ]
 		then
-			echo "Symmetric $sout $aout test $i passed"
+			echo_pass "Symmetric $sout $aout test $i"
 		else
-			echo "Symmetric $sout $aout test $i failed"
+			echo_fail "Symmetric $sout $aout test $i"
 			echo " Exp $SYM_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -522,9 +558,9 @@ asymfunc()
 		fi
 		if [ x"$result" = x"$ASYM_exp" ]
 		then
-			echo "Asymmetric $sout $vout $aout test $i passed"
+			echo_pass "Asymmetric $sout $vout $aout test $i"
 		else
-			echo "Asymmetric $sout $vout $aout test $i failed"
+			echo_fail "Asymmetric $sout $vout $aout test $i"
 			echo " Exp $ASYM_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -607,9 +643,9 @@ aeadfunc()
 		fi
 		if [ x"$result" = x"$expected" ]
 		then
-			echo "AEAD $sout $aout test $i passed"
+			echo_pass "AEAD $sout $aout test $i"
 		else
-			echo "AEAD $sout $aout test $i failed"
+			echo_fail "AEAD $sout $aout test $i"
 			echo " Exp $expected"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -637,9 +673,9 @@ ${expectedshort}"
 	result=$(./kcapi -y $stream)
 	if [ x"$result" = x"$expected" ]
 	then
-		echo "AEAD $sout long AAD test passed"
+		echo_pass "AEAD $sout long AAD test"
 	else
-		echo "AEAD $sout long AAD test failed"
+		echo_fail "AEAD $sout long AAD test"
 		echo "Exp $exoected"
 		echo "Got $result"
 		let failures=($failures+1)
@@ -651,9 +687,12 @@ auxtest()
 	./kcapi -z
 	if [ $? -ne 0 ]
 	then
-		echo "Auxiliary test failure detected"
+		echo_fail "Auxiliary test failure detected"
 		let failures=($failures+1)
+	else
+		echo_pass "Auxiliary test"
 	fi
+	
 }
 
 multipletest() {
@@ -681,9 +720,9 @@ multipletest() {
 	fi
 	if [ x"$expected" = x"$result" ]
 	then
-		echo "Symmetric cipher $sout multiple test passed"
+		echo_pass "Symmetric cipher $sout multiple test"
 	else
-		echo "Symmetric cipher $sout multiple test failed"
+		echo_fail "Symmetric cipher $sout multiple test"
 		echo "Exp $exoected"
 		echo "Got $result"
 		let failures=($failures+1)
@@ -698,9 +737,9 @@ multipletest() {
 8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723"
 	if [ x"$expected" = x"$result" ]
 	then
-		echo "AEAD $sout multiple test passed"
+		echo_pass "AEAD $sout multiple test"
 	else
-		echo "AEAD $sout multiple test failed"
+		echo_fail "AEAD $sout multiple test"
 		echo "Exp $exoected"
 		echo "Got $result"
 		let failures=($failures+1)
@@ -717,9 +756,9 @@ multipletest() {
 7f204ea665666f5bd2b370e546d1b408005e4d85"
 	if [ x"$expected" = x"$result" ]
 	then
-		echo "Hash $sout multiple test passed"
+		echo_pass "Hash $sout multiple test"
 	else
-		echo "Hash $sout multiple test failed"
+		echo_fail "Hash $sout multiple test"
 		echo "Exp $exoected"
 		echo "Got $result"
 		let failures=($failures+1)
@@ -738,9 +777,9 @@ multipletest() {
 54859b342c49ea2a"
 	if [ x"$expected" = x"$result" ]
 	then
-		echo "Asymmetric $sout multiple test passed"
+		echo_pass "Asymmetric $sout multiple test"
 	else
-		echo "Asymmetric $sout multiple test failed"
+		echo_fail "Asymmetric $sout multiple test"
 		echo "Exp $exoected"
 		echo "Got $result"
 		let failures=($failures+1)
