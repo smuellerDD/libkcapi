@@ -1,4 +1,4 @@
-Changes 0.10:
+Changes 0.10.0:
  * simplify kcapi_aead_encrypt and kcapi_aead_decrypt
  * comment out message truncation check
  * test.sh: fix RFC4106 IV handling for kernels >= 4.2 due to overhaul of
