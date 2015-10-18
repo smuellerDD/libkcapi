@@ -1041,9 +1041,9 @@ void kcapi_akcipher_destroy(struct kcapi_handle *handle);
  *
  * With this function, the caller sets the key for subsequent cipher operations.
  *
- * The key must be in DER format:
+ * The key must be in DER format as follows
  *
- * RsaPrivKey ::= SEQUENCE {
+ * SEQUENCE {
  *        version         INTEGER,
  *        n               INTEGER ({ rsa_get_n }),
  *        e               INTEGER ({ rsa_get_e }),
@@ -1072,9 +1072,9 @@ int kcapi_akcipher_setkey(struct kcapi_handle *handle,
  *
  * With this function, the caller sets the key for subsequent cipher operations.
  *
- * The key must be in DER format:
+ * The key must be in DER format as follows
  *
- * RsaPubKey ::= SEQUENCE {
+ * SEQUENCE {
  *        n INTEGER ({ rsa_get_n }),
  *        e INTEGER ({ rsa_get_e })
  *}
@@ -1207,5 +1207,175 @@ int32_t kcapi_akcipher_sign(struct kcapi_handle *handle,
 int32_t kcapi_akcipher_verify(struct kcapi_handle *handle,
 			      const uint8_t *in, uint32_t inlen,
 			      uint8_t *out, uint32_t outlen, int access);
+
+/**
+ * kcapi_akcipher_stream_init_enc() - start an encryption operation (stream)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list with data to be encrypted. This is the pointer to
+ *	 the first @iov entry if an array of @iov entries is supplied. See
+ *	 sendmsg(2) for details on how @iov is to be used. This pointer may be
+ *	 NULL if no data to be encrypted is available at the point of the call.
+ *	  - input
+ * @iovlen: number of scatter/gather list elements. If @iov is NULL, this value
+ *	    must be zero. - input
+ *
+ * A stream encryption operation is started with this call. Multiple
+ * successive kcapi_akcipher_stream_update() function calls can be invoked to
+ * send more plaintext data to be encrypted. The last invocation to supply data
+ * must be done with kcapi_akcipher_stream_update_last(). The kernel buffers the
+ * input until kcapi_akcipher_stream_op() picks up the encrypted data. Once
+ * plaintext is encrypted during the kcapi_cipher_stream_op() it is removed
+ * from the kernel buffer.
+ *
+ * The function calls of kcapi_akcipher_stream_update() and
+ * kcapi_akcipher_stream_op() can be mixed, even by multiple threads of an
+ * application.
+ *
+ * Return: number of bytes sent to the kernel upon success;
+ *	   < 0 in case of error with errno set
+ */
+int32_t kcapi_akcipher_stream_init_enc(struct kcapi_handle *handle,
+				       struct iovec *iov, uint32_t iovlen);
+
+/**
+ * kcapi_akcipher_stream_init_dec() - start an decryption operation (stream)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list with data to be decrypted. This is the pointer to
+ *	 the first @iov entry if an array of @iov entries is supplied. See
+ *	 sendmsg(2) for details on how @iov is to be used. This pointer may be
+ *	 NULL if no data to be decrypted is available at the point of the call.
+ *	  - input
+ * @iovlen: number of scatter/gather list elements. If @iov is NULL, this value
+ *	    must be zero. - input
+ *
+ * A stream decryption operation is started with this call. Multiple
+ * successive kcapi_akcipher_stream_update() function calls can be invoked to
+ * send more plaintext data to be decrypted. The last invocation to supply data
+ * must be done with kcapi_akcipher_stream_update_last(). The kernel buffers the
+ * input until kcapi_akcipher_stream_op() picks up the encrypted data. Once
+ * plaintext is decrypted during the kcapi_cipher_stream_op() it is removed
+ * from the kernel buffer.
+ *
+ * The function calls of kcapi_akcipher_stream_update() and
+ * kcapi_akcipher_stream_op() can be mixed, even by multiple threads of an
+ * application.
+ *
+ * Return: number of bytes sent to the kernel upon success;
+ *	   < 0 in case of error with errno set
+ */
+int32_t kcapi_akcipher_stream_init_dec(struct kcapi_handle *handle,
+				       struct iovec *iov, uint32_t iovlen);
+
+/**
+ * kcapi_akcipher_stream_init_sgn() - start an signing operation (stream)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list with data to be signed. This is the pointer to
+ *	 the first @iov entry if an array of @iov entries is supplied. See
+ *	 sendmsg(2) for details on how @iov is to be used. This pointer may be
+ *	 NULL if no data to be signed is available at the point of the call.
+ *	  - input
+ * @iovlen: number of scatter/gather list elements. If @iov is NULL, this value
+ *	    must be zero. - input
+ *
+ * A stream signing operation is started with this call. Multiple
+ * successive kcapi_akcipher_stream_update() function calls can be invoked to
+ * send more plaintext data to be signed. The last invocation to supply data
+ * must be done with kcapi_akcipher_stream_update_last(). The kernel buffers the
+ * input until kcapi_akcipher_stream_op() picks up the signed data. Once
+ * plaintext is signed during the kcapi_cipher_stream_op() it is removed
+ * from the kernel buffer.
+ *
+ * The function calls of kcapi_akcipher_stream_update() and
+ * kcapi_akcipher_stream_op() can be mixed, even by multiple threads of an
+ * application.
+ *
+ * Return: number of bytes sent to the kernel upon success;
+ *	   < 0 in case of error with errno set
+ */
+int32_t kcapi_akcipher_stream_init_sgn(struct kcapi_handle *handle,
+				       struct iovec *iov, uint32_t iovlen);
+
+/**
+ * kcapi_akcipher_stream_init_vfy() - start an signature verification operation
+ *				      (stream)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list with data to be verified. This is the pointer to
+ *	 the first @iov entry if an array of @iov entries is supplied. See
+ *	 sendmsg(2) for details on how @iov is to be used. This pointer may be
+ *	 NULL if no data to be verified is available at the point of the call.
+ *	  - input
+ * @iovlen: number of scatter/gather list elements. If @iov is NULL, this value
+ *	    must be zero. - input
+ *
+ * A stream signature verification operation is started with this call. Multiple
+ * successive kcapi_akcipher_stream_update() function calls can be invoked to
+ * send more plaintext data to be verified. The last invocation to supply data
+ * must be done with kcapi_akcipher_stream_update_last(). The kernel buffers the
+ * input until kcapi_akcipher_stream_op() picks up the verified data. Once
+ * plaintext is verified during the kcapi_cipher_stream_op() it is removed
+ * from the kernel buffer.
+ *
+ * The function calls of kcapi_akcipher_stream_update() and
+ * kcapi_akcipher_stream_op() can be mixed, even by multiple threads of an
+ * application.
+ *
+ * Return: number of bytes sent to the kernel upon success;
+ *	   < 0 in case of error with errno set
+ */
+int32_t kcapi_akcipher_stream_init_vfy(struct kcapi_handle *handle,
+				       struct iovec *iov, uint32_t iovlen);
+
+
+/**
+ * kcapi_akcipher_stream_update() - send more data for processing (stream)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list with data to be processed by the cipher operation.
+ *	 - input
+ * @iovlen: number of scatter/gather list elements. - input
+ *
+ * Using this function call, more data can be submitted to the kernel.
+ *
+ * This function may cause the caller to sleep if the kernel buffer holding
+ * the data is getting full. The process will be woken up once more buffer
+ * space becomes available by calling kcapi_akcipher_stream_op().
+ *
+ * Note: with the separate API calls of kcapi_akcipher_stream_update() and
+ * kcapi_akcipher_stream_op() a multi-threaded application can be implemented
+ * where one thread sends data to be processed and one thread picks up data
+ * processed by the cipher operation.
+ *
+ * Return: number of bytes sent to the kernel upon success;
+ *	   < 0 in case of error with errno set
+ */
+int32_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
+				     struct iovec *iov, uint32_t iovlen);
+int32_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
+					  struct iovec *iov, uint32_t iovlen);
+
+
+/**
+ * kcapi_akcipher_stream_op() - obtain processed data (stream)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list pointing to buffers to be filled with the resulting
+ *	 data from a cipher operation. - output
+ * @iovlen: number of scatter/gather list elements. - input
+ *
+ * This call can be called interleaved with kcapi_akcipher_stream_update() to
+ * fetch the processed data.
+ *
+ * This function may cause the caller to sleep if the kernel buffer holding
+ * the data is empty. The process will be woken up once more data is sent
+ * by calling kcapi_cipher_stream_update().
+ *
+ * Note, when supplying buffers that are not multiple of block size, the buffers
+ * will only be filled up to the maximum number of full block sizes that fit
+ * into the buffer.
+ *
+ * Return: number of bytes obtained from the kernel upon success;
+ *	   < 0 in case of error with errno set
+ */
+int32_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
+			         struct iovec *iov, uint32_t iovlen);
+
 
 #endif /* _KCAPI_H */

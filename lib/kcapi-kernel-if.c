@@ -1276,3 +1276,63 @@ int32_t kcapi_akcipher_verify(struct kcapi_handle *handle,
 	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
 				   ALG_OP_VERIFY);
 }
+
+int32_t kcapi_akcipher_stream_init_enc(struct kcapi_handle *handle,
+				       struct iovec *iov, uint32_t iovlen)
+{
+	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_ENCRYPT,
+				       MSG_MORE);
+}
+
+int32_t kcapi_akcipher_stream_init_dec(struct kcapi_handle *handle,
+				       struct iovec *iov, uint32_t iovlen)
+{
+	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_DECRYPT,
+				       MSG_MORE);
+}
+
+int32_t kcapi_akcipher_stream_init_sgn(struct kcapi_handle *handle,
+				       struct iovec *iov, uint32_t iovlen)
+{
+	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_SIGN,
+				       MSG_MORE);
+}
+
+int32_t kcapi_akcipher_stream_init_vfy(struct kcapi_handle *handle,
+				       struct iovec *iov, uint32_t iovlen)
+{
+	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_DECRYPT,
+				       MSG_MORE);
+}
+
+int32_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
+				     struct iovec *iov, uint32_t iovlen)
+{
+	/* TODO: vmsplice only works with ALG_MAX_PAGES - 1 -- no clue why */
+	if (iovlen < ALG_MAX_PAGES)
+		return _kcapi_common_vmsplice_iov(handle, iov, iovlen,
+						  MSG_MORE);
+	else
+		return _kcapi_common_send_data(handle, iov, iovlen, MSG_MORE);
+}
+
+int32_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
+				          struct iovec *iov, uint32_t iovlen)
+{
+	/* TODO: vmsplice only works with ALG_MAX_PAGES - 1 -- no clue why */
+	if (iovlen < ALG_MAX_PAGES)
+		return _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
+	else
+		return _kcapi_common_send_data(handle, iov, iovlen, 0);
+}
+
+int32_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
+			         struct iovec *iov, uint32_t iovlen)
+{
+	if (!iov || !iovlen) {
+		fprintf(stderr,
+			"Symmetric operation: No buffer for output data provided\n");
+		return -EINVAL;
+	}
+	return _kcapi_common_recv_data(handle, iov, iovlen);
+}
