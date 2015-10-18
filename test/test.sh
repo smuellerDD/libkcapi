@@ -468,12 +468,17 @@ symfunc()
 
 asymfunc()
 {
-	vmsplice=$1
-	aligned=$2
+	stream=$1
+	vmsplice=$2
+	aligned=$3
 
 	if [ x"$vmsplice" = x"X" ]
 	then
 		vmsplice=""
+	fi
+	if [ x"$stream" = x"X" ]
+	then
+		stream=""
 	fi
 
 	ASYMEXEC="1 2 3"
@@ -498,13 +503,18 @@ asymfunc()
 
 		enc="-o $ASYM_enc"
 
-		result=$(./kcapi -x 4 $vmsplice $aligned $enc -c $ASYM_name $keyopt -p $ASYM_msg)
+		result=$(./kcapi -x 4 $stream $vmsplice $aligned $enc -c $ASYM_name $keyopt -p $ASYM_msg)
 
 		sout="one-shot"
+		vout=""
 		aout="non-aligned"
 		if [ x"$vmsplice" = x"-v" ]
 		then
-			sout="vmsplice"
+			vout="vmsplice"
+		fi
+		if [ x"$stream" = x"-s" ]
+		then
+			sout="stream"
 		fi
 		if [ x"$aligned" = x"-m" ]
 		then
@@ -512,9 +522,9 @@ asymfunc()
 		fi
 		if [ x"$result" = x"$ASYM_exp" ]
 		then
-			echo "Asymmetric $sout $aout test $i passed"
+			echo "Asymmetric $sout $vout $aout test $i passed"
 		else
-			echo "Asymmetric $sout $aout test $i failed"
+			echo "Asymmetric $sout $vout $aout test $i failed"
 			echo " Exp $ASYM_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -749,7 +759,8 @@ aeadfunc -s
 aeadfunc -v
 asymfunc
 asymfunc -s
-asymfunc -v
+asymfunc -s -v
+asymfunc X -v
 
 symfunc X -m
 symfunc -s -m
@@ -757,9 +768,10 @@ symfunc -v -m
 aeadfunc X -m
 aeadfunc -s -m
 aeadfunc -v -m
-asymfunc X -m
-asymfunc -s -m
-asymfunc -v -m
+asymfunc X X -m
+asymfunc -s X -m
+asymfunc X -v -m
+asymfunc -s -v -m
 
 auxtest
 multipletest
