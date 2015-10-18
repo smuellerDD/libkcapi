@@ -542,15 +542,26 @@
 !Fkcapi.h kcapi_rng_seed
 !Fkcapi.h kcapi_rng_generate
    </sect1>
-   <sect1><title>Asymmetric Cipher API</title>
+   <sect1><title>Asymmetric Cipher API - Generic</title>
 !Pkcapi.h Asymmetric Cipher API
 !Fkcapi.h kcapi_akcipher_init
 !Fkcapi.h kcapi_akcipher_destroy
 !Fkcapi.h kcapi_akcipher_setkey
+!Fkcapi.h kcapi_akcipher_setpubkey
+   </sect1>
+   <sect1><title>Asymmetric Cipher API - One Shot</title>
 !Fkcapi.h kcapi_akcipher_encrypt
 !Fkcapi.h kcapi_akcipher_decrypt
 !Fkcapi.h kcapi_akcipher_sign
 !Fkcapi.h kcapi_akcipher_verify
+   </sect1>
+   <sect1><title>Asymmetric Cipher API - Stream</title>
+!Fkcapi.h kcapi_akcipher_stream_init_enc
+!Fkcapi.h kcapi_akcipher_stream_init_dec
+!Fkcapi.h kcapi_akcipher_stream_init_sgn
+!Fkcapi.h kcapi_akcipher_stream_init_vfy
+!Fkcapi.h kcapi_akcipher_stream_update
+!Fkcapi.h kcapi_akcipher_stream_op
    </sect1>
  </chapter>
 </book>
