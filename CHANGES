@@ -1,6 +1,14 @@
-Changes 0.9.1:
+Changes 0.10:
  * simplify kcapi_aead_encrypt and kcapi_aead_decrypt
  * comment out message truncation check
+ * test.sh: fix RFC4106 IV handling for kernels >= 4.2 due to overhaul of
+   AEAD support in the kernel
+ * use zero-copy in stream operation if possible
+ * Add set_pubkey API call
+ * convert entire API to use data types with known sizes (i.e. stdint.h)
+ * Add asymmetric tests to test.sh
+ * Add asymmetric stream cipher API
+ * update documentation to cover akcipher API
 
 Changes 0.9.0:
  * Add asymmetric cipher API.
