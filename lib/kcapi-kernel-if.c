@@ -1,7 +1,7 @@
 /*
  * Generic kernel crypto API user space interface library
  *
- * Copyright (C) 2014, Stephan Mueller <smueller@chronox.de>
+ * Copyright (C) 2014 - 2015, Stephan Mueller <smueller@chronox.de>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -64,7 +64,7 @@
 #define MINVERSION 10 /* API compatible, ABI may change, functional
 		       * enhancements only, consumer can be left unchanged if
 		       * enhancements are not considered */
-#define PATCHLEVEL 0  /* API / ABI compatible, no functional changes, no
+#define PATCHLEVEL 1  /* API / ABI compatible, no functional changes, no
 		       * enhancements, bug fixes only */
 
 /* remove once in if_alg.h */
@@ -209,13 +209,23 @@ static inline int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 	for (i = 0; i < iovlen; i++)
 		inlen += iov[i].iov_len;
 
+	/* kernel processes input data with max size of one page */
+	handle->processed_sg += ((inlen + PAGE_SIZE - 1) / PAGE_SIZE);
+	if (handle->processed_sg > ALG_MAX_PAGES)
+		return _kcapi_common_send_data(handle, iov, iovlen,
+					       (flags & SPLICE_F_MORE) ?
+					        MSG_MORE : 0);
+
+
 	ret = vmsplice(handle->pipes[1], iov, iovlen, SPLICE_F_GIFT|flags);
 	if (0 > ret)
 		return ret;
-	if ((uint32_t)ret != inlen)
+	if ((uint32_t)ret != inlen) {
 		fprintf(stderr, "vmsplice: not all data received by kernel (data recieved: %ld -- data sent: %lu)\n",
 			(long)ret, (unsigned long)inlen);
-	ret = splice(handle->pipes[0], NULL, handle->opfd, NULL, ret, 0);
+		return -EFAULT;
+	}
+	ret = splice(handle->pipes[0], NULL, handle->opfd, NULL, ret, flags);
 	return (ret >= 0) ? ret : -errno;
 }
 
@@ -276,6 +286,17 @@ static inline int32_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 		return -EMSGSIZE;
 	}
 #endif
+
+	/*
+	 * As the iovecs are processed and removed from the list in the kernel
+	 * we can also reset the list of processed iovecs here.
+	 *
+	 * Note, if there is an error, the kernel keeps the list unless it is
+	 * a "valid" error of EBADMSG indicating an integrity error of the
+	 * crypto operation.
+	 */
+	if (ret >= 0 || errsv == EBADMSG)
+		handle->processed_sg = 0;
 
 	return (ret >= 0) ? ret : -errsv;
 }
@@ -723,19 +744,17 @@ static int32_t _kcapi_cipher_crypt(struct kcapi_handle *handle,
 		return -EINVAL;
 	}
 
-	iov.iov_base = (void*)(uintptr_t)in;
 	/*
 	 * Using two syscalls with memcpy is faster than four syscalls
 	 * without memcpy below the given threshold.
 	 */
 	if ((access == KCAPI_ACCESS_HEURISTIC && inlen <= (1<<13)) ||
 	    access == KCAPI_ACCESS_SENDMSG) {
+		iov.iov_base = (void*)(uintptr_t)in;
 		iov.iov_len = inlen;
 		ret = _kcapi_common_send_meta(handle, &iov, 1, enc, 0);
 		if (0 > ret)
 			return ret;
-		iov.iov_base = (void*)(uintptr_t)out;
-		iov.iov_len = outlen;
 	} else {
 		ret = _kcapi_common_send_meta(handle, NULL, 0, enc, 0);
 		if (0 > ret)
@@ -753,7 +772,7 @@ static int32_t _kcapi_cipher_crypt(struct kcapi_handle *handle,
 			/* AIO not available for specific interface */
 			handle->aio.skcipher_aio_disable = 1;
 			_kcapi_aio_destroy(handle);
-			return _kcapi_common_recv_data(handle, &iov, 1);
+			return _kcapi_common_read_data(handle, out, outlen);
 		}
 		return ret;
 	}
@@ -825,9 +844,9 @@ int32_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
 int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
 				   struct iovec *iov, uint32_t iovlen)
 {
-	if (iovlen <= ALG_MAX_PAGES)
+	if (handle->processed_sg <= ALG_MAX_PAGES)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen,
-						  MSG_MORE);
+						  SPLICE_F_MORE);
 	else
 		return _kcapi_common_send_data(handle, iov, iovlen, MSG_MORE);
 }
@@ -999,7 +1018,7 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 	if (outlen) {
 		return _kcapi_common_read_data(handle, out, outlen);
 	} else {
-		iov.iov_base = (void*)(uintptr_t)out;
+		iov.iov_base = out;
 		iov.iov_len = outlen;
 		return _kcapi_common_recv_data(handle, &iov, 1);
 	}
@@ -1026,13 +1045,20 @@ int32_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
 int32_t kcapi_aead_stream_update(struct kcapi_handle *handle,
 				 struct iovec *iov, uint32_t iovlen)
 {
-	return _kcapi_common_send_data(handle, iov, iovlen, MSG_MORE);
+	if (handle->processed_sg <= ALG_MAX_PAGES)
+		return _kcapi_common_vmsplice_iov(handle, iov, iovlen,
+						  SPLICE_F_MORE);
+	else
+		return _kcapi_common_send_data(handle, iov, iovlen, MSG_MORE);
 }
 
 int32_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
 				      struct iovec *iov, uint32_t iovlen)
 {
-	return _kcapi_common_send_data(handle, iov, iovlen, 0);
+	if (handle->processed_sg <= ALG_MAX_PAGES)
+		return _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
+	else
+		return _kcapi_common_send_data(handle, iov, iovlen, 0);
 }
 
 int32_t kcapi_aead_stream_op(struct kcapi_handle *handle,
@@ -1309,9 +1335,9 @@ int32_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
 				     struct iovec *iov, uint32_t iovlen)
 {
 	/* TODO: vmsplice only works with ALG_MAX_PAGES - 1 -- no clue why */
-	if (iovlen < ALG_MAX_PAGES)
+	if (handle->processed_sg < ALG_MAX_PAGES)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen,
-						  MSG_MORE);
+						  SPLICE_F_MORE);
 	else
 		return _kcapi_common_send_data(handle, iov, iovlen, MSG_MORE);
 }
@@ -1320,7 +1346,7 @@ int32_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
 				          struct iovec *iov, uint32_t iovlen)
 {
 	/* TODO: vmsplice only works with ALG_MAX_PAGES - 1 -- no clue why */
-	if (iovlen < ALG_MAX_PAGES)
+	if (handle->processed_sg < ALG_MAX_PAGES)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
 	else
 		return _kcapi_common_send_data(handle, iov, iovlen, 0);

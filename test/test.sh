@@ -663,13 +663,13 @@ aeadfunc()
 	expectedshort="5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d75874da5e05a23b8902677480ee92c7ff6bc"
 
 	# vmsplice does not take long strings
-	if [ x"$stream" = x"-s" ]
-	then
-		expected="${expectedlong}
-${expectedshort}"
-	else
+	#if [ x"$stream" = x"-s" ]
+	#then
+	#	expected="${expectedlong}
+#${expectedshort}"
+	#else
 		expected=$expectedshort
-	fi
+	#fi
 	result=$(./kcapi -y $stream)
 	if [ x"$result" = x"$expected" ]
 	then

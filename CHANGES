@@ -1,3 +1,6 @@
+Changes 0.10.1:
+ * Fix issues with the vmsplice usage in stream mode
+
 Changes 0.10.0:
  * simplify kcapi_aead_encrypt and kcapi_aead_decrypt
  * comment out message truncation check

@@ -3,7 +3,7 @@
 #
 
 CC=gcc
-CFLAGS +=-Wextra -Wall -pedantic -fPIC -O2
+CFLAGS +=-Wextra -Wall -pedantic -fPIC -O2 -std=gnu99
 #Hardening
 CFLAGS +=-D_FORTIFY_SOURCE=2 -fstack-protector-strong -fwrapv --param ssp-buffer-size=4
 LDFLAGS +=-Wl,-z,relro,-z,now

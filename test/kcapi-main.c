@@ -825,24 +825,33 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 		iov.iov_base = cavs_test->assoc;
 		iov.iov_len = cavs_test->assoclen;
 		if (cavs_test->enc) {
-			struct iovec pttag[2];
+			struct iovec pttag;
 
 			ret = kcapi_aead_stream_update(&handle, &iov, 1);
 			if (0 > ret) {
 				printf("Sending update buffer failed\n");
 				goto out;
 			}
-			/* send plaintext with last call */
-			pttag[0].iov_base = cavs_test->pt;
-			pttag[0].iov_len = cavs_test->ptlen;
-			pttag[1].iov_base = tag;
-			pttag[1].iov_len = taglen;
-			ret = kcapi_aead_stream_update_last(&handle, &pttag[0],
-							    2);
+
+			if (cavs_test->ptlen) {
+				pttag.iov_base = cavs_test->pt;
+				pttag.iov_len = cavs_test->ptlen;
+				ret = kcapi_aead_stream_update(&handle,
+							       &pttag, 1);
+				if (0 > ret) {
+					printf("Sending last update buffer failed\n");
+					goto out;
+				}
+			}
+			pttag.iov_base = tag;
+			pttag.iov_len = taglen;
+			ret = kcapi_aead_stream_update_last(&handle,
+						            &pttag, 1);
 			if (0 > ret) {
 				printf("Sending last update buffer failed\n");
 				goto out;
 			}
+			
 			if ((outbuflen - cavs_test->taglen) >= 16) {
 				/* test of multiple iovecs */
 				outiov[0].iov_base = outbuf;
@@ -1008,11 +1017,14 @@ static int cavs_aead_large(int stream, uint32_t loops, int splice)
 	 */
 
 	if (stream) {
-		test.assoclen -= test.taglen;
+		/* for sendmsg, we can use the following: */
+		/* test.assoclen -= test.taglen;
 		ret = cavs_aead_stream(&test, loops);
 		if (ret)
 			goto out;
-		test.assoclen -= (8192);
+		test.assoclen -= (8192); */
+		/* However, we now have vmsplice here */
+		test.assoclen -= 8192 + test.taglen;
 		ret = cavs_aead_stream(&test, loops);
 	} else {
 		/*

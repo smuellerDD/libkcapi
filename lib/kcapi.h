@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, Stephan Mueller <smueller@chronox.de>
+ * Copyright (C) 2014 - 2015, Stephan Mueller <smueller@chronox.de>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -124,7 +124,9 @@ struct kcapi_aead_data {
  * Cipher handle
  * @tfmfd: Socket descriptor for AF_ALG
  * @opfd: FD to open kernel crypto API TFM
- * @skdata: Common data for all ciphers
+ * @pipes: vmplice/splice pipe pair
+ * @processed_sg: number of scatter/gather entries processed by kernel
+ * @ciper: Common data for all ciphers
  * @aead: AEAD cipher specific data
  * @info: properties of ciphers
  * @aio: AIO information
@@ -133,6 +135,7 @@ struct kcapi_handle {
 	int tfmfd;
 	int opfd;
 	int pipes[2];
+	uint32_t processed_sg;
 	struct kcapi_cipher_data cipher;
 	struct kcapi_aead_data aead;
 	struct kcapi_cipher_info info;
@@ -1349,6 +1352,27 @@ int32_t kcapi_akcipher_stream_init_vfy(struct kcapi_handle *handle,
  */
 int32_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
 				     struct iovec *iov, uint32_t iovlen);
+
+/**
+ * kcapi_akcipher_stream_update_last() - send last data for processing (stream)
+ * @handle: cipher handle - input
+ * @iov: scatter/gather list with data to be processed by the cipher operation.
+ *	 - input
+ * @iovlen: number of scatter/gather list elements. - input
+ *
+ * Using this function call, more data can be submitted to the kernel.
+ *
+ * This call is identical to the kcapi_akcipher_stream_update() call with the
+ * exception that it marks the last data buffer before the cipher operation
+ * is triggered.
+ *
+ * This call must be used if all data is delivered to the kernel and
+ * kcapi_akcipher_stream_op() will be invoked as a next step. This call
+ * notifies the kernel that no further data is to be expected.
+ *
+ * Return: number of bytes sent to the kernel upon success;
+ *	   < 0 in case of error with errno set
+ */
 int32_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
 					  struct iovec *iov, uint32_t iovlen);
 
