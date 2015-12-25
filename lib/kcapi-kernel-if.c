@@ -242,7 +242,7 @@ static inline int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 		iov.iov_base = (void*)(uintptr_t)(in + processed);
 		iov.iov_len = inlen;
 
-		if ((handle->processed_sg + inlen) > ALG_MAX_PAGES) {
+		if ((handle->processed_sg++) > ALG_MAX_PAGES) {
 			ret = _kcapi_common_send_data(handle, &iov, 1,
 						      (flags & SPLICE_F_MORE) ?
 						       MSG_MORE : 0);
@@ -258,7 +258,6 @@ static inline int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 			return ret;
 
 		processed += ret;
-		handle->processed_sg += ret;
 		inlen -= ret;
 	}
 
