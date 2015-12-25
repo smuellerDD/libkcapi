@@ -216,7 +216,6 @@ static inline int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 					       (flags & SPLICE_F_MORE) ?
 					        MSG_MORE : 0);
 
-
 	ret = vmsplice(handle->pipes[1], iov, iovlen, SPLICE_F_GIFT|flags);
 	if (0 > ret)
 		return ret;
@@ -242,16 +241,24 @@ static inline int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 
 		iov.iov_base = (void*)(uintptr_t)(in + processed);
 		iov.iov_len = inlen;
-		ret = vmsplice(handle->pipes[1], &iov, 1,
-			       SPLICE_F_GIFT|flags);
-		if (0 > ret)
-			return ret;
-		ret = splice(handle->pipes[0], NULL, handle->opfd, NULL, ret,
-			     flags);
+
+		if ((handle->processed_sg + inlen) > ALG_MAX_PAGES) {
+			ret = _kcapi_common_send_data(handle, &iov, 1,
+						      (flags & SPLICE_F_MORE) ?
+						       MSG_MORE : 0);
+		} else {
+			ret = vmsplice(handle->pipes[1], &iov, 1,
+				       SPLICE_F_GIFT|flags);
+			if (0 > ret)
+				return ret;
+			ret = splice(handle->pipes[0], NULL, handle->opfd,
+				     NULL, ret, flags);
+		}
 		if (0 > ret)
 			return ret;
 
 		processed += ret;
+		handle->processed_sg += ret;
 		inlen -= ret;
 	}
 
