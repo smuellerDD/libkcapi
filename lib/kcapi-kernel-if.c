@@ -94,7 +94,9 @@
 #endif
 
 /* make sure that is equal to include/crypto/if_alg.h */
+#ifndef ALG_MAX_PAGES
 #define ALG_MAX_PAGES 16
+#endif
 
 /************************************************************
  * Internal logic
