@@ -819,6 +819,39 @@ static int32_t _kcapi_cipher_crypt(struct kcapi_handle *handle,
 	}
 }
 
+static int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
+					 const uint8_t *in, uint32_t inlen,
+					 uint8_t *out, uint32_t outlen,
+					int access, int enc)
+{
+	int32_t totallen = 0;
+
+	while (inlen) {
+		uint32_t process = inlen;
+		int32_t ret = 0;
+
+		/*
+		 * We do not check that PAGE_SIZE * ALG_MAX_PAGES is a multiple
+		 * of blocksize, because we assume that this is always the case.
+		 */
+		if (inlen > PAGE_SIZE * ALG_MAX_PAGES)
+			process = PAGE_SIZE * ALG_MAX_PAGES;
+
+		ret = _kcapi_cipher_crypt(handle, in, process, out, outlen,
+					  access, enc);
+		if (ret < 0)
+			return ret;
+
+		totallen += process;
+		in += process;
+		inlen -= process;
+		out += ret;
+		outlen -= ret;
+	}
+
+	return totallen;
+}
+
 int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 			     const uint8_t *in, uint32_t inlen,
 			     const uint8_t *iv,
@@ -835,8 +868,8 @@ int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 	}
 
 	handle->cipher.iv = iv;
-	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
-				   ALG_OP_ENCRYPT);
+	return _kcapi_cipher_crypt_chunk(handle, in, inlen, out, outlen, access,
+					 ALG_OP_ENCRYPT);
 }
 
 int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
@@ -860,8 +893,8 @@ int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 	}
 
 	handle->cipher.iv = iv;
-	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
-				   ALG_OP_DECRYPT);
+	return _kcapi_cipher_crypt_chunk(handle, in, inlen, out, outlen, access,
+					 ALG_OP_DECRYPT);
 }
 
 int32_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
@@ -985,9 +1018,16 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 	/* require properly sized output data size */
 	if (outlen < inlen) {
 		fprintf(stderr,
-			"AEAD Encryption: Ciphertext buffer (%lu) is smaller than plaintext buffer (%lu)\n",
-			(unsigned long)outlen, (unsigned long)inlen);
+			"AEAD Encryption: Ciphertext buffer (%u) is smaller than plaintext buffer (%u)\n",
+			outlen, inlen);
 		return -EINVAL;
+	}
+
+	if (inlen > PAGE_SIZE * ALG_MAX_PAGES) {
+		fprintf(stderr,
+			"AEAD Encryption: Plaintext buffer (%u) is larger than maximum chunk size (%lu)\n",
+			inlen, PAGE_SIZE * ALG_MAX_PAGES);
+		return -EMSGSIZE;
 	}
 
 	handle->cipher.iv = iv;
@@ -1030,9 +1070,16 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 	/* require properly sized output data size */
 	if (outlen < inlen) {
 		fprintf(stderr,
-			"AEAD Decryption: Plaintext buffer (%lu) is smaller than ciphertext buffer (%lu)\n",
-			(unsigned long)outlen, (unsigned long) inlen);
+			"AEAD Decryption: Plaintext buffer (%u) is smaller than ciphertext buffer (%u)\n",
+			outlen, inlen);
 		return -EINVAL;
+	}
+
+	if (inlen > PAGE_SIZE * ALG_MAX_PAGES) {
+		fprintf(stderr,
+			"AEAD Decryption: Ciphertext buffer (%u) is larger than maximum chunk size (%lu)\n",
+			inlen, PAGE_SIZE * ALG_MAX_PAGES);
+		return -EMSGSIZE;
 	}
 
 	handle->cipher.iv = iv;

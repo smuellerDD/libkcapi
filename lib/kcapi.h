@@ -125,7 +125,7 @@ struct kcapi_aead_data {
  * @tfmfd: Socket descriptor for AF_ALG
  * @opfd: FD to open kernel crypto API TFM
  * @pipes: vmplice/splice pipe pair
- * @processed_sg: number of scatter/gather entries processed by kernel
+ * @processed_sg: number of scatter/gather entries sent to the kernel
  * @ciper: Common data for all ciphers
  * @aead: AEAD cipher specific data
  * @info: properties of ciphers
@@ -331,6 +331,14 @@ int32_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
  * where one thread sends data to be processed and one thread picks up data
  * processed by the cipher operation.
  *
+ * IMPORTANT NOTE: The kernel will only process PAGE_SIZE * ALG_MAX_PAGES
+ * at one time. If your input data is larger than this threshold, you MUST
+ * segment it into chunks of at most PAGE_SIZE * ALG_MAX_PAGES and invoke
+ * the kcapi_cipher_stream_update() on that segment followed by
+ * kcapi_cipher_stream_op() before the next chunk is processed. If this
+ * rule is not obeyed, the thread invoking kcapi_cipher_stream_update()
+ * will be put to sleep until another thread invokes kcapi_cipher_stream_op().
+ *
  * Return: number of bytes sent to the kernel upon success;
  *	   < 0 in case of error with errno set
  */
@@ -485,6 +493,9 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, uint32_t assoclen);
  * kcapi_aead_getdata() to obtain the resulting ciphertext and authentication
  * tag references.
  *
+ * IMPORTANT NOTE: The kernel will only process PAGE_SIZE * ALG_MAX_PAGES
+ * at one time. Longer input data cannot be handled by the kernel.
+ *
  * Return: number of bytes encrypted upon success;
  *	   < 0 in case of error with errno set
  */
@@ -553,6 +564,9 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
  * decryption operation, the errno of this call shall be checked for EBADMSG.
  * If this function returns < 0 and errno is set to EBADMSG, an authentication
  * error is detected.
+ *
+ * IMPORTANT NOTE: The kernel will only process PAGE_SIZE * ALG_MAX_PAGES
+ * at one time. Longer input data cannot be handled by the kernel.
  *
  * Return: number of bytes decrypted upon success;
  *	   < 0 in case of error with errno set
@@ -667,6 +681,9 @@ int32_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
  * kcapi_aead_stream_op() a multi-threaded application can be implemented
  * where one thread sends data to be processed and one thread picks up data
  * processed by the cipher operation.
+ *
+ * IMPORTANT NOTE: The kernel will only process PAGE_SIZE * ALG_MAX_PAGES
+ * at one time. Longer input data cannot be handled by the kernel.
  *
  * Return: number of bytes sent to the kernel upon success;
  *	   < 0 in case of error with errno set
