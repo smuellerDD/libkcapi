@@ -102,6 +102,25 @@
  * Internal logic
  ************************************************************/
 
+static int _kcapi_common_accept(struct kcapi_handle *handle)
+{
+	if (handle->opfd != -1)
+		return 0;
+
+	handle->opfd = accept(handle->tfmfd, NULL, 0);
+	if (handle->opfd == -1) {
+		int errsv = 0;
+
+		errsv = errno;
+		perror("AF_ALG: accept failed");
+		close(handle->tfmfd);
+		handle->tfmfd = -1;
+		return -errsv;
+	}
+
+	return 0;
+}
+
 static int32_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen,
 				       uint32_t enc, uint32_t flags)
@@ -130,6 +149,10 @@ static int32_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 		CMSG_SPACE(sizeof(*type)) + 	/* Encryption / Decryption */
 		iv_msg_size +			/* IV */
 		assoc_msg_size;			/* AEAD associated data size */
+
+	ret = _kcapi_common_accept(handle);
+	if (ret)
+		return ret;
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -187,6 +210,10 @@ static inline int32_t _kcapi_common_send_data(struct kcapi_handle *handle,
 	struct msghdr msg;
 	int32_t ret = 0;
 
+	ret = _kcapi_common_accept(handle);
+	if (ret)
+		return ret;
+
 	msg.msg_name = NULL;
 	msg.msg_namelen = 0;
 	msg.msg_control = NULL;
@@ -207,6 +234,10 @@ static inline int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 	int32_t ret = 0;
 	uint32_t inlen = 0;
 	unsigned long i;
+
+	ret = _kcapi_common_accept(handle);
+	if (ret)
+		return ret;
 
 	for (i = 0; i < iovlen; i++)
 		inlen += iov[i].iov_len;
@@ -237,6 +268,11 @@ static inline int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 {
 	struct iovec iov;
 	uint32_t processed = 0;
+	int ret = 0;
+
+	ret = _kcapi_common_accept(handle);
+	if (ret)
+		return ret;
 
 	while (inlen) {
 		int32_t ret = 0;
@@ -273,6 +309,10 @@ static inline int32_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 	struct msghdr msg;
 	int32_t ret = 0;
 	int errsv = 0;
+
+	ret = _kcapi_common_accept(handle);
+	if (ret)
+		return ret;
 
 	msg.msg_name = NULL;
 	msg.msg_namelen = 0;
@@ -313,6 +353,10 @@ static inline int32_t _kcapi_common_read_data(struct kcapi_handle *handle,
 					      uint8_t *out, uint32_t outlen)
 {
 	int32_t ret = 0;
+
+	ret = _kcapi_common_accept(handle);
+	if (ret)
+		return ret;
 
 	ret = read(handle->opfd, out, outlen);
 	return (ret >= 0) ? ret : -errno;
@@ -546,6 +590,29 @@ err:
 	return;
 }
 
+static inline void _kcapi_aio_destroy(struct kcapi_handle *handle)
+{
+	if (handle->aio.skcipher_aio_disable)
+		return;
+	if (handle->aio.efd != -1)
+		close(handle->aio.efd);
+	io_destroy(handle->aio.aio_ctx);
+}
+
+static inline void _kcapi_handle_destroy(struct kcapi_handle *handle)
+{
+	if (handle->tfmfd != -1)
+		close(handle->tfmfd);
+	if (handle->opfd != -1)
+		close(handle->opfd);
+	if (handle->pipes[0] != -1)
+		close(handle->pipes[0]);
+	if (handle->pipes[1] != -1)
+		close(handle->pipes[1]);
+	_kcapi_aio_destroy(handle);
+	memset(handle, 0, sizeof(struct kcapi_handle));
+}
+
 static int _kcapi_handle_init(struct kcapi_handle *handle, const char *type,
 			      const char *ciphername, uint32_t flags)
 {
@@ -572,20 +639,12 @@ static int _kcapi_handle_init(struct kcapi_handle *handle, const char *type,
 		return -errsv;
 	}
 
-	handle->opfd = accept(handle->tfmfd, NULL, 0);
-	if (handle->opfd == -1) {
-		errsv = errno;
-		perror("AF_ALG: accept failed");
-		close(handle->tfmfd);
-		handle->tfmfd = -1;
-		return -errsv;
-	}
+	handle->opfd = -1;
 
 	ret = pipe(handle->pipes);
 	if (ret) {
 		errsv = errno;
 		close(handle->tfmfd);
-		close(handle->opfd);
 		return -errsv;
 	}
 
@@ -594,10 +653,7 @@ static int _kcapi_handle_init(struct kcapi_handle *handle, const char *type,
 		errsv = errno;
 		fprintf(stderr, "NETLINK_CRYPTO: cannot obtain cipher information for %s (is required crypto_user.c patch missing? see documentation)\n",
 		       ciphername);
-		close(handle->tfmfd);
-		close(handle->opfd);
-		close(handle->pipes[0]);
-		close(handle->pipes[1]);
+		_kcapi_handle_destroy(handle);
 	}
 
 	if (flags & KCAPI_INIT_AIO)
@@ -606,29 +662,6 @@ static int _kcapi_handle_init(struct kcapi_handle *handle, const char *type,
 		handle->aio.skcipher_aio_disable = 1;
 
 	return (errsv) ? -errsv : ret;
-}
-
-static inline void _kcapi_aio_destroy(struct kcapi_handle *handle)
-{
-	if (handle->aio.skcipher_aio_disable)
-		return;
-	if (handle->aio.efd != -1)
-		close(handle->aio.efd);
-	io_destroy(handle->aio.aio_ctx);
-}
-
-static inline void _kcapi_handle_destroy(struct kcapi_handle *handle)
-{
-	if (handle->tfmfd != -1)
-		close(handle->tfmfd);
-	if (handle->opfd != -1)
-		close(handle->opfd);
-	if (handle->pipes[0] != -1)
-		close(handle->pipes[0]);
-	if (handle->pipes[1] != -1)
-		close(handle->pipes[1]);
-	_kcapi_aio_destroy(handle);
-	memset(handle, 0, sizeof(struct kcapi_handle));
 }
 
 /*********** Generic Helper functions *************************/
@@ -1146,17 +1179,22 @@ int kcapi_md_setkey(struct kcapi_handle *handle,
 static inline int32_t _kcapi_md_update(struct kcapi_handle *handle,
 				       const uint8_t *buffer, uint32_t len)
 {
-	int32_t r;
+	int32_t ret = 0;
 
 	/* zero buffer length cannot be handled via splice */
 	/* TODO check that heuristic for sendmsg is appropriate */
-	if(len == 0 /* < (1<<15) */)
-		r = send(handle->opfd, buffer, len, MSG_MORE);
-	else
-		r = _kcapi_common_vmsplice_chunk(handle, buffer, len,
-						 SPLICE_F_MORE);
+	if(len == 0 /* < (1<<15) */) {
+		ret = _kcapi_common_accept(handle);
+		if (ret)
+			return ret;
 
-	if (r < 0 || (uint32_t)r < len)
+		ret = send(handle->opfd, buffer, len, MSG_MORE);
+	} else {
+		ret = _kcapi_common_vmsplice_chunk(handle, buffer, len,
+						   SPLICE_F_MORE);
+	}
+
+	if (ret < 0 || (uint32_t)ret < len)
 		return -EIO;
 	return 0;
 }

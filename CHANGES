@@ -1,5 +1,8 @@
 Changes 0.10.1:
  * Fix issues with the vmsplice usage in stream mode
+ * Fix issues with the vmsplice usage in chunk mode
+ * Any modification on the tfmfd must be performed before the accept() call as mandated
+   by the update to kernel 4.5. 
 
 Changes 0.10.0:
  * simplify kcapi_aead_encrypt and kcapi_aead_decrypt
