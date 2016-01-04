@@ -414,7 +414,8 @@ static int cavs_sym(struct kcapi_cavs *cavs_test, uint32_t loops,
 		outbuflen = cavs_test->ctlen;
 	}
 	if (cavs_test->aligned) {
-		if (posix_memalign((void *)&outbuf, PAGE_SIZE, outbuflen))
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE),
+				   outbuflen))
 			goto out;
 		memset(outbuf, 0, outbuflen);
 	} else {
@@ -494,7 +495,7 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 		outbuflen = cavs_test->ctlen;
 	}
 	if (cavs_test->aligned) {
-		if (posix_memalign((void *)&outbuf, PAGE_SIZE, outbuflen))
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), outbuflen))
 			goto out;
 		memset(outbuf, 0, outbuflen);
 	} else {
@@ -638,7 +639,7 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 						 cavs_test->taglen);
 
 	if (cavs_test->aligned) {
-		if (posix_memalign((void *)&outbuf, PAGE_SIZE, outbuflen))
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), outbuflen))
 			goto out;
 		memset(outbuf, 0, outbuflen);
 	} else {
@@ -785,7 +786,7 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 						 cavs_test->assoclen,
 						 cavs_test->taglen);
 	if (cavs_test->aligned) {
-		if (posix_memalign((void *)&outbuf, PAGE_SIZE, outbuflen))
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), outbuflen))
 			goto out;
 		memset(outbuf, 0, outbuflen);
 	} else {
@@ -1005,9 +1006,9 @@ static int cavs_aead_large(int stream, uint32_t loops, int splice)
 	test.keylen = len / 2;
 
 	len = strlen(aad);
-	if (posix_memalign((void *)&test.assoc, PAGE_SIZE, (16 * PAGE_SIZE)))
+	if (posix_memalign((void *)&test.assoc, sysconf(_SC_PAGESIZE), (16 * sysconf(_SC_PAGESIZE))))
 		goto out;
-	hex2bin(aad, len, test.assoc, (PAGE_SIZE * 16));
+	hex2bin(aad, len, test.assoc, (sysconf(_SC_PAGESIZE) * 16));
 	test.assoclen = len / 2;
 
 	test.taglen = 16;
@@ -1193,7 +1194,7 @@ static int cavs_asym(struct kcapi_cavs *cavs_test, uint32_t loops,
 		return -EINVAL;
 
 	if (cavs_test->aligned) {
-		if (posix_memalign((void *)&outbuf, PAGE_SIZE, outbuflen))
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), outbuflen))
 			goto out;
 		memset(outbuf, 0, outbuflen);
 	} else {
@@ -1303,10 +1304,10 @@ static int cavs_asym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 		return -EINVAL;
 
 	if (cavs_test->aligned) {
-		if (posix_memalign((void *)&outbuf, PAGE_SIZE, outbuflen))
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), outbuflen))
 			goto out;
 		memset(outbuf, 0, outbuflen);
-		if (posix_memalign((void *)&inbuf, PAGE_SIZE, inbuflen))
+		if (posix_memalign((void *)&inbuf, sysconf(_SC_PAGESIZE), inbuflen))
 			goto out;
 		memset(inbuf, 0, inbuflen);
 	} else {

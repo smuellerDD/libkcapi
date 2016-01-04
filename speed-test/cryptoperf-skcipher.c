@@ -85,7 +85,7 @@ static int cp_skcipher_init_test(struct cp_test *test, size_t len)
 	cp_read_random(ivdata, kcapi_cipher_blocksize(&test->u.skcipher.handle));
 	test->u.skcipher.iv = ivdata;
 
-	if (posix_memalign((void *)&scratchpad, PAGE_SIZE,
+	if (posix_memalign((void *)&scratchpad, sysconf(_SC_PAGESIZE),
 			   kcapi_cipher_blocksize(&test->u.skcipher.handle) * len)) {
 		printf(DRIVER_NAME": could not allocate scratchpad for "
 		       "%s\n", test->driver_name);
