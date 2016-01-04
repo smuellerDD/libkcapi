@@ -51,7 +51,7 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm)
 	unsigned char data[MAX_KEYLEN];
 	unsigned char ivrand[MAX_KEYLEN];
 	unsigned char *ivdata = NULL;
-	size_t ivlen = 0;
+	uint32_t ivlen = 0;
 
 	dbg("Initializing AEAD test %s\n", test->testname);
 	if (!test->driver_name) {
@@ -101,12 +101,12 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm)
 						    test->u.aead.assoclen,
 						    TAGLEN);
 		
-	if (posix_memalign((void *)&input, PAGE_SIZE, test->u.aead.datalen)) {
+	if (posix_memalign((void *)&input, sysconf(_SC_PAGESIZE), test->u.aead.datalen)) {
 		printf(DRIVER_NAME": could not allocate input buffer for "
 		       "%s\n", test->driver_name);
 		goto out;
 	}
-	if (posix_memalign((void *)&output, PAGE_SIZE, test->u.aead.datalen)) {
+	if (posix_memalign((void *)&output, sysconf(_SC_PAGESIZE), test->u.aead.datalen)) {
 		printf(DRIVER_NAME": could not allocate output buffer for "
 		       "%s\n", test->driver_name);
 		goto out;
