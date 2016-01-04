@@ -243,7 +243,8 @@ static inline int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 		inlen += iov[i].iov_len;
 
 	/* kernel processes input data with max size of one page */
-	handle->processed_sg += ((inlen + PAGE_SIZE - 1) / PAGE_SIZE);
+	handle->processed_sg += ((inlen + sysconf(_SC_PAGESIZE) - 1) /
+				 sysconf(_SC_PAGESIZE));
 	if (handle->processed_sg > ALG_MAX_PAGES)
 		return _kcapi_common_send_data(handle, iov, iovlen,
 					       (flags & SPLICE_F_MORE) ?
@@ -831,11 +832,12 @@ static int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
 		int32_t ret = 0;
 
 		/*
-		 * We do not check that PAGE_SIZE * ALG_MAX_PAGES is a multiple
-		 * of blocksize, because we assume that this is always the case.
+		 * We do not check that ysconf(_SC_PAGESIZE) * ALG_MAX_PAGES is
+		 * a multiple of blocksize, because we assume that this is
+		 * always the case.
 		 */
-		if (inlen > PAGE_SIZE * ALG_MAX_PAGES)
-			process = PAGE_SIZE * ALG_MAX_PAGES;
+		if (inlen > sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES)
+			process = sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES;
 
 		ret = _kcapi_cipher_crypt(handle, in, process, out, outlen,
 					  access, enc);
@@ -1023,10 +1025,10 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 		return -EINVAL;
 	}
 
-	if (inlen > PAGE_SIZE * ALG_MAX_PAGES) {
+	if (inlen > sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES) {
 		fprintf(stderr,
 			"AEAD Encryption: Plaintext buffer (%u) is larger than maximum chunk size (%lu)\n",
-			inlen, PAGE_SIZE * ALG_MAX_PAGES);
+			inlen, sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES);
 		return -EMSGSIZE;
 	}
 
@@ -1075,10 +1077,10 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 		return -EINVAL;
 	}
 
-	if (inlen > PAGE_SIZE * ALG_MAX_PAGES) {
+	if (inlen > sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES) {
 		fprintf(stderr,
 			"AEAD Decryption: Ciphertext buffer (%u) is larger than maximum chunk size (%lu)\n",
-			inlen, PAGE_SIZE * ALG_MAX_PAGES);
+			inlen, sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES);
 		return -EMSGSIZE;
 	}
 
