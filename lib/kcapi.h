@@ -206,7 +206,7 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
  * the plaintext is overwritten with the ciphertext.
  *
  * The memory should be aligned at the page boundary using
- * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page boundary,
  * the vmsplice call may not send all data to the kernel.
  *
  * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
@@ -236,7 +236,7 @@ int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
  * the ciphertext is overwritten with the plaintext.
  *
  * The memory should be aligned at the page boundary using
- * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page boundary,
  * the vmsplice call may not send all data to the kernel.
  *
  * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
@@ -331,10 +331,11 @@ int32_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
  * where one thread sends data to be processed and one thread picks up data
  * processed by the cipher operation.
  *
- * IMPORTANT NOTE: The kernel will only process PAGE_SIZE * ALG_MAX_PAGES
- * at one time. If your input data is larger than this threshold, you MUST
- * segment it into chunks of at most PAGE_SIZE * ALG_MAX_PAGES and invoke
- * the kcapi_cipher_stream_update() on that segment followed by
+ * IMPORTANT NOTE: The kernel will only process
+ * sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES at one time. If your input data is
+ * larger than this threshold, you MUST segment it into chunks of at most
+ * sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES and invoke the
+ * kcapi_cipher_stream_update() on that segment followed by
  * kcapi_cipher_stream_op() before the next chunk is processed. If this
  * rule is not obeyed, the thread invoking kcapi_cipher_stream_update()
  * will be put to sleep until another thread invokes kcapi_cipher_stream_op().
@@ -484,7 +485,7 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, uint32_t assoclen);
  * the plaintext is overwritten with the ciphertext.
  *
  * The memory should be aligned at the page boundary using
- * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page boundary,
  * the vmsplice call may not send all data to the kernel.
  *
  * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
@@ -493,8 +494,9 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, uint32_t assoclen);
  * kcapi_aead_getdata() to obtain the resulting ciphertext and authentication
  * tag references.
  *
- * IMPORTANT NOTE: The kernel will only process PAGE_SIZE * ALG_MAX_PAGES
- * at one time. Longer input data cannot be handled by the kernel.
+ * IMPORTANT NOTE: The kernel will only process
+ * sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES at one time. Longer input data cannot
+ * be handled by the kernel.
  *
  * Return: number of bytes encrypted upon success;
  *	   < 0 in case of error with errno set
@@ -555,8 +557,8 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
  * the ciphertext is overwritten with the plaintext.
  *
  * The memory should be aligned at the page boundary using
- * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
- * the vmsplice call may not send all data to the kernel.
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page
+ * boundary, the vmsplice call may not send all data to the kernel.
  *
  * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
  *
@@ -565,8 +567,9 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
  * If this function returns < 0 and errno is set to EBADMSG, an authentication
  * error is detected.
  *
- * IMPORTANT NOTE: The kernel will only process PAGE_SIZE * ALG_MAX_PAGES
- * at one time. Longer input data cannot be handled by the kernel.
+ * IMPORTANT NOTE: The kernel will only process
+ * sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES at one time. Longer input data cannot
+ * be handled by the kernel.
  *
  * Return: number of bytes decrypted upon success;
  *	   < 0 in case of error with errno set
@@ -682,8 +685,9 @@ int32_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
  * where one thread sends data to be processed and one thread picks up data
  * processed by the cipher operation.
  *
- * IMPORTANT NOTE: The kernel will only process PAGE_SIZE * ALG_MAX_PAGES
- * at one time. Longer input data cannot be handled by the kernel.
+ * IMPORTANT NOTE: The kernel will only process
+ * sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES at one time. Longer input data cannot
+ * be handled by the kernel.
  *
  * Return: number of bytes sent to the kernel upon success;
  *	   < 0 in case of error with errno set
@@ -1124,8 +1128,8 @@ int kcapi_akcipher_setpubkey(struct kcapi_handle *handle,
  * the plaintext is overwritten with the ciphertext.
  *
  * The memory should be aligned at the page boundary using
- * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
- * the vmsplice call may not send all data to the kernel.
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page
+ * boundary, the vmsplice call may not send all data to the kernel.
  *
  * If the output size is insufficiently large, -EINVAL is returned. The
  * output buffer must be at least as large as the modululs of the uses key.
@@ -1153,8 +1157,8 @@ int32_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
  * the ciphertext is overwritten with the plaintext.
  *
  * The memory should be aligned at the page boundary using
- * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
- * the vmsplice call may not send all data to the kernel.
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page
+ * boundary, the vmsplice call may not send all data to the kernel.
  *
  * If the output size is insufficiently large, -EINVAL is returned. The
  * output buffer must be at least as large as the modululs of the uses key.
@@ -1182,8 +1186,8 @@ int32_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
  * operation, the message is overwritten with the signature.
  *
  * The memory should be aligned at the page boundary using
- * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
- * the vmsplice call may not send all data to the kernel.
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page
+ * boundary, the vmsplice call may not send all data to the kernel.
  *
  * If the output size is insufficiently large, -EINVAL is returned. The
  * output buffer must be at least as large as the modululs of the uses key.
@@ -1211,8 +1215,8 @@ int32_t kcapi_akcipher_sign(struct kcapi_handle *handle,
  * operation, the message is overwritten with the signature.
  *
  * The memory should be aligned at the page boundary using
- * posix_memalign(PAGE_SIZE), If it is not aligned at the page boundary,
- * the vmsplice call may not send all data to the kernel.
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page
+ * boundary, the vmsplice call may not send all data to the kernel.
  *
  * If the output size is insufficiently large, -EINVAL is returned. The
  * output buffer must be at least as large as the modululs of the uses key.

@@ -18,6 +18,20 @@ does not perform any memcpy for processing the cryptographic data! The library
 uses scatter / gather lists to eliminate the need for moving data around in
 memory.
 
+Directory Structure
+===================
+
+lib/ -- directory holding the library
+
+apps/ -- directory holding the applications discussed below; these
+	 applications hard link the library code in.
+
+test/ -- functional verification code
+
+speed-test/ -- performance tests
+
+The code in each directory is intended to be compiled independently.
+
 Applications
 ============
 

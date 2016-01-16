@@ -832,7 +832,7 @@ static int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
 		int32_t ret = 0;
 
 		/*
-		 * We do not check that ysconf(_SC_PAGESIZE) * ALG_MAX_PAGES is
+		 * We do not check that sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES is
 		 * a multiple of blocksize, because we assume that this is
 		 * always the case.
 		 */

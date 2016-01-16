@@ -2,7 +2,7 @@ Changes 0.10.1:
  * Fix issues with the vmsplice usage in stream mode
  * Fix issues with the vmsplice usage in chunk mode
  * Any modification on the tfmfd must be performed before the accept() call as mandated
-   by the update to kernel 4.5.
+   by the update to kernel 4.4.
  * Add support for processing of arbitrary sized symmetric cipher input
 
 Changes 0.10.0:
