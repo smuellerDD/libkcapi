@@ -172,6 +172,13 @@
    with it.
   </para>
 
+  <para>
+   A general requirement must be observed: setting of keys must be performed
+   before any operation. Re-setting of keys is only permissible once
+   all data in flight (sent to the kernel but the kernel's result is not yet
+   obtained) is processed, i.e. no data is in flight any more.
+  </para>
+
   <sect1><title>Symmetric Cipher API</title>
    <para>
     Symmetric ciphers can be used in the following different ways:
