@@ -363,7 +363,7 @@ enum type {
 };
 
 struct kcapi_cavs {
-#define CIPHERMAXNAME 30
+#define CIPHERMAXNAME 63
 	char cipher[CIPHERMAXNAME];
 	int aligned;
 	int enc;
@@ -1325,6 +1325,22 @@ static int cavs_asym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 		goto out;
 	}
 
+	/* Set key */
+	if (cavs_test->keylen && cavs_test->key) {
+		if (kcapi_akcipher_setkey(&handle, cavs_test->key,
+					  cavs_test->keylen)) {
+			printf("Asymmetric cipher set pivate key failed\n");
+			goto out;
+		}
+	}
+	if (cavs_test->pubkeylen && cavs_test->pubkey) {
+		if (kcapi_akcipher_setpubkey(&handle, cavs_test->pubkey,
+					     cavs_test->pubkeylen)) {
+			printf("Asymmetric cipher set public key failed\n");
+			goto out;
+		}
+	}
+
 	if (cavs_test->enc == 0)
 		ret = kcapi_akcipher_stream_init_enc(&handle, NULL, 0);
 	else if (cavs_test->enc == 1)
@@ -1340,22 +1356,6 @@ static int cavs_asym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 	if (0 > ret) {
 		printf("Initialization of cipher buffer failed: %d\n", ret);
 		goto out;
-	}
-
-	/* Set key */
-	if (cavs_test->keylen && cavs_test->key) {
-		if (kcapi_akcipher_setkey(&handle, cavs_test->key,
-					  cavs_test->keylen)) {
-			printf("Asymmetric cipher set pivate key failed\n");
-			goto out;
-		}
-	}
-	if (cavs_test->pubkeylen && cavs_test->pubkey) {
-		if (kcapi_akcipher_setpubkey(&handle, cavs_test->pubkey,
-					     cavs_test->pubkeylen)) {
-			printf("Asymmetric cipher set public key failed\n");
-			goto out;
-		}
 	}
 
 	/* 
