@@ -53,6 +53,7 @@
 #include <unistd.h>
 #include <sys/user.h>
 #include <sys/eventfd.h>
+#include <time.h>
 #include "cryptouser.h"
 
 #include "kcapi.h"
@@ -405,6 +406,7 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	req.n.nlmsg_len = NLMSG_LENGTH(sizeof(req.cru));
 	req.n.nlmsg_flags = NLM_F_REQUEST;
 	req.n.nlmsg_type = CRYPTO_MSG_GETALG;
+	req.n.nlmsg_seq = time(NULL);
 
 	if (drivername)
 		strncpy(req.cru.cru_driver_name, ciphername,
@@ -447,14 +449,14 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	}
 
 	/* sending data */
+	memset(&nl, 0, sizeof(nl));
+	nl.nl_family = AF_NETLINK;
 	iov.iov_base = (void*) &req.n;
 	iov.iov_len = req.n.nlmsg_len;
 	msg.msg_name = &nl;
 	msg.msg_namelen = sizeof(nl);
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
-	memset(&nl, 0, sizeof(nl));
-	nl.nl_family = AF_NETLINK;
 	if (sendmsg(sd, &msg, 0) < 0) {
 		errsv = errno;
 		perror("Netlink error: sendmsg failed");
