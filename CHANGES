@@ -1,3 +1,8 @@
+Changes 0.10.2:
+ * Fix kernel netlink parsing error message
+ * doc: add hint for setting keys before sending data
+ * fix compiler warnings about unsigned / signed comparisons
+
 Changes 0.10.1:
  * Fix issues with the vmsplice usage in stream mode
  * Fix issues with the vmsplice usage in chunk mode
