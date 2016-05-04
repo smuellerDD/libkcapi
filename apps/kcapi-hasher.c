@@ -473,9 +473,14 @@ static int fipscheck_self(char *hash,
 
 	fipsfile = fopen("/proc/sys/crypto/fips_enabled", "r");
 	if (!fipsfile) {
-		fprintf(stderr, "Cannot open fips_enabled file: %s\n",
-			strerror(errno));
-		return -EIO;
+		if (errno == ENOENT) {
+			/* FIPS support not enabled in kernel */
+			return 0;
+		} else {
+			fprintf(stderr, "Cannot open fips_enabled file: %s\n",
+				strerror(errno));
+			return -EIO;
+		}
 	}
 
 	n = fread((void *)fipsflag, 1, 1, fipsfile);
