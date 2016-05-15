@@ -974,6 +974,19 @@ int32_t kcapi_rng_generate(struct kcapi_handle *handle,
  */
 
 /**
+ * @kcapi_verbosity: setting the verbosity of the library
+ * @LOG_ERR: only log error messages (default)
+ * @LOG_WARN: log warnings and error messages
+ * @LOG_VERBOSE: log verbose messages, warnings and error messages
+ * @LOG_DEBUG: log all details of library operation
+ */
+extern int kcapi_verbosity;
+#define LOG_DEBUG	3
+#define LOG_VERBOSE	2
+#define LOG_WARN	1
+#define LOG_ERR		0
+
+/**
  * kcapi_versionstring() - Obtain version string of kcapi library
  * @buf: buffer to place version string into - output
  * @buflen: length of buffer - input

@@ -1,7 +1,7 @@
 /*
  * Generic kernel crypto API user space interface library
  *
- * Copyright (C) 2014 - 2015, Stephan Mueller <smueller@chronox.de>
+ * Copyright (C) 2014 - 2016, Stephan Mueller <smueller@chronox.de>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,6 +40,7 @@
 #include <fcntl.h>
 #include <sys/uio.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -65,7 +66,7 @@
 #define MINVERSION 10 /* API compatible, ABI may change, functional
 		       * enhancements only, consumer can be left unchanged if
 		       * enhancements are not considered */
-#define PATCHLEVEL 2  /* API / ABI compatible, no functional changes, no
+#define PATCHLEVEL 3  /* API / ABI compatible, no functional changes, no
 		       * enhancements, bug fixes only */
 
 /* remove once in if_alg.h */
@@ -100,6 +101,46 @@
 #endif
 
 /************************************************************
+ * Logging logic
+ ************************************************************/
+int kcapi_verbosity = LOG_ERR;
+
+static void kcapi_dolog(int severity, const char *fmt, ...)
+{
+	va_list args;
+	char msg[(4096 * 17)];
+	char sev[10];
+
+	if (severity > kcapi_verbosity)
+		return;
+
+	memset(sev, 0, sizeof(sev));
+	memset(msg, 0, sizeof(msg));
+
+	va_start(args, fmt);
+	vsnprintf(msg, sizeof(msg), fmt, args);
+	va_end(args);
+
+	switch (severity) {
+	case LOG_DEBUG:
+		snprintf(sev, sizeof(sev), "Debug");
+		break;
+	case LOG_VERBOSE:
+		snprintf(sev, sizeof(sev), "Verbose");
+		break;
+	case LOG_WARN:
+		snprintf(sev, sizeof(sev), "Warning");
+		break;
+	case LOG_ERR:
+		snprintf(sev, sizeof(sev), "Error");
+		break;
+	default:
+		snprintf(sev, sizeof(sev), "Unknown");
+	}
+	fprintf(stderr, "libkcapi - %s: %s\n", sev, msg);
+}
+
+/************************************************************
  * Internal logic
  ************************************************************/
 
@@ -113,11 +154,12 @@ static int _kcapi_common_accept(struct kcapi_handle *handle)
 		int errsv = 0;
 
 		errsv = errno;
-		perror("AF_ALG: accept failed");
+		kcapi_dolog(LOG_ERR, "AF_ALG: accept failed");
 		close(handle->tfmfd);
 		handle->tfmfd = -1;
 		return -errsv;
 	}
+	kcapi_dolog(LOG_DEBUG, "AF_ALG: accept syscall successful");
 
 	return 0;
 }
@@ -198,6 +240,8 @@ static int32_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 
 	ret = sendmsg(handle->opfd, &msg, flags);
 	errsv = errno;
+	kcapi_dolog(LOG_DEBUG, "AF_ALG: sendmsg syscall returned %d (errno: %d)",
+		    ret, errsv);
 
 	kcapi_memset_secure(buffer, 0, bufferlen);
 	free(buffer);
@@ -210,6 +254,7 @@ static inline int32_t _kcapi_common_send_data(struct kcapi_handle *handle,
 {
 	struct msghdr msg;
 	int32_t ret = 0;
+	int32_t errsv;
 
 	ret = _kcapi_common_accept(handle);
 	if (ret)
@@ -224,7 +269,11 @@ static inline int32_t _kcapi_common_send_data(struct kcapi_handle *handle,
 	msg.msg_iovlen = iovlen;
 
 	ret = sendmsg(handle->opfd, &msg, flags);
-	return (ret >= 0) ? ret : -errno;
+	errsv = errno;
+	kcapi_dolog(LOG_DEBUG, "AF_ALG: sendmsg syscall returned %d (errno: %d)",
+		    ret, errsv);
+
+	return (ret >= 0) ? ret : -errsv;
 }
 
 static inline int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
@@ -235,6 +284,7 @@ static inline int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 	int32_t ret = 0;
 	uint32_t inlen = 0;
 	unsigned long i;
+	int32_t errsv;
 
 	ret = _kcapi_common_accept(handle);
 	if (ret)
@@ -254,13 +304,20 @@ static inline int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 	ret = vmsplice(handle->pipes[1], iov, iovlen, SPLICE_F_GIFT|flags);
 	if (0 > ret)
 		return ret;
+	kcapi_dolog(LOG_DEBUG, "AF_ALG: vmsplice syscall returned %d (errno: %d)",
+		    ret, errno);
+
 	if ((uint32_t)ret != inlen) {
-		fprintf(stderr, "vmsplice: not all data received by kernel (data recieved: %ld -- data sent: %lu)\n",
+		kcapi_dolog(LOG_ERR, "vmsplice: not all data received by kernel (data recieved: %ld -- data sent: %lu)",
 			(long)ret, (unsigned long)inlen);
 		return -EFAULT;
 	}
 	ret = splice(handle->pipes[0], NULL, handle->opfd, NULL, ret, flags);
-	return (ret >= 0) ? ret : -errno;
+	errsv = errno;
+	kcapi_dolog(LOG_DEBUG, "AF_ALG: splice syscall returned %d (errno: %d)",
+		    ret, errsv);
+
+	return (ret >= 0) ? ret : -errsv;
 }
 
 static inline int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
@@ -289,10 +346,14 @@ static inline int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 		} else {
 			ret = vmsplice(handle->pipes[1], &iov, 1,
 				       SPLICE_F_GIFT|flags);
+			kcapi_dolog(LOG_DEBUG, "AF_ALG: vmsplice syscall returned %d (errno: %d)",
+				    ret, errno);
 			if (0 > ret)
 				return ret;
 			ret = splice(handle->pipes[0], NULL, handle->opfd,
 				     NULL, ret, flags);
+			kcapi_dolog(LOG_DEBUG, "AF_ALG: splice syscall returned %d (errno: %d)",
+				    ret, errno);
 		}
 		if (0 > ret)
 			return ret;
@@ -310,7 +371,7 @@ static inline int32_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 {
 	struct msghdr msg;
 	int32_t ret = 0;
-	int errsv = 0;
+	int32_t errsv = 0;
 
 	ret = _kcapi_common_accept(handle);
 	if (ret)
@@ -326,6 +387,8 @@ static inline int32_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 
 	ret = recvmsg(handle->opfd, &msg, 0);
 	errsv = errno;
+	kcapi_dolog(LOG_DEBUG, "AF_ALG: recvmsg syscall returned %d (errno: %d)",
+		    ret, errsv);
 
 #if 0
 	/*
@@ -355,22 +418,32 @@ static inline int32_t _kcapi_common_read_data(struct kcapi_handle *handle,
 					      uint8_t *out, uint32_t outlen)
 {
 	int32_t ret = 0;
+	int32_t errsv;
 
 	ret = _kcapi_common_accept(handle);
 	if (ret)
 		return ret;
 
 	ret = read(handle->opfd, out, outlen);
-	return (ret >= 0) ? ret : -errno;
+	errsv = errno;
+	kcapi_dolog(LOG_DEBUG, "AF_ALG: read syscall returned %d (errno: %d)",
+		    ret, errsv);
+
+	return (ret >= 0) ? ret : -errsv;
 }
 
 static inline int _kcapi_common_setkey(struct kcapi_handle *handle,
 				       const uint8_t *key, uint32_t keylen)
 {
 	int ret = 0;
+	int errsv;
 
 	ret = setsockopt(handle->tfmfd, SOL_ALG, ALG_SET_KEY, key, keylen);
-	return (ret >= 0) ? ret : -errno;
+	errsv = errno;
+	kcapi_dolog(LOG_DEBUG, "AF_ALG: sendmsg syscall returned %d (errno: %d)",
+		    ret, errsv);
+
+	return (ret >= 0) ? ret : -errsv;
 }
 
 static int __kcapi_common_getinfo(struct kcapi_handle *handle,
@@ -414,36 +487,35 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	else
 		strncpy(req.cru.cru_name, ciphername, strlen(ciphername));
 
-
 	/* talk to netlink socket */
 	sd =  socket(AF_NETLINK, SOCK_RAW, NETLINK_CRYPTO);
 	if (sd < 0) {
-		perror("Netlink error: cannot open netlink socket");
+		kcapi_dolog(LOG_ERR, "Netlink error: cannot open netlink socket");
 		return -errno;
 	}
 	memset(&nl, 0, sizeof(nl));
 	nl.nl_family = AF_NETLINK;
 	if (bind(sd, (struct sockaddr*)&nl, sizeof(nl)) < 0) {
 		errsv = errno;
-		perror("Netlink error: cannot bind netlink socket");
+		kcapi_dolog(LOG_ERR, "Netlink error: cannot bind netlink socket");
 		goto out;
 	}
 	/* sanity check that netlink socket was successfully opened */
 	addr_len = sizeof(nl);
 	if (getsockname(sd, (struct sockaddr*)&nl, &addr_len) < 0) {
 		errsv = errno;
-		perror("Netlink error: cannot getsockname");
+		kcapi_dolog(LOG_ERR, "Netlink error: cannot getsockname");
 		goto out;
 	}
 	if (addr_len != sizeof(nl)) {
 		errsv = errno;
-		fprintf(stderr, "Netlink error: wrong address length %d\n",
+		kcapi_dolog(LOG_ERR, "Netlink error: wrong address length %d",
 			addr_len);
 		goto out;
 	}
 	if (nl.nl_family != AF_NETLINK) {
 		errsv = errno;
-		fprintf(stderr, "Netlink error: wrong address family %d\n",
+		kcapi_dolog(LOG_ERR, "Netlink error: wrong address family %d",
 			nl.nl_family);
 		goto out;
 	}
@@ -459,7 +531,7 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	msg.msg_iovlen = 1;
 	if (sendmsg(sd, &msg, 0) < 0) {
 		errsv = errno;
-		perror("Netlink error: sendmsg failed");
+		kcapi_dolog(LOG_ERR, "Netlink error: sendmsg failed");
 		goto out;
 	}
 	memset(buf,0,sizeof(buf));
@@ -471,17 +543,17 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 			if (errno == EINTR || errno == EAGAIN)
 				continue;
 			errsv = errno;
-			perror("Netlink error: netlink receive error");
+			kcapi_dolog(LOG_ERR, "Netlink error: netlink receive error");
 			goto out;
 		}
 		if (ret == 0) {
 			errsv = errno;
-			fprintf(stderr, "Netlink error: no data\n");
+			fprintf(stderr, "Netlink error: no data");
 			goto out;
 		}
 		if ((uint32_t)ret > sizeof(buf)) {
 			errsv = errno;
-			perror("Netlink error: received too much data\n");
+			kcapi_dolog(LOG_ERR, "Netlink error: received too much data");
 			goto out;
 		}
 		break;
@@ -504,7 +576,7 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 		res_len -= NLMSG_SPACE(sizeof(*cru_res));
 	}
 	if (res_len < 0) {
-		fprintf(stderr, "Netlink error: nlmsg len %d\n", res_len);
+		kcapi_dolog(LOG_ERR, "Netlink error: nlmsg len %d", res_len);
 		goto out;
 	}
 
@@ -517,8 +589,8 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 		rta = RTA_NEXT(rta, res_len);
 	}
 	if (res_len) {
-		fprintf(stderr, "Netlink error: unprocessed data %d\n",
-			res_len);
+		kcapi_dolog(LOG_ERR, "Netlink error: unprocessed data %d",
+			    res_len);
 		goto out;
 	}
 
@@ -528,6 +600,8 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 			(struct crypto_report_hash *) RTA_DATA(rta);
 		handle->info.hash_digestsize = rsh->digestsize;
 		handle->info.blocksize = rsh->blocksize;
+		kcapi_dolog(LOG_DEBUG, "Get cipher info: hash with digestsize %u,  blocksize %u",
+			    rsh->digestsize, rsh->blocksize);
 	}
 	if (tb[CRYPTOCFGA_REPORT_BLKCIPHER]) {
 		struct rtattr *rta = tb[CRYPTOCFGA_REPORT_BLKCIPHER];
@@ -537,6 +611,9 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 		handle->info.ivsize = rblk->ivsize;
 		handle->info.blk_min_keysize = rblk->min_keysize;
 		handle->info.blk_max_keysize = rblk->max_keysize;
+		kcapi_dolog(LOG_DEBUG, "Get cipher info: block cipher with blocksize %u, ivsize %u, minimum keysize %u, maximum keysize %u",
+			    rblk->blocksize, rblk->ivsize, rblk->min_keysize,
+			    rblk->max_keysize);
 	}
 	if (tb[CRYPTOCFGA_REPORT_AEAD]) {
 		struct rtattr *rta = tb[CRYPTOCFGA_REPORT_AEAD];
@@ -545,13 +622,31 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 		handle->info.blocksize = raead->blocksize;
 		handle->info.ivsize = raead->ivsize;
 		handle->info.aead_maxauthsize = raead->maxauthsize;
+		kcapi_dolog(LOG_DEBUG, "Get cipher info: AEAD block cipher with blocksize %u, ivsize %u, maximum authentication size %u",
+			    raead->blocksize, raead->ivsize,
+			    raead->maxauthsize);
 	}
 	if (tb[CRYPTOCFGA_REPORT_RNG]) {
 		struct rtattr *rta = tb[CRYPTOCFGA_REPORT_RNG];
 		struct crypto_report_rng *rrng =
 			(struct crypto_report_rng *) RTA_DATA(rta);
 		handle->info.rng_seedsize = rrng->seedsize;
+		kcapi_dolog(LOG_DEBUG, "Get cipher info: RNG cipher with seedsize %u",
+			    rrng->seedsize);
 	}
+	if (tb[CRYPTOCFGA_UNSPEC])
+		kcapi_dolog(LOG_DEBUG, "Get cipher info: unspecified data received");
+	if (tb[CRYPTOCFGA_PRIORITY_VAL])
+		kcapi_dolog(LOG_DEBUG, "Get cipher info: u32 value received");
+	if (tb[CRYPTOCFGA_REPORT_LARVAL])
+		kcapi_dolog(LOG_DEBUG, "Get cipher info: larval value received");
+	if (tb[CRYPTOCFGA_REPORT_COMPRESS])
+		kcapi_dolog(LOG_DEBUG, "Get cipher info: compression algorithm type received");
+	if (tb[CRYPTOCFGA_REPORT_CIPHER])
+		kcapi_dolog(LOG_DEBUG, "Get cipher info: simple cipher algorithm type received");
+	if (tb[CRYPTOCFGA_REPORT_AKCIPHER])
+		kcapi_dolog(LOG_DEBUG, "Get cipher info: asymmetric cipher algorithm type received");
+	kcapi_dolog(LOG_VERBOSE, "Get cipher info: all information for %s received from kernel", ciphername);
 
 	ret = 0;
 
@@ -580,9 +675,12 @@ static void _kcapi_aio_init(struct kcapi_handle *handle)
 		goto err;
 
 	if (io_setup(KCAPI_AIO_CONCURRENT, &handle->aio.aio_ctx) < 0) {
-		perror("io_setup error");
+		kcapi_dolog(LOG_ERR, "io_setup error");
 		goto err;
 	}
+
+	kcapi_dolog(LOG_VERBOSE, "asynchronoous I/O initialized");
+
 	return;
 
 err:
@@ -622,6 +720,11 @@ static int _kcapi_handle_init(struct kcapi_handle *handle, const char *type,
 	struct sockaddr_alg sa;
 	int ret;
 	int errsv = 0;
+	char versionbuffer[50];
+
+	kcapi_versionstring(versionbuffer, sizeof(versionbuffer));
+	kcapi_dolog(LOG_VERBOSE, "%s - initializing cipher operation with kernel",
+		    versionbuffer);
 
 	memset(handle, 0, sizeof(struct kcapi_handle));
 
@@ -631,31 +734,39 @@ static int _kcapi_handle_init(struct kcapi_handle *handle, const char *type,
 	snprintf((char *)sa.salg_name, sizeof(sa.salg_name),"%s", ciphername);
 
 	handle->tfmfd = socket(AF_ALG, SOCK_SEQPACKET, 0);
+	kcapi_dolog(LOG_DEBUG, "AF_ALG: socket syscall %s (errno: %d)",
+		    (handle->tfmfd == -1) ? "failed": "passed", errno);
 	if (handle->tfmfd == -1)
 		return -EOPNOTSUPP;
 
 	if (bind(handle->tfmfd, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
 		errsv = errno;
-		perror("AF_ALG: bind failed");
+		kcapi_dolog(LOG_ERR, "AF_ALG: bind failed (errno: %d)",
+			    errsv);
 		close(handle->tfmfd);
 		handle->tfmfd = -1;
 		return -errsv;
 	}
+	kcapi_dolog(LOG_DEBUG, "AF_ALG: bind syscall passed (errno: %d)",
+		    errno);
 
 	handle->opfd = -1;
 
 	ret = pipe(handle->pipes);
 	if (ret) {
 		errsv = errno;
+		kcapi_dolog(LOG_DEBUG, "AF_ALG: pipe syscall failed (errno: %d)",
+			    errsv);
 		close(handle->tfmfd);
 		return -errsv;
 	}
+	kcapi_dolog(LOG_DEBUG, "AF_ALG: pipe syscall passed");
 
 	ret = _kcapi_common_getinfo(handle, ciphername);
 	if (ret) {
 		errsv = errno;
-		fprintf(stderr, "NETLINK_CRYPTO: cannot obtain cipher information for %s (is required crypto_user.c patch missing? see documentation)\n",
-		       ciphername);
+		kcapi_dolog(LOG_ERR, "NETLINK_CRYPTO: cannot obtain cipher information for %s (is required crypto_user.c patch missing? see documentation)",
+			    ciphername);
 		_kcapi_handle_destroy(handle);
 	}
 
@@ -663,6 +774,8 @@ static int _kcapi_handle_init(struct kcapi_handle *handle, const char *type,
 		_kcapi_aio_init(handle);
 	else
 		handle->aio.skcipher_aio_disable = 1;
+
+	kcapi_dolog(LOG_VERBOSE, "communication for %s with kernel initialized", ciphername);
 
 	return (errsv) ? -errsv : ret;
 }
@@ -737,7 +850,7 @@ static inline int32_t _kcapi_aio_read(struct kcapi_handle *handle,
 	(void)handle;
 	(void)out;
 	(void)outlen;
-	fprintf(stderr, "AIO support not complete\n");
+	kcapi_dolog(LOG_ERR, "AIO support not complete");
 	return -EOPNOTSUPP;
 #if 0
 	struct iocb *cb = NULL;
@@ -783,8 +896,8 @@ static int32_t _kcapi_cipher_crypt(struct kcapi_handle *handle,
 	int32_t ret = 0;
 
 	if (!in || !inlen || !out || !outlen) {
-		fprintf(stderr,
-			"Symmetric Encryption: Empty plaintext or ciphertext buffer provided\n");
+		kcapi_dolog(LOG_ERR,
+			    "Symmetric Encryption: Empty plaintext or ciphertext buffer provided");
 		return -EINVAL;
 	}
 
@@ -865,9 +978,9 @@ int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 
 	/* require properly sized output data size */
 	if (outlen < ((inlen + bs - 1) / bs * bs)) {
-		fprintf(stderr,
-			"Symmetric Encryption: Ciphertext buffer (%lu) is not plaintext buffer (%lu) rounded up to multiple of block size %u\n",
-			(unsigned long) outlen, (unsigned long)inlen, bs);
+		kcapi_dolog(LOG_ERR,
+			    "Symmetric Encryption: Ciphertext buffer (%lu) is not plaintext buffer (%lu) rounded up to multiple of block size %u",
+			    (unsigned long) outlen, (unsigned long)inlen, bs);
 		return -EINVAL;
 	}
 
@@ -883,16 +996,16 @@ int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 {
 	/* require properly sized output data size */
 	if (inlen % handle->info.blocksize) {
-		fprintf(stderr,
-			"Symmetric Decryption: Ciphertext buffer is not multiple of block size %u\n",
-			handle->info.blocksize);
+		kcapi_dolog(LOG_ERR,
+			    "Symmetric Decryption: Ciphertext buffer is not multiple of block size %u",
+			    handle->info.blocksize);
 		return -EINVAL;
 	}
 
 	if (outlen < inlen) {
-		fprintf(stderr,
-			"Symmetric Decryption: Plaintext buffer (%lu) is smaller as ciphertext buffer (%lu)\n",
-			(unsigned long)outlen, (unsigned long)inlen);
+		kcapi_dolog(LOG_ERR,
+			    "Symmetric Decryption: Plaintext buffer (%lu) is smaller as ciphertext buffer (%lu)",
+			    (unsigned long)outlen, (unsigned long)inlen);
 		return -EINVAL;
 	}
 
@@ -933,8 +1046,8 @@ int32_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
 			       struct iovec *iov, uint32_t iovlen)
 {
 	if (!iov || !iovlen) {
-		fprintf(stderr,
-			"Symmetric operation: No buffer for output data provided\n");
+		kcapi_dolog(LOG_ERR,
+			    "Symmetric operation: No buffer for output data provided");
 		return -EINVAL;
 	}
 	return _kcapi_common_recv_data(handle, iov, iovlen);
@@ -990,10 +1103,10 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
 			uint8_t **tag, uint32_t *taglen)
 {
 	if (encdatalen <  handle->aead.taglen + handle->aead.assoclen) {
-		fprintf(stderr, "Result of encryption operation (%lu) is smaller than tag and AAD length (%lu)\n",
-			(unsigned long)encdatalen,
-			(unsigned long)handle->aead.taglen +
-			(unsigned long)handle->aead.assoclen);
+		kcapi_dolog(LOG_ERR, "Result of encryption operation (%lu) is smaller than tag and AAD length (%lu)",
+			    (unsigned long)encdatalen,
+			    (unsigned long)handle->aead.taglen +
+			    (unsigned long)handle->aead.assoclen);
 		return;
 	}
 	if (aad) {
@@ -1021,16 +1134,16 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 
 	/* require properly sized output data size */
 	if (outlen < inlen) {
-		fprintf(stderr,
-			"AEAD Encryption: Ciphertext buffer (%u) is smaller than plaintext buffer (%u)\n",
-			outlen, inlen);
+		kcapi_dolog(LOG_ERR,
+			    "AEAD Encryption: Ciphertext buffer (%u) is smaller than plaintext buffer (%u)",
+			    outlen, inlen);
 		return -EINVAL;
 	}
 
 	if (inlen > (uint32_t)(sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES)) {
-		fprintf(stderr,
-			"AEAD Encryption: Plaintext buffer (%u) is larger than maximum chunk size (%lu)\n",
-			inlen, sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES);
+		kcapi_dolog(LOG_ERR,
+			    "AEAD Encryption: Plaintext buffer (%u) is larger than maximum chunk size (%lu)",
+			    inlen, sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES);
 		return -EMSGSIZE;
 	}
 
@@ -1073,16 +1186,16 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 
 	/* require properly sized output data size */
 	if (outlen < inlen) {
-		fprintf(stderr,
-			"AEAD Decryption: Plaintext buffer (%u) is smaller than ciphertext buffer (%u)\n",
-			outlen, inlen);
+		kcapi_dolog(LOG_ERR,
+			    "AEAD Decryption: Plaintext buffer (%u) is smaller than ciphertext buffer (%u)",
+			    outlen, inlen);
 		return -EINVAL;
 	}
 
 	if (inlen > (uint32_t)(sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES)) {
-		fprintf(stderr,
-			"AEAD Decryption: Ciphertext buffer (%u) is larger than maximum chunk size (%lu)\n",
-			inlen, sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES);
+		kcapi_dolog(LOG_ERR,
+			    "AEAD Decryption: Ciphertext buffer (%u) is larger than maximum chunk size (%lu)",
+			    inlen, sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES);
 		return -EMSGSIZE;
 	}
 
@@ -1157,8 +1270,8 @@ int32_t kcapi_aead_stream_op(struct kcapi_handle *handle,
 			     struct iovec *iov, uint32_t iovlen)
 {
 	if (!iov) {
-		fprintf(stderr,
-			"AEAD operation: No buffer for output data provided\n");
+		kcapi_dolog(LOG_ERR,
+			    "AEAD operation: No buffer for output data provided");
 		return -EINVAL;
 	}
 
@@ -1262,10 +1375,9 @@ static int32_t _kcapi_md_final(struct kcapi_handle *handle,
 	struct iovec iov;
 
 	if (!buffer || !len) {
-		fprintf(stderr,
-			"Message digest: output buffer too small (seen %lu - required %u)\n",
-			(unsigned long)len,
-			handle->info.hash_digestsize);
+		kcapi_dolog(LOG_ERR,
+			    "Message digest: output buffer too small (seen %lu - required %u)",
+			    (unsigned long)len,	handle->info.hash_digestsize);
 		return -EINVAL;
 	}
 
@@ -1453,8 +1565,8 @@ int32_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
 			         struct iovec *iov, uint32_t iovlen)
 {
 	if (!iov || !iovlen) {
-		fprintf(stderr,
-			"Symmetric operation: No buffer for output data provided\n");
+		kcapi_dolog(LOG_ERR,
+			    "Symmetric operation: No buffer for output data provided");
 		return -EINVAL;
 	}
 	return _kcapi_common_recv_data(handle, iov, iovlen);

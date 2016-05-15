@@ -1468,6 +1468,7 @@ int main(int argc, char *argv[])
 	struct kcapi_cavs cavs_test;
 
 	memset(&cavs_test, 0, sizeof(struct kcapi_cavs));
+	//kcapi_verbosity = LOG_DEBUG;
 
 	while(1)
 	{
