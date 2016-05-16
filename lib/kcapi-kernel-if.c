@@ -108,8 +108,8 @@ int kcapi_verbosity = LOG_ERR;
 static void kcapi_dolog(int severity, const char *fmt, ...)
 {
 	va_list args;
-	char msg[(4096 * 17)];
-	char sev[10];
+	char msg[128];
+	char sev[16];
 
 	if (severity > kcapi_verbosity)
 		return;
@@ -118,7 +118,7 @@ static void kcapi_dolog(int severity, const char *fmt, ...)
 	memset(msg, 0, sizeof(msg));
 
 	va_start(args, fmt);
-	vsnprintf(msg, sizeof(msg), fmt, args);
+	vsnprintf(msg, sizeof(msg) - 1, fmt, args);
 	va_end(args);
 
 	switch (severity) {
