@@ -233,12 +233,10 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 			memset(compmd, 0, sizeof(compmd));
 			hex2bin(comphash, comphashlen, compmd, sizeof(compmd));
 			if ((comphashlen != (uint32_t)(ret * 2)) ||
-			    memcmp(compmd, md, ret)) {
+			    memcmp(compmd, md, ret))
 				ret = 1;
-			} else {
-
+			else
 				ret = 0;
-			}
 
 		} else {
 			bin2print(md, ret, filename, outfile);
