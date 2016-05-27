@@ -949,6 +949,14 @@ void kcapi_rng_destroy(struct kcapi_handle *handle);
  * @seed: seed data - input
  * @seedlen: size of @seed
  *
+ * Note, this call must be called to initialize the selected RNG. When the
+ * SP800-90A DRBG is used, this call causes the DRBG to seed itself from the
+ * internal noise sources.
+ *
+ * Note, in case of using the SP800-90A DRBG, the seed buffer may be NULL. If
+ * it is not NULL, the DRBG uses the given data either as personalization string
+ * in case of the initial seeding or additional data for reseeding.
+ *
  * Return: 0 upon success;
  * 	   < 0 upon error
  */

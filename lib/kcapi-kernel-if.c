@@ -646,7 +646,8 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 		kcapi_dolog(LOG_DEBUG, "Get cipher info: simple cipher algorithm type received");
 	if (tb[CRYPTOCFGA_REPORT_AKCIPHER])
 		kcapi_dolog(LOG_DEBUG, "Get cipher info: asymmetric cipher algorithm type received");
-	kcapi_dolog(LOG_VERBOSE, "Get cipher info: all information for %s received from kernel", ciphername);
+	kcapi_dolog(LOG_VERBOSE, "Get cipher info: all information for %s received from kernel",
+		    ciphername);
 
 	ret = 0;
 
