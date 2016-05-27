@@ -63,10 +63,10 @@
 		       * require consumer to be updated (as long as this number
 		       * is zero, the API is not considered stable and can
 		       * change without a bump of the major version) */
-#define MINVERSION 10 /* API compatible, ABI may change, functional
+#define MINVERSION 11 /* API compatible, ABI may change, functional
 		       * enhancements only, consumer can be left unchanged if
 		       * enhancements are not considered */
-#define PATCHLEVEL 3  /* API / ABI compatible, no functional changes, no
+#define PATCHLEVEL 0  /* API / ABI compatible, no functional changes, no
 		       * enhancements, bug fixes only */
 
 /* remove once in if_alg.h */
@@ -185,7 +185,7 @@ struct kcapi_handle {
 /************************************************************
  * Logging logic
  ************************************************************/
-int kcapi_verbosity = LOG_ERR;
+static int kcapi_verbosity_level = LOG_ERR;
 
 static void kcapi_dolog(int severity, const char *fmt, ...)
 {
@@ -193,7 +193,7 @@ static void kcapi_dolog(int severity, const char *fmt, ...)
 	char msg[128];
 	char sev[16];
 
-	if (severity > kcapi_verbosity)
+	if (severity > kcapi_verbosity_level)
 		return;
 
 	memset(sev, 0, sizeof(sev));
@@ -220,6 +220,11 @@ static void kcapi_dolog(int severity, const char *fmt, ...)
 		snprintf(sev, sizeof(sev), "Unknown");
 	}
 	fprintf(stderr, "libkcapi - %s: %s\n", sev, msg);
+}
+
+void kcapi_set_verbosity(enum kcapi_verbosity level)
+{
+	kcapi_verbosity_level = level;
 }
 
 /************************************************************

@@ -909,18 +909,22 @@ int32_t kcapi_rng_generate(struct kcapi_handle *handle,
  * The following API calls are common to all cipher types.
  */
 
+enum kcapi_verbosity {
+	LOG_ERR,
+	LOG_WARN,
+	LOG_VERBOSE,
+	LOG_DEBUG,
+};
+
 /**
- * @kcapi_verbosity: setting the verbosity of the library
- * @LOG_ERR: only log error messages (default)
- * @LOG_WARN: log warnings and error messages
- * @LOG_VERBOSE: log verbose messages, warnings and error messages
- * @LOG_DEBUG: log all details of library operation
+ * kcapi_set_verbosity() - Set the verbosity level of the library
+ * @level: verbosity level:
+ *	   LOG_ERR: only log error messages (default)
+ *	   LOG_WARN: log warnings and error messages
+ *	   LOG_VERBOSE: log verbose messages, warnings and error messages
+ *	   LOG_DEBUG: log all details of library operation
  */
-extern int kcapi_verbosity;
-#define LOG_DEBUG	3
-#define LOG_VERBOSE	2
-#define LOG_WARN	1
-#define LOG_ERR		0
+void kcapi_set_verbosity(enum kcapi_verbosity level);
 
 /**
  * kcapi_versionstring() - Obtain version string of kcapi library
