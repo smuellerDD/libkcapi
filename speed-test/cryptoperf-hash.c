@@ -63,15 +63,15 @@ static int cp_hash_init_test(struct cp_test *test, size_t len)
 
 	/* HMAC */
 	if (test->u.hash.hmac) {
-		if (kcapi_md_blocksize(&test->u.hash.handle) > MAX_KEYLEN) {
+		if (kcapi_md_blocksize(test->u.hash.handle) > MAX_KEYLEN) {
 			printf(DRIVER_NAME": key length for cipher %s too large %u\n",
 			       test->driver_name,
-			       kcapi_md_blocksize(&test->u.hash.handle));
+			       kcapi_md_blocksize(test->u.hash.handle));
 			goto out;
 		}
-		cp_read_random(data, kcapi_md_blocksize(&test->u.hash.handle));
-		if (kcapi_md_setkey(&test->u.hash.handle, data,
-				    kcapi_md_blocksize(&test->u.hash.handle))) {
+		cp_read_random(data, kcapi_md_blocksize(test->u.hash.handle));
+		if (kcapi_md_setkey(test->u.hash.handle, data,
+				    kcapi_md_blocksize(test->u.hash.handle))) {
 			printf(DRIVER_NAME": key could not be set\n");
 			goto out;
 		}
@@ -81,22 +81,22 @@ static int cp_hash_init_test(struct cp_test *test, size_t len)
 		len = 4;
 
 	if (posix_memalign((void *)&scratchpad,
-			   kcapi_md_blocksize(&test->u.hash.handle),
-			   kcapi_md_blocksize(&test->u.hash.handle) * len)){
+			   kcapi_md_blocksize(test->u.hash.handle),
+			   kcapi_md_blocksize(test->u.hash.handle) * len)){
 		printf(DRIVER_NAME": could not allocate scratchpad for "
 		       "%s\n", test->driver_name);
 		goto out;
 	}
 
 	cp_read_random(scratchpad,
-		       kcapi_md_blocksize(&test->u.hash.handle) * len);
+		       kcapi_md_blocksize(test->u.hash.handle) * len);
 
-	test->u.hash.inputlen = len * kcapi_md_blocksize(&test->u.hash.handle);
+	test->u.hash.inputlen = len * kcapi_md_blocksize(test->u.hash.handle);
 	test->u.hash.scratchpad = scratchpad;
 	return 0;
 
 out:
-	kcapi_md_destroy(&test->u.hash.handle);
+	kcapi_md_destroy(test->u.hash.handle);
 	if (scratchpad)
 		free(scratchpad);
 	return -ENOMEM;
@@ -105,17 +105,17 @@ out:
 static void cp_hash_fini_test(struct cp_test *test)
 {
 	dbg("Cleaning up shash test %s\n", test->testname);
-	kcapi_md_destroy(&test->u.hash.handle);
+	kcapi_md_destroy(test->u.hash.handle);
 	free(test->u.hash.scratchpad);
 }
 
 static unsigned int cp_hash_test(struct cp_test *test)
 {
-	kcapi_md_digest(&test->u.hash.handle,
+	kcapi_md_digest(test->u.hash.handle,
 			test->u.hash.scratchpad,
 			test->u.hash.inputlen,
 			test->u.hash.scratchpad,
-			kcapi_md_digestsize(&test->u.hash.handle));
+			kcapi_md_digestsize(test->u.hash.handle));
 	return test->u.hash.inputlen;
 }
 

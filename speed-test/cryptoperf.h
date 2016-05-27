@@ -72,14 +72,14 @@ struct rng_def {
 	unsigned int blocksize;
 	unsigned char *scratchpad;
 	size_t inputlen;
-	struct kcapi_handle handle;
+	struct kcapi_handle *handle;
 };
 
 struct hash_def {
 	unsigned int hmac;	/* config option */
 	unsigned char *scratchpad;
 	size_t inputlen;
-	struct kcapi_handle handle;
+	struct kcapi_handle *handle;
 };
 
 struct skcipher_def {
@@ -87,7 +87,7 @@ struct skcipher_def {
 	unsigned char *scratchpad;
 	unsigned char *iv;
 	size_t inputlen;
-	struct kcapi_handle handle;
+	struct kcapi_handle *handle;
 };
 
 struct aead_def {
@@ -97,7 +97,7 @@ struct aead_def {
 	unsigned char *iv;
 	size_t datalen;
 	size_t assoclen;
-	struct kcapi_handle handle;
+	struct kcapi_handle *handle;
 };
 
 /*

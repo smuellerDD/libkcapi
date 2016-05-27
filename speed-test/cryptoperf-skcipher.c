@@ -69,40 +69,40 @@ static int cp_skcipher_init_test(struct cp_test *test, size_t len)
 	}
 
 	cp_read_random(data, test->u.skcipher.keysize);
-	if (kcapi_cipher_setkey(&test->u.skcipher.handle, data,
+	if (kcapi_cipher_setkey(test->u.skcipher.handle, data,
 				test->u.skcipher.keysize)) {
 		printf(DRIVER_NAME": key could not be set\n");
 		goto out;
 	}
 
 	if (posix_memalign((void *)&ivdata,
-			   kcapi_cipher_blocksize(&test->u.skcipher.handle),
-			   kcapi_cipher_blocksize(&test->u.skcipher.handle))) {
+			   kcapi_cipher_blocksize(test->u.skcipher.handle),
+			   kcapi_cipher_blocksize(test->u.skcipher.handle))) {
 		printf(DRIVER_NAME": could not allocate ivdata for "
 		       "%s\n", test->driver_name);
 		goto out;
 	}
-	cp_read_random(ivdata, kcapi_cipher_blocksize(&test->u.skcipher.handle));
+	cp_read_random(ivdata, kcapi_cipher_blocksize(test->u.skcipher.handle));
 	test->u.skcipher.iv = ivdata;
 
 	if (posix_memalign((void *)&scratchpad, sysconf(_SC_PAGESIZE),
-			   kcapi_cipher_blocksize(&test->u.skcipher.handle) * len)) {
+			   kcapi_cipher_blocksize(test->u.skcipher.handle) * len)) {
 		printf(DRIVER_NAME": could not allocate scratchpad for "
 		       "%s\n", test->driver_name);
 		goto out;
 	}
 
 	cp_read_random(scratchpad,
-		       kcapi_cipher_blocksize(&test->u.skcipher.handle) * len);
+		       kcapi_cipher_blocksize(test->u.skcipher.handle) * len);
 
 	test->u.skcipher.inputlen =
-		len * kcapi_cipher_blocksize(&test->u.skcipher.handle);
+		len * kcapi_cipher_blocksize(test->u.skcipher.handle);
 	test->u.skcipher.scratchpad = scratchpad;
 
 	return 0;
 
 out:
-	kcapi_cipher_destroy(&test->u.skcipher.handle);
+	kcapi_cipher_destroy(test->u.skcipher.handle);
 	if (scratchpad)
 		free(scratchpad);
 	if (ivdata)
@@ -115,12 +115,12 @@ static void cp_skcipher_fini_test(struct cp_test *test)
 	dbg("Cleaning up asynchronous symmetric test %s\n", test->testname);
 	free(test->u.skcipher.scratchpad);
 	free(test->u.skcipher.iv);
-	kcapi_cipher_destroy(&test->u.skcipher.handle);
+	kcapi_cipher_destroy(test->u.skcipher.handle);
 }
 
 static unsigned int cp_ablkcipher_enc_test(struct cp_test *test)
 {
-	kcapi_cipher_encrypt(&test->u.skcipher.handle,
+	kcapi_cipher_encrypt(test->u.skcipher.handle,
 			     test->u.skcipher.scratchpad,
 			     test->u.skcipher.inputlen,
 			     test->u.skcipher.iv,
@@ -132,7 +132,7 @@ static unsigned int cp_ablkcipher_enc_test(struct cp_test *test)
 
 static unsigned int cp_ablkcipher_dec_test(struct cp_test *test)
 {
-	kcapi_cipher_decrypt(&test->u.skcipher.handle,
+	kcapi_cipher_decrypt(test->u.skcipher.handle,
 			     test->u.skcipher.scratchpad,
 			     test->u.skcipher.inputlen,
 			     test->u.skcipher.iv,

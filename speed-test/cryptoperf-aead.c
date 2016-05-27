@@ -73,7 +73,7 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm)
 	}
 
 	cp_read_random(data, test->u.aead.keysize);
-	if (kcapi_aead_setkey(&test->u.aead.handle, data,
+	if (kcapi_aead_setkey(test->u.aead.handle, data,
 			      test->u.aead.keysize)) {
 		printf(DRIVER_NAME": key could not be set\n");
 		goto out;
@@ -84,19 +84,19 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm)
 		if (kcapi_aead_ccm_nonce_to_iv(ivrand, 10, &ivdata, &ivlen))
 			goto out;
 	} else {
-		if (kcapi_pad_iv(&test->u.aead.handle, ivrand,
-				 kcapi_aead_blocksize(&test->u.aead.handle),
+		if (kcapi_pad_iv(test->u.aead.handle, ivrand,
+				 kcapi_aead_blocksize(test->u.aead.handle),
 				 &ivdata, &ivlen))
 			goto out;
 	}
 	test->u.aead.iv = ivdata;
 
-	if (kcapi_aead_settaglen(&test->u.aead.handle, TAGLEN)) {
+	if (kcapi_aead_settaglen(test->u.aead.handle, TAGLEN)) {
 		printf(DRIVER_NAME ": Setting of authentication tag length failed\n");
 		goto out;
 	}
 
-	test->u.aead.datalen = kcapi_aead_outbuflen(&test->u.aead.handle,
+	test->u.aead.datalen = kcapi_aead_outbuflen(test->u.aead.handle,
 						    BLOCKLEN * len, 
 						    test->u.aead.assoclen,
 						    TAGLEN);
@@ -113,7 +113,7 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm)
 		       "%s\n", test->driver_name);
 		goto out;
 	}
-	kcapi_aead_setassoclen(&test->u.aead.handle, test->u.aead.assoclen);
+	kcapi_aead_setassoclen(test->u.aead.handle, test->u.aead.assoclen);
 
 	test->u.aead.input = input;
 	test->u.aead.output = output;
@@ -124,7 +124,7 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm)
 		int ret = 0;
 		/* we need good data to avoid testing just the hash */
 		cp_read_random(output, test->u.aead.datalen);
-		ret = kcapi_aead_encrypt(&test->u.aead.handle,
+		ret = kcapi_aead_encrypt(test->u.aead.handle,
 					 test->u.aead.output,
 					 test->u.aead.datalen,
 					 test->u.aead.iv,
@@ -139,7 +139,7 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm)
 		memcpy(test->u.aead.input, test->u.aead.output,
 		       test->u.aead.assoclen);
 		/* just a verification to avoid being fooled */
-		ret = kcapi_aead_decrypt(&test->u.aead.handle,
+		ret = kcapi_aead_decrypt(test->u.aead.handle,
 					 test->u.aead.input,
 					 test->u.aead.datalen,
 					 test->u.aead.iv,
@@ -156,7 +156,7 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm)
 	return 0;
 
 out:
-	kcapi_cipher_destroy(&test->u.aead.handle);
+	kcapi_cipher_destroy(test->u.aead.handle);
 	if (ivdata)
 		free(ivdata);
 	if (input)
@@ -192,12 +192,12 @@ static void cp_aead_fini_test(struct cp_test *test)
 	free(test->u.aead.input);
 	free(test->u.aead.output);
 	free(test->u.aead.iv);
-	kcapi_cipher_destroy(&test->u.aead.handle);
+	kcapi_cipher_destroy(test->u.aead.handle);
 }
 
 static unsigned int cp_ablkcipher_enc_test(struct cp_test *test)
 {
-	kcapi_aead_encrypt(&test->u.aead.handle,
+	kcapi_aead_encrypt(test->u.aead.handle,
 			   test->u.aead.input,
 			   test->u.aead.datalen,
 			   test->u.aead.iv,
@@ -209,7 +209,7 @@ static unsigned int cp_ablkcipher_enc_test(struct cp_test *test)
 
 static unsigned int cp_ablkcipher_dec_test(struct cp_test *test)
 {
-	kcapi_aead_decrypt(&test->u.aead.handle,
+	kcapi_aead_decrypt(test->u.aead.handle,
 			   test->u.aead.input,
 			   test->u.aead.datalen,
 			   test->u.aead.iv,

@@ -101,6 +101,88 @@
 #endif
 
 /************************************************************
+ * Declarations for opague data structures
+ ************************************************************/
+
+/**
+ * Information obtained for different ciphers during handle init time
+ * using the NETLINK_CRYPTO interface.
+ * @blocksize block size of cipher (hash, symmetric, AEAD)
+ * @ivsize size of IV of cipher (symmetric, AEAD)
+ * @hash_digestsize size of message digest (hash)
+ * @blk_min_keysize minimum key size (symmetric)
+ * @blk_max_keysize maximum key size (symmetric)
+ * @aead_maxauthsize maximum authentication tag size (AEAD)
+ * @rng_seedsize seed size (RNG)
+ */
+struct kcapi_cipher_info {
+	/* generic */
+	uint32_t blocksize;
+	uint32_t ivsize;
+	/* hash */
+	uint32_t hash_digestsize;
+	/* blkcipher */
+	uint32_t blk_min_keysize;
+	uint32_t blk_max_keysize;
+	/* aead */
+	uint32_t aead_maxauthsize;
+	/* rng */
+	uint32_t rng_seedsize;
+};
+
+/**
+ * Common data required for symmetric and AEAD ciphers
+ * @iv: IV with length of kcapi_cipher_info->ivsize - input
+ */
+struct kcapi_cipher_data {
+	const uint8_t *iv;
+};
+
+/**
+ * AEAD data
+ * @datalen: Length of plaintext / ciphertext data - input
+ * @data: Pointer to plaintext / ciphertext data - input / output (the length is
+ *	  calculated with: kcapi_skcipher_data->inlen -
+ *			   kcapi_aead_data->taglen - kcapi_aead_data->assoclen)
+ * @assoclen: Length of associated data - input
+ * @assoc: Pointer to associated data - input
+ * @taglen: Length of authentication tag - input
+ * @tag: Authentication tag - input for decryption, output for encryption
+ * @retlen: internal data -- number plaintext / ciphertext bytes returned by
+ *	    the read system call
+ */
+struct kcapi_aead_data {
+	uint32_t datalen;
+	uint8_t *data;
+	uint32_t assoclen;
+	uint8_t *assoc;
+	uint32_t taglen;
+	uint8_t *tag;
+};
+
+/**
+ * Cipher handle
+ * @tfmfd: Socket descriptor for AF_ALG
+ * @opfd: FD to open kernel crypto API TFM
+ * @pipes: vmplice/splice pipe pair
+ * @processed_sg: number of scatter/gather entries sent to the kernel
+ * @ciper: Common data for all ciphers
+ * @aead: AEAD cipher specific data
+ * @info: properties of ciphers
+ * @aio: AIO information
+ */
+struct kcapi_handle {
+	int tfmfd;
+	int opfd;
+	int pipes[2];
+	uint32_t processed_sg;
+	struct kcapi_cipher_data cipher;
+	struct kcapi_aead_data aead;
+	struct kcapi_cipher_info info;
+	struct kcapi_aio aio;
+};
+
+/************************************************************
  * Logging logic
  ************************************************************/
 int kcapi_verbosity = LOG_ERR;
@@ -715,10 +797,11 @@ static inline void _kcapi_handle_destroy(struct kcapi_handle *handle)
 	memset(handle, 0, sizeof(struct kcapi_handle));
 }
 
-static int _kcapi_handle_init(struct kcapi_handle *handle, const char *type,
+static int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 			      const char *ciphername, uint32_t flags)
 {
 	struct sockaddr_alg sa;
+	struct kcapi_handle *handle;
 	int ret;
 	int errsv = 0;
 	char versionbuffer[50];
@@ -727,7 +810,9 @@ static int _kcapi_handle_init(struct kcapi_handle *handle, const char *type,
 	kcapi_dolog(LOG_VERBOSE, "%s - initializing cipher operation with kernel",
 		    versionbuffer);
 
-	memset(handle, 0, sizeof(struct kcapi_handle));
+	handle = calloc(1, sizeof(struct kcapi_handle));
+	if (!handle)
+		return -ENOMEM;
 
 	memset(&sa, 0, sizeof(sa));
 	sa.salg_family = AF_ALG;
@@ -777,6 +862,8 @@ static int _kcapi_handle_init(struct kcapi_handle *handle, const char *type,
 		handle->aio.skcipher_aio_disable = 1;
 
 	kcapi_dolog(LOG_VERBOSE, "communication for %s with kernel initialized", ciphername);
+
+	*caller = handle;
 
 	return (errsv) ? -errsv : ret;
 }
@@ -828,7 +915,7 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
 	return 0;
 }
 
-int kcapi_cipher_init(struct kcapi_handle *handle, const char *ciphername,
+int kcapi_cipher_init(struct kcapi_handle **handle, const char *ciphername,
 		      uint32_t flags)
 {
 	return _kcapi_handle_init(handle, "skcipher", ciphername, flags);
@@ -837,6 +924,7 @@ int kcapi_cipher_init(struct kcapi_handle *handle, const char *ciphername,
 void kcapi_cipher_destroy(struct kcapi_handle *handle)
 {
 	_kcapi_handle_destroy(handle);
+	kcapi_memset_secure(handle, 0, sizeof(struct kcapi_handle));
 }
 
 int kcapi_cipher_setkey(struct kcapi_handle *handle,
@@ -1064,7 +1152,7 @@ uint32_t kcapi_cipher_blocksize(struct kcapi_handle *handle)
 	return handle->info.blocksize;
 }
 
-int kcapi_aead_init(struct kcapi_handle *handle, const char *ciphername,
+int kcapi_aead_init(struct kcapi_handle **handle, const char *ciphername,
 		    uint32_t flags)
 {
 	return _kcapi_handle_init(handle, "aead", ciphername, flags);
@@ -1324,7 +1412,7 @@ int kcapi_aead_ccm_nonce_to_iv(const uint8_t *nonce, uint32_t noncelen,
 	return 0;
 }
 
-int kcapi_md_init(struct kcapi_handle *handle, const char *ciphername,
+int kcapi_md_init(struct kcapi_handle **handle, const char *ciphername,
 		  uint32_t flags)
 {
 	return _kcapi_handle_init(handle, "hash", ciphername, flags);
@@ -1415,7 +1503,7 @@ uint32_t kcapi_md_blocksize(struct kcapi_handle *handle)
 	return handle->info.blocksize;
 }
 
-int kcapi_rng_init(struct kcapi_handle *handle, const char *ciphername,
+int kcapi_rng_init(struct kcapi_handle **handle, const char *ciphername,
 		   uint32_t flags)
 {
 	return _kcapi_handle_init(handle, "rng", ciphername, flags);
@@ -1455,7 +1543,7 @@ int32_t kcapi_rng_generate(struct kcapi_handle *handle,
 	return out;
 }
 
-int kcapi_akcipher_init(struct kcapi_handle *handle, const char *ciphername,
+int kcapi_akcipher_init(struct kcapi_handle **handle, const char *ciphername,
 			uint32_t flags)
 {
 	return _kcapi_handle_init(handle, "akcipher", ciphername, flags);

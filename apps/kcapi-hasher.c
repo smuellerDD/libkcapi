@@ -297,7 +297,7 @@ static int hash_files(char *hashname, char *filename[], uint32_t files,
 		      const uint8_t *hmackey, uint32_t hmackeylen,
 		      int fipshmac)
 {
-	struct kcapi_handle handle;
+	struct kcapi_handle *handle;
 	uint32_t i = 0;
 	int ret = 0;
 	
@@ -308,7 +308,7 @@ static int hash_files(char *hashname, char *filename[], uint32_t files,
 		return -EFAULT;
 	}
 	if (hmackey) {
-		ret = kcapi_md_setkey(&handle, hmackey, hmackeylen);
+		ret = kcapi_md_setkey(handle, hmackey, hmackeylen);
 		if (ret) {
 			fprintf(stderr, "Setting HMAC key for %s failed (%d)\n",
 				hashname, ret);
@@ -335,14 +335,14 @@ static int hash_files(char *hashname, char *filename[], uint32_t files,
 			}
 			free(outfile);
 		}
-		ret = hasher(&handle, filename[i], NULL, 0, out);
+		ret = hasher(handle, filename[i], NULL, 0, out);
 		if (fipshmac)
 			fclose(out);
 		if (ret)
 			break;
 	}
 
-	kcapi_md_destroy(&handle);
+	kcapi_md_destroy(handle);
 	return ret;
 }
 
@@ -355,7 +355,7 @@ static int process_checkfile(char *hashname, char *checkfile, char *targetfile,
 {
 	FILE *file = NULL;
 	int ret = 0;
-	struct kcapi_handle handle;
+	struct kcapi_handle *handle;
 	/*
 	 * A file can have up to 4096 characters, so a complete line has at most
 	 * 4096 bytes (file name) + 128 bytes (SHA512 hex value) + 2 spaces +
@@ -370,7 +370,7 @@ static int process_checkfile(char *hashname, char *checkfile, char *targetfile,
 		return -EFAULT;
 	}
 	if (hmackey) {
-		ret = kcapi_md_setkey(&handle, hmackey, hmackeylen);
+		ret = kcapi_md_setkey(handle, hmackey, hmackeylen);
 		if (ret) {
 			fprintf(stderr, "Setting HMAC key for %s failed (%d)\n",
 				hashname, ret);
@@ -409,7 +409,7 @@ static int process_checkfile(char *hashname, char *checkfile, char *targetfile,
 				hashlen++;
 			} else {
 				char *filename = buf + i;
-				int r = hasher(&handle, filename, buf, hashlen,
+				int r = hasher(handle, filename, buf, hashlen,
 					       stdout);
 
 				if (r == 0) {
@@ -428,7 +428,7 @@ static int process_checkfile(char *hashname, char *checkfile, char *targetfile,
 
 		/* fipscheck does not have the filename in the check file */
 		if (!foundsep && targetfile) {
-			return hasher(&handle, targetfile,
+			return hasher(handle, targetfile,
 				      buf, hashlen - 1, stdout);
 		}
 
@@ -439,7 +439,7 @@ static int process_checkfile(char *hashname, char *checkfile, char *targetfile,
 out:
 	if (file)
 		fclose(file);
-	kcapi_md_destroy(&handle);
+	kcapi_md_destroy(handle);
 	return ret;
 
 }

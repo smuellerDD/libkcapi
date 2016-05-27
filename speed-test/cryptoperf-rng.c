@@ -60,7 +60,7 @@ static int cp_rng_init_test(struct cp_test *test, size_t len)
 	dbg("testing RNG %s allocated\n", test->driver_name);
 
 	cp_read_random(seed, SEEDSIZE);
-	if (kcapi_rng_seed(&test->u.rng.handle, seed, SEEDSIZE)) {
+	if (kcapi_rng_seed(test->u.rng.handle, seed, SEEDSIZE)) {
 		printf(DRIVER_NAME": seed could not be set\n");
 		goto out;
 	}
@@ -80,7 +80,7 @@ static int cp_rng_init_test(struct cp_test *test, size_t len)
 	return 0;
 
 out:
-	kcapi_rng_destroy(&test->u.rng.handle);
+	kcapi_rng_destroy(test->u.rng.handle);
 	if (scratchpad)
 		free(scratchpad);
 	return -ENOMEM;
@@ -88,13 +88,13 @@ out:
 
 static void cp_rng_fini_test(struct cp_test *test)
 {
-	kcapi_rng_destroy(&test->u.rng.handle);
+	kcapi_rng_destroy(test->u.rng.handle);
 	free(test->u.rng.scratchpad);
 }
 
 static unsigned int cp_rng_exec_test(struct cp_test *test)
 {
-	kcapi_rng_generate(&test->u.rng.handle,
+	kcapi_rng_generate(test->u.rng.handle,
 			   test->u.rng.scratchpad,
 			   test->u.rng.inputlen);
 	return test->u.rng.inputlen;
