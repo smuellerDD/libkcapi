@@ -33,7 +33,6 @@ enum {
 
 #ifndef __KERNEL__
 #define CRYPTO_MAX_ALG_NAME 64
-#define CRYPTO_ALG_TYPE_MASK 0x0000000f
 #define CR_RTA(x)  ((struct rtattr*)(((char*)(x)) + NLMSG_ALIGN(sizeof(struct crypto_user_alg))))
 #endif
 
