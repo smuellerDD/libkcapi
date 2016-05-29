@@ -338,6 +338,7 @@ uint32_t kcapi_cipher_blocksize(struct kcapi_handle *handle);
  *	   -ENOENT - algorithm not available;
  *	   -EOPNOTSUPP - AF_ALG family not available;
  *	   -EINVAL - accept syscall failed
+ *	   -ENOMEM - cipher handle cannot be allocated
  */
 int kcapi_aead_init(struct kcapi_handle **handle, const char *ciphername,
 		    uint32_t flags);
@@ -743,6 +744,7 @@ int kcapi_aead_ccm_nonce_to_iv(const uint8_t *nonce, uint32_t noncelen,
  * Return: 0 upon success; ENOENT - algorithm not available;
  *	   -EOPNOTSUPP - AF_ALG family not available;
  *	   -EINVAL - accept syscall failed
+ *	   -ENOMEM - cipher handle cannot be allocated
  */
 int kcapi_md_init(struct kcapi_handle **handle, const char *ciphername,
 		  uint32_t flags);
@@ -861,6 +863,7 @@ uint32_t kcapi_md_blocksize(struct kcapi_handle *handle);
  * Return: 0 upon success; ENOENT - algorithm not available;
  *	   -EOPNOTSUPP - AF_ALG family not available;
  *	   -EINVAL - accept syscall failed
+ *	   -ENOMEM - cipher handle cannot be allocated
  */
 int kcapi_rng_init(struct kcapi_handle **handle, const char *ciphername,
 		   uint32_t flags);
@@ -1000,6 +1003,7 @@ void kcapi_memset_secure(void *s, int c, uint32_t n);
  * Return: 0 upon success; ENOENT - algorithm not available;
  *	   -EOPNOTSUPP - AF_ALG family not available;
  *	   -EINVAL - accept syscall failed
+ *	   -ENOMEM - cipher handle cannot be allocated
  */
 int kcapi_akcipher_init(struct kcapi_handle **handle, const char *ciphername,
 			uint32_t flags);
