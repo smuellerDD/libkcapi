@@ -43,9 +43,8 @@
 #include <sys/uio.h>
 #include "kcapi_aio.h"
 
-#if __GNUC__ >= 4 && DSO
+#if __GNUC__ >= 4
 # define DSO_PUBLIC __attribute__ ((visibility ("default")))
-# pragma GCC visibility push(hidden)
 #else
 # define DSO_PUBLIC
 #endif
@@ -1446,6 +1445,5 @@ int32_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
 DSO_PUBLIC
 int32_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
 			         struct iovec *iov, uint32_t iovlen);
-
 
 #endif /* _KCAPI_H */
