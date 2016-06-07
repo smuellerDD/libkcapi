@@ -635,7 +635,7 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 		}
 		if (ret == 0) {
 			errsv = errno;
-			fprintf(stderr, "Netlink error: no data");
+			kcapi_dolog(LOG_ERR, "Netlink error: no data");
 			goto out;
 		}
 		if ((uint32_t)ret > sizeof(buf)) {
@@ -1660,7 +1660,7 @@ int32_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
 {
 	if (!iov || !iovlen) {
 		kcapi_dolog(LOG_ERR,
-			    "Symmetric operation: No buffer for output data provided");
+			    "Asymmetric operation: No buffer for output data provided");
 		return -EINVAL;
 	}
 	return _kcapi_common_recv_data(handle, iov, iovlen);

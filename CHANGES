@@ -1,3 +1,11 @@
+Changes 0.11.0:
+ * Convert all libkcapi data structures into opaque structures. This implies
+   that the *_init functions require a reference to a pointer as these init
+   functions now allocate the struct kcapi_handle data structure.
+ * Add clean and consistent logging logic
+ * fixed execution when CONFIG_CRYPTO_FIPS is disabled in kernel
+ * mark all symbols except API as hidden
+
 Changes 0.10.2:
  * Fix kernel netlink parsing error message
  * doc: add hint for setting keys before sending data
