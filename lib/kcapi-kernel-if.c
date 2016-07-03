@@ -1440,12 +1440,10 @@ static inline int32_t _kcapi_md_update(struct kcapi_handle *handle,
 	int32_t ret = 0;
 
 	/* zero buffer length cannot be handled via splice */
-	/* TODO check that heuristic for sendmsg is appropriate */
-	if(len == 0 /* < (1<<15) */) {
+	if (len < (1<<15)) {
 		ret = _kcapi_common_accept(handle);
 		if (ret)
 			return ret;
-
 		ret = send(handle->opfd, buffer, len, MSG_MORE);
 	} else {
 		ret = _kcapi_common_vmsplice_chunk(handle, buffer, len,

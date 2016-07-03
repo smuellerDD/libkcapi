@@ -58,7 +58,7 @@ static int cp_hash_init_test(struct cp_test *test, size_t len)
 	if (kcapi_md_init(&test->u.hash.handle, test->driver_name, 0)) {
 		printf(DRIVER_NAME": could not allocate shash handle for "
 		       "%s\n", test->driver_name);
-		goto out;
+		goto out2;
 	}
 
 	/* HMAC */
@@ -82,7 +82,7 @@ static int cp_hash_init_test(struct cp_test *test, size_t len)
 
 	if (posix_memalign((void *)&scratchpad,
 			   kcapi_md_blocksize(test->u.hash.handle),
-			   kcapi_md_blocksize(test->u.hash.handle) * len)){
+			   kcapi_md_blocksize(test->u.hash.handle) * len)) {
 		printf(DRIVER_NAME": could not allocate scratchpad for "
 		       "%s\n", test->driver_name);
 		goto out;
@@ -97,6 +97,7 @@ static int cp_hash_init_test(struct cp_test *test, size_t len)
 
 out:
 	kcapi_md_destroy(test->u.hash.handle);
+out2:
 	if (scratchpad)
 		free(scratchpad);
 	return -ENOMEM;
@@ -131,22 +132,42 @@ static const struct cp_hash_tests testcases[] = {
 	{ "SHA-256(G)", "sha256-generic", 0 },
 	{ "SHA-384(G)", "sha384-generic", 0 },
 	{ "SHA-512(G)", "sha512-generic", 0 },
-	{ "SHA-1(SSSE3 AVX AVX2)", "sha1-ssse3", 0 },
-	{ "SHA-224(SSSE3 AVX AVX2)", "sha224-ssse3", 0 },
-	{ "SHA-256(SSSE3 AVX AVX2)", "sha256-ssse3", 0 },
-	{ "SHA-384(SSSE3 AVX AVX2)", "sha384-ssse3", 0 },
-	{ "SHA-512(SSSE3 AVX AVX2)", "sha512-ssse3", 0 },
+	{ "SHA-1(SSSE3)", "sha1-ssse3", 0 },
+	{ "SHA-224(SSSE3)", "sha224-ssse3", 0 },
+	{ "SHA-256(SSSE3)", "sha256-ssse3", 0 },
+	{ "SHA-384(SSSE3)", "sha384-ssse3", 0 },
+	{ "SHA-512(SSSE3)", "sha512-ssse3", 0 },
+	{ "SHA-1(AVX)", "sha1-avx", 0 },
+	{ "SHA-224(AVX)", "sha224-avx", 0 },
+	{ "SHA-256(AVX)", "sha256-avx", 0 },
+	{ "SHA-384(AVX)", "sha384-avx", 0 },
+	{ "SHA-512(AVX)", "sha512-avx", 0 },
+	{ "SHA-1(AVX2)", "sha1-avx2", 0 },
+	{ "SHA-224(AVX2)", "sha224-avx2", 0 },
+	{ "SHA-256(AVX2)", "sha256-avx2", 0 },
+	{ "SHA-384(AVX2)", "sha384-avx2", 0 },
+	{ "SHA-512(AVX2)", "sha512-avx2", 0 },
 
 	{ "HMAC SHA-1(G)", "hmac(sha1-generic)", 1 },
 	{ "HMAC SHA-224(G)", "hmac(sha224-generic)", 1 },
 	{ "HMAC SHA-256(G)", "hmac(sha256-generic)", 1 },
 	{ "HMAC SHA-384(G)", "hmac(sha384-generic)", 1 },
 	{ "HMAC SHA-512(G)", "hmac(sha512-generic)", 1 },
-	{ "HMAC SHA-1(SSSE3 AVX AVX2)", "hmac(sha1-ssse3)", 1 },
-	{ "HMAC SHA-224(SSSE3 AVX AVX2)", "hmac(sha224-ssse3)", 1 },
-	{ "HMAC SHA-256(SSSE3 AVX AVX2)", "hmac(sha256-ssse3)", 1 },
-	{ "HMAC SHA-384(SSSE3 AVX AVX2)", "hmac(sha384-ssse3)", 1 },
-	{ "HMAC SHA-512(SSSE3 AVX AVX2)", "hmac(sha512-ssse3)", 1 },
+	{ "HMAC SHA-1(SSSE3)", "hmac(sha1-ssse3)", 1 },
+	{ "HMAC SHA-224(SSSE3)", "hmac(sha224-ssse3)", 1 },
+	{ "HMAC SHA-256(SSSE3)", "hmac(sha256-ssse3)", 1 },
+	{ "HMAC SHA-384(SSSE3)", "hmac(sha384-ssse3)", 1 },
+	{ "HMAC SHA-512(SSSE3)", "hmac(sha512-ssse3)", 1 },
+	{ "HMAC SHA-1(AVX)", "hmac(sha1-avx)", 1 },
+	{ "HMAC SHA-224(AVX)", "hmac(sha224-avx)", 1 },
+	{ "HMAC SHA-256(AVX)", "hmac(sha256-avx)", 1 },
+	{ "HMAC SHA-384(AVX)", "hmac(sha384-avx)", 1 },
+	{ "HMAC SHA-512(AVX)", "hmac(sha512-avx)", 1 },
+	{ "HMAC SHA-1(AVX2)", "hmac(sha1-avx2)", 1 },
+	{ "HMAC SHA-224(AVX2)", "hmac(sha224-avx2)", 1 },
+	{ "HMAC SHA-256(AVX2)", "hmac(sha256-avx2)", 1 },
+	{ "HMAC SHA-384(AVX2)", "hmac(sha384-avx2)", 1 },
+	{ "HMAC SHA-512(AVX2)", "hmac(sha512-avx2)", 1 },
 
 	{ "MD5(G)", "md5-generic", 0 },
 	{ "HMAC MD5(G)", "hmac(md5-generic)", 1 },
