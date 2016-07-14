@@ -397,7 +397,7 @@ struct kcapi_cavs {
 static int cavs_sym(struct kcapi_cavs *cavs_test, uint32_t loops,
 		    int splice)
 {
-	struct kcapi_handle *handle;
+	struct kcapi_handle *handle = NULL;
 	uint8_t *outbuf = NULL;
 	uint32_t outbuflen = 0;
 	char *outhex = NULL;
@@ -476,7 +476,7 @@ out:
 
 static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 {
-	struct kcapi_handle *handle;
+	struct kcapi_handle *handle = NULL;
 	char *outhex = NULL;
 	int ret = -ENOMEM;
 	uint8_t *outbuf = NULL;
@@ -586,6 +586,9 @@ out:
  *
  * $ ./kcapi -x 2 -c "ccm(aes)" -q db5fce3f4ba0ac878b8f18733d7f1a6a1c8c8396667c5235c307e874f5783087 -t 38a263cd -n 99a789af090798 -k 2861fd0253705d7875c95ba8a53171b4 -a 34b7ab892c3f06e0305693ffc5ff9d1238e57241e091c584a3df51b9bbb3bff4
  * EBADMSG
+ *
+ * $ ./kcapi -x 2 -e -c "authenc(hmac(sha1),cbc(aes))" -p 53696e676c6520626c6f636b206d7367 -k  0800010000000010000000000000000000000000000000000000000006a9214036b8a15b512e03d534120006 -i 3dafba429d9eb430b422da802c9fac41 -a 3dafba429d9eb430b422da802c9fac41 -l 20
+ * e353779c1079aeb82708942dbe77181a1b13cbaf895ee12c13c52ea3cceddcb50371a206
  */
 static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 		     int splice)
@@ -1184,7 +1187,7 @@ static int cavs_hash_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 static int cavs_asym(struct kcapi_cavs *cavs_test, uint32_t loops,
 		     int splice)
 {
-	struct kcapi_handle *handle;
+	struct kcapi_handle *handle = NULL;
 	uint8_t *outbuf = NULL;
 	uint32_t outbuflen = 8192;
 	int ret = -EINVAL;
@@ -1285,7 +1288,7 @@ out:
 static int cavs_asym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 			    int splice)
 {
-	struct kcapi_handle *handle;
+	struct kcapi_handle *handle = NULL;
 #define NUMIOVECS 16
 #define OUTBUFBLOCKSIZE 125
 	uint8_t *outbuf = NULL;
