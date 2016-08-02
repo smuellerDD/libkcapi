@@ -14,9 +14,9 @@ PREFIX := /usr/local
 LIBDIR := lib
 
 NAME := kcapi
-LIBMAJOR=$(shell cat kcapi-kernel-if.c | grep define | grep MAJVERSION | awk '{print $$3}')
-LIBMINOR=$(shell cat kcapi-kernel-if.c | grep define | grep MINVERSION | awk '{print $$3}')
-LIBPATCH=$(shell cat kcapi-kernel-if.c | grep define | grep PATCHLEVEL | awk '{print $$3}')
+LIBMAJOR=$(shell cat kcapi.h | grep define | grep MAJVERSION | awk '{print $$3}')
+LIBMINOR=$(shell cat kcapi.h | grep define | grep MINVERSION | awk '{print $$3}')
+LIBPATCH=$(shell cat kcapi.h | grep define | grep PATCHLEVEL | awk '{print $$3}')
 LIBVERSION := $(LIBMAJOR).$(LIBMINOR).$(LIBPATCH)
 C_SRCS := $(wildcard *.c)
 C_OBJS := ${C_SRCS:.c=.o}
