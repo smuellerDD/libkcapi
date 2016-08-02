@@ -809,6 +809,11 @@ static int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 	if (!handle)
 		return -ENOMEM;
 
+	handle->opfd = -1;
+	handle->tfmfd = -1;
+	handle->pipes[0] = -1;
+	handle->pipes[1] = -1;
+
 	memset(&sa, 0, sizeof(sa));
 	sa.salg_family = AF_ALG;
 	snprintf((char *)sa.salg_type, sizeof(sa.salg_type),"%s", type);
@@ -826,21 +831,16 @@ static int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 		errsv = errno;
 		kcapi_dolog(LOG_ERR, "AF_ALG: bind failed (errno: %d)",
 			    errsv);
-		close(handle->tfmfd);
-		handle->tfmfd = -1;
 		goto err;
 	}
 	kcapi_dolog(LOG_DEBUG, "AF_ALG: bind syscall passed (errno: %d)",
 		    errno);
-
-	handle->opfd = -1;
 
 	ret = pipe(handle->pipes);
 	if (ret) {
 		errsv = errno;
 		kcapi_dolog(LOG_DEBUG, "AF_ALG: pipe syscall failed (errno: %d)",
 			    errsv);
-		close(handle->tfmfd);
 		goto err;
 	}
 	kcapi_dolog(LOG_DEBUG, "AF_ALG: pipe syscall passed");
