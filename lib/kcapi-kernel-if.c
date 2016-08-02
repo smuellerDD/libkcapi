@@ -820,12 +820,14 @@ static int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 	snprintf((char *)sa.salg_name, sizeof(sa.salg_name),"%s", ciphername);
 
 	handle->tfmfd = socket(AF_ALG, SOCK_SEQPACKET, 0);
-	kcapi_dolog(LOG_DEBUG, "AF_ALG: socket syscall %s (errno: %d)",
-		    (handle->tfmfd == -1) ? "failed": "passed", errno);
 	if (handle->tfmfd == -1) {
-		errsv = -EOPNOTSUPP;
+		errsv = errno;
+		kcapi_dolog(LOG_ERR, "AF_ALG: socket syscall failed (errno: %d)",
+			    errsv);
 		goto err;
 	}
+	kcapi_dolog(LOG_DEBUG, "AF_ALG: socket syscall passed (errno: %d)",
+		    errno);
 
 	if (bind(handle->tfmfd, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
 		errsv = errno;
@@ -839,7 +841,7 @@ static int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 	ret = pipe(handle->pipes);
 	if (ret) {
 		errsv = errno;
-		kcapi_dolog(LOG_DEBUG, "AF_ALG: pipe syscall failed (errno: %d)",
+		kcapi_dolog(LOG_ERR, "AF_ALG: pipe syscall failed (errno: %d)",
 			    errsv);
 		goto err;
 	}
