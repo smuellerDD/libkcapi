@@ -817,8 +817,10 @@ static int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 	handle->tfmfd = socket(AF_ALG, SOCK_SEQPACKET, 0);
 	kcapi_dolog(LOG_DEBUG, "AF_ALG: socket syscall %s (errno: %d)",
 		    (handle->tfmfd == -1) ? "failed": "passed", errno);
-	if (handle->tfmfd == -1)
-		return -EOPNOTSUPP;
+	if (handle->tfmfd == -1) {
+		errsv = -EOPNOTSUPP;
+		goto err;
+	}
 
 	if (bind(handle->tfmfd, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
 		errsv = errno;
@@ -826,7 +828,7 @@ static int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 			    errsv);
 		close(handle->tfmfd);
 		handle->tfmfd = -1;
-		return -errsv;
+		goto err;
 	}
 	kcapi_dolog(LOG_DEBUG, "AF_ALG: bind syscall passed (errno: %d)",
 		    errno);
@@ -839,7 +841,7 @@ static int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 		kcapi_dolog(LOG_DEBUG, "AF_ALG: pipe syscall failed (errno: %d)",
 			    errsv);
 		close(handle->tfmfd);
-		return -errsv;
+		goto err;
 	}
 	kcapi_dolog(LOG_DEBUG, "AF_ALG: pipe syscall passed");
 
@@ -848,7 +850,7 @@ static int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 		errsv = errno;
 		kcapi_dolog(LOG_ERR, "NETLINK_CRYPTO: cannot obtain cipher information for %s (is required crypto_user.c patch missing? see documentation)",
 			    ciphername);
-		_kcapi_handle_destroy(handle);
+		goto err;
 	}
 
 	if (flags & KCAPI_INIT_AIO)
@@ -860,7 +862,11 @@ static int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 
 	*caller = handle;
 
-	return (errsv) ? -errsv : ret;
+	return ret;
+
+err:
+	_kcapi_handle_destroy(handle);
+	return -errsv;
 }
 
 /*********** Generic Helper functions *************************/

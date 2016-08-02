@@ -1,3 +1,8 @@
+Changes 0.11.1
+ * move version information to kcapi.h to allow compile time tests for wrapping
+   applications
+ * fix error code path mem leaks in _kcapi_handle_init reported by cppcheck
+
 Changes 0.11.0:
  * Convert all libkcapi data structures into opaque structures. This implies
    that the *_init functions require a reference to a pointer as these init
