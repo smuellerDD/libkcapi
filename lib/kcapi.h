@@ -198,7 +198,7 @@ int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
  *
  * @handle: [in] cipher handle
  * @iv: [in] IV to be used for cipher operation
- * @iov: [out] scatter/gather list with data to be encrypted. This is
+ * @iov: [in] scatter/gather list with data to be encrypted. This is
  *	the pointer to the first iov entry if an array of iov
  *	entries is supplied. See sendmsg(2) for details on how iov is
  *	to be used. This pointer may be NULL if no data to be encrypted
@@ -231,7 +231,7 @@ int32_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
  *
  * @handle: [in] cipher handle
  * @iv: [in] IV to be used for cipher operation
- * @iov: [out] scatter/gather list with data to be encrypted. This is
+ * @iov: [in] scatter/gather list with data to be encrypted. This is
  *	the pointer to the first iov entry if an array of iov
  *	entries is supplied. See sendmsg(2) for details on how iov is
  *	to be used. This pointer may be NULL if no data to be encrypted
@@ -264,7 +264,7 @@ int32_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
  * kcapi_cipher_stream_update() - send more data for processing (stream)
  *
  * @handle: [in] cipher handle
- * @iov: [in/out] scatter/gather list with data to be processed by the
+ * @iov: [in] scatter/gather list with data to be processed by the
  *	cipher operation.
  * @iovlen: [in] number of scatter/gather list elements.
  *
@@ -300,7 +300,7 @@ int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
  * kcapi_cipher_stream_op() - obtain processed data (stream)
  *
  * @handle: [in] cipher handle
- * @iov: [in/out] scatter/gather list pointing to buffers to be filled with
+ * @iov: [out] scatter/gather list pointing to buffers to be filled with
  *	the resulting data from a cipher operation.
  * @iovlen: [in] number of scatter/gather list elements.
  *
