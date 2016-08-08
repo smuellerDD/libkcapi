@@ -881,17 +881,17 @@ void kcapi_memset_secure(void *s, int c, uint32_t n)
 
 void kcapi_versionstring(char *buf, uint32_t buflen)
 {
-	snprintf(buf, buflen, "libkcapi %d.%d.%d", MAJVERSION, MINVERSION,
-		 PATCHLEVEL);
+	snprintf(buf, buflen, "libkcapi %d.%d.%d", KCAPI_MAJVERSION,
+		 KCAPI_MINVERSION, KCAPI_PATCHLEVEL);
 }
 
 uint32_t kcapi_version(void)
 {
 	uint32_t version = 0;
 
-	version =  MAJVERSION * 1000000;
-	version += MINVERSION * 10000;
-	version += PATCHLEVEL * 100;
+	version =  KCAPI_MAJVERSION * 1000000;
+	version += KCAPI_MINVERSION * 10000;
+	version += KCAPI_PATCHLEVEL * 100;
 
 	return version;
 }
