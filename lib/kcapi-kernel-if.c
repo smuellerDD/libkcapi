@@ -55,8 +55,11 @@
 #include <sys/user.h>
 #include <sys/eventfd.h>
 #include <time.h>
-#include "cryptouser.h"
+#include <limits.h>
 
+#include <linux/if_alg.h>
+
+#include "cryptouser.h"
 #include "kcapi.h"
 
 /* remove once in if_alg.h */
@@ -406,6 +409,9 @@ static inline int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 	uint32_t processed = 0;
 	int ret = 0;
 
+	if (inlen > INT_MAX)
+		return -EMSGSIZE;
+
 	ret = _kcapi_common_accept(handle);
 	if (ret)
 		return ret;
@@ -496,6 +502,9 @@ static inline int32_t _kcapi_common_read_data(struct kcapi_handle *handle,
 {
 	int32_t ret = 0;
 	int32_t errsv;
+
+	if (outlen > INT_MAX)
+		return -EMSGSIZE;
 
 	ret = _kcapi_common_accept(handle);
 	if (ret)
@@ -780,6 +789,8 @@ static inline void _kcapi_aio_destroy(struct kcapi_handle *handle)
 
 static inline void _kcapi_handle_destroy(struct kcapi_handle *handle)
 {
+	if (!handle)
+		return;
 	if (handle->tfmfd != -1)
 		close(handle->tfmfd);
 	if (handle->opfd != -1)
@@ -939,7 +950,7 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
 }
 
 static inline int32_t _kcapi_aio_read(struct kcapi_handle *handle,
-				     uint8_t *out, uint32_t outlen)
+				      uint8_t *out, uint32_t outlen)
 {
 	(void)handle;
 	(void)out;
@@ -989,6 +1000,9 @@ static int32_t _kcapi_cipher_crypt(struct kcapi_handle *handle,
 	struct iovec iov;
 	int32_t ret = 0;
 
+	if (outlen > INT_MAX)
+		return -EMSGSIZE;
+
 	if (!in || !inlen || !out || !outlen) {
 		kcapi_dolog(LOG_ERR,
 			    "Symmetric Encryption: Empty plaintext or ciphertext buffer provided");
@@ -1035,6 +1049,9 @@ static int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
 					int access, int enc)
 {
 	int32_t totallen = 0;
+
+	if (outlen > INT_MAX)
+		return -EMSGSIZE;
 
 	while (inlen) {
 		uint32_t process = inlen;
@@ -1438,6 +1455,9 @@ static inline int32_t _kcapi_md_update(struct kcapi_handle *handle,
 				       const uint8_t *buffer, uint32_t len)
 {
 	int32_t ret = 0;
+
+	if (len > INT_MAX)
+		return -EMSGSIZE;
 
 	/* zero buffer length cannot be handled via splice */
 	if (len < (1<<15)) {

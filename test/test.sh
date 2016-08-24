@@ -364,6 +364,110 @@ ASYM_exp_3="54859b342c49ea2a"
 ###########################################################################
 ###########################################################################
 
+KDF_name_1="hmac(sha256)"
+KDF_type_1=5 #5 CTR KDF, 6 FB KDF, 7 DPI KDF
+KDF_key_1="dd1d91b7d90b2bd3138533ce92b272fbf8a369316aefe242e659cc0ae238afe0"
+KDF_msg_1="01322b96b30acd197979444e468e1c5c6859bf1b1cf951b7e725303e237e46b864a145fab25e517b08f8683d0315bb2911d80a0e8aba17f3b413faac"
+KDF_exp_1="10621342bfb0fd40046c0e29f2cfdbf0"
+
+KDF_name_2="hmac(sha256)"
+KDF_type_2=6 #5 CTR KDF, 6 FB KDF, 7 DPI KDF
+KDF_key_2="93f698e842eed75394d629d957e2e89c6e741f810b623c8b901e38376d068e7b"
+KDF_msg_2="9f575d9059d3e0c0803f08112f8a806de3c3471912cdf42b095388b14b33508e53b89c18690e2057a1d167822e636de50be0018532c431f7f5e37f77139220d5e042599ebe266af5767ee18cd2c5c19a1f0f80"
+KDF_exp_2="bd1476f43a4e315747cf5918e0ea5bc0d98769457477c3ab18b742def0e079a933b756365afb5541f253fee43c6fd788a44041038509e9eeb68f7d65ffbb5f95"
+
+KDF_name_3="hmac(sha256)"
+KDF_type_3=7 #5 CTR KDF, 6 FB KDF, 7 DPI KDF
+KDF_key_3="02d36fa021c20ddbdee469f0579468bae5cb13b548b6c61cdf9d3ec419111de2"
+KDF_msg_3="85abe38bf265fbdc6445ae5c71159f1548c73b7d526a623104904a0f8792070b3df9902b9669490425a385eadb0f9c76e46f0f"
+KDF_exp_3="d69f74f518c9f64f90a0beebab69f689b73b5c13eb0f860a95cad7d9814f8c506eb7b179a5c5b4466a9ec154c3bf1c13efd6ec0d82b02c29af2c690299edc453"
+
+###########################################################################
+###########################################################################
+###########################################################################
+
+PBKDF_name_1="hmac(sha1)"
+PBKDF_salt_1="73616c74"
+PBKDF_pw_1="70617373776f7264"
+PBKDF_count_1=1
+PBKDF_exp_1="0c60c80f961f0e71f3a9b524af6012062fe037a6"
+
+PBKDF_name_2="hmac(sha1)"
+PBKDF_salt_2="73616c74"
+PBKDF_pw_2="70617373776f7264"
+PBKDF_count_2=2
+PBKDF_exp_2="ea6c014dc72d6f8ccd1ed92ace1d41f0d8de8957"
+
+PBKDF_name_3="hmac(sha1)"
+PBKDF_salt_3="73616c74"
+PBKDF_pw_3="70617373776f7264"
+PBKDF_count_3=4096
+PBKDF_exp_3="4b007901b765489abead49d926f721d065a429c1"
+
+PBKDF_name_4="hmac(sha1)"
+PBKDF_salt_4="73616c74"
+PBKDF_pw_4="70617373776f7264"
+PBKDF_count_4=16777216
+PBKDF_exp_4="eefe3d61cd4da4e4e9945b3d6ba2158c2634e984"
+
+PBKDF_name_5="hmac(sha1)"
+PBKDF_salt_5="73616c7453414c5473616c7453414c5473616c7453414c5473616c7453414c5473616c74"
+PBKDF_pw_5="70617373776f726450415353574f524470617373776f7264"
+PBKDF_count_5=4096
+PBKDF_exp_5="3d2eec4fe41c849b80c8d83662c0e44a8b291a964cf2f07038"
+
+PBKDF_name_6="hmac(sha1)"
+PBKDF_salt_6="7361006c74"
+PBKDF_pw_6="7061737300776f7264"
+PBKDF_count_6=4096
+PBKDF_exp_6="56fa6aa75548099dcc37d7f03425e0c3"
+
+PBKDF_name_7="hmac(sha1)"
+PBKDF_salt_7="73616c74"
+PBKDF_pw_7=""
+PBKDF_count_7=2
+PBKDF_exp_7="133a4ce837b4d2521ee2bf03e11c71ca794e0797"
+
+PBKDF_name_8="hmac(sha256)"
+PBKDF_salt_8="73616c74"
+PBKDF_pw_8="70617373776f7264"
+PBKDF_count_8=4096
+PBKDF_exp_8="c5e478d59288c841aa530db6845c4c8d962893a0"
+
+PBKDF_name_9="hmac(sha224)"
+PBKDF_salt_9="73616c74"
+PBKDF_pw_9="70617373776f7264"
+PBKDF_count_9=4096
+PBKDF_exp_9="218c453bf90635bd0a21a75d172703ff6108ef60"
+
+PBKDF_name_10="hmac(sha384)"
+PBKDF_salt_10="73616c74"
+PBKDF_pw_10="70617373776f7264"
+PBKDF_count_10=4096
+PBKDF_exp_10="559726be38db125bc85ed7895f6e3cf574c7a01c"
+
+PBKDF_name_11="hmac(sha512)"
+PBKDF_salt_11="73616c74"
+PBKDF_pw_11="70617373776f7264"
+PBKDF_count_11=4096
+PBKDF_exp_11="d197b1b33db0143e018b12f3d1d1479e6cdebdcc"
+
+PBKDF_name_12="cmac(aes)"
+PBKDF_salt_12="73616c74"
+PBKDF_pw_12="70617373776f726470617373776f7264"
+PBKDF_count_12=4096
+PBKDF_exp_12="c4c112c6e1e3b8757640603dec78825ff87605a7"
+
+PBKDF_name_13="hmac(sha512)"
+PBKDF_salt_13="73616c74"
+PBKDF_pw_13="70617373776f7264"
+PBKDF_count_13=4096
+PBKDF_exp_13="d197b1b33db0143e018b12f3d1d1479e6cdebdcc97c5c0f87f6902e072f457b5143f30602641b3d55cd335988cb36b84376060ecd532e039b742a239434af2d5d6883f0be4c24d363b638f4c2f8d917533cd4158937d0b490697a64adadb07f180c323080a7368033eeadf9e612b2e"
+
+###########################################################################
+###########################################################################
+###########################################################################
+
 failures=0
 
 # color -- emit ansi color codes
@@ -702,6 +806,88 @@ auxtest()
 	
 }
 
+kdftest()
+{
+	aligned=$1
+
+	KDFEXEC="1 2 3"
+	for i in $KDFEXEC
+	do
+		eval KDF_name=\$KDF_name_$i
+		eval KDF_type=\$KDF_type_$i
+		eval KDF_key=\$KDF_key_$i
+		eval KDF_msg=\$KDF_msg_$i
+		eval KDF_exp=\$KDF_exp_$i
+
+		explen=$(echo -n $KDF_exp | wc -c)
+		let explen=(explen/2)
+
+		result=$(./kcapi $aligned -x $KDF_type -c $KDF_name -k $KDF_key -p $KDF_msg -b $explen)
+
+		aout="non-aligned"
+		if [ x"$aligned" = x"-m" ]
+		then
+			aout="aligned"
+		fi
+
+		type="CTR"
+		if [ $KDF_type -eq 6 ]
+		then
+			type="FB"
+		fi
+		if [ $KDF_type -eq 7 ]
+		then
+			type="DPI"
+		fi
+
+		if [ x"$result" = x"$KDF_exp" ]
+		then
+			echo_pass "KDF $type $aout test $i"
+		else
+			echo_fail "KDF $type $aout test $i"
+			echo " Exp $KDF_exp"
+			echo " Got $result"
+			let failures=($failures+1)
+		fi
+	done
+}
+
+pbkdftest()
+{
+	aligned=$1
+
+	PBKDFEXEC="1 2 3 4 5 6 7 8 9 10 11 12 13"
+	for i in $PBKDFEXEC
+	do
+		eval PBKDF_name=\$PBKDF_name_$i
+		eval PBKDF_salt=\$PBKDF_salt_$i
+		eval PBKDF_pw=\$PBKDF_pw_$i
+		eval PBKDF_count=\$PBKDF_count_$i
+		eval PBKDF_exp=\$PBKDF_exp_$i
+
+		explen=$(echo -n $PBKDF_exp | wc -c)
+		let explen=(explen/2)
+
+		result=$(./kcapi $aligned -x 8 -c $PBKDF_name -k $PBKDF_salt -p "$PBKDF_pw" -d $PBKDF_count -b $explen)
+
+		aout="non-aligned"
+		if [ x"$aligned" = x"-m" ]
+		then
+			aout="aligned"
+		fi
+
+		if [ x"$result" = x"$PBKDF_exp" ]
+		then
+			echo_pass "PBKDF $aout test $i"
+		else
+			echo_fail "PBKDF $aout test $i"
+			echo " Exp $PBKDF_exp"
+			echo " Got $result"
+			let failures=($failures+1)
+		fi
+	done
+}
+
 multipletest() {
 	stream=$1
 
@@ -824,4 +1010,10 @@ auxtest
 multipletest
 multipletest -s
 multipletest -v
+
+kdftest
+kdftest -m
+pbkdftest
+pbkdftest -m
+
 exit $failures

@@ -348,18 +348,28 @@ static void usage(void)
 	fprintf(stderr, "\t\t1 for symmetric cipher algorithm\n");
 	fprintf(stderr, "\t\t2 for AEAD cipher algorithm\n");
 	fprintf(stderr, "\t\t3 for message digest and keyed message digest\n");
+	fprintf(stderr, "\t\t4 for asymmetric ciphers\n");
+	fprintf(stderr, "\t\t5 for counter KDF\n");
+	fprintf(stderr, "\t\t6 for feedback KDF\n");
+	fprintf(stderr, "\t\t7 for double pipeline KDF\n");
+	fprintf(stderr, "\t\t8 for PBKDF\n");
 	fprintf(stderr, "\t-z --aux\tAuxiliary tests of the API\n");
 	fprintf(stderr, "\t-s --stream\tUse the stream API\n");
 	fprintf(stderr, "\t-y --largeinput\tTest long AD with AEAD cipher\n");
 	fprintf(stderr, "\t-d --execloops\tNumber of execution loops\n");
 	fprintf(stderr, "\t-v --vmsplice\tUse vmsplice for AEAD oneshot\n");
+	fprintf(stderr, "\t-b --outlen\tLength of the data to be generated\n");
 }
 
 enum type {
 	SYM = 1,
 	AEAD,
 	HASH,
-	ASYM
+	ASYM,
+	KDF_CTR,
+	KDF_FB,
+	KDF_DPI,
+	PBKDF
 };
 
 struct kcapi_cavs {
@@ -1459,6 +1469,193 @@ out:
 	return ret;
 }
 
+/*
+ * KDF
+ *
+ * http://csrc.nist.gov/groups/STM/cavp/documents/KBKDF800-108/CounterMode.zip
+ * ./kcapi -x 5 -c "hmac(sha256)" -k dd1d91b7d90b2bd3138533ce92b272fbf8a369316aefe242e659cc0ae238afe0 -p 01322b96b30acd197979444e468e1c5c6859bf1b1cf951b7e725303e237e46b864a145fab25e517b08f8683d0315bb2911d80a0e8aba17f3b413faac -b 16
+ * 10621342bfb0fd40046c0e29f2cfdbf0
+ *
+ * http://csrc.nist.gov/groups/STM/cavp/documents/KBKDF800-108/FeedbackModeNOzeroiv.zip
+ * ./kcapi -x 6 -c "hmac(sha256)" -k 93f698e842eed75394d629d957e2e89c6e741f810b623c8b901e38376d068e7b -p 9f575d9059d3e0c0803f08112f8a806de3c3471912cdf42b095388b14b33508e53b89c18690e2057a1d167822e636de50be0018532c431f7f5e37f77139220d5e042599ebe266af5767ee18cd2c5c19a1f0f80 -b 64
+ * bd1476f43a4e315747cf5918e0ea5bc0d98769457477c3ab18b742def0e079a933b756365afb5541f253fee43c6fd788a44041038509e9eeb68f7d65ffbb5f95
+ *
+ * http://csrc.nist.gov/groups/STM/cavp/documents/KBKDF800-108/PipelineModewithCounter.zip
+ * ./kcapi -x 7 -c "hmac(sha256)" -k 02d36fa021c20ddbdee469f0579468bae5cb13b548b6c61cdf9d3ec419111de2 -b 64 -p 85abe38bf265fbdc6445ae5c71159f1548c73b7d526a623104904a0f8792070b3df9902b9669490425a385eadb0f9c76e46f0f
+ * d69f74f518c9f64f90a0beebab69f689b73b5c13eb0f860a95cad7d9814f8c506eb7b179a5c5b4466a9ec154c3bf1c13efd6ec0d82b02c29af2c690299edc453
+ */
+static int cavs_kdf_common(struct kcapi_cavs *cavs_test, uint32_t loops)
+{
+	struct kcapi_handle *handle;
+	uint8_t *outbuf = NULL;
+	char *mdhex = NULL;
+	uint32_t mdhexlen = cavs_test->outlen * 2 + 1;
+	int ret = 1;
+	uint32_t i = 0;
+
+	if (cavs_test->aligned) {
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE),
+				   cavs_test->outlen))
+			return -ENOMEM;
+		memset(outbuf, 0, cavs_test->outlen);
+	} else {
+		outbuf = calloc(1, cavs_test->outlen);
+		if (!outbuf)
+			return -ENOMEM;
+	}
+	mdhex = calloc(1, mdhexlen);
+	if (!mdhex) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	if (kcapi_md_init(&handle, cavs_test->cipher, 0)) {
+		printf("Allocation of KDF hash %s failed\n", cavs_test->cipher);
+		goto out;
+	}
+	/* HMAC */
+	if (cavs_test->keylen) {
+		if (kcapi_md_setkey(handle, cavs_test->key,
+				    cavs_test->keylen)) {
+			printf("KDF HMAC setkey failed\n");
+			goto out;
+		}
+	}
+
+	for (i = 0; i < loops; i++) {
+		if (cavs_test->type == KDF_CTR)
+			ret = kcapi_kdf_ctr(handle, cavs_test->pt,
+					    cavs_test->ptlen,
+					    outbuf, cavs_test->outlen);
+		else if (cavs_test->type == KDF_FB)
+			ret = kcapi_kdf_fb(handle, cavs_test->pt,
+					   cavs_test->ptlen,
+					   outbuf, cavs_test->outlen);
+		else
+			ret = kcapi_kdf_dpi(handle, cavs_test->pt,
+					    cavs_test->ptlen,
+					    outbuf, cavs_test->outlen);
+		if (0 > ret) {
+			printf("KDF generation failed\n");
+			goto out;
+		}
+		bin2hex(outbuf, cavs_test->outlen, mdhex, mdhexlen, 0);
+		printf("%s\n", mdhex);
+	}
+
+	ret = 0;
+
+out:
+	kcapi_md_destroy(handle);
+	if (outbuf)
+		free(outbuf);
+	if (mdhex)
+		free(mdhex);
+
+	return ret;
+}
+
+/*
+ * Test vectors taken from RFC6070
+ *
+ * String "password" is 70617373776f7264 in hex
+ * String "salt" is 73616c74 in hex
+ *
+ * $ ./kcapi -x 8 -c "hmac(sha1)" -k 73616c74 -p 70617373776f7264 -d 1 -b 20
+ * 0c60c80f961f0e71f3a9b524af6012062fe037a6
+ *
+ * ./kcapi -x 8 -c "hmac(sha1)" -k 73616c74 -p 70617373776f7264 -d 2 -b 20
+ * ea6c014dc72d6f8ccd1ed92ace1d41f0d8de8957
+ *
+ * ./kcapi -x 8 -c "hmac(sha1)" -k 73616c74 -p 70617373776f7264 -d 4096 -b 20
+ * 4b007901b765489abead49d926f721d065a429c1
+ *
+ * ./kcapi -x 8 -c "hmac(sha1)" -k 73616c74 -p 70617373776f7264 -d 16777216 -b 20 
+ * eefe3d61cd4da4e4e9945b3d6ba2158c2634e984
+ *
+ * ./kcapi -x 8 -c "hmac(sha1)" -k 73616c7453414c5473616c7453414c5473616c7453414c5473616c7453414c5473616c74 -p 70617373776f726450415353574f524470617373776f7264 -d 4096 -b 25
+ * 3d2eec4fe41c849b80c8d83662c0e44a8b291a964cf2f07038
+ *
+ * ./kcapi -x 8 -c "hmac(sha1)" -k 7361006c74 -p 7061737300776f7264 -d 4096 -b 16
+ * 56fa6aa75548099dcc37d7f03425e0c3
+ *
+ *
+ * Test vector from libgcrypt (tests/t-kdf.c):
+ * ./kcapi -x 8 -c "hmac(sha1)" -k 73616c74 -p "" -d 2 -b 20
+ * 133a4ce837b4d2521ee2bf03e11c71ca794e0797
+ *
+ *
+ * Private test vectors:
+ * ./kcapi -x 8 -c "hmac(sha256)" -k 73616c74 -p 70617373776f7264 -d 4096 -b 20
+ * c5e478d59288c841aa530db6845c4c8d962893a0
+ *
+ * ./kcapi -x 8 -c "hmac(sha224)" -k 73616c74 -p 70617373776f7264 -d 4096 -b 20
+ * 218c453bf90635bd0a21a75d172703ff6108ef60
+ *
+ * ./kcapi -x 8 -c "hmac(sha384)" -k 73616c74 -p 70617373776f7264 -d 4096 -b 20
+ * 559726be38db125bc85ed7895f6e3cf574c7a01c
+ *
+ * ./kcapi -x 8 -c "hmac(sha512)" -k 73616c74 -p 70617373776f7264 -d 4096 -b 20
+ * d197b1b33db0143e018b12f3d1d1479e6cdebdcc
+ *
+ * Note, cmac(aes) requires AES keys (128, 192, or 256 bits in size) and will
+ * cause an error otherwise. That means, the password must be exactly the
+ * length of an AES key.
+ * ./kcapi -x 8 -c "cmac(aes)" -k 73616c74 -p 70617373776f726470617373776f7264 -d 4096 -b 20
+ * c4c112c6e1e3b8757640603dec78825ff87605a7
+ */
+static int cavs_pbkdf(struct kcapi_cavs *cavs_test, uint32_t loops)
+{
+	uint8_t *outbuf = NULL;
+	char *mdhex = NULL;
+	uint32_t mdhexlen = cavs_test->outlen * 2 + 1;
+	int ret = 1;
+
+	if (!loops) {
+		printf("PBKDF suggested iteration count: %u\n",
+		       kcapi_pbkdf_iteration_count(0));
+		return 0;
+	}
+
+	if (cavs_test->aligned) {
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE),
+				   cavs_test->outlen))
+			return -ENOMEM;
+		memset(outbuf, 0, cavs_test->outlen);
+	} else {
+		outbuf = calloc(1, cavs_test->outlen);
+		if (!outbuf)
+			return -ENOMEM;
+	}
+	mdhex = calloc(1, mdhexlen);
+	if (!mdhex) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	ret = kcapi_pbkdf(cavs_test->cipher,
+			  cavs_test->pt, cavs_test->ptlen,
+			  cavs_test->key, cavs_test->keylen,
+			  loops,
+			  outbuf, cavs_test->outlen);
+	if (0 > ret) {
+		printf("KDF generation failed\n");
+		goto out;
+	}
+	bin2hex(outbuf, cavs_test->outlen, mdhex, mdhexlen, 0);
+	printf("%s\n", mdhex);
+
+	ret = 0;
+
+out:
+	if (outbuf)
+		free(outbuf);
+	if (mdhex)
+		free(mdhex);
+
+	return ret;
+}
+
 int main(int argc, char *argv[])
 {
 	int c = 0;
@@ -1498,9 +1695,10 @@ int main(int argc, char *argv[])
 			{"vmsplice", 0, 0, 'v'},
 			{"aligned", 0, 0, 'm'},
 			{"operation", 0, 0, 'o'},
+			{"outlen", 0, 0, 'b'},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "ec:p:q:i:mn:k:a:l:t:x:zsyd:vo:r:", opts, &opt_index);
+		c = getopt_long(argc, argv, "ec:p:q:i:mn:k:a:l:t:x:zsyd:vo:r:b:", opts, &opt_index);
 		if(-1 == c)
 			break;
 		switch(c)
@@ -1626,6 +1824,9 @@ int main(int argc, char *argv[])
 			case 'v':
 				splice = KCAPI_ACCESS_VMSPLICE;
 				break;
+			case 'b':
+				cavs_test.outlen = atoi(optarg);
+				break;
 
 			default:
 				usage();
@@ -1655,6 +1856,12 @@ int main(int argc, char *argv[])
 			rc = cavs_asym_stream(&cavs_test, loops, splice);
 		else
 			rc = cavs_asym(&cavs_test, loops, splice);
+	} else if (KDF_CTR == cavs_test.type ||
+		   KDF_FB == cavs_test.type ||
+		   KDF_DPI == cavs_test.type) {
+		rc = cavs_kdf_common(&cavs_test, loops);
+	} else if (PBKDF == cavs_test.type) {
+		rc = cavs_pbkdf(&cavs_test, loops);
 	} else
 		goto out;
 	if (rc)
