@@ -1613,7 +1613,7 @@ static int cavs_pbkdf(struct kcapi_cavs *cavs_test, uint32_t loops)
 
 	if (!loops) {
 		printf("PBKDF suggested iteration count: %u\n",
-		       kcapi_pbkdf_iteration_count(0));
+		       kcapi_pbkdf_iteration_count(cavs_test->cipher, 0));
 		return 0;
 	}
 

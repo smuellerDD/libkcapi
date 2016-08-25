@@ -1646,9 +1646,13 @@ int32_t kcapi_pbkdf(const char *hashname,
 /**
  * kcapi_pbkdf_iteration_count() - Calculate numbers of iterations for a PBKDF
  *
+ * @hashname: [in] kernel crypto API name of a keyed hash (e.g. hmac(sha1))
  * @timeshresh: [in] Time duration in nanoseconds that the PBKDF operation
  *	shall at least require. If that value is 0, a default of (1<<27)
  *	nanoseconds is used.
+ *
+ * The function measures the time the PBKDF operation takes for different
+ * round counts for the given keyed message digest type.
  *
  * The result should be taken as the iteration count for a PBKDF operation.
  *
@@ -1657,7 +1661,7 @@ int32_t kcapi_pbkdf(const char *hashname,
  * @return number of iterations a PBKDF should take on this computer.
  */
 DSO_PUBLIC
-uint32_t kcapi_pbkdf_iteration_count(uint64_t timeshresh);
+uint32_t kcapi_pbkdf_iteration_count(const char *hashname, uint64_t timeshresh);
 
 #ifdef __cplusplus
 }

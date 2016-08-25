@@ -291,8 +291,9 @@ static inline uint64_t kcapi_get_time(void)
 	return 0;
 }
 
-uint32_t kcapi_pbkdf_iteration_count(uint64_t timeshresh)
+uint32_t kcapi_pbkdf_iteration_count(const char *hashname, uint64_t timeshresh)
 {
+#define LOW_ITERATION_COUNT (1<<16U)
 #define SAFE_ITERATION_COUNT (1<<18U)
 #define SAFE_ITERATION_TIME (1<<27UL) /* more than 100,000,000 ns */
 	uint32_t i;
@@ -307,8 +308,8 @@ uint32_t kcapi_pbkdf_iteration_count(uint64_t timeshresh)
 	for (i = 1; i < UINT_MAX; i<<=1) {
 		uint64_t end, start = kcapi_get_time();
 		uint8_t outbuf[16];
-		int32_t ret = kcapi_pbkdf("hmac(sha1)",
-					  (uint8_t *)"password", 8,
+		int32_t ret = kcapi_pbkdf(hashname,
+					  (uint8_t *)"passwordpassword", 16,
 					  (uint8_t *)"salt", 4,
 					  i, outbuf, sizeof(outbuf));
 
@@ -327,6 +328,9 @@ uint32_t kcapi_pbkdf_iteration_count(uint64_t timeshresh)
 		if (end > timeshresh)
 			break;
 	}
+
+	if (i < LOW_ITERATION_COUNT)
+		i = LOW_ITERATION_COUNT;
 
 	return i;
 }
