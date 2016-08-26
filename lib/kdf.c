@@ -69,6 +69,7 @@
 
 #include "kcapi.h"
 #include "internal_bswap.h"
+#include "internal.h"
 
 /* convert 32 bit integer into its string representation */
 static inline void kcapi_kdf_cpu_to_be32(uint32_t val, uint8_t *buf)
@@ -293,10 +294,11 @@ static inline uint64_t kcapi_get_time(void)
 
 uint32_t kcapi_pbkdf_iteration_count(const char *hashname, uint64_t timeshresh)
 {
-#define LOW_ITERATION_COUNT (1<<16U)
-#define SAFE_ITERATION_COUNT (1<<18U)
-#define SAFE_ITERATION_TIME (1<<27UL) /* more than 100,000,000 ns */
-	uint32_t i;
+#define LOW_ITERATION_COUNT	(1<<16U)
+#define SAFE_ITERATION_COUNT	(1<<18U)
+#define SAFE_ITERATION_TIME	(1<<27UL) /* more than 100,000,000 ns */
+	uint32_t i = 1;
+	uint32_t j;
 
 	/* Safety measure */
 	if (!kcapi_get_time())
@@ -305,28 +307,33 @@ uint32_t kcapi_pbkdf_iteration_count(const char *hashname, uint64_t timeshresh)
 	if (timeshresh == 0)
 		timeshresh = SAFE_ITERATION_TIME;
 
-	for (i = 1; i < UINT_MAX; i<<=1) {
-		uint64_t end, start = kcapi_get_time();
-		uint8_t outbuf[16];
-		int32_t ret = kcapi_pbkdf(hashname,
-					  (uint8_t *)"passwordpassword", 16,
-					  (uint8_t *)"salt", 4,
-					  i, outbuf, sizeof(outbuf));
+	/* The outer loop catches rescheduling operations */
+	for (j = 0; j < 2; j++) {
+		for (; i < UINT_MAX; i<<=1) {
+			uint64_t end, start = kcapi_get_time();
+			uint8_t outbuf[16];
+			int32_t ret = kcapi_pbkdf(hashname,
+						  (uint8_t *)"passwordpassword",
+						  16, (uint8_t *)"salt", 4,
+						  i, outbuf, sizeof(outbuf));
 
-		end = kcapi_get_time();
+			end = kcapi_get_time();
 
-		/* Safety measure */
-		if (ret < 0)
-			return (SAFE_ITERATION_COUNT);
+			/* Safety measure */
+			if (ret < 0)
+				return (SAFE_ITERATION_COUNT);
 
-		/* Take precautions if time runs backwards */
-		if (end > start)
-			end = end - start;
-		else
-			end = start - end;
+			/* Take precautions if time runs backwards */
+			if (end > start)
+				end = end - start;
+			else
+				end = start - end;
 
-		if (end > timeshresh)
-			break;
+			if (end > timeshresh)
+				break;
+			else
+				j = 0;
+		}
 	}
 
 	if (i < LOW_ITERATION_COUNT)
@@ -374,7 +381,9 @@ int32_t kcapi_pbkdf(const char *hashname,
 {
 	struct kcapi_handle *handle;
 	uint32_t h;
-	uint8_t u[64];
+#define MAX_DIGESTSIZE 64
+	uint8_t u[MAX_DIGESTSIZE];
+	uint8_t T[MAX_DIGESTSIZE] = { 0 };
 	uint32_t i = 1;
 	uint8_t iteration[sizeof(uint32_t)];
 	int32_t err = 0;
@@ -387,8 +396,11 @@ int32_t kcapi_pbkdf(const char *hashname,
 		return err;
 
 	h = kcapi_md_digestsize(handle);
-	if (h > sizeof(u))
+	if (h > sizeof(u)) {
+		kcapi_dolog(LOG_ERR, "Programming error in file %s at line %u\n",
+			    __FILE__, __LINE__);
 		return -EFAULT;
+	}
 
 	err = kcapi_md_setkey(handle, pw, pwlen);
 	if (err)
@@ -398,9 +410,6 @@ int32_t kcapi_pbkdf(const char *hashname,
 
 	while (keylen) {
 		uint32_t j;
-		uint8_t T[h];
-
-		memset(T, 0, h);
 
 		kcapi_kdf_cpu_to_be32(i, iteration);
 
