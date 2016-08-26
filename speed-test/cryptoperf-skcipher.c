@@ -48,6 +48,8 @@ static int cp_skcipher_init_test(struct cp_test *test, size_t len)
 #define MAX_KEYLEN 64
 	unsigned char data[MAX_KEYLEN];
 	unsigned char *ivdata = NULL;
+	unsigned int bs;
+	int err;
 
 	dbg("Initializing symmetric test %s\n", test->testname);
 	if (!test->driver_name) {
@@ -75,20 +77,24 @@ static int cp_skcipher_init_test(struct cp_test *test, size_t len)
 		goto out;
 	}
 
-	if (posix_memalign((void *)&ivdata,
-			   kcapi_cipher_blocksize(test->u.skcipher.handle),
-			   kcapi_cipher_blocksize(test->u.skcipher.handle))) {
+	bs = kcapi_cipher_blocksize(test->u.skcipher.handle);
+	/* handle stream ciphers */
+	if (bs == 1)
+		bs = 16;
+	err = posix_memalign((void *)&ivdata, bs, bs);
+	if (err) {
 		printf(DRIVER_NAME": could not allocate ivdata for "
-		       "%s\n", test->driver_name);
+		       "%s (error: %d)\n", test->driver_name, err);
 		goto out;
 	}
 	cp_read_random(ivdata, kcapi_cipher_blocksize(test->u.skcipher.handle));
 	test->u.skcipher.iv = ivdata;
 
-	if (posix_memalign((void *)&scratchpad, sysconf(_SC_PAGESIZE),
-			   kcapi_cipher_blocksize(test->u.skcipher.handle) * len)) {
+	err = posix_memalign((void *)&scratchpad, sysconf(_SC_PAGESIZE),
+		kcapi_cipher_blocksize(test->u.skcipher.handle) * len);
+	if (err) {
 		printf(DRIVER_NAME": could not allocate scratchpad for "
-		       "%s\n", test->driver_name);
+		       "%s (error %d)\n", test->driver_name, err);
 		goto out;
 	}
 
