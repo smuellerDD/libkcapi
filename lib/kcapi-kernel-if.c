@@ -61,6 +61,7 @@
 
 #include "cryptouser.h"
 #include "kcapi.h"
+#include "internal.h"
 
 /* remove once in if_alg.h */
 #ifndef ALG_SET_AEAD_ASSOCLEN
@@ -180,7 +181,7 @@ struct kcapi_handle {
  ************************************************************/
 static int kcapi_verbosity_level = LOG_ERR;
 
-static void kcapi_dolog(int severity, const char *fmt, ...)
+void kcapi_dolog(int severity, const char *fmt, ...)
 {
 	va_list args;
 	char msg[128];
@@ -1049,12 +1050,14 @@ static int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
 					int access, int enc)
 {
 	int32_t totallen = 0;
+	uint32_t maxprocess = sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES;
 
 	if (outlen > INT_MAX)
 		return -EMSGSIZE;
 
 	while (inlen) {
-		uint32_t process = inlen;
+		uint32_t inprocess = inlen;
+		uint32_t outprocess = outlen;
 		int32_t ret = 0;
 
 		/*
@@ -1062,17 +1065,19 @@ static int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
 		 * a multiple of blocksize, because we assume that this is
 		 * always the case.
 		 */
-		if (inlen > (uint32_t)(sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES))
-			process = sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES;
+		if (inlen > maxprocess)
+			inprocess = maxprocess;
+		if (outlen > maxprocess)
+			outprocess = maxprocess;
 
-		ret = _kcapi_cipher_crypt(handle, in, process, out, outlen,
-					  access, enc);
+		ret = _kcapi_cipher_crypt(handle, in, inprocess, out,
+					  outprocess, access, enc);
 		if (ret < 0)
 			return ret;
 
-		totallen += process;
-		in += process;
-		inlen -= process;
+		totallen += inprocess;
+		in += inprocess;
+		inlen -= inprocess;
 		out += ret;
 		outlen -= ret;
 	}
