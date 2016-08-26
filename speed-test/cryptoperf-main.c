@@ -78,7 +78,7 @@ static void register_tests(int print)
 static int exec_all_tests(struct test_array *tests, unsigned int exectime,
 			  size_t len)
 {
-	size_t i = 0;
+	size_t i;
 
 	for (i = 0; i < tests->entries; i++) {
 		char *out = NULL;
@@ -200,7 +200,9 @@ int main(int argc, char *argv[])
 		switch(c)
 		{
 			case 'a':
-				return exec_all_tests(&tests[0], 0, 1);
+				for (i = 0; i < 4; i++)
+					exec_all_tests(&tests[i], 0, 1);
+				return 0;
 			case 'l':
 				for (i = 0; i < 4; i++)
 					print_tests(&tests[i], 1);
