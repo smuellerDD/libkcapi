@@ -316,19 +316,20 @@ static const struct cp_skcipher_tests testcases[] = {
 	{ "Blowfish(x86_64) CTR(x86_64) 192", "ctr-blowfish-asm", 24 },
 	{ "Blowfish(x86_64) CTR(x86_64) 256", "ctr-blowfish-asm", 32 },
 
-	{ "Blowfish(G) XTS(G) 128", "xts(blowfish-generic)", 32 },
-	{ "Blowfish(G) XTS(G) 192", "xts(blowfish-generic)", 48 },
-	{ "Blowfish(G) XTS(G) 256", "xts(blowfish-generic)", 64 },
-	{ "Blowfish(x86_64) XTS(G) 128", "xts(blowfish-asm)", 32 },
-	{ "Blowfish(x86_64) XTS(G) 192", "xts(blowfish-asm)", 48 },
-	{ "Blowfish(x86_64) XTS(G) 256", "xts(blowfish-asm)", 64 },
+	// I guess the XTS / LRW pre-requisites are not met by blowfish
+//	{ "Blowfish(G) XTS(G) 128", "xts(blowfish-generic)", 32 },
+//	{ "Blowfish(G) XTS(G) 192", "xts(blowfish-generic)", 48 },
+//	{ "Blowfish(G) XTS(G) 256", "xts(blowfish-generic)", 64 },
+//	{ "Blowfish(x86_64) XTS(G) 128", "xts(blowfish-asm)", 32 },
+//	{ "Blowfish(x86_64) XTS(G) 192", "xts(blowfish-asm)", 48 },
+//	{ "Blowfish(x86_64) XTS(G) 256", "xts(blowfish-asm)", 64 },
 
-	{ "Blowfish(G) LRW(G) 128", "lrw(blowfish-generic)", 32 },
-	{ "Blowfish(G) LRW(G) 192", "lrw(blowfish-generic)", 40 },
-	{ "Blowfish(G) LRW(G) 256", "lrw(blowfish-generic)", 48 },
-	{ "Blowfish(x86_64) LRW(G) 128", "lrw(blowfish-asm)", 32 },
-	{ "Blowfish(x86_64) LRW(G) 192", "lrw(blowfish-asm)", 40 },
-	{ "Blowfish(x86_64) LRW(G) 256", "lrw(blowfish-asm)", 48 },
+//	{ "Blowfish(G) LRW(G) 128", "lrw(blowfish-generic)", 32 },
+//	{ "Blowfish(G) LRW(G) 192", "lrw(blowfish-generic)", 40 },
+//	{ "Blowfish(G) LRW(G) 256", "lrw(blowfish-generic)", 48 },
+//	{ "Blowfish(x86_64) LRW(G) 128", "lrw(blowfish-asm)", 32 },
+//	{ "Blowfish(x86_64) LRW(G) 192", "lrw(blowfish-asm)", 40 },
+//	{ "Blowfish(x86_64) LRW(G) 256", "lrw(blowfish-asm)", 48 },
 
 	{ "Twofish(G) ECB(G) 128", "ecb(twofish-generic)", 16 },
 	{ "Twofish(G) ECB(G) 192", "ecb(twofish-generic)", 24 },
@@ -395,48 +396,19 @@ static const struct cp_skcipher_tests testcases[] = {
 	{ "Twofish(AVX) LRW(AVX) 192", "lrw-twofish-avx", 40 },
 	{ "Twofish(AVX) LRW(AVX) 256", "lrw-twofish-avx", 48 },
 
-	{ "Salsa20(G) ECB(G) 128", "ecb(salsa20-generic)", 16 },
-	{ "Salsa20(G) ECB(G) 192", "ecb(salsa20-generic)", 24 },
-	{ "Salsa20(G) ECB(G) 256", "ecb(salsa20-generic)", 32 },
-	{ "Salsa20(x86) ECB(G) 128", "ecb(salsa20-asm)", 16 },
-	{ "Salsa20(x86) ECB(G) 192", "ecb(salsa20-asm)", 24 },
-	{ "Salsa20(x86) ECB(G) 256", "ecb(salsa20-asm)", 32 },
-
-	{ "Salsa20(G) CBC(G) 128", "cbc(salsa20-generic)", 16 },
-	{ "Salsa20(G) CBC(G) 192", "cbc(salsa20-generic)", 24 },
-	{ "Salsa20(G) CBC(G) 256", "cbc(salsa20-generic)", 32 },
-	{ "Salsa20(x86) CBC(G) 128", "cbc(salsa20-asm)", 16 },
-	{ "Salsa20(x86) CBC(G) 192", "cbc(salsa20-asm)", 24 },
-	{ "Salsa20(x86) CBC(G) 256", "cbc(salsa20-asm)", 32 },
-
-	{ "Salsa20(G) CTR(G) 128", "ctr(salsa20-generic)", 16 },
-	{ "Salsa20(G) CTR(G) 192", "ctr(salsa20-generic)", 24 },
-	{ "Salsa20(G) CTR(G) 256", "ctr(salsa20-generic)", 32 },
-	{ "Salsa20(x86) CTR(G) 128", "ctr(salsa20-asm)", 16 },
-	{ "Salsa20(x86) CTR(G) 192", "ctr(salsa20-asm)", 24 },
-	{ "Salsa20(x86) CTR(G) 256", "ctr(salsa20-asm)", 32 },
-
-	{ "Salsa20(G) XTS(G) 128", "xts(salsa20-generic)", 32 },
-	{ "Salsa20(G) XTS(G) 192", "xts(salsa20-generic)", 48 },
-	{ "Salsa20(G) XTS(G) 256", "xts(salsa20-generic)", 64 },
-	{ "Salsa20(x86) XTS(G) 128", "xts(salsa20-asm)", 32 },
-	{ "Salsa20(x86) XTS(G) 192", "xts(salsa20-asm)", 48 },
-	{ "Salsa20(x86) XTS(G) 256", "xts(salsa20-asm)", 64 },
-
-	{ "Salsa20(G) LRW(G) 128", "lrw(salsa20-generic)", 32 },
-	{ "Salsa20(G) LRW(G) 192", "lrw(salsa20-generic)", 40 },
-	{ "Salsa20(G) LRW(G) 256", "lrw(salsa20-generic)", 48 },
-	{ "Salsa20(x86) LRW(G) 128", "lrw(salsa20-asm)", 32 },
-	{ "Salsa20(x86) LRW(G) 192", "lrw(salsa20-asm)", 40 },
-	{ "Salsa20(x86) LRW(G) 256", "lrw(salsa20-asm)", 48 },
+	{ "Salsa20(G) 128", "salsa20-generic", 16 },
+	{ "Salsa20(G) 192", "salsa20-generic", 24 },
+	{ "Salsa20(G) 256", "salsa20-generic", 32 },
+	{ "Salsa20(x86) 128", "salsa20-asm", 16 },
+	{ "Salsa20(x86) 192", "salsa20-asm", 24 },
+	{ "Salsa20(x86) 256", "salsa20-asm", 32 },
 };
 
 static struct cp_test cp_skcipher_testdef[2 * (ARRAY_SIZE(testcases))];
 
 void cp_skcipher_register(struct cp_test **skcipher_test, size_t *entries)
 {
-	size_t i = 0;
-	size_t j = 0;
+	size_t i, j;
 
 	for (i = 0, j = 0;
 	     i < (ARRAY_SIZE(testcases)) && j < (2 * ARRAY_SIZE(testcases));

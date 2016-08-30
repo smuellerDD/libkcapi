@@ -175,6 +175,7 @@ int main(int argc, char *argv[])
 	int raw = 0;
 	int ret = 1;
 	int i = 0;
+	int alltests = 0;
 	int accesstype = KCAPI_ACCESS_HEURISTIC;
 
 	register_tests(0);
@@ -200,9 +201,8 @@ int main(int argc, char *argv[])
 		switch(c)
 		{
 			case 'a':
-				for (i = 0; i < 4; i++)
-					exec_all_tests(&tests[i], 0, 1);
-				return 0;
+				alltests = 1;
+				break;
 			case 'l':
 				for (i = 0; i < 4; i++)
 					print_tests(&tests[i], 1);
@@ -230,6 +230,12 @@ int main(int argc, char *argv[])
 				usage();
 				goto out;
 		}
+	}
+
+	if (alltests) {
+		for (i = 0; i < 4; i++)
+			exec_all_tests(&tests[i], exectime, blocks);
+		return 0;
 	}
 
 	if (!cipher) {
