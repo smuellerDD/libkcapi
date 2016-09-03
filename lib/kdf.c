@@ -294,9 +294,9 @@ static inline uint64_t kcapi_get_time(void)
 
 uint32_t kcapi_pbkdf_iteration_count(const char *hashname, uint64_t timeshresh)
 {
-#define LOW_ITERATION_COUNT	(1<<16U)
-#define SAFE_ITERATION_COUNT	(1<<18U)
-#define SAFE_ITERATION_TIME	(1<<27UL) /* more than 100,000,000 ns */
+#define LOW_ITERATION_COUNT	(UINT32_C(1<<16))
+#define SAFE_ITERATION_COUNT	(UINT32_C(1<<18))
+#define SAFE_ITERATION_TIME	(UINT32_C(1<<27)) /* more than 100,000,000 ns */
 	uint32_t i = 1;
 	uint32_t j;
 
@@ -342,35 +342,69 @@ uint32_t kcapi_pbkdf_iteration_count(const char *hashname, uint64_t timeshresh)
 	return i;
 }
 
-static int kcapi_aligned(const uint8_t *ptr, uint32_t alignmask)
+static inline int kcapi_aligned(const uint8_t *ptr, uint32_t alignmask)
 {
 	if ((unsigned long)ptr & alignmask)
 		return 0;
 	return 1;
 }
 
-static void kcapi_xor_byte(uint8_t *dst, const uint8_t *src, uint32_t size)
+static inline void kcapi_xor_8(uint8_t *dst, const uint8_t *src, uint32_t size)
 {
 	for (; size; size--)
-                *dst++ ^= *src++;
+		*dst++ ^= *src++;
 }
 
-static void kcapi_xor_word(uint8_t *dst, const uint8_t *src, uint32_t size)
+static inline void kcapi_xor_32_aligned(uint8_t *dst, const uint8_t *src,
+				        uint32_t size)
 {
-        uint32_t *dst_word = (uint32_t *)dst;
-        uint32_t *src_word = (uint32_t *)src;
+	uint32_t *dst_word = (uint32_t *)dst;
+	uint32_t *src_word = (uint32_t *)src;
 
-	/*
-	 * Only do word-wise XOR when pointers are aligned (which should be
-	 * the case most of the time).
-	 */
+	for (; size >= sizeof(*src_word); size -= sizeof(*src_word))
+		*dst_word++ ^= *src_word++;
+
+	kcapi_xor_8((uint8_t *)dst_word, (uint8_t *)src_word, size);
+}
+
+static inline void kcapi_xor_32(uint8_t *dst, const uint8_t *src, uint32_t size)
+{
+	uint32_t *dst_word = (uint32_t *)dst;
+	uint32_t *src_word = (uint32_t *)src;
+
 	if (kcapi_aligned(src, sizeof(*src_word) - 1) &&
-	    kcapi_aligned(dst, sizeof(*dst_word) - 1)) {
-		for (; size >= 4; size -= 4)
-			*dst_word++ ^= *src_word++;
-	}
+	    kcapi_aligned(dst, sizeof(*dst_word) - 1))
+		kcapi_xor_32_aligned((uint8_t *)dst_word, (uint8_t *)src_word,
+				     size);
+	else
+		kcapi_xor_8((uint8_t *)dst_word, (uint8_t *)src_word, size);
+}
 
-	kcapi_xor_byte(dst, src, size);
+static inline void kcapi_xor_64_aligned(uint8_t *dst, const uint8_t *src,
+				        uint32_t size)
+{
+	uint64_t *dst_dword = (uint64_t *)dst;
+	uint64_t *src_dword = (uint64_t *)src;
+
+	for (; size >= sizeof(*src_dword); size -= sizeof(*src_dword))
+		*dst_dword++ ^= *src_dword++;
+
+	kcapi_xor_32_aligned((uint8_t *)dst_dword, (uint8_t *)src_dword, size);
+}
+
+static inline void kcapi_xor_64(uint8_t *dst, const uint8_t *src, uint32_t size)
+{
+	uint64_t *dst_dword = (uint64_t *)dst;
+	uint64_t *src_dword = (uint64_t *)src;
+
+#ifdef __LP64__
+	if (kcapi_aligned(src, sizeof(*src_dword) - 1) &&
+	    kcapi_aligned(dst, sizeof(*dst_dword) - 1))
+		kcapi_xor_64_aligned((uint8_t *)dst_dword, (uint8_t *)src_dword,
+				     size);
+	else
+#endif
+		kcapi_xor_32((uint8_t *)dst_dword, (uint8_t *)src_dword, size);
 }
 
 int32_t kcapi_pbkdf(const char *hashname,
@@ -433,9 +467,9 @@ int32_t kcapi_pbkdf(const char *hashname,
 				goto err;
 
 			if (keylen < h)
-				kcapi_xor_word(T, u, h);
+				            kcapi_xor_64(T, u, h);
 			else
-				kcapi_xor_word(key, u, h);
+				            kcapi_xor_64(key, u, h);
 		}
 
 		if (keylen < h) {
