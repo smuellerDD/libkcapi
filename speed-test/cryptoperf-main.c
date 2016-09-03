@@ -35,6 +35,7 @@
  */
 
 #include <getopt.h>
+#include <string.h>
 #include "cryptoperf.h"
 
 #define MAXNAMELEN 30

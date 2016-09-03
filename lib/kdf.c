@@ -68,8 +68,31 @@
 #include <time.h>
 
 #include "kcapi.h"
-#include "internal_bswap.h"
 #include "internal.h"
+
+static inline uint32_t rol32(uint32_t x, int n)
+{
+	return ( (x << (n&(32-1))) | (x >> ((32-n)&(32-1))) );
+}
+
+static inline uint32_t ror32(uint32_t x, int n)
+{
+	return ( (x >> (n&(32-1))) | (x << ((32-n)&(32-1))) );
+}
+
+static inline uint32_t _bswap32(uint32_t x)
+{
+	return ((rol32(x, 8) & 0x00ff00ffL) | (ror32(x, 8) & 0xff00ff00L));
+}
+
+/* Endian dependent byte swap operations.  */
+#if __BYTE_ORDER__ ==  __ORDER_BIG_ENDIAN__
+# define be_bswap32(x) ((uint32_t)(x))
+#elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+# define be_bswap32(x) _bswap32(x)
+#else
+#error "Endianess not defined"
+#endif
 
 /* convert 32 bit integer into its string representation */
 static inline void kcapi_kdf_cpu_to_be32(uint32_t val, uint8_t *buf)
@@ -285,9 +308,8 @@ static inline uint64_t kcapi_get_time(void)
 {
 	struct timespec time;
 
-	if (clock_gettime(CLOCK_REALTIME, &time) == 0) {
+	if (clock_gettime(CLOCK_REALTIME, &time) == 0)
 		return time.tv_nsec;
-	}
 
 	return 0;
 }
@@ -369,15 +391,11 @@ static inline void kcapi_xor_32_aligned(uint8_t *dst, const uint8_t *src,
 
 static inline void kcapi_xor_32(uint8_t *dst, const uint8_t *src, uint32_t size)
 {
-	uint32_t *dst_word = (uint32_t *)dst;
-	uint32_t *src_word = (uint32_t *)src;
-
-	if (kcapi_aligned(src, sizeof(*src_word) - 1) &&
-	    kcapi_aligned(dst, sizeof(*dst_word) - 1))
-		kcapi_xor_32_aligned((uint8_t *)dst_word, (uint8_t *)src_word,
-				     size);
+	if (kcapi_aligned(src, sizeof(uint32_t) - 1) &&
+	    kcapi_aligned(dst, sizeof(uint32_t) - 1))
+		kcapi_xor_32_aligned(dst, src, size);
 	else
-		kcapi_xor_8((uint8_t *)dst_word, (uint8_t *)src_word, size);
+		kcapi_xor_8(dst, src, size);
 }
 
 static inline void kcapi_xor_64_aligned(uint8_t *dst, const uint8_t *src,
@@ -394,17 +412,13 @@ static inline void kcapi_xor_64_aligned(uint8_t *dst, const uint8_t *src,
 
 static inline void kcapi_xor_64(uint8_t *dst, const uint8_t *src, uint32_t size)
 {
-	uint64_t *dst_dword = (uint64_t *)dst;
-	uint64_t *src_dword = (uint64_t *)src;
-
 #ifdef __LP64__
-	if (kcapi_aligned(src, sizeof(*src_dword) - 1) &&
-	    kcapi_aligned(dst, sizeof(*dst_dword) - 1))
-		kcapi_xor_64_aligned((uint8_t *)dst_dword, (uint8_t *)src_dword,
-				     size);
+	if (kcapi_aligned(src, sizeof(uint64_t) - 1) &&
+	    kcapi_aligned(dst, sizeof(uint64_t) - 1))
+		kcapi_xor_64_aligned(dst, src, size);
 	else
 #endif
-		kcapi_xor_32((uint8_t *)dst_dword, (uint8_t *)src_dword, size);
+		kcapi_xor_32(dst, src, size);
 }
 
 int32_t kcapi_pbkdf(const char *hashname,
