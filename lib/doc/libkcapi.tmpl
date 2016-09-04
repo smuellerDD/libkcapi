@@ -269,7 +269,7 @@
 
     <para>
      The caller must provide memory that is identical in size for the input and
-     output data, even parts of the memory is unused. For example, forl
+     output data, even parts of the memory is unused. For example, for
      encryption, the AEAD cipher operation only needs the AAD and the plaintext.
      Nonetheless, the interface requires that the memory is big enough to
      hold the tag as well. This requirement particularly aids the in-place
@@ -277,12 +277,10 @@
     </para>
     <para>
      If the caller chooses to not implement an in-place operation, the kernel
-     will not copy the AAD data into the output buffer, but only the ciphertext
-     or plaintext and the authentication tag (encryption only). Nonetheless,
-     the kernel will place the plaintext / ciphertext and the authentication
-     tag at the aforementioned locations, leaving room for the AAD. If a
-     user requires the AAD to be present in the output buffer, the caller
-     must memcpy it from the input buffer to the output buffer.
+     will copy the AAD data into the output buffer, so that the destination
+     buffer will hold the the ciphertext or plaintext, the AAD data and the
+     authentication tag (encryption only). The memory structure of the
+     destination buffer is identical to the source buffer.
     </para>
    </sect2>
   </sect1>
