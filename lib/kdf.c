@@ -366,7 +366,7 @@ uint32_t kcapi_pbkdf_iteration_count(const char *hashname, uint64_t timeshresh)
 
 static inline int kcapi_aligned(const uint8_t *ptr, uint32_t alignmask)
 {
-	if ((unsigned long)ptr & alignmask)
+	if ((uintptr_t)ptr & alignmask)
 		return 0;
 	return 1;
 }
@@ -428,11 +428,9 @@ int32_t kcapi_pbkdf(const char *hashname,
 		    uint8_t *key, uint32_t keylen)
 {
 	struct kcapi_handle *handle;
-	uint32_t h;
+	uint32_t h, i = 1;
 #define MAX_DIGESTSIZE 64
-	uint8_t u[MAX_DIGESTSIZE];
-	uint8_t T[MAX_DIGESTSIZE] = { 0 };
-	uint32_t i = 1;
+	uint8_t u[MAX_DIGESTSIZE], T[MAX_DIGESTSIZE] = { 0 };
 	uint8_t iteration[sizeof(uint32_t)];
 	int32_t err = 0;
 
@@ -481,9 +479,9 @@ int32_t kcapi_pbkdf(const char *hashname,
 				goto err;
 
 			if (keylen < h)
-				            kcapi_xor_64(T, u, h);
+				kcapi_xor_64(T, u, h);
 			else
-				            kcapi_xor_64(key, u, h);
+				kcapi_xor_64(key, u, h);
 		}
 
 		if (keylen < h) {
