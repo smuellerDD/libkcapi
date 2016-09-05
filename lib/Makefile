@@ -104,7 +104,7 @@ C_SRCS := $(wildcard *.c)
 C_OBJS := ${C_SRCS:.c=.o}
 OBJS := $(C_OBJS)
 
-.PHONY: all scan install clean distclean man maninstall pdf ps html
+.PHONY: all scan install clean cppcheck distclean man maninstall pdf ps html
 
 all: $(NAME)
 
@@ -119,6 +119,9 @@ $(NAME): $(OBJS)
 
 scan:	$(OBJS)
 	scan-build --use-analyzer=/usr/bin/clang $(CC) -shared -Wl,-soname,$(SONAME) -o $(LIBNAME) $(OBJS) $(LDFLAGS)
+
+cppcheck:
+	cppcheck --enable=performance --enable=warning --enable=portability *.h *.c
 
 install:
 	install -m 0755 -s $(LIBNAME) $(DESTDIR)$(LIBDIR)/
