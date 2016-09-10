@@ -240,13 +240,15 @@
    <para>
     The asynchronous API in libkcapi as well as the kernel has a higher
     overhead for setting the cipher operation up. That means that if the
-    caller only uses a few parallel cipher operations, the asynchronous API
-    is expected to be slower compared to the synchronous API. You may test
-    the difference in performance with the test/kcapi test application
-    by using the options -f for measuring the time of cipher operations in
-    nanoseconds, -d for the number of parallel invocations and -x 1 for
-    a symmetric one-shot cipher invocation and -x 9 for an asymmetric
-    cipher operation with the given input data.
+    caller only uses a one IOVEC with one associated cipher operation, the
+    asynchronous API is expected to be slower compared to the synchronous API.
+    But already with two or three combined cipher operations, the AIO
+    API should be faster than the synchronous API. You may test the difference
+    in performance with the test/kcapi test application by using the options -f
+    for measuring the time of cipher operations in nanoseconds, -d for the
+    number of parallel invocations and -x 1 for a symmetric one-shot cipher
+    invocation and -x 9 for an asymmetric cipher operation with the given input
+    data.
    </para>
   </sect1>
 
