@@ -221,6 +221,14 @@
    </para>
 
    <para>
+    To use the AIO API, the caller must use the KCAPI_INIT_AIO with the
+    kcapi_cipher_init function call to set up all additional logistics for
+    handing AIO. That means, users which are not interested in AIO will
+    not suffer from the additional memory overhead including the time required
+    to allocate that memory required for AIO.
+   </para>
+
+   <para>
     This implies that the asynchronous API handles the scatter-gather lists
     referenced by the IOVECs differently compared to the synchronous APIs.
     Whereas the synchronous API references different parts of plaintext or

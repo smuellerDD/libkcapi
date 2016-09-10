@@ -155,6 +155,21 @@ struct kcapi_aead_data {
 	uint8_t *tag;
 };
 
+/*
+ * This value sets the maximum number of concurrent AIO operations we support.
+ * This value can be changed as needed. However, note that the memory
+ * consumption of one cipher handle increases proportionally to this value. This
+ * means that during the _init API call processing, memory corresponding with
+ * this number must be allocated regardless whether it is used later on or not.
+ *
+ * If the caller supplies more IOVECs to be processed in parallel than this
+ * value, the libkcapi code below segments the the provided input data
+ * into IOVEC chunks of KCAPI_AIO_CONCURRENT size. Thus, the calling user
+ * will not see any difference when this value changes other than the
+ * performance impact during _init (the larger the value, the slower the
+ * _init processing) and later on during the cipher operations (the larger
+ * the value, the more parallel cipher operations are supported).
+ */
 #define KCAPI_AIO_CONCURRENT	64
 
 /**
@@ -469,7 +484,7 @@ static inline int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 	return processed;
 }
 
-static void _kcapi_poll_data(struct kcapi_handle *handle, suseconds_t wait)
+static void _kcapi_poll_aio_data(struct kcapi_handle *handle, suseconds_t wait)
 {
 	struct timespec timeout;
 	struct timeval tv;
@@ -567,7 +582,7 @@ static int32_t _kcapi_aio_read_iov(struct kcapi_handle *handle,
 
 	for (i = 0; i < iovlen; i++) {
 		while (cb->aio_fildes)
-			_kcapi_poll_data(handle, 10);
+			_kcapi_poll_aio_data(handle, 10);
 
 		memset(cb, 0, sizeof(*cb));
 		cb->aio_fildes = handle->opfd;
@@ -594,81 +609,9 @@ static int32_t _kcapi_aio_read_iov(struct kcapi_handle *handle,
 		}
 	}
 
-	_kcapi_poll_data(handle, 1);
+	_kcapi_poll_aio_data(handle, 1);
 
 	return processed;
-}
-
-static int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
-				       struct iovec *iov, uint32_t iovlen,
-				       int access, int enc)
-{
-	int32_t ret = 0;
-	int32_t errsv = 0;
-
-	if (handle->aio.skcipher_aio_disable) {
-		kcapi_dolog(LOG_WARN, "AIO support disabled\n");
-		return -EOPNOTSUPP;
-	}
-
-	ret = _kcapi_common_accept(handle);
-	if (ret)
-		return ret;
-
-	handle->aio.completed_reads = 0;
-
-	/* Every IOVEC is processed as its individual cipher operation. */
-	while (iovlen) {
-		uint32_t process = (KCAPI_AIO_CONCURRENT < iovlen) ?
-					KCAPI_AIO_CONCURRENT : iovlen;
-		int32_t rc = _kcapi_aio_send_iov(handle, iov, process,
-						 access, enc);
-
-		if (rc < 0) {
-			errsv = rc;
-			goto out;
-		}
-
-		rc = _kcapi_aio_read_iov(handle, iov, process);
-
-		iov += process;
-		iovlen -= process;
-		ret += rc;
-	}
-
-	/*
-	 * If a multi-staged AIO operation shall be designed, the following
-	 * loop needs to be moved to a closing API call. If done so, the
-	 * current function could be invoked multiple times to send more data
-	 * to the kernel before the closing call requires that all outstanding
-	 * requests are to be completed.
-	 *
-	 * If a multi-staged AIO operation is to be implemented, the issue
-	 * is that when submitting a number of requests, the caller is not
-	 * able to detect when a particular request is completed. Thus, an
-	 * "open-ended" multi-staged AIO operation could not be implemented.
-	 */
-	while (handle->aio.completed_reads < iovlen) {
-		uint32_t i;
-		struct io_event events[KCAPI_AIO_CONCURRENT];
-		int rc = io_getevents(handle->aio.aio_ctx, 1,
-				      iovlen - handle->aio.completed_reads,
-				      events, NULL);
-
-		if (rc < 0) {
-			errsv = rc;
-			goto out;
-		}
-
-		for (i = iovlen - handle->aio.completed_reads;
-		     i < iovlen - handle->aio.completed_reads + rc; i++)
-			ret += iov[i].iov_len;
-
-		handle->aio.completed_reads += rc;
-	}
-
-out:
-	return (ret >= 0) ? ret : -errsv;
 }
 
 static inline int32_t _kcapi_common_recv_data(struct kcapi_handle *handle,
@@ -1009,26 +952,38 @@ static inline void _kcapi_handle_destroy(struct kcapi_handle *handle)
 static int _kcapi_aio_init(struct kcapi_handle *handle)
 {
 	uint32_t i;
-
-	if (handle->aio.skcipher_aio_disable)
-		return 0;
+	int err;
 
 	handle->aio.cio = calloc(KCAPI_AIO_CONCURRENT, sizeof(struct iocb));
 	if (!handle->aio.cio)
-		return -ENOMEM;
+		return ENOMEM;
 
 	handle->aio.ciopp = calloc(KCAPI_AIO_CONCURRENT, sizeof(void *));
-	if (!handle->aio.ciopp)
+	if (!handle->aio.ciopp) {
+		err = ENOMEM;
 		goto err;
+	}
+
+	/*
+	 * Set up the pointers to pointers array that is required by
+	 * io_submit. Please do not ask me why the kernel wants this. :-)
+	 */
 	for (i = 0; i < KCAPI_AIO_CONCURRENT; i++)
 		*(handle->aio.ciopp + i) = handle->aio.cio + i;
 
 	handle->aio.efd = eventfd(0, EFD_CLOEXEC);
-	if (handle->aio.efd < 0)
+	if (handle->aio.efd < 0) {
+		err = errno;
+		kcapi_dolog(LOG_ERR, "Event FD cannot be initialized: %d\n",
+			    err);
 		goto err;
+	}
 
-	if (io_setup(KCAPI_AIO_CONCURRENT, &handle->aio.aio_ctx) < 0) {
-		kcapi_dolog(LOG_ERR, "io_setup error");
+	err = io_setup(KCAPI_AIO_CONCURRENT, &handle->aio.aio_ctx);
+	if (err < 0) {
+		kcapi_dolog(LOG_ERR, "io_setup error %d\n", err);
+		/* turn return code into an errno */
+		err = -err;
 		goto err;
 	}
 
@@ -1041,12 +996,13 @@ err:
 	if (handle->aio.efd != -1)
 		close(handle->aio.efd);
 	handle->aio.efd = -1;
-	free(handle->aio.cio);
+	if (handle->aio.cio)
+		free(handle->aio.cio);
 	handle->aio.cio = NULL;
 	if (handle->aio.ciopp)
 		free(handle->aio.ciopp);
 	handle->aio.ciopp = NULL;
-	return EFAULT;
+	return err;
 }
 
 static int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
@@ -1283,6 +1239,78 @@ static int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
 	}
 
 	return totallen;
+}
+
+static int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
+				       struct iovec *iov, uint32_t iovlen,
+				       int access, int enc)
+{
+	int32_t ret = 0;
+	int32_t errsv = 0;
+
+	if (handle->aio.skcipher_aio_disable) {
+		kcapi_dolog(LOG_WARN, "AIO support disabled\n");
+		return -EOPNOTSUPP;
+	}
+
+	ret = _kcapi_common_accept(handle);
+	if (ret)
+		return ret;
+
+	handle->aio.completed_reads = 0;
+
+	/* Every IOVEC is processed as its individual cipher operation. */
+	while (iovlen) {
+		uint32_t process = (KCAPI_AIO_CONCURRENT < iovlen) ?
+					KCAPI_AIO_CONCURRENT : iovlen;
+		int32_t rc = _kcapi_aio_send_iov(handle, iov, process,
+						 access, enc);
+
+		if (rc < 0) {
+			errsv = rc;
+			goto out;
+		}
+
+		rc = _kcapi_aio_read_iov(handle, iov, process);
+
+		iov += process;
+		iovlen -= process;
+		ret += rc;
+	}
+
+	/*
+	 * If a multi-staged AIO operation shall be designed, the following
+	 * loop needs to be moved to a closing API call. If done so, the
+	 * current function could be invoked multiple times to send more data
+	 * to the kernel before the closing call requires that all outstanding
+	 * requests are to be completed.
+	 *
+	 * If a multi-staged AIO operation is to be implemented, the issue
+	 * is that when submitting a number of requests, the caller is not
+	 * able to detect which particular request is completed. Thus, an
+	 * "open-ended" multi-staged AIO operation could not be implemented.
+	 */
+	while (handle->aio.completed_reads < iovlen) {
+		uint32_t i;
+		struct io_event events[KCAPI_AIO_CONCURRENT];
+		int rc = io_getevents(handle->aio.aio_ctx, 1,
+				      iovlen - handle->aio.completed_reads,
+				      events, NULL);
+
+		if (rc < 0) {
+			errsv = rc;
+			goto out;
+		}
+
+		for (i = iovlen - handle->aio.completed_reads;
+		     i < iovlen - handle->aio.completed_reads + rc; i++)
+			ret += iov[i].iov_len;
+
+		handle->aio.completed_reads += rc;
+	}
+
+out:
+	return (ret >= 0) ? ret : -errsv;
 }
 
 DSO_PUBLIC
