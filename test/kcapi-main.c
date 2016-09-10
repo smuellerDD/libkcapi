@@ -49,6 +49,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <sys/user.h>
+#include <time.h>
 
 #include "kcapi.h"
 
@@ -132,6 +133,25 @@ static int hex2bin_m(const char *hex, uint32_t hexlen,
 	hex2bin(hex, hexlen, buf, binlen);
 	*bin = buf;
 	return 0;
+}
+
+static inline void  _get_time(struct timespec *time)
+{
+	clock_gettime(CLOCK_REALTIME, time);
+}
+
+static inline uint64_t _time_delta(struct timespec *start, struct timespec *end)
+{
+	uint64_t diff;
+
+	if ((end->tv_nsec - start->tv_nsec) < 0) {
+		diff = (end->tv_sec - start->tv_sec - 1) * 1000000000;
+		diff += 1000000000 + end->tv_nsec - start->tv_nsec;
+	} else {
+		diff = (end->tv_sec - start->tv_sec) * 1000000000;
+		diff += end->tv_nsec - start->tv_nsec;
+	}
+	return diff;
 }
 
 static int aux_stress_init_error(const char *name, int type)
@@ -353,6 +373,7 @@ static void usage(void)
 	fprintf(stderr, "\t\t6 for feedback KDF\n");
 	fprintf(stderr, "\t\t7 for double pipeline KDF\n");
 	fprintf(stderr, "\t\t8 for PBKDF\n");
+	fprintf(stderr, "\t\t9 for AIO symmetric cipher algorithm\n");
 	fprintf(stderr, "\t-z --aux\tAuxiliary tests of the API\n");
 	fprintf(stderr, "\t-s --stream\tUse the stream API\n");
 	fprintf(stderr, "\t-y --largeinput\tTest long AD with AEAD cipher\n");
@@ -369,13 +390,15 @@ enum type {
 	KDF_CTR,
 	KDF_FB,
 	KDF_DPI,
-	PBKDF
+	PBKDF,
+	SYM_AIO,
 };
 
 struct kcapi_cavs {
 #define CIPHERMAXNAME 63
 	char cipher[CIPHERMAXNAME];
 	int aligned;
+	int timing;
 	int enc;
 	int type;
 	uint8_t *pt;
@@ -413,6 +436,8 @@ static int cavs_sym(struct kcapi_cavs *cavs_test, uint32_t loops,
 	char *outhex = NULL;
 	int ret = -EINVAL;
 	uint32_t i = 0;
+	struct timespec begin, end;
+	uint64_t total = 0;
 
 	if (cavs_test->enc) {
 		if (!cavs_test->ptlen)
@@ -447,6 +472,7 @@ static int cavs_sym(struct kcapi_cavs *cavs_test, uint32_t loops,
 	}
 
 	for(i = 0; i < loops; i++) {
+		_get_time(&begin);
 		if (cavs_test->enc) {
 			ret = kcapi_cipher_encrypt(handle,
 					cavs_test->pt, cavs_test->ptlen,
@@ -460,6 +486,9 @@ static int cavs_sym(struct kcapi_cavs *cavs_test, uint32_t loops,
 					outbuf, outbuflen,
 					splice);
 		}
+		_get_time(&end);
+
+		total += _time_delta(&begin, &end);
 		if (0 > ret)  {
 			printf("En/Decryption of buffer failed\n");
 			goto out;
@@ -474,6 +503,9 @@ static int cavs_sym(struct kcapi_cavs *cavs_test, uint32_t loops,
 		printf("%s\n", outhex);
 		free(outhex);
 	}
+
+	if (cavs_test->timing)
+		printf("duration %lu\n", total);
 
 	ret = 0;
 
@@ -574,6 +606,121 @@ out:
 	kcapi_cipher_destroy(handle);
 	if (outbuf)
 		free(outbuf);
+
+	return ret;
+}
+
+static int cavs_sym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
+			int splice)
+{
+	struct kcapi_handle *handle = NULL;
+	char *outhex = NULL;
+	int ret = -ENOMEM;
+	uint8_t *outbuf = NULL;
+	uint32_t outbuflen = 0;
+	struct iovec *iov = NULL;
+	struct iovec *iov_p;
+	uint32_t i;
+	struct timespec begin, end;
+
+	if (!loops)
+		return -EINVAL;
+
+	iov = calloc(1, loops * sizeof(struct iovec));
+	if (!iov)
+		return -ENOMEM;
+
+	if (cavs_test->enc) {
+		if (!cavs_test->ptlen)
+			return -EINVAL;
+		outbuflen = cavs_test->ptlen * loops;
+	} else {
+		if (!cavs_test->ctlen)
+			return -EINVAL;
+		outbuflen = cavs_test->ctlen * loops;
+	}
+	if (cavs_test->aligned) {
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), outbuflen))
+			goto out;
+		memset(outbuf, 0, outbuflen);
+	} else {
+		outbuf = calloc(1, outbuflen);
+		if (!outbuf)
+			goto out;
+	}
+
+	iov_p = iov;
+	for (i = 0; i < loops; i++) {
+		if (cavs_test->enc) {
+			memcpy(outbuf + (i * cavs_test->ptlen), cavs_test->pt,
+			       cavs_test->ptlen);
+			iov_p->iov_base = outbuf + (i * cavs_test->ptlen);
+			iov_p->iov_len = cavs_test->ptlen;
+		} else {
+			memcpy(outbuf + (i * cavs_test->ctlen), cavs_test->ct,
+			       cavs_test->ctlen);
+			iov_p->iov_base = outbuf + (i * cavs_test->ctlen);
+			iov_p->iov_len = cavs_test->ctlen;
+		}
+		iov_p++;
+	}
+
+	ret = -EINVAL;
+	if (kcapi_cipher_init(&handle, cavs_test->cipher, KCAPI_INIT_AIO)) {
+		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
+		return -EINVAL;
+	}
+
+	/* Set key */
+	if (!cavs_test->keylen || !cavs_test->key ||
+	    kcapi_cipher_setkey(handle, cavs_test->key, cavs_test->keylen)) {
+		printf("Symmetric cipher setkey failed\n");
+		goto out;
+	}
+
+	_get_time(&begin);
+	if (cavs_test->enc)
+		ret = kcapi_cipher_encrypt_aio(handle, iov, loops,
+					       cavs_test->iv, splice);
+	else
+		ret = kcapi_cipher_decrypt_aio(handle, iov, loops,
+					       cavs_test->iv, splice);
+	_get_time(&end);
+	if (0 > ret)  {
+		printf("En/Decryption of buffer failed\n");
+		goto out;
+	}
+
+	outhex = calloc(1, outbuflen * 2 + 1);
+	if (!outhex) {
+		ret = -ENOMEM;
+		goto out;
+	}
+	bin2hex(outbuf, outbuflen, outhex, outbuflen * 2 + 1, 0);
+	printf("%s\n", outhex);
+	free(outhex);
+
+	for (i = 0; i < loops; i++) {
+		int rc;
+
+		if (cavs_test->enc)
+			rc = memcmp(outbuf, outbuf + (i * cavs_test->ptlen), cavs_test->ptlen);
+		else
+			rc = memcmp(outbuf, outbuf + (i * cavs_test->ctlen), cavs_test->ctlen);
+		if (rc)
+			printf("failure %u\n", i);
+	}
+
+	if (cavs_test->timing)
+		printf("duration %lu\n", _time_delta(&begin, &end));
+
+	ret = 0;
+out:
+	kcapi_cipher_destroy(handle);
+	if (outbuf)
+		free(outbuf);
+	if (iov)
+		free(iov);
 
 	return ret;
 }
@@ -1670,7 +1817,7 @@ int main(int argc, char *argv[])
 	memset(&cavs_test, 0, sizeof(struct kcapi_cavs));
 	kcapi_set_verbosity(LOG_WARN);
 
-	while(1)
+	while (1)
 	{
 		int opt_index = 0;
 		uint32_t len = 0;
@@ -1696,12 +1843,13 @@ int main(int argc, char *argv[])
 			{"aligned", 0, 0, 'm'},
 			{"operation", 0, 0, 'o'},
 			{"outlen", 0, 0, 'b'},
+			{"timing", 0, 0, 'f'},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "ec:p:q:i:mn:k:a:l:t:x:zsyd:vo:r:b:", opts, &opt_index);
-		if(-1 == c)
+		c = getopt_long(argc, argv, "ec:p:q:i:mn:k:a:l:t:x:zsyd:vo:r:b:f", opts, &opt_index);
+		if (-1 == c)
 			break;
-		switch(c)
+		switch (c)
 		{
 			case 'm':
 				cavs_test.aligned = 1;
@@ -1827,6 +1975,9 @@ int main(int argc, char *argv[])
 			case 'b':
 				cavs_test.outlen = atoi(optarg);
 				break;
+			case 'f':
+				cavs_test.timing = 1;
+				break;
 
 			default:
 				usage();
@@ -1841,7 +1992,9 @@ int main(int argc, char *argv[])
 			rc = cavs_sym_stream(&cavs_test, loops);
 		else
 			rc = cavs_sym(&cavs_test, loops, splice);
-	} else if (AEAD == cavs_test.type) {
+	} else if (SYM_AIO == cavs_test.type)
+		rc = cavs_sym_aio(&cavs_test, loops, splice);
+	else if (AEAD == cavs_test.type) {
 		if (stream)
 			rc = cavs_aead_stream(&cavs_test, loops);
 		else

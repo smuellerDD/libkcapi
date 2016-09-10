@@ -556,8 +556,9 @@ hashfunc()
 
 symfunc()
 {
-	stream=$1
-	aligned=$2
+	impl=$1
+	stream=$2
+	aligned=$3
 
 	if [ x"$stream" = x"X" ]
 	then
@@ -582,13 +583,18 @@ symfunc()
 		fi
 		if [ "$SYM_enc" = 1  ]
 		then
-			result=$(./kcapi -x 1 $stream $aligned -e -c $SYM_name $iv -k $SYM_key -p $SYM_msg)
+			result=$(./kcapi -x $impl $stream $aligned -e -c $SYM_name $iv -k $SYM_key -p $SYM_msg)
 		else
-			result=$(./kcapi -x 1 $stream $aligned -c $SYM_name $iv -k $SYM_key -q $SYM_msg)
+			result=$(./kcapi -x $impl $stream $aligned -c $SYM_name $iv -k $SYM_key -q $SYM_msg)
 		fi
 
+		impl_type="synchronous"
 		sout="one shot"
 		aout="non-aligned"
+		if [ $impl -eq 9 ]
+		then
+			impl_type="asynchronous"
+		fi
 		if [ x"$stream" = x"-s" ]
 		then
 			sout="stream"
@@ -603,9 +609,9 @@ symfunc()
 		fi
 		if [ x"$result" = x"$SYM_exp" ]
 		then
-			echo_pass "Symmetric $sout $aout test $i"
+			echo_pass "Symmetric $impl_type $sout $aout test $i"
 		else
-			echo_fail "Symmetric $sout $aout test $i"
+			echo_fail "Symmetric $impl_type $sout $aout test $i"
 			echo " Exp $SYM_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -916,7 +922,7 @@ multipletest() {
 		echo_pass "Symmetric cipher $sout multiple test"
 	else
 		echo_fail "Symmetric cipher $sout multiple test"
-		echo "Exp $exoected"
+		echo "Exp $expected"
 		echo "Got $result"
 		let failures=($failures+1)
 	fi
@@ -984,9 +990,12 @@ multipletest() {
 
 hashfunc
 hashfunc -s
-symfunc
-symfunc -s
-symfunc -v
+symfunc 1
+symfunc 1 -s
+symfunc 1 -v
+symfunc 9
+symfunc 9 -s
+symfunc 9 -v
 aeadfunc
 aeadfunc -s
 aeadfunc -v
@@ -995,9 +1004,12 @@ aeadfunc -v
 #asymfunc -s -v
 #asymfunc X -v
 
-symfunc X -m
-symfunc -s -m
-symfunc -v -m
+symfunc 1 X -m
+symfunc 1 -s -m
+symfunc 1 -v -m
+symfunc 9 X -m
+symfunc 9 -s -m
+symfunc 9 -v -m
 aeadfunc X -m
 aeadfunc -s -m
 aeadfunc -v -m
