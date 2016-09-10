@@ -401,6 +401,7 @@ static inline void kcapi_xor_32(uint8_t *dst, const uint8_t *src, uint32_t size)
 static inline void kcapi_xor_64_aligned(uint8_t *dst, const uint8_t *src,
 				        uint32_t size)
 {
+#ifdef __LP64__
 	uint64_t *dst_dword = (uint64_t *)dst;
 	uint64_t *src_dword = (uint64_t *)src;
 
@@ -408,6 +409,9 @@ static inline void kcapi_xor_64_aligned(uint8_t *dst, const uint8_t *src,
 		*dst_dword++ ^= *src_dword++;
 
 	kcapi_xor_32_aligned((uint8_t *)dst_dword, (uint8_t *)src_dword, size);
+#else
+	kcapi_xor_32_aligned(dst, src, size);
+#endif
 }
 
 static inline void kcapi_xor_64(uint8_t *dst, const uint8_t *src, uint32_t size)
