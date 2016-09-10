@@ -40,8 +40,6 @@
 #include <stdint.h>
 #include <sys/uio.h>
 
-#include "kcapi_aio.h"
-
 #ifdef __cplusplus
 extern "C"
 {
@@ -176,6 +174,11 @@ int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 			     const uint8_t *iv,
 			     uint8_t *out, uint32_t outlen, int access);
 
+DSO_PUBLIC
+int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
+				 uint32_t iovlen, const uint8_t *iv,
+				 int access);
+
 /**
  * kcapi_cipher_decrypt() - decrypt data (one shot)
  *
@@ -207,6 +210,11 @@ int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 			     const uint8_t *in, uint32_t inlen,
 			     const uint8_t *iv,
 			     uint8_t *out, uint32_t outlen, int access);
+
+DSO_PUBLIC
+int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
+				 uint32_t iovlen, const uint8_t *iv,
+				 int access);
 
 /**
  * kcapi_cipher_stream_init_enc() - start an encryption operation (stream)

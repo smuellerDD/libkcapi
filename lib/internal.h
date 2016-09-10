@@ -37,12 +37,38 @@
 #ifndef _INTERNAL_H
 #define _INTERNAL_H
 
+#define _GNU_SOURCE
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <linux/aio_abi.h>
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
 extern void kcapi_dolog(int severity, const char *fmt, ...);
+
+static inline int io_setup(unsigned n, aio_context_t *ctx)
+{
+    return syscall(__NR_io_setup, n, ctx);
+}
+
+static inline int io_destroy(aio_context_t ctx)
+{
+    return syscall(__NR_io_destroy, ctx);
+}
+
+static inline int io_submit(aio_context_t ctx, long n,  struct iocb **iocb)
+{
+    return syscall(__NR_io_submit, ctx, n, iocb);
+}
+
+static inline int io_getevents(aio_context_t ctx, long min, long max,
+            struct io_event *events, struct timespec *timeout)
+{
+    return syscall(__NR_io_getevents, ctx, min, max, events, timeout);
+}
 
 #ifdef __cplusplus
 }

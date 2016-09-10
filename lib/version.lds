@@ -3,7 +3,9 @@ LIBKCAPI_0.12.0 {
 	kcapi_cipher_destroy;
 	kcapi_cipher_setkey;
 	kcapi_cipher_encrypt;
+	kcapi_cipher_encrypt_aio;
 	kcapi_cipher_decrypt;
+	kcapi_cipher_decrypt_aio;
 	kcapi_cipher_stream_init_enc;
 	kcapi_cipher_stream_init_dec;
 	kcapi_cipher_stream_update;
