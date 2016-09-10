@@ -531,7 +531,7 @@ static void _kcapi_poll_aio_data(struct kcapi_handle *handle, suseconds_t wait)
 			continue;
 
 		for (y = 0; y < r; y++) {
-			cb = (void*) events[y].obj;
+			cb = (struct iocb *)events[y].obj;
 			cb->aio_fildes = 0;
 			handle->aio.completed_reads++;
 		}
