@@ -56,12 +56,6 @@ extern "C"
 #define KCAPI_PATCHLEVEL 0  /* API / ABI compatible, no functional changes, no
 			     * enhancements, bug fixes only */
 
-#if __GNUC__ >= 4
-# define DSO_PUBLIC __attribute__ ((visibility ("default")))
-#else
-# define DSO_PUBLIC
-#endif
-
 /*
  * Flags for the encrypt / decrypt operations
  * 
@@ -110,7 +104,6 @@ struct kcapi_handle;
  *	    -EINVAL - accept syscall failed
  *	    -ENOMEM - cipher handle cannot be allocated
  */
-DSO_PUBLIC
 int kcapi_cipher_init(struct kcapi_handle **handle, const char *ciphername,
 		      uint32_t flags);
 
@@ -119,7 +112,6 @@ int kcapi_cipher_init(struct kcapi_handle **handle, const char *ciphername,
  *
  * @handle: [in] cipher handle to release
  */
-DSO_PUBLIC
 void kcapi_cipher_destroy(struct kcapi_handle *handle);
 
 /**
@@ -138,7 +130,6 @@ void kcapi_cipher_destroy(struct kcapi_handle *handle);
  * @return 0 upon success;
  *	    < 0 in case of error
  */
-DSO_PUBLIC
 int kcapi_cipher_setkey(struct kcapi_handle *handle,
 			const uint8_t *key, uint32_t keylen);
 
@@ -168,13 +159,11 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
  * @return number of bytes encrypted upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 			     const uint8_t *in, uint32_t inlen,
 			     const uint8_t *iv,
 			     uint8_t *out, uint32_t outlen, int access);
 
-DSO_PUBLIC
 int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
 				 uint32_t iovlen, const uint8_t *iv,
 				 int access);
@@ -205,13 +194,11 @@ int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
  * @return number of bytes decrypted upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 			     const uint8_t *in, uint32_t inlen,
 			     const uint8_t *iv,
 			     uint8_t *out, uint32_t outlen, int access);
 
-DSO_PUBLIC
 int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
 				 uint32_t iovlen, const uint8_t *iv,
 				 int access);
@@ -245,7 +232,6 @@ int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
  * @return number of bytes sent to the kernel upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
 				     const uint8_t *iv,
 				     struct iovec *iov, uint32_t iovlen);
@@ -278,7 +264,6 @@ int32_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
 				     const uint8_t *iv,
 				     struct iovec *iov, uint32_t iovlen);
@@ -315,7 +300,6 @@ int32_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
 				   struct iovec *iov, uint32_t iovlen);
 
@@ -341,7 +325,6 @@ int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
  * @return number of bytes obtained from the kernel upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
 			       struct iovec *iov, uint32_t iovlen);
 
@@ -353,7 +336,6 @@ int32_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
  * @return > 0 specifying the IV size;
  *	    0 on error
  */
-DSO_PUBLIC
 uint32_t kcapi_cipher_ivsize(struct kcapi_handle *handle);
 
 /**
@@ -364,7 +346,6 @@ uint32_t kcapi_cipher_ivsize(struct kcapi_handle *handle);
  * @return > 0 specifying the block size;
  *	    0 on error
  */
-DSO_PUBLIC
 uint32_t kcapi_cipher_blocksize(struct kcapi_handle *handle);
 
 
@@ -392,7 +373,6 @@ uint32_t kcapi_cipher_blocksize(struct kcapi_handle *handle);
  *	    -EINVAL - accept syscall failed
  *	    -ENOMEM - cipher handle cannot be allocated
  */
-DSO_PUBLIC
 int kcapi_aead_init(struct kcapi_handle **handle, const char *ciphername,
 		    uint32_t flags);
 
@@ -401,7 +381,6 @@ int kcapi_aead_init(struct kcapi_handle **handle, const char *ciphername,
  *
  * @handle: [in] cipher handle to release
  */
-DSO_PUBLIC
 void kcapi_aead_destroy(struct kcapi_handle *handle);
 
 /**
@@ -420,7 +399,6 @@ void kcapi_aead_destroy(struct kcapi_handle *handle);
  * @return 0 upon success;
  *	    < 0 in case of error
  */
-DSO_PUBLIC
 int kcapi_aead_setkey(struct kcapi_handle *handle,
 		      const uint8_t *key, uint32_t keylen);
 
@@ -436,7 +414,6 @@ int kcapi_aead_setkey(struct kcapi_handle *handle,
  * @return 0 upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int kcapi_aead_settaglen(struct kcapi_handle *handle, uint32_t taglen);
 
 /**
@@ -451,7 +428,6 @@ int kcapi_aead_settaglen(struct kcapi_handle *handle, uint32_t taglen);
  * data size and may return an error during initialization if the
  * authentication size is not considered appropriate.
  */
-DSO_PUBLIC
 void kcapi_aead_setassoclen(struct kcapi_handle *handle, uint32_t assoclen);
 
 /**
@@ -492,7 +468,6 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, uint32_t assoclen);
  * @return number of bytes encrypted upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   uint8_t *in, uint32_t inlen,
 			   const uint8_t *iv,
@@ -524,7 +499,6 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
  * provides the consumer with the length of the tag and the length of the
  * ciphertext.
  */
-DSO_PUBLIC
 void kcapi_aead_getdata(struct kcapi_handle *handle,
 			uint8_t *encdata, uint32_t encdatalen,
 			uint8_t **aad, uint32_t *aadlen,
@@ -570,7 +544,6 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
  * @return number of bytes decrypted upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   uint8_t *in, uint32_t inlen,
 			   const uint8_t *iv,
@@ -613,7 +586,6 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
 				   const uint8_t *iv,
 				   struct iovec *iov, uint32_t iovlen);
@@ -654,7 +626,6 @@ int32_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
 				   const uint8_t *iv,
 				   struct iovec *iov, uint32_t iovlen);
@@ -693,7 +664,6 @@ int32_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_aead_stream_update(struct kcapi_handle *handle,
 				 struct iovec *iov, uint32_t iovlen);
 
@@ -715,7 +685,6 @@ int32_t kcapi_aead_stream_update(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
 				      struct iovec *iov, uint32_t iovlen);
 
@@ -738,7 +707,6 @@ int32_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
  * @return number of bytes obtained from the kernel upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_aead_stream_op(struct kcapi_handle *handle,
 			     struct iovec *iov, uint32_t iovlen);
 
@@ -750,7 +718,6 @@ int32_t kcapi_aead_stream_op(struct kcapi_handle *handle,
  * @return > 0 specifying the IV size;
  *	    0 on error
  */
-DSO_PUBLIC
 uint32_t kcapi_aead_ivsize(struct kcapi_handle *handle);
 
 /**
@@ -761,7 +728,6 @@ uint32_t kcapi_aead_ivsize(struct kcapi_handle *handle);
  * @return > 0 specifying the block size;
  *	    0 on error
  */
-DSO_PUBLIC
 uint32_t kcapi_aead_blocksize(struct kcapi_handle *handle);
 
 /**
@@ -776,7 +742,6 @@ uint32_t kcapi_aead_blocksize(struct kcapi_handle *handle);
  * @return > 0 specifying the block size;
  *	    0 on error
  */
-DSO_PUBLIC
 uint32_t kcapi_aead_authsize(struct kcapi_handle *handle);
 
 /**
@@ -789,7 +754,6 @@ uint32_t kcapi_aead_authsize(struct kcapi_handle *handle);
  *
  * @return minimum size of output data length in bytes
  */
-DSO_PUBLIC
 uint32_t kcapi_aead_outbuflen(struct kcapi_handle *handle,
 			    uint32_t inlen, uint32_t assoclen, uint32_t taglen);
 
@@ -809,7 +773,6 @@ uint32_t kcapi_aead_outbuflen(struct kcapi_handle *handle,
  * @return 0 upon success;
  *	    < 0 upon failure
  */
-DSO_PUBLIC
 int kcapi_aead_ccm_nonce_to_iv(const uint8_t *nonce, uint32_t noncelen,
 			       uint8_t **iv, uint32_t *ivlen);
 
@@ -833,7 +796,6 @@ int kcapi_aead_ccm_nonce_to_iv(const uint8_t *nonce, uint32_t noncelen,
  *	    -EINVAL - accept syscall failed;
  *	    -ENOMEM - cipher handle cannot be allocated
  */
-DSO_PUBLIC
 int kcapi_md_init(struct kcapi_handle **handle, const char *ciphername,
 		  uint32_t flags);
 
@@ -842,7 +804,6 @@ int kcapi_md_init(struct kcapi_handle **handle, const char *ciphername,
  *
  * @handle: [in] cipher handle to release
  */
-DSO_PUBLIC
 void kcapi_md_destroy(struct kcapi_handle *handle);
 
 /**
@@ -861,7 +822,6 @@ void kcapi_md_destroy(struct kcapi_handle *handle);
  * @return 0 upon success;
  *	    < 0 in case of error
  */
-DSO_PUBLIC
 int kcapi_md_setkey(struct kcapi_handle *handle,
 		    const uint8_t *key, uint32_t keylen);
 
@@ -875,7 +835,6 @@ int kcapi_md_setkey(struct kcapi_handle *handle,
  * @return 0 upon success;
  *	    < 0 in case of error
  */
-DSO_PUBLIC
 int32_t kcapi_md_update(struct kcapi_handle *handle,
 			const uint8_t *buffer, uint32_t len);
 
@@ -891,7 +850,6 @@ int32_t kcapi_md_update(struct kcapi_handle *handle,
  * 	    -ENOMEM - buffer is too small for the complete message digest,
  * 	    the buffer is filled with the truncated message digest
  */
-DSO_PUBLIC
 int32_t kcapi_md_final(struct kcapi_handle *handle,
 		       uint8_t *buffer, uint32_t len);
 
@@ -916,7 +874,6 @@ int32_t kcapi_md_final(struct kcapi_handle *handle,
  * 	    -ENOMEM - buffer is too small for the complete message digest,
  * 	    the buffer is filled with the truncated message digest
  */
-DSO_PUBLIC
 int32_t kcapi_md_digest(struct kcapi_handle *handle,
 		       const uint8_t *in, uint32_t inlen,
 		       uint8_t *out, uint32_t outlen);
@@ -933,7 +890,6 @@ int32_t kcapi_md_digest(struct kcapi_handle *handle,
  * @return > 0 specifying the block size;
  *	    0 on error
  */
-DSO_PUBLIC
 uint32_t kcapi_md_digestsize(struct kcapi_handle *handle);
 
 /**
@@ -944,7 +900,6 @@ uint32_t kcapi_md_digestsize(struct kcapi_handle *handle);
  * @return > 0 specifying the block size;
  *	    0 on error
  */
-DSO_PUBLIC
 uint32_t kcapi_md_blocksize(struct kcapi_handle *handle);
 
 
@@ -968,7 +923,6 @@ uint32_t kcapi_md_blocksize(struct kcapi_handle *handle);
  *	    -EINVAL - accept syscall failed
  *	    -ENOMEM - cipher handle cannot be allocated
  */
-DSO_PUBLIC
 int kcapi_rng_init(struct kcapi_handle **handle, const char *ciphername,
 		   uint32_t flags);
 
@@ -977,7 +931,6 @@ int kcapi_rng_init(struct kcapi_handle **handle, const char *ciphername,
  *
  * @handle: [in] cipher handle to release
  */
-DSO_PUBLIC
 void kcapi_rng_destroy(struct kcapi_handle *handle);
 
 /**
@@ -998,7 +951,6 @@ void kcapi_rng_destroy(struct kcapi_handle *handle);
  * @return 0 upon success;
  * 	    < 0 upon error
  */
-DSO_PUBLIC
 int kcapi_rng_seed(struct kcapi_handle *handle, uint8_t *seed,
 		   uint32_t seedlen);
 
@@ -1012,7 +964,6 @@ int kcapi_rng_seed(struct kcapi_handle *handle, uint8_t *seed,
  * @return size of random number generated upon success;
  *	    -EIO - data cannot be obtained
  */
-DSO_PUBLIC
 int32_t kcapi_rng_generate(struct kcapi_handle *handle,
 			   uint8_t *buffer, uint32_t len);
 
@@ -1038,7 +989,6 @@ enum kcapi_verbosity {
  *	LOG_VERBOSE: log verbose messages, warnings and error messages
  *	LOG_DEBUG: log all details of library operation
  */
-DSO_PUBLIC
 void kcapi_set_verbosity(enum kcapi_verbosity level);
 
 /**
@@ -1047,7 +997,6 @@ void kcapi_set_verbosity(enum kcapi_verbosity level);
  * @buf: [out] buffer to place version string into
  * @buflen: [in] length of buffer
  */
-DSO_PUBLIC
 void kcapi_versionstring(char *buf, uint32_t buflen);
 
 /**
@@ -1063,7 +1012,6 @@ void kcapi_versionstring(char *buf, uint32_t buflen);
  *
  * @return Version number of kcapi library
  */
-DSO_PUBLIC
 uint32_t kcapi_version(void);
 
 /**
@@ -1085,7 +1033,6 @@ uint32_t kcapi_version(void);
  * @return 0 for success;
  *	    < 0 for any errors
  */
-DSO_PUBLIC
 int kcapi_pad_iv(struct kcapi_handle *handle,
 		 const uint8_t *iv, uint32_t ivlen,
 		 uint8_t **newiv, uint32_t *newivlen);
@@ -1100,7 +1047,6 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
  *
  * The parameters, he logic and the return code is identical to memset(3).
  */
-DSO_PUBLIC
 void kcapi_memset_secure(void *s, int c, uint32_t n);
 
 /**
@@ -1125,7 +1071,6 @@ void kcapi_memset_secure(void *s, int c, uint32_t n);
  *	    -EINVAL - accept syscall failed
  *	    -ENOMEM - cipher handle cannot be allocated
  */
-DSO_PUBLIC
 int kcapi_akcipher_init(struct kcapi_handle **handle, const char *ciphername,
 			uint32_t flags);
 
@@ -1134,7 +1079,6 @@ int kcapi_akcipher_init(struct kcapi_handle **handle, const char *ciphername,
  *
  * @handle: [in] cipher handle to release
  */
-DSO_PUBLIC
 void kcapi_akcipher_destroy(struct kcapi_handle *handle);
 
 /**
@@ -1166,7 +1110,6 @@ void kcapi_akcipher_destroy(struct kcapi_handle *handle);
  * @return 0 upon success;
  *	    < 0 in case of error
  */
-DSO_PUBLIC
 int kcapi_akcipher_setkey(struct kcapi_handle *handle,
 			  const uint8_t *key, uint32_t keylen);
 
@@ -1192,7 +1135,6 @@ int kcapi_akcipher_setkey(struct kcapi_handle *handle,
  * @return 0 upon success;
  *	    < 0 in case of error
  */
-DSO_PUBLIC
 int kcapi_akcipher_setpubkey(struct kcapi_handle *handle,
 			     const uint8_t *key, uint32_t keylen);
 
@@ -1222,7 +1164,6 @@ int kcapi_akcipher_setpubkey(struct kcapi_handle *handle,
  * @return number of bytes returned by the encryption operation upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
 			       const uint8_t *in, uint32_t inlen,
 			       uint8_t *out, uint32_t outlen, int access);
@@ -1253,7 +1194,6 @@ int32_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
  * @return number of bytes returned by the decryption operation upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
 			       const uint8_t *in, uint32_t inlen,
 			       uint8_t *out, uint32_t outlen, int access);
@@ -1284,7 +1224,6 @@ int32_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
  * @return number of bytes returned by the signature gen operation upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_akcipher_sign(struct kcapi_handle *handle,
 			    const uint8_t *in, uint32_t inlen,
 			    uint8_t *out, uint32_t outlen, int access);
@@ -1319,7 +1258,6 @@ int32_t kcapi_akcipher_sign(struct kcapi_handle *handle,
  * @return number of bytes returned by the signature ver operation upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_akcipher_verify(struct kcapi_handle *handle,
 			      const uint8_t *in, uint32_t inlen,
 			      uint8_t *out, uint32_t outlen, int access);
@@ -1350,7 +1288,6 @@ int32_t kcapi_akcipher_verify(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_akcipher_stream_init_enc(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen);
 
@@ -1379,7 +1316,6 @@ int32_t kcapi_akcipher_stream_init_enc(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_akcipher_stream_init_dec(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen);
 
@@ -1409,7 +1345,6 @@ int32_t kcapi_akcipher_stream_init_dec(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_akcipher_stream_init_sgn(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen);
 
@@ -1440,7 +1375,6 @@ int32_t kcapi_akcipher_stream_init_sgn(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_akcipher_stream_init_vfy(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen);
 
@@ -1467,7 +1401,6 @@ int32_t kcapi_akcipher_stream_init_vfy(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
 				     struct iovec *iov, uint32_t iovlen);
 
@@ -1492,7 +1425,6 @@ int32_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
 					  struct iovec *iov, uint32_t iovlen);
 
@@ -1519,7 +1451,6 @@ int32_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
  * @return number of bytes obtained from the kernel upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
 			         struct iovec *iov, uint32_t iovlen);
 
@@ -1556,7 +1487,6 @@ int32_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
  * @return 0 upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
 		      const uint8_t *src, uint32_t slen,
 		      uint8_t *dst, uint32_t dlen);
@@ -1588,7 +1518,6 @@ int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
  * @return 0 upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_kdf_fb(struct kcapi_handle *handle,
 		     const uint8_t *src, uint32_t slen,
 		     uint8_t *dst, uint32_t dlen);
@@ -1622,7 +1551,6 @@ int32_t kcapi_kdf_fb(struct kcapi_handle *handle,
  * @return 0 upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
 		      const uint8_t *src, uint32_t slen,
 		      uint8_t *dst, uint32_t dlen);
@@ -1644,7 +1572,6 @@ int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
  * @return 0 upon success;
  *	    < 0 in case of error with errno set
  */
-DSO_PUBLIC
 int32_t kcapi_pbkdf(const char *hashname,
 		    const uint8_t *pw, uint32_t pwlen,
 		    const uint8_t *salt, uint32_t saltlen,
@@ -1668,7 +1595,6 @@ int32_t kcapi_pbkdf(const char *hashname,
  *
  * @return number of iterations a PBKDF should take on this computer.
  */
-DSO_PUBLIC
 uint32_t kcapi_pbkdf_iteration_count(const char *hashname, uint64_t timeshresh);
 
 #ifdef __cplusplus

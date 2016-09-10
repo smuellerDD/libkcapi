@@ -70,6 +70,12 @@ static inline int io_getevents(aio_context_t ctx, long min, long max,
     return syscall(__NR_io_getevents, ctx, min, max, events, timeout);
 }
 
+#if __GNUC__ >= 4
+# define DSO_PUBLIC __attribute__ ((visibility ("default")))
+#else
+# define DSO_PUBLIC
+#endif
+
 #ifdef __cplusplus
 }
 #endif

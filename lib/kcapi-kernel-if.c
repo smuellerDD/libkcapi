@@ -235,6 +235,7 @@ void kcapi_dolog(int severity, const char *fmt, ...)
 	fprintf(stderr, "libkcapi - %s: %s\n", sev, msg);
 }
 
+DSO_PUBLIC
 void kcapi_set_verbosity(enum kcapi_verbosity level)
 {
 	kcapi_verbosity_level = level;
@@ -653,6 +654,7 @@ static int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 		int rc = io_getevents(handle->aio.aio_ctx, 1,
 				      iovlen - handle->aio.completed_reads,
 				      events, NULL);
+
 		if (rc < 0) {
 			errsv = rc;
 			goto out;
@@ -1130,18 +1132,21 @@ err:
 
 /*********** Generic Helper functions *************************/
 
+DSO_PUBLIC
 void kcapi_memset_secure(void *s, int c, uint32_t n)
 {
 	memset(s, c, n);
 	__asm__ __volatile__("" : : "r" (s) : "memory");
 }
 
+DSO_PUBLIC
 void kcapi_versionstring(char *buf, uint32_t buflen)
 {
 	snprintf(buf, buflen, "libkcapi %d.%d.%d", KCAPI_MAJVERSION,
 		 KCAPI_MINVERSION, KCAPI_PATCHLEVEL);
 }
 
+DSO_PUBLIC
 uint32_t kcapi_version(void)
 {
 	uint32_t version = 0;
@@ -1153,6 +1158,7 @@ uint32_t kcapi_version(void)
 	return version;
 }
 
+DSO_PUBLIC
 int kcapi_pad_iv(struct kcapi_handle *handle,
 		 const uint8_t *iv, uint32_t ivlen,
 		 uint8_t **newiv, uint32_t *newivlen)
@@ -1175,12 +1181,14 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
 	return 0;
 }
 
+DSO_PUBLIC
 int kcapi_cipher_init(struct kcapi_handle **handle, const char *ciphername,
 		      uint32_t flags)
 {
 	return _kcapi_handle_init(handle, "skcipher", ciphername, flags);
 }
 
+DSO_PUBLIC
 void kcapi_cipher_destroy(struct kcapi_handle *handle)
 {
 	if (!handle)
@@ -1189,6 +1197,7 @@ void kcapi_cipher_destroy(struct kcapi_handle *handle)
 	kcapi_memset_secure(handle, 0, sizeof(struct kcapi_handle));
 }
 
+DSO_PUBLIC
 int kcapi_cipher_setkey(struct kcapi_handle *handle,
 			const uint8_t *key, uint32_t keylen)
 {
@@ -1276,6 +1285,7 @@ static int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
 	return totallen;
 }
 
+DSO_PUBLIC
 int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 			     const uint8_t *in, uint32_t inlen,
 			     const uint8_t *iv,
@@ -1296,6 +1306,7 @@ int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 					 ALG_OP_ENCRYPT);
 }
 
+DSO_PUBLIC
 int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
 				 uint32_t iovlen, const uint8_t *iv, int access)
 {
@@ -1304,6 +1315,7 @@ int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
 				       ALG_OP_ENCRYPT);
 }
 
+DSO_PUBLIC
 int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 			     const uint8_t *in, uint32_t inlen,
 			     const uint8_t *iv,
@@ -1329,6 +1341,7 @@ int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 					 ALG_OP_DECRYPT);
 }
 
+DSO_PUBLIC
 int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
 				 uint32_t iovlen, const uint8_t *iv, int access)
 {
@@ -1337,7 +1350,7 @@ int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
 				       ALG_OP_DECRYPT);
 }
 
-
+DSO_PUBLIC
 int32_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
 				     const uint8_t *iv,
 				     struct iovec *iov, uint32_t iovlen)
@@ -1347,6 +1360,7 @@ int32_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
 				       MSG_MORE);
 }
 
+DSO_PUBLIC
 int32_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
 				     const uint8_t *iv,
 				     struct iovec *iov, uint32_t iovlen)
@@ -1356,6 +1370,7 @@ int32_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
 				       MSG_MORE);
 }
 
+DSO_PUBLIC
 int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
 				   struct iovec *iov, uint32_t iovlen)
 {
@@ -1366,6 +1381,7 @@ int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
 		return _kcapi_common_send_data(handle, iov, iovlen, MSG_MORE);
 }
 
+DSO_PUBLIC
 int32_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
 			       struct iovec *iov, uint32_t iovlen)
 {
@@ -1377,33 +1393,39 @@ int32_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
 	return _kcapi_common_recv_data(handle, iov, iovlen);
 }
 
+DSO_PUBLIC
 uint32_t kcapi_cipher_ivsize(struct kcapi_handle *handle)
 {
 	return handle->info.ivsize;
 }
 
+DSO_PUBLIC
 uint32_t kcapi_cipher_blocksize(struct kcapi_handle *handle)
 {
 	return handle->info.blocksize;
 }
 
+DSO_PUBLIC
 int kcapi_aead_init(struct kcapi_handle **handle, const char *ciphername,
 		    uint32_t flags)
 {
 	return _kcapi_handle_init(handle, "aead", ciphername, flags);
 }
 
+DSO_PUBLIC
 void kcapi_aead_destroy(struct kcapi_handle *handle)
 {
 	_kcapi_handle_destroy(handle);
 }
 
+DSO_PUBLIC
 int kcapi_aead_setkey(struct kcapi_handle *handle,
 		      const uint8_t *key, uint32_t keylen)
 {
 	return _kcapi_common_setkey(handle, key, keylen);
 }
 
+DSO_PUBLIC
 int kcapi_aead_settaglen(struct kcapi_handle *handle, uint32_t taglen)
 {
 	handle->aead.tag = NULL;
@@ -1415,11 +1437,13 @@ int kcapi_aead_settaglen(struct kcapi_handle *handle, uint32_t taglen)
 	return 0;
 }
 
+DSO_PUBLIC
 void kcapi_aead_setassoclen(struct kcapi_handle *handle, uint32_t assoclen)
 {
 	handle->aead.assoclen = assoclen;
 }
 
+DSO_PUBLIC
 void kcapi_aead_getdata(struct kcapi_handle *handle,
 			uint8_t *encdata, uint32_t encdatalen,
 			uint8_t **aad, uint32_t *aadlen,
@@ -1448,6 +1472,7 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
 	}
 }
 
+DSO_PUBLIC
 int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   uint8_t *in, uint32_t inlen,
 			   const uint8_t *iv,
@@ -1500,6 +1525,7 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 	return ret;
 }
 
+DSO_PUBLIC
 int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   uint8_t *in, uint32_t inlen,
 			   const uint8_t *iv,
@@ -1553,6 +1579,7 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 	}
 }
 
+DSO_PUBLIC
 int32_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
 				   const uint8_t *iv,
 				   struct iovec *iov, uint32_t iovlen)
@@ -1562,6 +1589,7 @@ int32_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
 				       MSG_MORE);
 }
 
+DSO_PUBLIC
 int32_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
 				   const uint8_t *iv,
 				   struct iovec *iov, uint32_t iovlen)
@@ -1571,6 +1599,7 @@ int32_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
 				       MSG_MORE);
 }
 
+DSO_PUBLIC
 int32_t kcapi_aead_stream_update(struct kcapi_handle *handle,
 				 struct iovec *iov, uint32_t iovlen)
 {
@@ -1581,6 +1610,7 @@ int32_t kcapi_aead_stream_update(struct kcapi_handle *handle,
 		return _kcapi_common_send_data(handle, iov, iovlen, MSG_MORE);
 }
 
+DSO_PUBLIC
 int32_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
 				      struct iovec *iov, uint32_t iovlen)
 {
@@ -1590,6 +1620,7 @@ int32_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
 		return _kcapi_common_send_data(handle, iov, iovlen, 0);
 }
 
+DSO_PUBLIC
 int32_t kcapi_aead_stream_op(struct kcapi_handle *handle,
 			     struct iovec *iov, uint32_t iovlen)
 {
@@ -1602,21 +1633,25 @@ int32_t kcapi_aead_stream_op(struct kcapi_handle *handle,
 	return _kcapi_common_recv_data(handle, iov, iovlen);
 }
 
+DSO_PUBLIC
 uint32_t kcapi_aead_ivsize(struct kcapi_handle *handle)
 {
 	return handle->info.ivsize;
 }
 
+DSO_PUBLIC
 uint32_t kcapi_aead_blocksize(struct kcapi_handle *handle)
 {
 	return handle->info.blocksize;
 }
 
+DSO_PUBLIC
 uint32_t kcapi_aead_authsize(struct kcapi_handle *handle)
 {
 	return handle->info.aead_maxauthsize;
 }
 
+DSO_PUBLIC
 uint32_t kcapi_aead_outbuflen(struct kcapi_handle *handle,
 			    uint32_t inlen, uint32_t assoclen, uint32_t taglen)
 {
@@ -1625,6 +1660,7 @@ uint32_t kcapi_aead_outbuflen(struct kcapi_handle *handle,
 	return ((inlen + bs - 1) / bs * bs + taglen + assoclen);
 }
 
+DSO_PUBLIC
 int kcapi_aead_ccm_nonce_to_iv(const uint8_t *nonce, uint32_t noncelen,
 			       uint8_t **iv, uint32_t *ivlen)
 {
@@ -1647,17 +1683,20 @@ int kcapi_aead_ccm_nonce_to_iv(const uint8_t *nonce, uint32_t noncelen,
 	return 0;
 }
 
+DSO_PUBLIC
 int kcapi_md_init(struct kcapi_handle **handle, const char *ciphername,
 		  uint32_t flags)
 {
 	return _kcapi_handle_init(handle, "hash", ciphername, flags);
 }
 
+DSO_PUBLIC
 void kcapi_md_destroy(struct kcapi_handle *handle)
 {
 	_kcapi_handle_destroy(handle);
 }
 
+DSO_PUBLIC
 int kcapi_md_setkey(struct kcapi_handle *handle,
 		    const uint8_t *key, uint32_t keylen)
 {
@@ -1688,6 +1727,7 @@ static inline int32_t _kcapi_md_update(struct kcapi_handle *handle,
 	return 0;
 }
 
+DSO_PUBLIC
 int32_t kcapi_md_update(struct kcapi_handle *handle,
 			const uint8_t *buffer, uint32_t len)
 {
@@ -1711,12 +1751,14 @@ static int32_t _kcapi_md_final(struct kcapi_handle *handle,
 	return _kcapi_common_recv_data(handle, &iov, 1);
 }
 
+DSO_PUBLIC
 int32_t kcapi_md_final(struct kcapi_handle *handle,
 		       uint8_t *buffer, uint32_t len)
 {
 	return _kcapi_md_final(handle, buffer, len);
 }
 
+DSO_PUBLIC
 int32_t kcapi_md_digest(struct kcapi_handle *handle,
 		       const uint8_t *in, uint32_t inlen,
 		       uint8_t *out, uint32_t outlen)
@@ -1729,33 +1771,39 @@ int32_t kcapi_md_digest(struct kcapi_handle *handle,
 	return _kcapi_md_final(handle, out, outlen);
 }
 
+DSO_PUBLIC
 uint32_t kcapi_md_digestsize(struct kcapi_handle *handle)
 {
 	return handle->info.hash_digestsize;
 }
 
+DSO_PUBLIC
 uint32_t kcapi_md_blocksize(struct kcapi_handle *handle)
 {
 	return handle->info.blocksize;
 }
 
+DSO_PUBLIC
 int kcapi_rng_init(struct kcapi_handle **handle, const char *ciphername,
 		   uint32_t flags)
 {
 	return _kcapi_handle_init(handle, "rng", ciphername, flags);
 }
 
+DSO_PUBLIC
 void kcapi_rng_destroy(struct kcapi_handle *handle)
 {
 	_kcapi_handle_destroy(handle);
 }
 
+DSO_PUBLIC
 int kcapi_rng_seed(struct kcapi_handle *handle, uint8_t *seed,
 		   uint32_t seedlen)
 {
 	return _kcapi_common_setkey(handle, seed, seedlen);
 }
 
+DSO_PUBLIC
 int32_t kcapi_rng_generate(struct kcapi_handle *handle,
 			   uint8_t *buffer, uint32_t len)
 {
@@ -1779,23 +1827,27 @@ int32_t kcapi_rng_generate(struct kcapi_handle *handle,
 	return out;
 }
 
+DSO_PUBLIC
 int kcapi_akcipher_init(struct kcapi_handle **handle, const char *ciphername,
 			uint32_t flags)
 {
 	return _kcapi_handle_init(handle, "akcipher", ciphername, flags);
 }
 
+DSO_PUBLIC
 void kcapi_akcipher_destroy(struct kcapi_handle *handle)
 {
 	_kcapi_handle_destroy(handle);
 }
 
+DSO_PUBLIC
 int kcapi_akcipher_setkey(struct kcapi_handle *handle,
 			  const uint8_t *key, uint32_t keylen)
 {
 	return _kcapi_common_setkey(handle, key, keylen);
 }
 
+DSO_PUBLIC
 int kcapi_akcipher_setpubkey(struct kcapi_handle *handle,
 			     const uint8_t *key, uint32_t keylen)
 {
@@ -1805,6 +1857,7 @@ int kcapi_akcipher_setpubkey(struct kcapi_handle *handle,
 	return (ret >= 0) ? ret : -errno;
 }
 
+DSO_PUBLIC
 int32_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
 			       const uint8_t *in, uint32_t inlen,
 			       uint8_t *out, uint32_t outlen, int access)
@@ -1813,6 +1866,7 @@ int32_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
 				   ALG_OP_ENCRYPT);
 }
 
+DSO_PUBLIC
 int32_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
 			       const uint8_t *in, uint32_t inlen,
 			       uint8_t *out, uint32_t outlen, int access)
@@ -1821,6 +1875,7 @@ int32_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
 				   ALG_OP_DECRYPT);
 }
 
+DSO_PUBLIC
 int32_t kcapi_akcipher_sign(struct kcapi_handle *handle,
 			    const uint8_t *in, uint32_t inlen,
 			    uint8_t *out, uint32_t outlen, int access)
@@ -1829,6 +1884,7 @@ int32_t kcapi_akcipher_sign(struct kcapi_handle *handle,
 				   ALG_OP_SIGN);
 }
 
+DSO_PUBLIC
 int32_t kcapi_akcipher_verify(struct kcapi_handle *handle,
 			      const uint8_t *in, uint32_t inlen,
 			      uint8_t *out, uint32_t outlen, int access)
@@ -1837,6 +1893,7 @@ int32_t kcapi_akcipher_verify(struct kcapi_handle *handle,
 				   ALG_OP_VERIFY);
 }
 
+DSO_PUBLIC
 int32_t kcapi_akcipher_stream_init_enc(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen)
 {
@@ -1844,6 +1901,7 @@ int32_t kcapi_akcipher_stream_init_enc(struct kcapi_handle *handle,
 				       MSG_MORE);
 }
 
+DSO_PUBLIC
 int32_t kcapi_akcipher_stream_init_dec(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen)
 {
@@ -1851,6 +1909,7 @@ int32_t kcapi_akcipher_stream_init_dec(struct kcapi_handle *handle,
 				       MSG_MORE);
 }
 
+DSO_PUBLIC
 int32_t kcapi_akcipher_stream_init_sgn(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen)
 {
@@ -1858,6 +1917,7 @@ int32_t kcapi_akcipher_stream_init_sgn(struct kcapi_handle *handle,
 				       MSG_MORE);
 }
 
+DSO_PUBLIC
 int32_t kcapi_akcipher_stream_init_vfy(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen)
 {
@@ -1865,6 +1925,7 @@ int32_t kcapi_akcipher_stream_init_vfy(struct kcapi_handle *handle,
 				       MSG_MORE);
 }
 
+DSO_PUBLIC
 int32_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
 				     struct iovec *iov, uint32_t iovlen)
 {
@@ -1876,6 +1937,7 @@ int32_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
 		return _kcapi_common_send_data(handle, iov, iovlen, MSG_MORE);
 }
 
+DSO_PUBLIC
 int32_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
 				          struct iovec *iov, uint32_t iovlen)
 {
@@ -1886,6 +1948,7 @@ int32_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
 		return _kcapi_common_send_data(handle, iov, iovlen, 0);
 }
 
+DSO_PUBLIC
 int32_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
 			         struct iovec *iov, uint32_t iovlen)
 {
