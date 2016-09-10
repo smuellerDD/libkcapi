@@ -1189,7 +1189,8 @@ static int32_t _kcapi_cipher_crypt(struct kcapi_handle *handle,
 		if (0 > ret)
 			return ret;
 	} else {
-		ret = _kcapi_common_send_meta(handle, NULL, 0, enc, 0);
+		ret = _kcapi_common_send_meta(handle, NULL, 0, enc,
+					      inlen ? MSG_MORE : 0);
 		if (0 > ret)
 			return ret;
 		ret = _kcapi_common_vmsplice_chunk(handle, in, inlen, 0);
@@ -1506,7 +1507,6 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   const uint8_t *iv,
 			   uint8_t *out, uint32_t outlen, int access)
 {
-	struct iovec iov;
 	int32_t ret = 0;
 
 	/* require properly sized output data size */
@@ -1525,26 +1525,8 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 	}
 
 	handle->cipher.iv = iv;
-
-	iov.iov_base = in;
-	iov.iov_len = inlen;
-	if (access == KCAPI_ACCESS_HEURISTIC ||
-	    access == KCAPI_ACCESS_SENDMSG) {
-		ret = _kcapi_common_send_meta(handle, &iov, 1,
-					      ALG_OP_ENCRYPT, 0);
-		if (0 > ret)
-			return ret;
-	} else {
-		ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_ENCRYPT,
-			inlen ? MSG_MORE : 0);
-		if (0 > ret)
-			return ret;
-		ret = _kcapi_common_vmsplice_iov(handle, &iov, 1, 0);
-		if (0 > ret)
-			return ret;
-	}
-
-	ret = _kcapi_common_read_data(handle, out, outlen);
+	ret = _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
+				  ALG_OP_ENCRYPT);
 	if (ret < 0)
 		return ret;
 	if ((ret < (int32_t)handle->aead.taglen))
@@ -1559,9 +1541,6 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   const uint8_t *iv,
 			   uint8_t *out, uint32_t outlen, int access)
 {
-	struct iovec iov;
-	int32_t ret = 0;
-
 	/* require properly sized output data size */
 	if (outlen < inlen) {
 		kcapi_dolog(LOG_ERR,
@@ -1578,33 +1557,8 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 	}
 
 	handle->cipher.iv = iv;
-
-	iov.iov_base = in;
-	iov.iov_len = inlen;
-	if (access == KCAPI_ACCESS_HEURISTIC ||
-	    access == KCAPI_ACCESS_SENDMSG) {
-		ret = _kcapi_common_send_meta(handle, &iov, 1,
-					      ALG_OP_DECRYPT, 0);
-		if (0 > ret)
-			return ret;
-	} else {
-		ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_DECRYPT,
-					      MSG_MORE);
-		if (0 > ret)
-			return ret;
-		ret = _kcapi_common_vmsplice_iov(handle, &iov, 1, 0);
-		if (0 > ret)
-			return ret;
-	}
-
-	/* handle null test vectors */
-	if (outlen) {
-		return _kcapi_common_read_data(handle, out, outlen);
-	} else {
-		iov.iov_base = out;
-		iov.iov_len = outlen;
-		return _kcapi_common_recv_data(handle, &iov, 1);
-	}
+	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
+				  ALG_OP_DECRYPT);
 }
 
 DSO_PUBLIC
