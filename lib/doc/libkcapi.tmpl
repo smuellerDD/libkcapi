@@ -179,7 +179,7 @@
    obtained) is processed, i.e. no data is in flight any more.
   </para>
 
-  <sect1><title>Symmetric Cipher API</title>
+  <sect1><title>Synchronous Symmetric Cipher API</title>
    <para>
     Symmetric ciphers can be used in the following different ways:
      <itemizedlist>
@@ -209,6 +209,44 @@
        </para>
       </listitem>
      </itemizedlist>
+   </para>
+  </sect1>
+
+  <sect1><title>Asynchronous Symmetric Cipher API</title>
+   <para>
+    In addition to the symmetric cipher API, an asynchronous API is offered
+    with the kcapi_cipher_*_aio API calls. The concept of that API is to
+    perform parallel operations of multiple encryption or decryption
+    data streams.
+   </para>
+
+   <para>
+    This implies that the asynchronous API handles the scatter-gather lists
+    referenced by the IOVECs differently compared to the synchronous APIs.
+    Whereas the synchronous API references different parts of plaintext or
+    ciphertext that are processed with one cipher operation, the IOVECs of the
+    asynchronous API references plaintext or ciphertext where each IOVEC
+    is processed with an independent cipher operation. I.e. when using AES-CBC
+    with the synchronous API and the scatter-gather lists, all input data is
+    sent to one invocation of the AES-CBC cipher. Conversely, the asynchronous
+    API invokes one individual AES-CBC operation for each individual IOVEC.
+   </para>
+
+   <para>
+    The asynchronous API is designed to perform an in-place operation where
+    the buffers for the input data are used to store the output data.
+   </para>
+
+   <para>
+    The asynchronous API in libkcapi as well as the kernel has a higher
+    overhead for setting the cipher operation up. That means that if the
+    caller only uses a few parallel cipher operations, the asynchronous API
+    is expected to be slower compared to the synchronous API. You may test
+    the difference in performance with the test/kcapi test application
+    by using the options -f for measuring the time of cipher operations in
+    nanoseconds, -d for the number of parallel invocations and -x 1 for
+    a symmetric one-shot cipher invocation and -x 9 for an asymmetric
+    cipher operation with the given input data.
    </para>
   </sect1>
 
@@ -486,11 +524,15 @@
 !Fkcapi.h kcapi_cipher_ivsize
 !Fkcapi.h kcapi_cipher_blocksize
    </sect1>
-   <sect1><title>Symmetric Cipher API - One Shot</title>
+   <sect1><title>Synchronous Symmetric Cipher API - One Shot</title>
 !Fkcapi.h kcapi_cipher_encrypt
 !Fkcapi.h kcapi_cipher_decrypt
    </sect1>
-   <sect1><title>Symmetric Cipher API - Stream</title>
+   <sect1><title>Asynchronous Symmetric Cipher API - One Shot</title>
+!Fkcapi.h kcapi_cipher_aio_encrypt
+!Fkcapi.h kcapi_cipher_aio_decrypt
+   </sect1>
+   <sect1><title>Synchronous Symmetric Cipher API - Stream</title>
     <para>The stream API requires that first the cipher operation type is
     set with the init call, followed by an arbitrary number and mix of the
     update and op calls.</para>

@@ -134,7 +134,7 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
 			const uint8_t *key, uint32_t keylen);
 
 /**
- * kcapi_cipher_encrypt() - encrypt data (one shot)
+ * kcapi_cipher_encrypt() - encrypt data (synchronous one shot)
  *
  * @handle: [in] cipher handle
  * @in: [in] plaintext data buffer
@@ -164,12 +164,36 @@ int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 			     const uint8_t *iv,
 			     uint8_t *out, uint32_t outlen, int access);
 
+/**
+ * kcapi_cipher_aio_encrypt() - encrypt data (asynchronous one shot)
+ *
+ * @handle: [in] cipher handle
+ * @in: [in/out] head of scatter-gather list array holding the plaintext
+ *	which will be replaced with ciphertext
+ * @inlen: [in] number of scatter-gather list entries
+ * @iv: [in] IV to be used for cipher operation
+ * @access: [in] kernel access type (KCAPI_ACCESS_HEURISTIC - use internal
+ *	heuristic for  fastest kernel access; KCAPI_ACCESS_VMSPLICE - use
+ *	vmsplice access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * The individual scatter-gather list entries are processed with
+ * separate invocations of the the given cipher.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page
+ * boundary, the vmsplice call may not send all data to the kernel.
+ *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
+ * @return number of bytes encrypted upon success;
+ *	    < 0 in case of error with errno set
+ */
 int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
 				 uint32_t iovlen, const uint8_t *iv,
 				 int access);
 
 /**
- * kcapi_cipher_decrypt() - decrypt data (one shot)
+ * kcapi_cipher_decrypt() - decrypt data (synchronous one shot)
  *
  * @handle: [in] cipher handle
  * @in: [in] ciphertext data buffer
@@ -199,6 +223,30 @@ int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 			     const uint8_t *iv,
 			     uint8_t *out, uint32_t outlen, int access);
 
+/**
+ * kcapi_cipher_aio_decrypt() - decrypt data (asynchronous one shot)
+ *
+ * @handle: [in] cipher handle
+ * @in: [in/out] head of scatter-gather list array holding the ciphertext
+ *	which will be replaced with plaintext
+ * @inlen: [in] number of scatter-gather list entries
+ * @iv: [in] IV to be used for cipher operation
+ * @access: [in] kernel access type (KCAPI_ACCESS_HEURISTIC - use internal
+ *	heuristic for  fastest kernel access; KCAPI_ACCESS_VMSPLICE - use
+ *	vmsplice access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * The individual scatter-gather list entries are processed with
+ * separate invocations of the the given cipher.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page
+ * boundary, the vmsplice call may not send all data to the kernel.
+ *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
+ * @return number of bytes decrypted upon success;
+ *	    < 0 in case of error with errno set
+ */
 int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
 				 uint32_t iovlen, const uint8_t *iv,
 				 int access);
