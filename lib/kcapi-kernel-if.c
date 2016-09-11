@@ -490,7 +490,7 @@ static int _kcapi_poll_aio_data(struct kcapi_handle *handle, suseconds_t wait)
 	struct timeval tv;
 	fd_set rfds;
 	u_int64_t eval = 0;
-	int r;
+	int ret;
 	struct iocb *cb;
 	int efd = handle->aio.efd;
 
@@ -499,8 +499,8 @@ static int _kcapi_poll_aio_data(struct kcapi_handle *handle, suseconds_t wait)
 	tv.tv_sec = 0;
 	tv.tv_usec = wait;
 
-	r = select(efd + 1, &rfds, NULL, NULL, &tv);
-	if (r == -1) {
+	ret = select(efd + 1, &rfds, NULL, NULL, &tv);
+	if (ret == -1) {
 		kcapi_dolog(LOG_WARN, "Select Error: %d\n", errno);
 		return -errno;
 	}
@@ -511,7 +511,7 @@ static int _kcapi_poll_aio_data(struct kcapi_handle *handle, suseconds_t wait)
 
 	if (read(efd, &eval, sizeof(eval)) != sizeof(eval)) {
 		printf("efd read error\n");
-		return -errno;
+		return -EFAULT;
 	}
 
 	timeout.tv_sec = 0;
@@ -520,24 +520,28 @@ static int _kcapi_poll_aio_data(struct kcapi_handle *handle, suseconds_t wait)
 		int y;
 		struct io_event events[KCAPI_AIO_CONCURRENT];
 
-		r = io_getevents(handle->aio.aio_ctx, 1, eval, events,
+		ret = io_getevents(handle->aio.aio_ctx, 1, eval, events,
 				 &timeout);
-		if (r < 0) {
+		if (ret < 0) {
 			kcapi_dolog(LOG_WARN, "io_getevents Error: %d\n", errno);
-			return r;
+			return ret;
 		}
 
-		if (r == 0)
+		if (ret == 0)
 			continue;
 
-		for (y = 0; y < r; y++) {
+		for (y = 0; y < ret; y++) {
+			/*
+			 * If one cipher operation fails, so will the entire
+			 * AIO operation
+			 */
 			if (events[y].res < 0)
 				return events[y].res;
 			cb = (struct iocb *)(uintptr_t)events[y].obj;
 			cb->aio_fildes = 0;
 			handle->aio.completed_reads++;
 		}
-		eval -= r;
+		eval -= ret;
 	}
 
 	return 0;
@@ -548,9 +552,6 @@ static int _kcapi_aio_send_iov(struct kcapi_handle *handle,
 			       int access, int enc)
 {
 	int ret;
-
-	if (iov->iov_len > INT32_MAX)
-		return -EINVAL;
 
 	/*
 	 * Using two syscalls with memcpy is faster than four syscalls
