@@ -484,7 +484,7 @@ static inline int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 	return processed;
 }
 
-static void _kcapi_poll_aio_data(struct kcapi_handle *handle, suseconds_t wait)
+static int _kcapi_poll_aio_data(struct kcapi_handle *handle, suseconds_t wait)
 {
 	struct timespec timeout;
 	struct timeval tv;
@@ -502,16 +502,16 @@ static void _kcapi_poll_aio_data(struct kcapi_handle *handle, suseconds_t wait)
 	r = select(efd + 1, &rfds, NULL, NULL, &tv);
 	if (r == -1) {
 		kcapi_dolog(LOG_WARN, "Select Error: %d\n", errno);
-		return;
+		return -errno;
 	}
 	if (!FD_ISSET(efd, &rfds)) {
 		kcapi_dolog(LOG_VERBOSE, "aio poll: no FDs\n");
-		return;
+		return -EFAULT;
 	}
 
 	if (read(efd, &eval, sizeof(eval)) != sizeof(eval)) {
 		printf("efd read error\n");
-		return;
+		return -errno;
 	}
 
 	timeout.tv_sec = 0;
@@ -524,19 +524,23 @@ static void _kcapi_poll_aio_data(struct kcapi_handle *handle, suseconds_t wait)
 				 &timeout);
 		if (r < 0) {
 			kcapi_dolog(LOG_WARN, "io_getevents Error: %d\n", errno);
-			return;
+			return r;
 		}
 
 		if (r == 0)
 			continue;
 
 		for (y = 0; y < r; y++) {
-			cb = (struct iocb *)events[y].obj;
+			if (events[y].res < 0)
+				return events[y].res;
+			cb = (struct iocb *)(uintptr_t)events[y].obj;
 			cb->aio_fildes = 0;
 			handle->aio.completed_reads++;
 		}
 		eval -= r;
 	}
+
+	return 0;
 }
 
 static int _kcapi_aio_send_iov(struct kcapi_handle *handle,
@@ -581,8 +585,11 @@ static int32_t _kcapi_aio_read_iov(struct kcapi_handle *handle,
 		return -EFAULT;
 
 	for (i = 0; i < iovlen; i++) {
-		while (cb->aio_fildes)
-			_kcapi_poll_aio_data(handle, 10);
+		while (cb->aio_fildes) {
+			ret = _kcapi_poll_aio_data(handle, 10);
+			if (ret < 0)
+				return ret;
+		}
 
 		memset(cb, 0, sizeof(*cb));
 		cb->aio_fildes = handle->opfd;
@@ -609,7 +616,9 @@ static int32_t _kcapi_aio_read_iov(struct kcapi_handle *handle,
 		}
 	}
 
-	_kcapi_poll_aio_data(handle, 1);
+	ret = _kcapi_poll_aio_data(handle, 1);
+	if (ret < 0)
+		return ret;
 
 	return processed;
 }
@@ -1273,6 +1282,10 @@ static int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 		}
 
 		rc = _kcapi_aio_read_iov(handle, iov, process);
+		if (rc < 0) {
+			errsv = rc;
+			goto out;
+		}
 
 		iov += process;
 		iovlen -= process;
@@ -1311,7 +1324,7 @@ static int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 	}
 
 out:
-	return (ret >= 0) ? ret : -errsv;
+	return (errsv) ? errsv : ret;
 }
 
 DSO_PUBLIC
@@ -1536,6 +1549,15 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
+int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
+			       uint32_t iovlen, const uint8_t *iv, int access)
+{
+	handle->cipher.iv = iv;
+	return _kcapi_cipher_crypt_aio(handle, iov, iovlen, access,
+				       ALG_OP_ENCRYPT);
+}
+
+DSO_PUBLIC
 int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   uint8_t *in, uint32_t inlen,
 			   const uint8_t *iv,
@@ -1559,6 +1581,15 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 	handle->cipher.iv = iv;
 	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
 				  ALG_OP_DECRYPT);
+}
+
+DSO_PUBLIC
+int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
+			       uint32_t iovlen, const uint8_t *iv, int access)
+{
+	handle->cipher.iv = iv;
+	return _kcapi_cipher_crypt_aio(handle, iov, iovlen, access,
+				       ALG_OP_DECRYPT);
 }
 
 DSO_PUBLIC
