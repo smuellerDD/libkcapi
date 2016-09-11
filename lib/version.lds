@@ -18,8 +18,10 @@ LIBKCAPI_0.12.0 {
 	kcapi_aead_settaglen;
 	kcapi_aead_setassoclen;
 	kcapi_aead_encrypt;
+	kcapi_aead_encrypt_aio;
 	kcapi_aead_getdata;
 	kcapi_aead_decrypt;
+	kcapi_aead_decrypt_aio;
 	kcapi_aead_stream_init_enc;
 	kcapi_aead_stream_init_dec;
 	kcapi_aead_stream_update;

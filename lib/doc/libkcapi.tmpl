@@ -290,6 +290,14 @@
      </itemizedlist>
    </para>
 
+   <sect2><title>Aynchronous AEAD Cipher API</title>
+    <para>
+     Similarly to the symmetric cipher API, the AEAD API supports
+     asynchronous operation as well. The same concept regarding the IOVECs
+     applies as discussed for the asynchronous symmetric cipher API above.
+    </para>
+   </sect2>
+
    <sect2><title>AEAD Memory Structure</title>
     <para>
      When using the stream API for AEAD, the caller must observe a particular
@@ -568,11 +576,15 @@
 !Fkcapi.h kcapi_aead_ccm_nonce_to_iv
 !Fkcapi.h kcapi_aead_getdata
    </sect1>
-   <sect1><title>AEAD Cipher API - One Shot</title>
+   <sect1><title>Synchronous AEAD Cipher API - One Shot</title>
 !Fkcapi.h kcapi_aead_encrypt
 !Fkcapi.h kcapi_aead_decrypt
    </sect1>
-      <sect1><title>AEAD Cipher API - Stream</title>
+   <sect1><title>Aynchronous AEAD Cipher API - One Shot</title>
+!Fkcapi.h kcapi_aead_encrypt_aio
+!Fkcapi.h kcapi_aead_decrypt_aio
+   </sect1>
+      <sect1><title>Synchronous AEAD Cipher API - Stream</title>
 !Fkcapi.h kcapi_aead_stream_init_enc
 !Fkcapi.h kcapi_aead_stream_init_dec
 !Fkcapi.h kcapi_aead_stream_update

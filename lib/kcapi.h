@@ -479,7 +479,7 @@ int kcapi_aead_settaglen(struct kcapi_handle *handle, uint32_t taglen);
 void kcapi_aead_setassoclen(struct kcapi_handle *handle, uint32_t assoclen);
 
 /**
- * kcapi_aead_encrypt() - encrypt AEAD data (one shot)
+ * kcapi_aead_encrypt() - synchronously encrypt AEAD data (one shot)
  *
  * @handle: [in] cipher handle
  * @in: [in] plaintext data buffer
@@ -523,6 +523,44 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   int access);
 
 /**
+ * kcapi_aead_encrypt_aio() - asynchronously encrypt AEAD data (one shot)
+ *
+ * @handle: [in] cipher handle
+ * @iov: [in/out] array of scatter-gather list with input / output buffers
+ * @iovlen: [in] number of IOVECs in array
+ * @iv: [in] IV to be used for cipher operation
+ * @access: [in] kernel access type (KCAPI_ACCESS_HEURISTIC - use internal
+ *	heuristic for fastest kernel access; KCAPI_ACCESS_VMSPLICE - use
+ *	vmsplice access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * The AEAD cipher operation requires the furnishing of the associated
+ * authentication data. In case such data is not required, it can be set to
+ * NULL and length value must be set to zero.
+ *
+ * Each IOVEC is processed with its individual AEAD cipher operation. The
+ * memory holding the input data will receive the processed data.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page
+ * boundary, the vmsplice call may not send all data to the kernel.
+ *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
+ * After invoking this function the caller should use
+ * kcapi_aead_getdata() to obtain the resulting ciphertext and authentication
+ * tag references.
+ *
+ * IMPORTANT NOTE: The kernel will only process
+ * sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES at one time. Longer input data cannot
+ * be handled by the kernel.
+ *
+ * @return number of bytes encrypted upon success;
+ *	    < 0 in case of error with errno set
+ */
+int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
+			       uint32_t iovlen, const uint8_t *iv, int access);
+
+/**
  * kcapi_aead_getdata() - get the resulting data from encryption
  *
  * @handle: [in] cipher handle
@@ -554,7 +592,7 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
 			uint8_t **tag, uint32_t *taglen);
 
 /**
- * kcapi_aead_decrypt() - decrypt AEAD data (one shot)
+ * kcapi_aead_decrypt() - synchronously decrypt AEAD data (one shot)
  *
  * @handle: [in] cipher handle
  * @in: [in] ciphertext data buffer
@@ -596,6 +634,45 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   uint8_t *in, uint32_t inlen,
 			   const uint8_t *iv,
 			   uint8_t *out, uint32_t outlen, int access);
+
+/**
+ * kcapi_aead_decrypt_aio() - asynchronously decrypt AEAD data (one shot)
+ *
+ * @handle: [in] cipher handle
+ * @iov: [in/out] array of scatter-gather list with input / output buffers
+ * @iovlen: [in] number of IOVECs in array
+ * @iv: [in] IV to be used for cipher operation
+ * @access: [in] kernel access type (KCAPI_ACCESS_HEURISTIC - use internal
+ *	heuristic for fastest kernel access; KCAPI_ACCESS_VMSPLICE - use
+ *	vmsplice access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * The AEAD cipher operation requires the furnishing of the associated
+ * authentication data. In case such data is not required, it can be set to
+ * NULL and length value must be set to zero.
+ *
+ * Each IOVEC is processed with its individual AEAD cipher operation. The
+ * memory holding the input data will receive the processed data.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page
+ * boundary, the vmsplice call may not send all data to the kernel.
+ *
+ * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
+ *
+ * To catch authentication errors (i.e. integrity violations) during the
+ * decryption operation, the errno of this call shall be checked for EBADMSG.
+ * If this function returns < 0 and errno is set to EBADMSG, an authentication
+ * error is detected.
+ *
+ * IMPORTANT NOTE: The kernel will only process
+ * sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES at one time. Longer input data cannot
+ * be handled by the kernel.
+ *
+ * @return number of bytes encrypted upon success;
+ *	    < 0 in case of error with errno set
+ */
+int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
+			       uint32_t iovlen, const uint8_t *iv, int access);
 
 /**
  * kcapi_aead_stream_init_enc() - start an encryption operation (stream)
