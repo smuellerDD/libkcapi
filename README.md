@@ -83,6 +83,8 @@ The following make targets are applicable:
 
 * make scan         # use CLANG static code analyzer
 
+* make cppcheck     # use cppcheck static code analyzer
+
 * make man          # compile man pages in doc/man
 
 * make maninstall   # install man pages into $PREFIX
