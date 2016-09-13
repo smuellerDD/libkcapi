@@ -895,9 +895,11 @@ pbkdftest()
 }
 
 multipletest() {
-	stream=$1
+	symimpl=$1
+	stream=$2
 
 	sout="one shot"
+	impl_type="synchronous"
 	if [ x"$stream" = x"-s" ]
 	then
 		sout="stream"
@@ -906,9 +908,16 @@ multipletest() {
 	then
 		sout="vmsplice"
 	fi
+	if [ $symimpl -eq 9 ]
+	then
+		impl_type="asynchronous"
+	fi
 
-	result=$(./kcapi $stream -d 2 -x 1 -e -c "cbc(aes)" -k 8d7dd9b0170ce0b5f2f8e1aa768e01e91da8bfc67fd486d081b28254c99eb423 -i 7fbc02ebf5b93322329df9bfccb635af -p 48981da18e4bb9ef7e2e3162d16b1910)
-	if [ x"$stream" = x"-s" ]
+	result=$(./kcapi $stream -d 2 -x $symimpl -e -c "cbc(aes)" -k 8d7dd9b0170ce0b5f2f8e1aa768e01e91da8bfc67fd486d081b28254c99eb423 -i 7fbc02ebf5b93322329df9bfccb635af -p 48981da18e4bb9ef7e2e3162d16b1910)
+	if [ $symimpl -eq 9 ]
+	then
+		expected="8b19050f66582cb7f7e4b6c873819b718b19050f66582cb7f7e4b6c873819b71"
+	elif [ x"$stream" = x"-s" ]
 	then
 		#block chaining
 		expected="8b19050f66582cb7f7e4b6c873819b71
@@ -919,9 +928,9 @@ multipletest() {
 	fi
 	if [ x"$expected" = x"$result" ]
 	then
-		echo_pass "Symmetric cipher $sout multiple test"
+		echo_pass "Symmetric $impl_type cipher $sout multiple test"
 	else
-		echo_fail "Symmetric cipher $sout multiple test"
+		echo_fail "Symmetric $impl_type cipher $sout multiple test"
 		echo "Exp $expected"
 		echo "Got $result"
 		let failures=($failures+1)
@@ -1019,9 +1028,12 @@ aeadfunc -v -m
 #asymfunc -s -v -m
 
 auxtest
-multipletest
-multipletest -s
-multipletest -v
+multipletest 1		# sync, no splice, one shot sendmsg
+multipletest 9		# async, no splice, one shot sendmsg
+multipletest 1 -s	# sync, no splice, stream sendmsg
+multipletest 9 -s	# async, no splice, stream sendmsg
+multipletest 1 -v	# sync, splice
+multipletest 9 -v	# async splice
 
 kdftest
 kdftest -m
