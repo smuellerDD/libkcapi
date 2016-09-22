@@ -981,7 +981,7 @@ static int cavs_aead_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 		memcpy(assoc + (i * outbuflen), cavs_test->assoc, assoclen);
 		if (cavs_test->enc) {
 			memcpy(data + (i * outbuflen), cavs_test->pt, datalen);
-			iov_p->iov_base = outbuf + (i * cavs_test->ptlen);
+			iov_p->iov_base = outbuf + (i * outbuflen);
 			iov_p->iov_len = outbuflen;
 		} else {
 			memcpy(data + (i * outbuflen), cavs_test->ct, datalen);
