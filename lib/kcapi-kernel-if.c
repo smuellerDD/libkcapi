@@ -484,6 +484,7 @@ static inline int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 	return processed;
 }
 
+/* Wrapper for io_getevents -- returns < 0 on error, or processed bytes */
 static int32_t _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
 				   struct timespec *timeout)
 {
@@ -522,6 +523,7 @@ static int32_t _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
 	return processed;
 }
 
+/* read data from successfully processed cipher operations */
 static int _kcapi_aio_poll_data(struct kcapi_handle *handle, suseconds_t wait)
 {
 	struct timespec timeout;
@@ -573,7 +575,7 @@ static int _kcapi_aio_send_iov(struct kcapi_handle *handle,
 		if (0 > ret)
 			return ret;
 	} else {
-		ret = _kcapi_common_send_meta(handle, NULL, 0, enc, 0);
+		ret = _kcapi_common_send_meta(handle, NULL, 0, enc, MSG_MORE);
 		if (0 > ret)
 			return ret;
 		ret = _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
@@ -1541,9 +1543,28 @@ DSO_PUBLIC
 int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
 			       uint32_t iovlen, const uint8_t *iv, int access)
 {
+	int32_t ret = 0;
+	uint32_t i;
+
 	handle->cipher.iv = iv;
-	return _kcapi_cipher_crypt_aio(handle, iov, iovlen, access,
-				       ALG_OP_ENCRYPT);
+
+	/*
+	 * Currently the kernel is only able to handle one complete individual
+	 * AEAD cipher operation at a time.
+	 *
+	 * The key to this limitation lies in the check (usedpages < outlen)
+	 * in the function aead_recvmsg_async.
+	 */
+	for (i = 0; i < iovlen; i++) {
+		int32_t rc = _kcapi_cipher_crypt_aio(handle, &iov[i], 1,
+						     access, ALG_OP_ENCRYPT);
+
+		if (rc < 0)
+			return rc;
+		ret += rc;
+	}
+
+	return ret;
 }
 
 DSO_PUBLIC
@@ -1576,9 +1597,28 @@ DSO_PUBLIC
 int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
 			       uint32_t iovlen, const uint8_t *iv, int access)
 {
+	int32_t ret = 0;
+	uint32_t i;
+
 	handle->cipher.iv = iv;
-	return _kcapi_cipher_crypt_aio(handle, iov, iovlen, access,
-				       ALG_OP_DECRYPT);
+
+	/*
+	 * Currently the kernel is only able to handle one complete individual
+	 * AEAD cipher operation at a time.
+	 *
+	 * The key to this limitation lies in the check (usedpages < outlen)
+	 * in the function aead_recvmsg_async.
+	 */
+	for (i = 0; i < iovlen; i++) {
+		int32_t rc = _kcapi_cipher_crypt_aio(handle, &iov[i], 1,
+						     access, ALG_OP_DECRYPT);
+
+		if (rc < 0)
+			return rc;
+		ret += rc;
+	}
+
+	return ret;
 }
 
 DSO_PUBLIC
