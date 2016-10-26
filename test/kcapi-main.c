@@ -827,9 +827,19 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 	for (i = 0; i < loops; i++) {
 		memcpy(assoc, cavs_test->assoc, assoclen);
 		if (cavs_test->enc) {
+			/*
+			 * demonstrate that kernel can handle input without
+			 * taglen
+			 */
+			uint32_t inbuflen = outbuflen - cavs_test->taglen;
+
+			/* the kernel does not like zero lengths */
+			if (!inbuflen)
+				inbuflen += 1;
+
 			memcpy(data, cavs_test->pt, datalen);
 			_get_time(&begin);
-			ret = kcapi_aead_encrypt(handle, outbuf, outbuflen,
+			ret = kcapi_aead_encrypt(handle, outbuf, inbuflen,
 						newiv,
 						outbuf, outbuflen,
 						splice);

@@ -444,6 +444,7 @@ static inline int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 	struct iovec iov;
 	uint32_t processed = 0;
 	int ret = 0;
+	uint32_t sflags = (flags & SPLICE_F_MORE) ? MSG_MORE : 0;
 
 	if (inlen > INT_MAX)
 		return -EMSGSIZE;
@@ -459,9 +460,7 @@ static inline int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 		iov.iov_len = inlen;
 
 		if ((handle->processed_sg++) > ALG_MAX_PAGES) {
-			ret = _kcapi_common_send_data(handle, &iov, 1,
-						      (flags & SPLICE_F_MORE) ?
-						       MSG_MORE : 0);
+			ret = _kcapi_common_send_data(handle, &iov, 1, sflags);
 		} else {
 			ret = vmsplice(handle->pipes[1], &iov, 1,
 				       SPLICE_F_GIFT|flags);
@@ -1205,8 +1204,7 @@ static int32_t _kcapi_cipher_crypt(struct kcapi_handle *handle,
 		if (0 > ret)
 			return ret;
 	} else {
-		ret = _kcapi_common_send_meta(handle, NULL, 0, enc,
-					      inlen ? MSG_MORE : 0);
+		ret = _kcapi_common_send_meta(handle, NULL, 0, enc, MSG_MORE);
 		if (0 > ret)
 			return ret;
 		ret = _kcapi_common_vmsplice_chunk(handle, in, inlen, 0);
@@ -1574,13 +1572,6 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   uint8_t *out, uint32_t outlen, int access)
 {
 	/* require properly sized output data size */
-	if (outlen < inlen) {
-		kcapi_dolog(LOG_ERR,
-			    "AEAD Decryption: Plaintext buffer (%u) is smaller than ciphertext buffer (%u)",
-			    outlen, inlen);
-		return -EINVAL;
-	}
-
 	if (inlen > (uint32_t)(sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES)) {
 		kcapi_dolog(LOG_ERR,
 			    "AEAD Decryption: Ciphertext buffer (%u) is larger than maximum chunk size (%lu)",
