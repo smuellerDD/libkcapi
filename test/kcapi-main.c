@@ -50,6 +50,7 @@
 #include <getopt.h>
 #include <sys/user.h>
 #include <time.h>
+#include <sys/utsname.h>
 
 #include "kcapi.h"
 
@@ -152,6 +153,51 @@ static inline uint64_t _time_delta(struct timespec *start, struct timespec *end)
 		diff += end->tv_nsec - start->tv_nsec;
 	}
 	return diff;
+}
+
+/* return 1 if kernel is greater or equal to given values, otherwise 0 */
+static int kcapi_kernver_ge(unsigned int maj, unsigned int minor,
+			    unsigned int patchlevel)
+{
+	struct utsname kernel;
+	char *saveptr = NULL;
+	char *res = NULL;
+	unsigned long found_maj, found_minor, found_patchlevel;
+
+	if (uname(&kernel))
+		return -1;
+
+	/* 3.15.0 */
+	res = strtok_r(kernel.release, ".", &saveptr);
+	if (!res) {
+		printf("Could not parse kernel version");
+		return -1;
+	}
+	found_maj = strtoul(res, NULL, 10);
+	res = strtok_r(NULL, ".", &saveptr);
+	if (!res) {
+		printf("Could not parse kernel version");
+		return -1;
+	}
+	found_minor = strtoul(res, NULL, 10);
+	res = strtok_r(NULL, ".", &saveptr);
+	if (!res) {
+		printf("Could not parse kernel version");
+		return -1;
+	}
+	found_patchlevel = strtoul(res, NULL, 10);
+
+	if (maj < found_maj)
+		return 1;
+	if (maj == found_maj) {
+		if (minor < found_minor)
+			return 1;
+		if (minor == found_minor) {
+			if (patchlevel <= found_patchlevel)
+				return 1;
+		}
+	}
+	return 0;
 }
 
 static int aux_stress_init_error(const char *name, int type)
@@ -730,14 +776,14 @@ out:
 /*
  * Encryption command line:
  * $ ./kcapi -x 2 -e -c "gcm(aes)" -p 89154d0d4129d322e4487bafaa4f6b46 -k c0ece3e63198af382b5603331cc23fa8 -i 7e489b83622e7228314d878d -a afcd7202d621e06ca53b70c2bdff7fb2 -l 16
- * f4a3eacfbdadd3b1a17117b1d67ffc1f1e21efbbc6d83724a8c296e3bb8cda0c
+ * afcd7202d621e06ca53b70c2bdff7fb2f4a3eacfbdadd3b1a17117b1d67ffc1f1e21efbbc6d83724a8c296e3bb8cda0c
  *
  * Decryption passed command line:
  * $ ./kcapi -x 2 -c "gcm(aes)" -q 0c14372e4567a02d23b58f0afc51a746 -t 04ae740ef1135ee596b7c91e2288eace -i 9fbd7193277f65600f7348ca -k 97de3c9d2b0676104decbd6e8cf6fe80 -a 1a02d783682f87300b9d342f3afbb31e
- * e8703b9b5ef5b454e295a4bae44c7e62
+ * 1a02d783682f87300b9d342f3afbb31ee8703b9b5ef5b454e295a4bae44c7e62
  *
  * ./kcapi -x 2 -c "ccm(aes)" -q 4edb58e8d5eb6bc711c43a6f3693daebde2e5524f1b55297abb29f003236e43d -t a7877c99 -n 674742abd0f5ba -k 2861fd0253705d7875c95ba8a53171b4 -a fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d
- * 8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
+ * fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
  *
  * Decryption EBADMSG command line:
  * $ ./kcapi -x 2 -c "gcm(aes)" -q 0fe37040e9b72b2dfc5e9191c2b15681 -t 273021cc6e39f0f8088f48d7ce70fef8 -i 917b8b25ad6e90b7f93b345f -k 8cc6fa539b219221c786b875aa89e4c1 -a 22584d1db91f9f3d3e7308da86228153
@@ -747,10 +793,10 @@ out:
  * EBADMSG
  *
  * $ ./kcapi -x 2 -e -c "authenc(hmac(sha1),cbc(aes))" -p 53696e676c6520626c6f636b206d7367 -k  0800010000000010000000000000000000000000000000000000000006a9214036b8a15b512e03d534120006 -i 3dafba429d9eb430b422da802c9fac41 -a 3dafba429d9eb430b422da802c9fac41 -l 20
- * e353779c1079aeb82708942dbe77181a1b13cbaf895ee12c13c52ea3cceddcb50371a206
+ * 3dafba429d9eb430b422da802c9fac41e353779c1079aeb82708942dbe77181a1b13cbaf895ee12c13c52ea3cceddcb50371a206
  */
 static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
-		     int splice)
+		     int splice, int noaad)
 {
 	struct kcapi_handle *handle;
 	uint8_t *outbuf = NULL;
@@ -827,11 +873,14 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 	for (i = 0; i < loops; i++) {
 		memcpy(assoc, cavs_test->assoc, assoclen);
 		if (cavs_test->enc) {
+			uint32_t inbuflen = outbuflen;
+
 			/*
 			 * demonstrate that kernel can handle input without
 			 * taglen
 			 */
-			uint32_t inbuflen = outbuflen - cavs_test->taglen;
+			if (kcapi_kernver_ge(4, 9, 0))
+				inbuflen -= cavs_test->taglen;
 
 			/* the kernel does not like zero lengths */
 			if (!inbuflen)
@@ -846,13 +895,26 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 			errsv = errno;
 			_get_time(&end);
 		} else {
+			uint32_t getbuflen = outbuflen;
+
+			/*
+			 * demonstrate that the kernel does not produce tag
+			 * during decryption
+			 */
+			if (kcapi_kernver_ge(4, 9, 0))
+				getbuflen -= cavs_test->taglen;
+
+			/* the kernel does not like zero lengths */
+			if (!getbuflen)
+				getbuflen += 1;
+
 			memcpy(data, cavs_test->ct, datalen);
 			memcpy(tag, cavs_test->tag, taglen);
 			_get_time(&begin);
 			ret = kcapi_aead_decrypt(handle,
 				 outbuf, outbuflen,
 				 newiv,
-				 outbuf, outbuflen,
+				 outbuf, getbuflen,
 				 splice);
 			errsv = errno;
 			_get_time(&end);
@@ -864,36 +926,38 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 			       errno, ret);
 			goto out;
 		}
-		if (ret > 0 && (uint32_t)ret != outbuflen) {
-			printf("Cipher operation did not fill entire buffer %d\n",
-			       ret);
+		if (ret > 0 &&
+		    (uint32_t)ret != (outbuflen - ((cavs_test->enc || !kcapi_kernver_ge(4, 9, 0)) ? 0 : cavs_test->taglen))) {
+			printf("Cipher operation did not fill entire buffer %d (expected %u)\n",
+			       ret, outbuflen - ((cavs_test->enc || !kcapi_kernver_ge(4, 9, 0)) ? 0 : cavs_test->taglen));
 			goto out;
 		}
 
 		if (EBADMSG == errsv) {
 			printf("EBADMSG\n");
 		} else {
-			char *datahex = NULL;
-			char *taghex = NULL;
+			char *outhex;
+			uint32_t hexlen = outbuflen * 2 + 1;
 
-			/* we are not interested in the AD */
-			datahex = calloc(1, (datalen  * 2 + 1));
-			if (!datahex) {
+			/* 
+			 * Tag is not produced for decryption, the kernel
+			 * will not touch that memory
+			 */
+			if (!cavs_test->enc)
+				hexlen -= cavs_test->taglen * 2;
+			if (noaad)
+				hexlen -= cavs_test->assoclen * 2;
+			outhex = calloc(1, hexlen);
+
+			if (!outhex) {
 				ret = -ENOMEM;
 				goto out;
 			}
-			bin2hex(data, datalen, datahex, datalen * 2 + 1, 0);
-			if (cavs_test->enc) {
-				taghex = calloc(1, (taglen  * 2 + 1));
-				if (!taghex) {
-					ret = -ENOMEM;
-					free(datahex);
-					goto out;
-				}
-				bin2hex(tag, taglen, taghex, taglen * 2 + 1, 0);
-			}
-			printf("%s%s\n", datahex, (taghex) ? taghex : "");
-			free(datahex);
+			bin2hex(outbuf + ((noaad) ? cavs_test->assoclen : 0),
+				outbuflen - ((noaad) ? cavs_test->assoclen : 0),
+				outhex, hexlen, 0);
+			printf("%s\n", outhex);
+			free(outhex);
 		}
 	}
 
@@ -1059,7 +1123,8 @@ out:
 	return ret;
 }
 
-static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
+static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
+			    int noaad)
 {
 	struct kcapi_handle *handle;
 	uint8_t *outbuf = NULL;
@@ -1154,6 +1219,8 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 
 	for (i = 0; i < loops; i++) {
 		int errsv = 0;
+
+		memset(outbuf, 0, outbuflen);
 
 		iov.iov_base = cavs_test->assoc;
 		iov.iov_len = cavs_test->assoclen;
@@ -1264,27 +1331,43 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 		if (EBADMSG == errsv) {
 			printf("EBADMSG\n");
 		} else {
-			char *datahex = NULL;
-			char *taghex = NULL;
+			char *outhex;
+			uint32_t i;
+			uint32_t hexlen = outbuflen * 2 + 1;
 
-			/* we are not interested in the AD */
-			datahex = calloc(1, (datalen  * 2 + 1));
-			if (!datahex) {
+			/*
+			 * Verify that as documented the AAD buffer is not
+			 * filled by the kernel, but still space is left
+			 * for the caller to fill in the AAD
+			 */
+			for (i = 0; i < cavs_test->assoclen; i++) {
+				if (outbuf[i] != '\0') {
+					printf("AAD buffer not empty!\n");
+					ret = -EFAULT;
+					goto out;
+				}
+			}
+			memcpy(outbuf, cavs_test->assoc, cavs_test->assoclen);
+
+			/* 
+			 * Tag is not produced for decryption, the kernel
+			 * will not touch that memory
+			 */
+			if (!cavs_test->enc)
+				hexlen -= cavs_test->taglen * 2;
+			if (noaad)
+				hexlen -= cavs_test->assoclen * 2;
+			outhex = calloc(1, hexlen);
+
+			if (!outhex) {
 				ret = -ENOMEM;
 				goto out;
 			}
-			bin2hex(data, datalen, datahex, datalen * 2 + 1, 0);
-			if (cavs_test->enc) {
-				taghex = calloc(1, (taglen  * 2 + 1));
-				if (!taghex) {
-					ret = -ENOMEM;
-					free(datahex);
-					goto out;
-				}
-				bin2hex(tag, taglen, taghex, taglen * 2 + 1, 0);
-			}
-			printf("%s%s\n", datahex, (taghex) ? taghex : "");
-			free(datahex);
+			bin2hex(outbuf + ((noaad) ? cavs_test->assoclen : 0),
+				outbuflen - ((noaad) ? cavs_test->assoclen : 0),
+				outhex, hexlen, 0);
+			printf("%s\n", outhex);
+			free(outhex);
 		}
 	}
 	ret = 0;
@@ -1358,7 +1441,7 @@ static int cavs_aead_large(int stream, uint32_t loops, int splice)
 		test.assoclen -= (8192); */
 		/* However, we now have vmsplice here */
 		test.assoclen -= 8192 + test.taglen;
-		ret = cavs_aead_stream(&test, loops);
+		ret = cavs_aead_stream(&test, loops, 1);
 	} else {
 		/*
 		 * vmsplice: AAD must be at most 14 pages as otherwise the
@@ -1370,7 +1453,7 @@ static int cavs_aead_large(int stream, uint32_t loops, int splice)
 		 * AAD to 14 pages
 		 */
 		test.assoclen -= 8192 + test.taglen;
-		ret = cavs_aead(&test, loops, splice);
+		ret = cavs_aead(&test, loops, splice, 1);
 	}
 out:
 	if (test.pt)
@@ -2168,9 +2251,9 @@ int main(int argc, char *argv[])
 		rc = cavs_sym_aio(&cavs_test, loops, splice);
 	else if (AEAD == cavs_test.type) {
 		if (stream)
-			rc = cavs_aead_stream(&cavs_test, loops);
+			rc = cavs_aead_stream(&cavs_test, loops, 0);
 		else
-			rc = cavs_aead(&cavs_test, loops, splice);
+			rc = cavs_aead(&cavs_test, loops, splice, 0);
 	} else if (AEAD_AIO == cavs_test.type)
 		rc = cavs_aead_aio(&cavs_test, loops, splice);
 	else if (HASH == cavs_test.type) {
