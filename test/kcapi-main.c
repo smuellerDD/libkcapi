@@ -879,7 +879,7 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 			 * demonstrate that kernel can handle input without
 			 * taglen
 			 */
-			if (kcapi_kernver_ge(4, 9, 0))
+			if (kcapi_kernver_ge(4, 10, 0))
 				inbuflen -= cavs_test->taglen;
 
 			/* the kernel does not like zero lengths */
@@ -901,7 +901,7 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 			 * demonstrate that the kernel does not produce tag
 			 * during decryption
 			 */
-			if (kcapi_kernver_ge(4, 9, 0))
+			if (kcapi_kernver_ge(4, 10, 0))
 				getbuflen -= cavs_test->taglen;
 
 			/* the kernel does not like zero lengths */
@@ -927,9 +927,9 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 			goto out;
 		}
 		if (ret > 0 &&
-		    (uint32_t)ret != (outbuflen - ((cavs_test->enc || !kcapi_kernver_ge(4, 9, 0)) ? 0 : cavs_test->taglen))) {
+		    (uint32_t)ret != (outbuflen - ((cavs_test->enc || !kcapi_kernver_ge(4, 10, 0)) ? 0 : cavs_test->taglen))) {
 			printf("Cipher operation did not fill entire buffer %d (expected %u)\n",
-			       ret, outbuflen - ((cavs_test->enc || !kcapi_kernver_ge(4, 9, 0)) ? 0 : cavs_test->taglen));
+			       ret, outbuflen - ((cavs_test->enc || !kcapi_kernver_ge(4, 10, 0)) ? 0 : cavs_test->taglen));
 			goto out;
 		}
 
@@ -984,7 +984,6 @@ static int cavs_aead_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	int ret = -ENOMEM;
 	uint8_t *newiv = NULL;
 	uint32_t newivlen = 0;
-	int errsv = 0;
 	uint32_t i = 0;
 
 	uint8_t *assoc = NULL;
@@ -1082,16 +1081,15 @@ static int cavs_aead_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	else
 		ret = kcapi_aead_decrypt_aio(handle, iov, loops,
 					     newiv, splice);
-	errsv = errno;
 	_get_time(&end);
 
-	if (0 > ret && EBADMSG != errsv) {
+	if (0 > ret && -EBADMSG != ret) {
 		printf("Cipher operation of buffer failed: %d %d\n",
 		       errno, ret);
 		goto out;
 	}
 
-	if (EBADMSG == errsv) {
+	if (-EBADMSG == ret) {
 		printf("EBADMSG\n");
 	} else {
 		char *outhex = NULL;
