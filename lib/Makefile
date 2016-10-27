@@ -43,9 +43,9 @@ LDFLAGS		+= $(foreach library,$(LIBRARIES),-l$(library))
 # Get version name and cross check
 #
 ###############################################################################
-LIBMAJOR   := $(shell grep '^\#define.*MAJVERSION' kcapi.h | awk '{print $$3}')
-LIBMINOR   := $(shell grep '^\#define.*MINVERSION' kcapi.h | awk '{print $$3}')
-LIBPATCH   := $(shell grep '^\#define.*PATCHLEVEL' kcapi.h | awk '{print $$3}')
+LIBMAJOR   := $(shell grep '^\#define.*MAJVERSION' kcapi-kernel-if.c | awk '{print $$3}')
+LIBMINOR   := $(shell grep '^\#define.*MINVERSION' kcapi-kernel-if.c | awk '{print $$3}')
+LIBPATCH   := $(shell grep '^\#define.*PATCHLEVEL' kcapi-kernel-if.c | awk '{print $$3}')
 LIBVERSION := $(LIBMAJOR).$(LIBMINOR).$(LIBPATCH)
 
 # Determine the current library version from the version script
