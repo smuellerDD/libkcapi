@@ -5,9 +5,16 @@ Changes 0.12.0
  * update Makefile to look for environment
  * bug fix speed test
  * add AIO support (this code is derived from the example code developed by
-   Tadeusz Struk -- thanks a lot)
+   Tadeusz Struk -- thanks a lot) together with AIO test cases
  * Move DSO_PUBLIC out of the public header file into the private header file
  * use _kcapi_cipher_crypt for AEAD operations - eliminate code duplication
+ * update AEAD tests to verify that the kernel follows the memory and
+   processing structure defined for in-kernel users. Note, the testing
+   will assume the old AF_ALG interface handling up to and including 4.9.x.
+   The new AF_ALG AEAD interface is assumed to be present starting with 4.10.0.
+   Note, the interface differences are only visible in the return code of
+   recv which is checked by the test cases. Otherwise, user space sees no
+   difference.
 
 Changes 0.11.1
  * move version information to kcapi.h to allow compile time tests for wrapping
