@@ -157,8 +157,9 @@ int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
  * kcapi_cipher_encrypt_aio() - encrypt data (asynchronous one shot)
  *
  * @handle: [in] cipher handle
- * @iov: [in/out] head of scatter-gather list array holding the plaintext
- *	which will be replaced with ciphertext
+ * @iniov: [in] head of scatter-gather list array holding the plaintext
+ * @outiov: [out] head of scatter-gather list of the destination buffers filled
+ *	with ciphertext
  * @iovlen: [in] number of scatter-gather list entries
  * @iv: [in] IV to be used for cipher operation
  * @access: [in] kernel access type (KCAPI_ACCESS_HEURISTIC - use internal
@@ -177,7 +178,8 @@ int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
  * @return number of bytes encrypted upon success;
  *	    < 0 in case of error with errno set
  */
-int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
+int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
+				 struct iovec *iniov, struct iovec *outiov,
 				 uint32_t iovlen, const uint8_t *iv,
 				 int access);
 
@@ -216,8 +218,9 @@ int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
  * kcapi_cipher_decrypt_aio() - decrypt data (asynchronous one shot)
  *
  * @handle: [in] cipher handle
- * @iov: [in/out] head of scatter-gather list array holding the ciphertext
- *	which will be replaced with plaintext
+ * @iniov: [in] head of scatter-gather list array holding the ciphertext
+ * @outiov: [out] head of scatter-gather list with the destination buffers for
+ *	the plaintext
  * @iovlen: [in] number of scatter-gather list entries
  * @iv: [in] IV to be used for cipher operation
  * @access: [in] kernel access type (KCAPI_ACCESS_HEURISTIC - use internal
@@ -236,7 +239,8 @@ int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
  * @return number of bytes decrypted upon success;
  *	    < 0 in case of error with errno set
  */
-int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
+int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
+				 struct iovec *iniov, struct iovec *outiov,
 				 uint32_t iovlen, const uint8_t *iv,
 				 int access);
 

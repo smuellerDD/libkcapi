@@ -714,10 +714,10 @@ static int cavs_sym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 
 	_get_time(&begin);
 	if (cavs_test->enc)
-		ret = kcapi_cipher_encrypt_aio(handle, iov, loops,
+		ret = kcapi_cipher_encrypt_aio(handle, iov, iov, loops,
 					       cavs_test->iv, splice);
 	else
-		ret = kcapi_cipher_decrypt_aio(handle, iov, loops,
+		ret = kcapi_cipher_decrypt_aio(handle, iov, iov, loops,
 					       cavs_test->iv, splice);
 	_get_time(&end);
 	if (0 > ret)  {

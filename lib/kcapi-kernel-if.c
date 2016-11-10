@@ -1344,7 +1344,7 @@ static int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 
 	/* Every IOVEC is processed as its individual cipher operation. */
 	while (tosend) {
-		uint32_t process = KCAPI_AIO_CONCURRENT < tosend ?
+		uint32_t process = (KCAPI_AIO_CONCURRENT < tosend) ?
 					KCAPI_AIO_CONCURRENT : tosend;
 		int32_t rc = _kcapi_aio_send_iov(handle, iniov, process,
 						 access, enc);
@@ -1384,6 +1384,8 @@ static int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 	return ret;
 }
 
+/*********** Symmetric Cipher functions *************************/
+
 DSO_PUBLIC
 int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 			     const uint8_t *in, uint32_t inlen,
@@ -1406,11 +1408,12 @@ int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
+int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
+				 struct iovec *iniov, struct iovec *outiov,
 				 uint32_t iovlen, const uint8_t *iv, int access)
 {
 	handle->cipher.iv = iv;
-	return _kcapi_cipher_crypt_aio(handle, iov, iov, iovlen, access,
+	return _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen, access,
 				       ALG_OP_ENCRYPT);
 }
 
@@ -1441,11 +1444,12 @@ int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
+int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
+				 struct iovec *iniov, struct iovec *outiov,
 				 uint32_t iovlen, const uint8_t *iv, int access)
 {
 	handle->cipher.iv = iv;
-	return _kcapi_cipher_crypt_aio(handle, iov, iov, iovlen, access,
+	return _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen, access,
 				       ALG_OP_DECRYPT);
 }
 
@@ -1503,6 +1507,8 @@ uint32_t kcapi_cipher_blocksize(struct kcapi_handle *handle)
 {
 	return handle->info.blocksize;
 }
+
+/*********** AEAD Cipher functions *************************/
 
 DSO_PUBLIC
 int kcapi_aead_init(struct kcapi_handle **handle, const char *ciphername,
@@ -1971,6 +1977,8 @@ int kcapi_aead_ccm_nonce_to_iv(const uint8_t *nonce, uint32_t noncelen,
 	return 0;
 }
 
+/*********** Message Digest functions *************************/
+
 DSO_PUBLIC
 int kcapi_md_init(struct kcapi_handle **handle, const char *ciphername,
 		  uint32_t flags)
@@ -2071,6 +2079,8 @@ uint32_t kcapi_md_blocksize(struct kcapi_handle *handle)
 	return handle->info.blocksize;
 }
 
+/*********** Random Number Generator functions *************************/
+
 DSO_PUBLIC
 int kcapi_rng_init(struct kcapi_handle **handle, const char *ciphername,
 		   uint32_t flags)
@@ -2101,7 +2111,7 @@ int32_t kcapi_rng_generate(struct kcapi_handle *handle,
 	while (len) {
 		int32_t r = 0;
 
-		iov.iov_base = (void*)(uintptr_t)buffer;
+		iov.iov_base = (void *)(uintptr_t)buffer;
 		iov.iov_len = len;
 		r = _kcapi_common_recv_data(handle, &iov, 1);
 		if (0 >= r)
@@ -2114,6 +2124,8 @@ int32_t kcapi_rng_generate(struct kcapi_handle *handle,
 
 	return out;
 }
+
+/*********** Asymmetric Cipher functions *************************/
 
 DSO_PUBLIC
 int kcapi_akcipher_init(struct kcapi_handle **handle, const char *ciphername,
