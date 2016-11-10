@@ -57,7 +57,7 @@ ifneq ($(APIVERSION),$(LIBVERSION))
 error:
 	$(info ERROR VERSION NUMBERS in kcapi.h and version.lds)
 	@echo version.lds=$(APIVERSION)
-	@echo kcapi.h=$(LIBVERSION)
+	@echo kcapi-kernel-if.c=$(LIBVERSION)
 endif
 
 ###############################################################################
