@@ -57,6 +57,7 @@
 #include <time.h>
 #include <limits.h>
 #include <sys/select.h>
+#include <sys/utsname.h>
 
 #include <linux/if_alg.h>
 
@@ -100,7 +101,7 @@
 			     * (as long as this number is zero, the API is
 			     * not considered stable and can change without
 			     * a bump of the major version) */
-#define KCAPI_MINVERSION 12 /* API compatible, ABI may change, functional
+#define KCAPI_MINVERSION 13 /* API compatible, ABI may change, functional
 			     * enhancements only, consumer can be left
 			     * unchanged if enhancements are not considered */
 #define KCAPI_PATCHLEVEL 0  /* API / ABI compatible, no functional changes, no
@@ -199,6 +200,10 @@ struct kcapi_aio {
 	struct iocb **ciopp;
 };
 
+struct kcapi_flags {
+	int newaeadif:1;
+};
+
 /**
  * Cipher handle
  * @tfmfd: Socket descriptor for AF_ALG
@@ -219,6 +224,7 @@ struct kcapi_handle {
 	struct kcapi_aead_data aead;
 	struct kcapi_cipher_info info;
 	struct kcapi_aio aio;
+	struct kcapi_flags flags;
 };
 
 /************************************************************
@@ -585,7 +591,8 @@ static int _kcapi_aio_send_iov(struct kcapi_handle *handle,
 		if (0 > ret)
 			return ret;
 	} else {
-		ret = _kcapi_common_send_meta(handle, NULL, 0, enc, MSG_MORE);
+		ret = _kcapi_common_send_meta(handle, NULL, 0, enc,
+					      iov->iov_len ? MSG_MORE : 0);
 		if (0 > ret)
 			return ret;
 		ret = _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
@@ -975,6 +982,51 @@ static inline void _kcapi_handle_destroy(struct kcapi_handle *handle)
 	memset(handle, 0, sizeof(struct kcapi_handle));
 }
 
+/* return 1 if kernel is greater or equal to given values, otherwise 0 */
+static int _kcapi_kernver_ge(unsigned int maj, unsigned int minor,
+			     unsigned int patchlevel)
+{
+	struct utsname kernel;
+	char *saveptr = NULL;
+	char *res = NULL;
+	unsigned long found_maj, found_minor, found_patchlevel;
+
+	if (uname(&kernel))
+		return 0;
+
+	/* 3.15.0 */
+	res = strtok_r(kernel.release, ".", &saveptr);
+	if (!res) {
+		printf("Could not parse kernel version");
+		return 0;
+	}
+	found_maj = strtoul(res, NULL, 10);
+	res = strtok_r(NULL, ".", &saveptr);
+	if (!res) {
+		printf("Could not parse kernel version");
+		return 0;
+	}
+	found_minor = strtoul(res, NULL, 10);
+	res = strtok_r(NULL, ".", &saveptr);
+	if (!res) {
+		printf("Could not parse kernel version");
+		return 0;
+	}
+	found_patchlevel = strtoul(res, NULL, 10);
+
+	if (maj < found_maj)
+		return 1;
+	if (maj == found_maj) {
+		if (minor < found_minor)
+			return 1;
+		if (minor == found_minor) {
+			if (patchlevel <= found_patchlevel)
+				return 1;
+		}
+	}
+	return 0;
+}
+
 static int _kcapi_aio_init(struct kcapi_handle *handle)
 {
 	uint32_t i;
@@ -1029,6 +1081,12 @@ err:
 		free(handle->aio.ciopp);
 	handle->aio.ciopp = NULL;
 	return err;
+}
+
+static void _kcapi_handle_flags(struct kcapi_handle *handle)
+{
+	/* new memory structure for AF_ALG AEAD interface */
+	handle->flags.newaeadif = _kcapi_kernver_ge(4, 9, 0);
 }
 
 static int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
@@ -1100,6 +1158,8 @@ static int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 			goto err;
 	} else
 		handle->aio.skcipher_aio_disable = 1;
+
+	_kcapi_handle_flags(handle);
 
 	kcapi_dolog(LOG_VERBOSE, "communication for %s with kernel initialized", ciphername);
 
@@ -1197,12 +1257,6 @@ static int32_t _kcapi_cipher_crypt(struct kcapi_handle *handle,
 	if (outlen > INT_MAX)
 		return -EMSGSIZE;
 
-	if (!in || !inlen || !out || !outlen) {
-		kcapi_dolog(LOG_ERR,
-			    "Symmetric Encryption: Empty plaintext or ciphertext buffer provided");
-		return -EINVAL;
-	}
-
 	/*
 	 * Using two syscalls with memcpy is faster than four syscalls
 	 * without memcpy below the given threshold.
@@ -1215,7 +1269,8 @@ static int32_t _kcapi_cipher_crypt(struct kcapi_handle *handle,
 		if (0 > ret)
 			return ret;
 	} else {
-		ret = _kcapi_common_send_meta(handle, NULL, 0, enc, MSG_MORE);
+		ret = _kcapi_common_send_meta(handle, NULL, 0, enc,
+					      inlen ? MSG_MORE : 0);
 		if (0 > ret)
 			return ret;
 		ret = _kcapi_common_vmsplice_chunk(handle, in, inlen, 0);
@@ -1268,7 +1323,8 @@ static int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
 }
 
 static int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
-				       struct iovec *iov, uint32_t iovlen,
+				       struct iovec *iniov,
+				       struct iovec *outiov, uint32_t iovlen,
 				       int access, int enc)
 {
 	int32_t ret;
@@ -1290,17 +1346,18 @@ static int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 	while (tosend) {
 		uint32_t process = KCAPI_AIO_CONCURRENT < tosend ?
 					KCAPI_AIO_CONCURRENT : tosend;
-		int32_t rc = _kcapi_aio_send_iov(handle, iov, process,
+		int32_t rc = _kcapi_aio_send_iov(handle, iniov, process,
 						 access, enc);
 
 		if (rc < 0)
 			return rc;
 
-		rc = _kcapi_aio_read_iov(handle, iov, process);
+		rc = _kcapi_aio_read_iov(handle, outiov, process);
 		if (rc < 0)
 			return rc;
 
-		iov += process;
+		iniov += process;
+		outiov += process;
 		ret += rc;
 		tosend -= handle->aio.completed_reads;
 	}
@@ -1353,7 +1410,7 @@ int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
 				 uint32_t iovlen, const uint8_t *iv, int access)
 {
 	handle->cipher.iv = iv;
-	return _kcapi_cipher_crypt_aio(handle, iov, iovlen, access,
+	return _kcapi_cipher_crypt_aio(handle, iov, iov, iovlen, access,
 				       ALG_OP_ENCRYPT);
 }
 
@@ -1388,7 +1445,7 @@ int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
 				 uint32_t iovlen, const uint8_t *iv, int access)
 {
 	handle->cipher.iv = iv;
-	return _kcapi_cipher_crypt_aio(handle, iov, iovlen, access,
+	return _kcapi_cipher_crypt_aio(handle, iov, iov, iovlen, access,
 				       ALG_OP_DECRYPT);
 }
 
@@ -1492,6 +1549,9 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
 			uint8_t **data, uint32_t *datalen,
 			uint8_t **tag, uint32_t *taglen)
 {
+	kcapi_dolog(LOG_VERBOSE,
+		    "Usage of deprecated API kcapi_aead_getdata");
+
 	if (encdatalen <  handle->aead.taglen + handle->aead.assoclen) {
 		kcapi_dolog(LOG_ERR, "Result of encryption operation (%lu) is smaller than tag and AAD length (%lu)",
 			    (unsigned long)encdatalen,
@@ -1515,20 +1575,140 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
+void kcapi_aead_getdata_input(struct kcapi_handle *handle,
+			      uint8_t *encdata, uint32_t encdatalen, int enc,
+			      uint8_t **aad, uint32_t *aadlen,
+			      uint8_t **data, uint32_t *datalen,
+			      uint8_t **tag, uint32_t *taglen)
+{
+	uint8_t *l_aad, *l_data, *l_tag;
+	uint32_t l_aadlen, l_datalen, l_taglen;
+
+	if (encdatalen < handle->aead.assoclen) {
+		kcapi_dolog(LOG_ERR, "AAD data not found");
+		l_aad = NULL;
+		l_aadlen = 0;
+	} else {
+		l_aad = encdata;
+		l_aadlen = handle->aead.assoclen;
+		encdatalen -= handle->aead.assoclen;
+	}
+
+	l_taglen = (enc) ? 0 : handle->aead.taglen;
+	/* databuffer is all between AAD buffer (if present) and tag */
+	if (encdatalen < l_taglen) {
+		kcapi_dolog(LOG_ERR, "Cipher result data not found");
+		l_data = NULL;
+		l_datalen = 0;
+	} else {
+		l_data = encdata + l_aadlen;
+		l_datalen = encdatalen - l_taglen;
+		encdatalen -= l_datalen;
+	}
+
+	if (enc) {
+		l_tag = NULL;
+		l_taglen = 0;
+	} else {
+		if (encdatalen >= handle->aead.taglen) {
+			l_tag = encdata + l_aadlen + l_datalen;
+			l_taglen = handle->aead.taglen;
+		} else {
+			kcapi_dolog(LOG_ERR, "Tag data not found");
+			l_tag = NULL;
+			l_taglen = 0;
+		}
+	}
+
+	if (aad)
+		*aad = l_aad;
+	if (aadlen)
+		*aadlen = l_aadlen;
+	if (data)
+		*data = l_data;
+	if (datalen)
+		*datalen = l_datalen;
+	if (tag)
+		*tag = l_tag;
+	if (taglen)
+		*taglen = l_taglen;
+}
+
+DSO_PUBLIC
+void kcapi_aead_getdata_output(struct kcapi_handle *handle,
+			       uint8_t *encdata, uint32_t encdatalen, int enc,
+			       uint8_t **aad, uint32_t *aadlen,
+			       uint8_t **data, uint32_t *datalen,
+			       uint8_t **tag, uint32_t *taglen)
+{
+	uint8_t *l_aad, *l_data, *l_tag;
+	uint32_t l_aadlen, l_datalen, l_taglen;
+
+	/* with 4.9.0 we do not have AAD in output buffer */
+	if (handle->flags.newaeadif) {
+		l_aad = NULL;
+		l_aadlen = 0;
+	} else if (encdatalen < handle->aead.assoclen) {
+		kcapi_dolog(LOG_ERR, "AAD data not found");
+		l_aad = NULL;
+		l_aadlen = 0;
+	} else {
+		l_aad = encdata;
+		l_aadlen = handle->aead.assoclen;
+		encdatalen -= handle->aead.assoclen;
+	}
+
+	/* with 4.9.0 we do not have a tag for decryption */
+	if (handle->flags.newaeadif)
+		l_taglen = (enc) ? handle->aead.taglen : 0;
+	else
+		l_taglen = handle->aead.taglen;
+	/* databuffer is all between AAD buffer (if present) and tag */
+	if (encdatalen < l_taglen) {
+		kcapi_dolog(LOG_ERR, "Cipher result data not found");
+		l_data = NULL;
+		l_datalen = 0;
+	} else {
+		l_data = encdata + l_aadlen;
+		l_datalen = encdatalen - l_taglen;
+		encdatalen -= l_datalen;
+	}
+
+	if (enc) {
+		if (encdatalen >= handle->aead.taglen) {
+			l_tag = encdata + l_aadlen + l_datalen;
+			l_taglen = handle->aead.taglen;
+		} else {
+			kcapi_dolog(LOG_ERR, "Tag data not found");
+			l_tag = NULL;
+			l_taglen = 0;
+		}
+	} else {
+		l_tag = NULL;
+		l_taglen = 0;
+	}
+
+	if (aad)
+		*aad = l_aad;
+	if (aadlen)
+		*aadlen = l_aadlen;
+	if (data)
+		*data = l_data;
+	if (datalen)
+		*datalen = l_datalen;
+	if (tag)
+		*tag = l_tag;
+	if (taglen)
+		*taglen = l_taglen;
+}
+
+DSO_PUBLIC
 int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   uint8_t *in, uint32_t inlen,
 			   const uint8_t *iv,
 			   uint8_t *out, uint32_t outlen, int access)
 {
 	int32_t ret = 0;
-
-	/* require properly sized output data size */
-	if (outlen < inlen) {
-		kcapi_dolog(LOG_ERR,
-			    "AEAD Encryption: Ciphertext buffer (%u) is smaller than plaintext buffer (%u)",
-			    outlen, inlen);
-		return -EINVAL;
-	}
 
 	if (inlen > (uint32_t)(sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES)) {
 		kcapi_dolog(LOG_ERR,
@@ -1549,8 +1729,9 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
-			       uint32_t iovlen, const uint8_t *iv, int access)
+int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
+			       struct iovec *outiov, uint32_t iovlen,
+			       const uint8_t *iv, int access)
 {
 	int32_t ret = 0;
 	uint32_t i;
@@ -1565,8 +1746,9 @@ int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
 	 * in the function aead_recvmsg_async.
 	 */
 	for (i = 0; i < iovlen; i++) {
-		int32_t rc = _kcapi_cipher_crypt_aio(handle, &iov[i], 1,
-						     access, ALG_OP_ENCRYPT);
+		int32_t rc = _kcapi_cipher_crypt_aio(handle, &iniov[i],
+						     &outiov[i], 1, access,
+						     ALG_OP_ENCRYPT);
 
 		if (rc < 0)
 			return rc;
@@ -1592,12 +1774,13 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 
 	handle->cipher.iv = iv;
 	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
-				  ALG_OP_DECRYPT);
+				   ALG_OP_DECRYPT);
 }
 
 DSO_PUBLIC
-int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
-			       uint32_t iovlen, const uint8_t *iv, int access)
+int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
+			       struct iovec *outiov, uint32_t iovlen,
+			       const uint8_t *iv, int access)
 {
 	int32_t ret = 0;
 	uint32_t i;
@@ -1612,8 +1795,9 @@ int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
 	 * in the function aead_recvmsg_async.
 	 */
 	for (i = 0; i < iovlen; i++) {
-		int32_t rc = _kcapi_cipher_crypt_aio(handle, &iov[i], 1,
-						     access, ALG_OP_DECRYPT);
+		int32_t rc = _kcapi_cipher_crypt_aio(handle, &iniov[i],
+						     &outiov[i], 1, access,
+						     ALG_OP_DECRYPT);
 
 		if (rc < 0)
 			return rc;
@@ -1697,11 +1881,71 @@ uint32_t kcapi_aead_authsize(struct kcapi_handle *handle)
 
 DSO_PUBLIC
 uint32_t kcapi_aead_outbuflen(struct kcapi_handle *handle,
-			    uint32_t inlen, uint32_t assoclen, uint32_t taglen)
+			      uint32_t inlen, uint32_t assoclen, uint32_t taglen)
 {
 	int bs = handle->info.blocksize;
 
+	kcapi_dolog(LOG_VERBOSE,
+		    "Usage of deprecated API kcapi_aead_outbuflen");
 	return ((inlen + bs - 1) / bs * bs + taglen + assoclen);
+}
+
+DSO_PUBLIC
+uint32_t kcapi_aead_inbuflen_enc(struct kcapi_handle *handle,
+				 uint32_t inlen, uint32_t assoclen,
+				 uint32_t taglen)
+{
+	uint32_t len = inlen + assoclen;
+
+	if (!handle->flags.newaeadif)
+		len += taglen;
+
+	return len;
+}
+
+DSO_PUBLIC
+uint32_t kcapi_aead_inbuflen_dec(struct kcapi_handle *handle,
+				 uint32_t inlen, uint32_t assoclen,
+				 uint32_t taglen)
+{
+	(void)handle;
+	return (inlen + assoclen + taglen);
+}
+
+DSO_PUBLIC
+uint32_t kcapi_aead_outbuflen_enc(struct kcapi_handle *handle,
+				  uint32_t inlen, uint32_t assoclen,
+				  uint32_t taglen)
+{
+	int bs = handle->info.blocksize;
+	uint32_t outlen = (inlen + bs - 1) / bs * bs + taglen;
+
+	if (!handle->flags.newaeadif)
+		outlen += assoclen;
+
+	/* the kernel does not like zero length output buffers */
+	if (!outlen)
+		outlen = 1;
+
+	return outlen;
+}
+
+DSO_PUBLIC
+uint32_t kcapi_aead_outbuflen_dec(struct kcapi_handle *handle,
+				  uint32_t inlen, uint32_t assoclen,
+				  uint32_t taglen)
+{
+	int bs = handle->info.blocksize;
+	uint32_t outlen = (inlen + bs - 1) / bs * bs;
+
+	if (!handle->flags.newaeadif)
+		outlen += assoclen + taglen;
+
+	/* the kernel does not like zero length output buffers */
+	if (!outlen)
+		outlen = 1;
+
+	return outlen;
 }
 
 DSO_PUBLIC

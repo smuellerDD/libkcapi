@@ -495,8 +495,8 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, uint32_t assoclen);
  * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
  *
  * After invoking this function the caller should use
- * kcapi_aead_getdata() to obtain the resulting ciphertext and authentication
- * tag references.
+ * kcapi_aead_getdata_output() to obtain the resulting ciphertext and
+ * authentication tag references.
  *
  * IMPORTANT NOTE: The kernel will only process
  * sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES at one time. Longer input data cannot
@@ -515,7 +515,8 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
  * kcapi_aead_encrypt_aio() - asynchronously encrypt AEAD data (one shot)
  *
  * @handle: [in] cipher handle
- * @iov: [in/out] array of scatter-gather list with input / output buffers
+ * @iniov: [in] array of scatter-gather list with input buffers
+ * @outiov: [out] array of scatter-gather list with output buffers
  * @iovlen: [in] number of IOVECs in array
  * @iv: [in] IV to be used for cipher operation
  * @access: [in] kernel access type (KCAPI_ACCESS_HEURISTIC - use internal
@@ -536,8 +537,8 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
  * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
  *
  * After invoking this function the caller should use
- * kcapi_aead_getdata() to obtain the resulting ciphertext and authentication
- * tag references.
+ * kcapi_aead_getdata_output() to obtain the resulting ciphertext and
+ * authentication tag references.
  *
  * IMPORTANT NOTE: The kernel will only process
  * sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES at one time. Longer input data cannot
@@ -546,8 +547,9 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
  * @return number of bytes encrypted upon success;
  *	    < 0 in case of error with errno set
  */
-int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
-			       uint32_t iovlen, const uint8_t *iv, int access);
+int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
+			       struct iovec *outiov, uint32_t iovlen,
+			       const uint8_t *iv, int access);
 
 /**
  * kcapi_aead_getdata() - get the resulting data from encryption
@@ -568,6 +570,7 @@ int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
  * @taglen: [out] length of tag; when tag was set to NULL, no information
  *	is returned
  *
+ * DEPRECATED since 0.13.0
  *
  * This function is a service function to the consumer to locate the right
  * ciphertext buffer offset holding the authentication tag. In addition, it
@@ -579,6 +582,68 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
 			uint8_t **aad, uint32_t *aadlen,
 			uint8_t **data, uint32_t *datalen,
 			uint8_t **tag, uint32_t *taglen);
+
+/**
+ * kcapi_aead_getdata_input() - get the pointers into input buffer
+ *
+ * @handle: [in] cipher handle
+ * @encdata: [in] data buffer returned by the encryption operation
+ * @encdatalen: [in] size of the encryption data buffer
+ * @enc: [in] does output buffer hold encryption or decryption result?
+ * @aad: [out] AD buffer pointer;  when set to NULL, no data pointer is
+ *	returned
+ * @aadlen: [out] length of AD; when aad was set to NULL, no information is
+ *	returned
+ * @data: [out] pointer to output buffer from AEAD encryption operation
+ *	when set to NULL, no data pointer is returned
+ * @datalen: [out] length of data buffer; when data was set to NULL, no
+ *	information is returned
+ * @tag: [out] tag buffer pointer;  when set to NULL, no data pointer is
+ *	returned
+ * @taglen: [out] length of tag; when tag was set to NULL, no information
+ *	is returned
+ *
+ * This function is a service function to the consumer to locate the right
+ * ciphertext buffer offset holding the authentication tag. In addition, it
+ * provides the consumer with the length of the tag and the length of the
+ * ciphertext.
+ */
+void kcapi_aead_getdata_input(struct kcapi_handle *handle,
+			      uint8_t *encdata, uint32_t encdatalen, int enc,
+			      uint8_t **aad, uint32_t *aadlen,
+			      uint8_t **data, uint32_t *datalen,
+			      uint8_t **tag, uint32_t *taglen);
+
+/**
+ * kcapi_aead_getdata_output() - get the pointers into output buffer
+ *
+ * @handle: [in] cipher handle
+ * @encdata: [in] data buffer returned by the encryption operation
+ * @encdatalen: [in] size of the encryption data buffer
+ * @enc: [in] does output buffer hold encryption or decryption result?
+ * @aad: [out] AD buffer pointer;  when set to NULL, no data pointer is
+ *	returned; returned pointer may also be NULL
+ * @aadlen: [out] length of AD; when aad was set to NULL, no information is
+ *	returned
+ * @data: [out] pointer to output buffer from AEAD encryption operation
+ *	when set to NULL, no data pointer is returned
+ * @datalen: [out] length of data buffer; when data was set to NULL, no
+ *	information is returned
+ * @tag: [out] tag buffer pointer;  when set to NULL, no data pointer is
+ *	returned; returned pointer may also be NULL
+ * @taglen: [out] length of tag; when tag was set to NULL, no information
+ *	is returned
+ *
+ * This function is a service function to the consumer to locate the right
+ * ciphertext buffer offset holding the authentication tag. In addition, it
+ * provides the consumer with the length of the tag and the length of the
+ * ciphertext.
+ */
+void kcapi_aead_getdata_output(struct kcapi_handle *handle,
+			       uint8_t *encdata, uint32_t encdatalen, int enc,
+			       uint8_t **aad, uint32_t *aadlen,
+			       uint8_t **data, uint32_t *datalen,
+			       uint8_t **tag, uint32_t *taglen);
 
 /**
  * kcapi_aead_decrypt() - synchronously decrypt AEAD data (one shot)
@@ -628,7 +693,8 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
  * kcapi_aead_decrypt_aio() - asynchronously decrypt AEAD data (one shot)
  *
  * @handle: [in] cipher handle
- * @iov: [in/out] array of scatter-gather list with input / output buffers
+ * @iniov: [in] array of scatter-gather list with input buffers
+ * @outiov: [out] array of scatter-gather list with output buffers
  * @iovlen: [in] number of IOVECs in array
  * @iv: [in] IV to be used for cipher operation
  * @access: [in] kernel access type (KCAPI_ACCESS_HEURISTIC - use internal
@@ -660,8 +726,9 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
  * @return number of bytes encrypted upon success;
  *	    < 0 in case of error with errno set
  */
-int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iov,
-			       uint32_t iovlen, const uint8_t *iv, int access);
+int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
+			       struct iovec *outiov, uint32_t iovlen,
+			       const uint8_t *iv, int access);
 
 /**
  * kcapi_aead_stream_init_enc() - start an encryption operation (stream)
@@ -866,10 +933,68 @@ uint32_t kcapi_aead_authsize(struct kcapi_handle *handle);
  * @assoclen: [in] size of associated data (AD)
  * @taglen: [in] size of authentication tag
  *
+ * DEPRECATED since 0.13.0
+ *
  * @return minimum size of output data length in bytes
  */
-uint32_t kcapi_aead_outbuflen(struct kcapi_handle *handle,
-			    uint32_t inlen, uint32_t assoclen, uint32_t taglen);
+uint32_t kcapi_aead_outbuflen(struct kcapi_handle *handle, uint32_t inlen,
+			      uint32_t assoclen, uint32_t taglen);
+
+/**
+ * kcapi_aead_inbuflen_enc() - return minimum encryption input buffer length
+ *
+ * @handle: [in] cipher handle
+ * @inlen: [in] size of plaintext
+ * @assoclen: [in] size of associated data (AD)
+ * @taglen: [in] size of authentication tag
+ *
+ * @return minimum size of input data length in bytes
+ */
+uint32_t kcapi_aead_inbuflen_enc(struct kcapi_handle *handle,
+				 uint32_t inlen, uint32_t assoclen,
+				 uint32_t taglen);
+
+/**
+ * kcapi_aead_inbuflen_dec() - return minimum decryption input buffer length
+ *
+ * @handle: [in] cipher handle
+ * @inlen: [in] size of ciphertext
+ * @assoclen: [in] size of associated data (AD)
+ * @taglen: [in] size of authentication tag
+ *
+ * @return minimum size of output data length in bytes
+ */
+uint32_t kcapi_aead_inbuflen_dec(struct kcapi_handle *handle,
+				 uint32_t inlen, uint32_t assoclen,
+				 uint32_t taglen);
+
+/**
+ * kcapi_aead_outbuflen_enc() - return minimum encryption output buffer length
+ *
+ * @handle: [in] cipher handle
+ * @inlen: [in] size of plaintext
+ * @assoclen: [in] size of associated data (AD)
+ * @taglen: [in] size of authentication tag
+ *
+ * @return minimum size of output data length in bytes
+ */
+uint32_t kcapi_aead_outbuflen_enc(struct kcapi_handle *handle,
+				  uint32_t inlen, uint32_t assoclen,
+				  uint32_t taglen);
+
+/**
+ * kcapi_aead_outbuflen_dec() - return minimum decryption output buffer length
+ *
+ * @handle: [in] cipher handle
+ * @inlen: [in] size of ciphertext
+ * @assoclen: [in] size of associated data (AD)
+ * @taglen: [in] size of authentication tag
+ *
+ * @return minimum size of output data length in bytes
+ */
+uint32_t kcapi_aead_outbuflen_dec(struct kcapi_handle *handle,
+				  uint32_t inlen, uint32_t assoclen,
+				  uint32_t taglen);
 
 /**
  * kcapi_aead_ccm_nonce_to_iv() - convert CCM nonce into IV

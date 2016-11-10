@@ -70,3 +70,12 @@ LIBKCAPI_0.12.0 {
 	kcapi_pbkdf;
 	kcapi_pbkdf_iteration_count;
 };
+
+LIBKCAPI_0.13.0 {
+	kcapi_aead_inbuflen_enc;
+	kcapi_aead_inbuflen_dec;
+	kcapi_aead_outbuflen_enc;
+	kcapi_aead_outbuflen_dec;
+	kcapi_aead_getdata_input;
+	kcapi_aead_getdata_output;
+} LIBKCAPI_0.12.0;
