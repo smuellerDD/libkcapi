@@ -1,3 +1,15 @@
+Changes 0.13.0
+ * change kcapi_aead_encrypt_aio and kcapi_aead_decrypt_aio to require the
+   user to provide IOVECs for input and output buffers separately
+ * addition of kcapi_aead_inbuflen_enc, kcapi_aead_inbuflen_dec,
+   kcapi_aead_outbuflen_enc, kcapi_aead_outbuflen_dec, kcapi_aead_getdata_input,
+   kcapi_aead_getdata_output to allow apps to be programmed without specific
+   code handling for old and new AEAD AF_ALG interface (AAD and tag handling)
+ * significant addition to library to handle old / new AEAD AF_ALG interface
+   without the caller being aware of that
+ * change AEAD tests such to use the new API calls to make code independent
+   of AEAD interface changes
+
 Changes 0.12.0
  * add version.lds
  * add KDF API
