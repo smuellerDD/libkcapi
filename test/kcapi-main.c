@@ -86,6 +86,52 @@ static void bin2hex(const uint8_t *bin, uint32_t binlen,
 	}
 }
 
+/**
+ * Allocate sufficient space for hex representation of bin
+ * and convert bin into hex
+ *
+ * Caller must free hex
+ * @bin [in] input buffer with bin representation
+ * @binlen [in] length of bin
+ * @hex [out] return value holding the pointer to the newly allocated buffer
+ * @hexlen [out] return value holding the allocated size of hex
+ *
+ * return: 0 on success, !0 otherwise
+ */
+int bin2hex_alloc(const uint8_t *bin, uint32_t binlen,
+		  char **hex, uint32_t *hexlen)
+{
+	char *out = NULL;
+	uint32_t outlen = 0;
+
+	if (!binlen)
+		return -EINVAL;
+
+	outlen = (binlen) * 2;
+
+	out = calloc(1, outlen + 1);
+	if (!out)
+		return -errno;
+
+	bin2hex(bin, binlen, out, outlen, 0);
+	*hex = out;
+	*hexlen = outlen;
+	return 0;
+}
+
+static void bin2print(const uint8_t *bin, uint32_t binlen)
+{
+	char *hex;
+	uint32_t hexlen = binlen * 2 + 1;
+
+	hex = calloc(1, hexlen);
+	if (!hex)
+		return;
+	bin2hex(bin, binlen, hex, hexlen - 1 , 0);
+	fprintf(stdout, "%s", hex);
+	free(hex);
+}
+
 static int bin_char(uint8_t hex)
 {
 	if (48 <= hex && 57 >= hex)
@@ -153,51 +199,6 @@ static inline uint64_t _time_delta(struct timespec *start, struct timespec *end)
 		diff += end->tv_nsec - start->tv_nsec;
 	}
 	return diff;
-}
-
-/* return 1 if kernel is greater or equal to given values, otherwise 0 */
-static int kcapi_kernver_ge(unsigned int maj, unsigned int minor,
-			    unsigned int patchlevel)
-{
-	struct utsname kernel;
-	char *saveptr = NULL;
-	char *res = NULL;
-	unsigned long found_maj, found_minor, found_patchlevel;
-
-	if (uname(&kernel))
-		return -1;
-
-	/* 3.15.0 */
-	res = strtok_r(kernel.release, ".", &saveptr);
-	if (!res) {
-		printf("Could not parse kernel version");
-		return -1;
-	}
-	found_maj = strtoul(res, NULL, 10);
-	res = strtok_r(NULL, ".", &saveptr);
-	if (!res) {
-		printf("Could not parse kernel version");
-		return -1;
-	}
-	found_minor = strtoul(res, NULL, 10);
-	res = strtok_r(NULL, ".", &saveptr);
-	if (!res) {
-		printf("Could not parse kernel version");
-		return -1;
-	}
-	found_patchlevel = strtoul(res, NULL, 10);
-
-	if (maj < found_maj)
-		return 1;
-	if (maj == found_maj) {
-		if (minor < found_minor)
-			return 1;
-		if (minor == found_minor) {
-			if (patchlevel <= found_patchlevel)
-				return 1;
-		}
-	}
-	return 0;
 }
 
 static int aux_stress_init_error(const char *name, int type)
@@ -481,7 +482,6 @@ static int cavs_sym(struct kcapi_cavs *cavs_test, uint32_t loops,
 	struct kcapi_handle *handle = NULL;
 	uint8_t *outbuf = NULL;
 	uint32_t outbuflen = 0;
-	char *outhex = NULL;
 	int ret = -EINVAL;
 	uint32_t i = 0;
 	struct timespec begin, end;
@@ -542,14 +542,8 @@ static int cavs_sym(struct kcapi_cavs *cavs_test, uint32_t loops,
 			goto out;
 		}
 
-		outhex = calloc(1, outbuflen * 2 + 1);
-		if (!outhex) {
-			ret = -ENOMEM;
-			goto out;
-		}
-		bin2hex(outbuf, outbuflen, outhex, outbuflen * 2 + 1, 0);
-		printf("%s\n", outhex);
-		free(outhex);
+		bin2print(outbuf, outbuflen);
+		printf("\n");
 	}
 
 	if (cavs_test->timing)
@@ -567,7 +561,6 @@ out:
 static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 {
 	struct kcapi_handle *handle = NULL;
-	char *outhex = NULL;
 	int ret = -ENOMEM;
 	uint8_t *outbuf = NULL;
 	uint32_t outbuflen = 0;
@@ -639,14 +632,8 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 			goto out;
 		}
 
-		outhex = calloc(1, outbuflen * 2 + 1);
-		if (!outhex) {
-			ret = -ENOMEM;
-			goto out;
-		}
-		bin2hex(outbuf, outbuflen, outhex, outbuflen * 2 + 1, 0);
-		printf("%s\n", outhex);
-		free(outhex);
+		bin2print(outbuf, outbuflen);
+		printf("\n");
 	}
 
 	ret = 0;
@@ -662,7 +649,6 @@ static int cavs_sym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 			int splice)
 {
 	struct kcapi_handle *handle = NULL;
-	char *outhex = NULL;
 	int ret = -ENOMEM;
 	uint8_t *outbuf = NULL;
 	uint32_t outbuflen = 0;
@@ -739,14 +725,8 @@ static int cavs_sym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 		goto out;
 	}
 
-	outhex = calloc(1, outbuflen * 2 + 1);
-	if (!outhex) {
-		ret = -ENOMEM;
-		goto out;
-	}
-	bin2hex(outbuf, outbuflen, outhex, outbuflen * 2 + 1, 0);
-	printf("%s\n", outhex);
-	free(outhex);
+	bin2print(outbuf, outbuflen);
+	printf("\n");
 
 	for (i = 0; i < loops; i++) {
 		int rc;
@@ -776,14 +756,14 @@ out:
 /*
  * Encryption command line:
  * $ ./kcapi -x 2 -e -c "gcm(aes)" -p 89154d0d4129d322e4487bafaa4f6b46 -k c0ece3e63198af382b5603331cc23fa8 -i 7e489b83622e7228314d878d -a afcd7202d621e06ca53b70c2bdff7fb2 -l 16
- * afcd7202d621e06ca53b70c2bdff7fb2f4a3eacfbdadd3b1a17117b1d67ffc1f1e21efbbc6d83724a8c296e3bb8cda0c
+ * f4a3eacfbdadd3b1a17117b1d67ffc1f1e21efbbc6d83724a8c296e3bb8cda0c
  *
  * Decryption passed command line:
  * $ ./kcapi -x 2 -c "gcm(aes)" -q 0c14372e4567a02d23b58f0afc51a746 -t 04ae740ef1135ee596b7c91e2288eace -i 9fbd7193277f65600f7348ca -k 97de3c9d2b0676104decbd6e8cf6fe80 -a 1a02d783682f87300b9d342f3afbb31e
- * 1a02d783682f87300b9d342f3afbb31ee8703b9b5ef5b454e295a4bae44c7e62
+ * e8703b9b5ef5b454e295a4bae44c7e62
  *
  * ./kcapi -x 2 -c "ccm(aes)" -q 4edb58e8d5eb6bc711c43a6f3693daebde2e5524f1b55297abb29f003236e43d -t a7877c99 -n 674742abd0f5ba -k 2861fd0253705d7875c95ba8a53171b4 -a fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d
- * fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
+ * 8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
  *
  * Decryption EBADMSG command line:
  * $ ./kcapi -x 2 -c "gcm(aes)" -q 0fe37040e9b72b2dfc5e9191c2b15681 -t 273021cc6e39f0f8088f48d7ce70fef8 -i 917b8b25ad6e90b7f93b345f -k 8cc6fa539b219221c786b875aa89e4c1 -a 22584d1db91f9f3d3e7308da86228153
@@ -793,26 +773,27 @@ out:
  * EBADMSG
  *
  * $ ./kcapi -x 2 -e -c "authenc(hmac(sha1),cbc(aes))" -p 53696e676c6520626c6f636b206d7367 -k  0800010000000010000000000000000000000000000000000000000006a9214036b8a15b512e03d534120006 -i 3dafba429d9eb430b422da802c9fac41 -a 3dafba429d9eb430b422da802c9fac41 -l 20
- * 3dafba429d9eb430b422da802c9fac41e353779c1079aeb82708942dbe77181a1b13cbaf895ee12c13c52ea3cceddcb50371a206
+ * e353779c1079aeb82708942dbe77181a1b13cbaf895ee12c13c52ea3cceddcb50371a206
  */
 static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
-		     int splice, int noaad)
+		     int splice)
 {
 	struct kcapi_handle *handle;
 	uint8_t *outbuf = NULL;
 	uint32_t outbuflen = 0;
+	uint8_t *inbuf = NULL;
+	uint32_t inbuflen = 0;
+	uint32_t fullbuflen = 0;
 	int ret = -ENOMEM;
 	uint8_t *newiv = NULL;
 	uint32_t newivlen = 0;
 	int errsv = 0;
 	uint32_t i = 0;
 
-	uint8_t *assoc = NULL;
-	uint32_t assoclen = 0;
-	uint8_t *data = NULL;
-	uint32_t datalen = 0;
-	uint8_t *tag = NULL;
-	uint32_t taglen = 0;
+	uint8_t *assoc = NULL, *data = NULL, *tag = NULL;
+	uint32_t assoclen = 0, datalen = 0, taglen = 0;
+	uint8_t *i_assoc = NULL, *i_data = NULL, *i_tag = NULL;
+	uint32_t i_assoclen = 0, i_datalen = 0, i_taglen = 0;
 
 	struct timespec begin, end;
 	uint64_t total = 0;
@@ -841,25 +822,59 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 
 	ret = -ENOMEM;
 	if (cavs_test->enc)
-		outbuflen = kcapi_aead_outbuflen(handle, cavs_test->ptlen,
-						 cavs_test->assoclen,
-						 cavs_test->taglen);
+		outbuflen = kcapi_aead_outbuflen_enc(handle, cavs_test->ptlen,
+						     cavs_test->assoclen,
+						     cavs_test->taglen);
 	else
-		outbuflen = kcapi_aead_outbuflen(handle, cavs_test->ctlen,
-						 cavs_test->assoclen,
-						 cavs_test->taglen);
+		outbuflen = kcapi_aead_outbuflen_dec(handle, cavs_test->ctlen,
+						     cavs_test->assoclen,
+						     cavs_test->taglen);
+
+	if (cavs_test->enc)
+		inbuflen = kcapi_aead_inbuflen_enc(handle, cavs_test->ptlen,
+						   cavs_test->assoclen,
+						   cavs_test->taglen);
+	else
+		inbuflen = kcapi_aead_inbuflen_dec(handle, cavs_test->ctlen,
+						   cavs_test->assoclen,
+						   cavs_test->taglen);
+	if (splice)
+		fullbuflen = cavs_test->assoclen + cavs_test->taglen +
+			     ((cavs_test->enc) ? cavs_test->ptlen : cavs_test->ctlen);
+	else
+		fullbuflen = (inbuflen > outbuflen) ? inbuflen : outbuflen;
 
 	if (cavs_test->aligned) {
-		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), outbuflen))
+		if (posix_memalign((void *)&inbuf, sysconf(_SC_PAGESIZE), fullbuflen))
 			goto out;
-		memset(outbuf, 0, outbuflen);
+		memset(inbuf, 0, fullbuflen);
 	} else {
-		outbuf = calloc(1, outbuflen);
-		if (!outbuf)
+		inbuf = calloc(1, fullbuflen);
+		if (!inbuf)
 			goto out;
 	}
-	kcapi_aead_getdata(handle, outbuf, outbuflen,
-			   &assoc, &assoclen, &data, &datalen, &tag, &taglen);
+
+	/* in-place cipher operation */
+	outbuf = inbuf;
+
+	kcapi_aead_getdata_output(handle, outbuf, outbuflen, cavs_test->enc,
+				  &assoc, &assoclen, &data, &datalen,
+				  &tag, &taglen);
+	kcapi_aead_getdata_input(handle, inbuf, inbuflen, cavs_test->enc,
+				 &i_assoc, &i_assoclen, &i_data, &i_datalen,
+				 &i_tag, &i_taglen);
+
+	/* 
+	 * place CT where PT was: With the old kernel, AAD is seeked forward
+	 * during output (assoclen != 0). With the new kernel, the AAD seek
+	 * is removed (assoclen == 0) which is the indicator that the output
+	 * buffer must be moved backwards.
+	 */
+	if (splice && !assoclen) {
+		outbuf += i_assoclen;
+		data += i_assoclen;
+		tag += i_assoclen;
+	}
 
 	/* Set key */
 	if (!cavs_test->keylen || !cavs_test->key ||
@@ -871,50 +886,24 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 	ret = -EIO;
 
 	for (i = 0; i < loops; i++) {
-		memcpy(assoc, cavs_test->assoc, assoclen);
+		memcpy(i_assoc, cavs_test->assoc, i_assoclen);
 		if (cavs_test->enc) {
-			uint32_t inbuflen = outbuflen;
-
-			/*
-			 * demonstrate that kernel can handle input without
-			 * taglen
-			 */
-			if (kcapi_kernver_ge(4, 10, 0))
-				inbuflen -= cavs_test->taglen;
-
-			/* the kernel does not like zero lengths */
-			if (!inbuflen)
-				inbuflen += 1;
-
-			memcpy(data, cavs_test->pt, datalen);
+			memcpy(i_data, cavs_test->pt, i_datalen);
 			_get_time(&begin);
-			ret = kcapi_aead_encrypt(handle, outbuf, inbuflen,
+			ret = kcapi_aead_encrypt(handle, inbuf, inbuflen,
 						newiv,
 						outbuf, outbuflen,
 						splice);
 			errsv = errno;
 			_get_time(&end);
 		} else {
-			uint32_t getbuflen = outbuflen;
-
-			/*
-			 * demonstrate that the kernel does not produce tag
-			 * during decryption
-			 */
-			if (kcapi_kernver_ge(4, 10, 0))
-				getbuflen -= cavs_test->taglen;
-
-			/* the kernel does not like zero lengths */
-			if (!getbuflen)
-				getbuflen += 1;
-
-			memcpy(data, cavs_test->ct, datalen);
-			memcpy(tag, cavs_test->tag, taglen);
+			memcpy(i_data, cavs_test->ct, i_datalen);
+			memcpy(i_tag, cavs_test->tag, i_taglen);
 			_get_time(&begin);
 			ret = kcapi_aead_decrypt(handle,
-				 outbuf, outbuflen,
+				 inbuf, inbuflen,
 				 newiv,
-				 outbuf, getbuflen,
+				 outbuf, outbuflen,
 				 splice);
 			errsv = errno;
 			_get_time(&end);
@@ -926,38 +915,17 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 			       errno, ret);
 			goto out;
 		}
-		if (ret > 0 &&
-		    (uint32_t)ret != (outbuflen - ((cavs_test->enc || !kcapi_kernver_ge(4, 10, 0)) ? 0 : cavs_test->taglen))) {
-			printf("Cipher operation did not fill entire buffer %d (expected %u)\n",
-			       ret, outbuflen - ((cavs_test->enc || !kcapi_kernver_ge(4, 10, 0)) ? 0 : cavs_test->taglen));
-			goto out;
-		}
 
 		if (EBADMSG == errsv) {
 			printf("EBADMSG\n");
+		} else if ((uint32_t)ret != outbuflen) {
+			printf("Received data length %u does not match expected length %u\n", ret, outbuflen);
 		} else {
-			char *outhex;
-			uint32_t hexlen = outbuflen * 2 + 1;
+			bin2print(data, datalen);
 
-			/* 
-			 * Tag is not produced for decryption, the kernel
-			 * will not touch that memory
-			 */
-			if (!cavs_test->enc)
-				hexlen -= cavs_test->taglen * 2;
-			if (noaad)
-				hexlen -= cavs_test->assoclen * 2;
-			outhex = calloc(1, hexlen);
-
-			if (!outhex) {
-				ret = -ENOMEM;
-				goto out;
-			}
-			bin2hex(outbuf + ((noaad) ? cavs_test->assoclen : 0),
-				outbuflen - ((noaad) ? cavs_test->assoclen : 0),
-				outhex, hexlen, 0);
-			printf("%s\n", outhex);
-			free(outhex);
+			if (tag && taglen) 
+				bin2print(tag, taglen);
+			printf("\n");
 		}
 	}
 
@@ -970,8 +938,8 @@ out:
 	kcapi_aead_destroy(handle);
 	if (newiv)
 		free(newiv);
-	if (outbuf)
-		free(outbuf);
+	if (inbuf)
+		free(inbuf);
 	return ret;
 }
 
@@ -981,21 +949,24 @@ static int cavs_aead_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	struct kcapi_handle *handle;
 	uint8_t *outbuf = NULL;
 	uint32_t outbuflen = 0;
+	uint8_t *inbuf = NULL;
+	uint32_t inbuflen = 0;
+	uint32_t maxbuflen = 0;
 	int ret = -ENOMEM;
 	uint8_t *newiv = NULL;
 	uint32_t newivlen = 0;
 	uint32_t i = 0;
 
-	uint8_t *assoc = NULL;
-	uint32_t assoclen = 0;
-	uint8_t *data = NULL;
-	uint32_t datalen = 0;
-	uint8_t *tag = NULL;
-	uint32_t taglen = 0;
+	uint8_t *assoc = NULL, *data = NULL, *tag = NULL;
+	uint32_t assoclen = 0, datalen = 0, taglen = 0;
+	uint8_t *i_assoc = NULL, *i_data = NULL, *i_tag = NULL;
+	uint32_t i_assoclen = 0, i_datalen = 0, i_taglen = 0;
 
 	struct timespec begin, end;
-	struct iovec *iov = NULL;
-	struct iovec *iov_p;
+	struct iovec *iniov = NULL;
+	struct iovec *iniov_p;
+	struct iovec *outiov = NULL;
+	struct iovec *outiov_p;
 
 	if (!cavs_test->ivlen || !cavs_test->iv)
 		return -EINVAL;
@@ -1003,8 +974,11 @@ static int cavs_aead_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	if (!loops)
 		return -EINVAL;
 
-	iov = calloc(1, loops * sizeof(struct iovec));
-	if (!iov)
+	iniov = calloc(1, loops * sizeof(struct iovec));
+	if (!iniov)
+		return -ENOMEM;
+	outiov = calloc(1, loops * sizeof(struct iovec));
+	if (!outiov)
 		return -ENOMEM;
 
 	ret = -EINVAL;
@@ -1028,41 +1002,75 @@ static int cavs_aead_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 
 	ret = -ENOMEM;
 	if (cavs_test->enc)
-		outbuflen = kcapi_aead_outbuflen(handle, cavs_test->ptlen,
-						 cavs_test->assoclen,
-						 cavs_test->taglen);
+		outbuflen = kcapi_aead_outbuflen_enc(handle, cavs_test->ptlen,
+						     cavs_test->assoclen,
+						     cavs_test->taglen);
 	else
-		outbuflen = kcapi_aead_outbuflen(handle, cavs_test->ctlen,
-						 cavs_test->assoclen,
-						 cavs_test->taglen);
+		outbuflen = kcapi_aead_outbuflen_dec(handle, cavs_test->ctlen,
+						     cavs_test->assoclen,
+						     cavs_test->taglen);
+
+	if (cavs_test->enc)
+		inbuflen = kcapi_aead_inbuflen_enc(handle, cavs_test->ptlen,
+						   cavs_test->assoclen,
+						   cavs_test->taglen);
+	else
+		inbuflen = kcapi_aead_inbuflen_dec(handle, cavs_test->ctlen,
+						   cavs_test->assoclen,
+						   cavs_test->taglen);
+
+	if (splice)
+		maxbuflen = cavs_test->assoclen + cavs_test->taglen +
+			     ((cavs_test->enc) ? cavs_test->ptlen : cavs_test->ctlen);
+	else
+		maxbuflen = (inbuflen > outbuflen) ? inbuflen : outbuflen;
 
 	if (cavs_test->aligned) {
-		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE),
-				   loops * outbuflen))
+		if (posix_memalign((void *)&inbuf, sysconf(_SC_PAGESIZE),
+				   loops * maxbuflen))
 			goto out;
-		memset(outbuf, 0, loops * outbuflen);
+		memset(inbuf, 0, loops * maxbuflen);
 	} else {
-		outbuf = calloc(loops, outbuflen);
-		if (!outbuf)
+		inbuf = calloc(loops, maxbuflen);
+		if (!inbuf)
 			goto out;
 	}
-	kcapi_aead_getdata(handle, outbuf, outbuflen,
-			   &assoc, &assoclen, &data, &datalen, &tag, &taglen);
 
-	iov_p = iov;
+	/* in-place cipher operation */
+	outbuf = inbuf;
+
+	kcapi_aead_getdata_output(handle, outbuf, outbuflen, cavs_test->enc,
+				  &assoc, &assoclen, &data, &datalen,
+				  &tag, &taglen);
+	kcapi_aead_getdata_input(handle, inbuf, inbuflen, cavs_test->enc,
+				 &i_assoc, &i_assoclen, &i_data, &i_datalen,
+				 &i_tag, &i_taglen);
+
+	if (splice && !assoclen) {
+		outbuf += i_assoclen;
+		data += i_assoclen;
+		tag += i_assoclen;
+	}
+
+	iniov_p = iniov;
+	outiov_p = outiov;
 	for (i = 0; i < loops; i++) {
-		memcpy(assoc + (i * outbuflen), cavs_test->assoc, assoclen);
+		memcpy(i_assoc + (i * maxbuflen), cavs_test->assoc, i_assoclen);
 		if (cavs_test->enc) {
-			memcpy(data + (i * outbuflen), cavs_test->pt, datalen);
-			iov_p->iov_base = outbuf + (i * outbuflen);
-			iov_p->iov_len = outbuflen;
+			memcpy(i_data + (i * maxbuflen), cavs_test->pt,
+			       i_datalen);
 		} else {
-			memcpy(data + (i * outbuflen), cavs_test->ct, datalen);
-			memcpy(tag + (i * outbuflen), cavs_test->tag, taglen);
-			iov_p->iov_base = outbuf + (i * outbuflen);
-			iov_p->iov_len = outbuflen;
+			memcpy(i_data + (i * maxbuflen), cavs_test->ct,
+			       i_datalen);
+			memcpy(i_tag + (i * maxbuflen), cavs_test->tag,
+			       i_taglen);
 		}
-		iov_p++;
+		iniov_p->iov_base = inbuf + (i * maxbuflen);
+		iniov_p->iov_len = inbuflen;
+		iniov_p++;
+		outiov_p->iov_base = outbuf + (i * maxbuflen);
+		outiov_p->iov_len = outbuflen;
+		outiov_p++;
 	}
 
 	/* Set key */
@@ -1076,10 +1084,10 @@ static int cavs_aead_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 
 	_get_time(&begin);
 	if (cavs_test->enc)
-		ret = kcapi_aead_encrypt_aio(handle, iov, loops,
+		ret = kcapi_aead_encrypt_aio(handle, iniov, outiov, loops,
 					     newiv, splice);
 	else
-		ret = kcapi_aead_decrypt_aio(handle, iov, loops,
+		ret = kcapi_aead_decrypt_aio(handle, iniov, outiov, loops,
 					     newiv, splice);
 	_get_time(&end);
 
@@ -1092,17 +1100,13 @@ static int cavs_aead_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	if (-EBADMSG == ret) {
 		printf("EBADMSG\n");
 	} else {
-		char *outhex = NULL;
+		for (i = 0; i < loops; i++) {
+			bin2print(data + (i * maxbuflen), datalen);
 
-		outhex = calloc(1, (outbuflen * loops  * 2 + 1));
-		if (!outhex) {
-			ret = -ENOMEM;
-			goto out;
+			if (tag && taglen) 
+				bin2print(tag + (i * maxbuflen), taglen);
 		}
-		bin2hex(outbuf, outbuflen * loops,
-			outhex, outbuflen * loops * 2 + 1, 0);
-		printf("%s\n", outhex);
-		free(outhex);
+		printf("\n");
 	}
 
 	if (cavs_test->timing)
@@ -1114,19 +1118,21 @@ out:
 	kcapi_aead_destroy(handle);
 	if (newiv)
 		free(newiv);
-	if (outbuf)
-		free(outbuf);
-	if (iov)
-		free(iov);
+	if (inbuf)
+		free(inbuf);
+	if (iniov)
+		free(iniov);
+	if (outiov)
+		free(outiov);
 	return ret;
 }
 
-static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
-			    int noaad)
+static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 {
 	struct kcapi_handle *handle;
 	uint8_t *outbuf = NULL;
 	uint32_t outbuflen = 0;
+	uint32_t inbuflen = 0;
 	int ret = -ENOMEM;
 	uint8_t *newiv = NULL;
 	uint32_t newivlen = 0;
@@ -1134,12 +1140,8 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 	struct iovec outiov[16];
 	uint32_t i = 0;
 
-	uint8_t *assoc = NULL;
-	uint32_t assoclen = 0;
-	uint8_t *data = NULL;
-	uint32_t datalen = 0;
-	uint8_t *tag = NULL;
-	uint32_t taglen = 0;
+	uint8_t *assoc = NULL, *data = NULL, *tag = NULL;
+	uint32_t assoclen = 0, datalen = 0, taglen = 0;
 
 #if 0
 	if (cavs_test->enc) {
@@ -1173,13 +1175,23 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 
 	ret = -ENOMEM;
 	if (cavs_test->enc)
-		outbuflen = kcapi_aead_outbuflen(handle, cavs_test->ptlen,
-						 cavs_test->assoclen,
-						 cavs_test->taglen);
+		outbuflen = kcapi_aead_outbuflen_enc(handle, cavs_test->ptlen,
+						     cavs_test->assoclen,
+						     cavs_test->taglen);
 	else
-		outbuflen = kcapi_aead_outbuflen(handle, cavs_test->ctlen,
-						 cavs_test->assoclen,
-						 cavs_test->taglen);
+		outbuflen = kcapi_aead_outbuflen_dec(handle, cavs_test->ctlen,
+						     cavs_test->assoclen,
+						     cavs_test->taglen);
+
+	if (cavs_test->enc)
+		inbuflen = kcapi_aead_inbuflen_enc(handle, cavs_test->ptlen,
+						   cavs_test->assoclen,
+						   cavs_test->taglen);
+	else
+		inbuflen = kcapi_aead_inbuflen_dec(handle, cavs_test->ctlen,
+						   cavs_test->assoclen,
+						   cavs_test->taglen);
+
 	if (cavs_test->aligned) {
 		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), outbuflen))
 			goto out;
@@ -1189,8 +1201,9 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 		if (!outbuf)
 			goto out;
 	}
-	kcapi_aead_getdata(handle, outbuf, outbuflen,
-			   &assoc, &assoclen, &data, &datalen, &tag, &taglen);
+	kcapi_aead_getdata_output(handle, outbuf, outbuflen, cavs_test->enc,
+				  &assoc, &assoclen, &data, &datalen,
+				  &tag, &taglen);
 
 	/* Set key */
 	if (!cavs_test->keylen || !cavs_test->key ||
@@ -1241,13 +1254,17 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 					goto out;
 				}
 			}
-			pttag.iov_base = tag;
-			pttag.iov_len = taglen;
-			ret = kcapi_aead_stream_update_last(handle,
-						            &pttag, 1);
-			if (0 > ret) {
-				printf("Sending last update buffer failed\n");
-				goto out;
+
+			/* only set the tag if we need to */
+			if (inbuflen >= cavs_test->assoclen + cavs_test->ptlen) {
+				pttag.iov_base = tag;
+				pttag.iov_len = taglen;
+				ret = kcapi_aead_stream_update_last(handle,
+							            &pttag, 1);
+				if (0 > ret) {
+					printf("Sending last update buffer failed\n");
+					goto out;
+				}
 			}
 			
 			if ((outbuflen - cavs_test->taglen) >= 16) {
@@ -1329,43 +1346,11 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 		if (EBADMSG == errsv) {
 			printf("EBADMSG\n");
 		} else {
-			char *outhex;
-			uint32_t i;
-			uint32_t hexlen = outbuflen * 2 + 1;
+			bin2print(data, datalen);
 
-			/*
-			 * Verify that as documented the AAD buffer is not
-			 * filled by the kernel, but still space is left
-			 * for the caller to fill in the AAD
-			 */
-			for (i = 0; i < cavs_test->assoclen; i++) {
-				if (outbuf[i] != '\0') {
-					printf("AAD buffer not empty!\n");
-					ret = -EFAULT;
-					goto out;
-				}
-			}
-			memcpy(outbuf, cavs_test->assoc, cavs_test->assoclen);
-
-			/* 
-			 * Tag is not produced for decryption, the kernel
-			 * will not touch that memory
-			 */
-			if (!cavs_test->enc)
-				hexlen -= cavs_test->taglen * 2;
-			if (noaad)
-				hexlen -= cavs_test->assoclen * 2;
-			outhex = calloc(1, hexlen);
-
-			if (!outhex) {
-				ret = -ENOMEM;
-				goto out;
-			}
-			bin2hex(outbuf + ((noaad) ? cavs_test->assoclen : 0),
-				outbuflen - ((noaad) ? cavs_test->assoclen : 0),
-				outhex, hexlen, 0);
-			printf("%s\n", outhex);
-			free(outhex);
+			if (tag && taglen) 
+				bin2print(tag, taglen);
+			printf("\n");
 		}
 	}
 	ret = 0;
@@ -1439,7 +1424,7 @@ static int cavs_aead_large(int stream, uint32_t loops, int splice)
 		test.assoclen -= (8192); */
 		/* However, we now have vmsplice here */
 		test.assoclen -= 8192 + test.taglen;
-		ret = cavs_aead_stream(&test, loops, 1);
+		ret = cavs_aead_stream(&test, loops);
 	} else {
 		/*
 		 * vmsplice: AAD must be at most 14 pages as otherwise the
@@ -1451,7 +1436,7 @@ static int cavs_aead_large(int stream, uint32_t loops, int splice)
 		 * AAD to 14 pages
 		 */
 		test.assoclen -= 8192 + test.taglen;
-		ret = cavs_aead(&test, loops, splice, 1);
+		ret = cavs_aead(&test, loops, splice);
 	}
 out:
 	if (test.pt)
@@ -2249,9 +2234,9 @@ int main(int argc, char *argv[])
 		rc = cavs_sym_aio(&cavs_test, loops, splice);
 	else if (AEAD == cavs_test.type) {
 		if (stream)
-			rc = cavs_aead_stream(&cavs_test, loops, 0);
+			rc = cavs_aead_stream(&cavs_test, loops);
 		else
-			rc = cavs_aead(&cavs_test, loops, splice, 0);
+			rc = cavs_aead(&cavs_test, loops, splice);
 	} else if (AEAD_AIO == cavs_test.type)
 		rc = cavs_aead_aio(&cavs_test, loops, splice);
 	else if (HASH == cavs_test.type) {

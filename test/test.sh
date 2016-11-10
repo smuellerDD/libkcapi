@@ -173,7 +173,7 @@ AEAD_iv_1="aac774c39e399e7d6371ec1d"
 AEAD_tag_1="34a21cc3562f0ba141d73242e5a3b666"
 AEAD_taglen_1="16"
 AEAD_assoc_1="5dbb2884f3fe93664613e863c3bd2572855cf808765880ef1fa5787ceef8c793"
-AEAD_exp_1="5dbb2884f3fe93664613e863c3bd2572855cf808765880ef1fa5787ceef8c7938f9ec088580c23fc6f5fc011d52f061b"
+AEAD_exp_1="8f9ec088580c23fc6f5fc011d52f061b"
 
 AEAD_name_2="gcm(aes)"
 AEAD_enc_2="0"
@@ -193,7 +193,7 @@ AEAD_iv_3="2f312886bd03aec6bf99de96"
 AEAD_tag_3="9969c9ef933e2acbb745e7ee6da653"
 AEAD_taglen_3="15"
 AEAD_assoc_3="af25918702f7e409de376a0fe6c8807e"
-AEAD_exp_3="af25918702f7e409de376a0fe6c8807e548f2fd6b783f3d04b604babc219f61c"
+AEAD_exp_3="548f2fd6b783f3d04b604babc219f61c"
 
 AEAD_name_4="gcm(aes)"
 AEAD_enc_4="0"
@@ -203,7 +203,7 @@ AEAD_iv_4="fc0e641b1dedebc39eb4054c"
 AEAD_tag_4="4acf97a771d6bb52291fd99b26c445"
 AEAD_taglen_4="15"
 AEAD_assoc_4="3a42524f811b02ed0cbdf44e17e45ae7"
-AEAD_exp_4="3a42524f811b02ed0cbdf44e17e45ae78637f2c1b48ec482b4d8ca9cd9c22236"
+AEAD_exp_4="8637f2c1b48ec482b4d8ca9cd9c22236"
 
 AEAD_name_5="gcm(aes)"
 AEAD_enc_5="0"
@@ -233,7 +233,7 @@ AEAD_iv_7="94af90b40cc541173d201250"
 AEAD_tag_7="ac767d2d44412252eed41a220f31"
 AEAD_taglen_7="14"
 AEAD_assoc_7="0f7479e28c53d120fcf57a525e0b36a0"
-AEAD_exp_7="0f7479e28c53d120fcf57a525e0b36a0e80e074e70b089c160c6d3863e8d2b75"
+AEAD_exp_7="e80e074e70b089c160c6d3863e8d2b75"
 
 AEAD_name_8="gcm(aes)"
 AEAD_enc_8="1"
@@ -243,7 +243,7 @@ AEAD_iv_8="64fbe283c0c5c83452758d80"
 AEAD_tag_8="529d9417"
 AEAD_taglen_8="4"
 AEAD_assoc_8="6ccadafb382dbcfdf2f3d0dc861a03a883d99a3115ff9ce4d4b23a3419f906"
-AEAD_exp_8="6ccadafb382dbcfdf2f3d0dc861a03a883d99a3115ff9ce4d4b23a3419f90637f4f79209eaa619972c8454f1b042d70eaa774789998289d4c274336b644d"
+AEAD_exp_8="37f4f79209eaa619972c8454f1b042d70eaa774789998289d4c274336b644d"
 
 AEAD_name_9="gcm(aes)"
 AEAD_enc_9="1"
@@ -253,7 +253,7 @@ AEAD_iv_9="16c4b4bd1198f39f4ae817b7"
 AEAD_tag_9="6d2756d6"
 AEAD_taglen_9="4"
 AEAD_assoc_9="303bb57e4534b08a4d5f001a84b3052c9d0d58ee03eda5211a540950e819dc"
-AEAD_exp_9="303bb57e4534b08a4d5f001a84b3052c9d0d58ee03eda5211a540950e819dc9bea5263e7b365d5a06cb3ccab0d43cb9a1ca967dfb7b1a6955b3c493018af"
+AEAD_exp_9="9bea5263e7b365d5a06cb3ccab0d43cb9a1ca967dfb7b1a6955b3c493018af"
 
 
 AEAD_name_10="ccm(aes)"
@@ -274,7 +274,7 @@ AEAD_nonce_11="674742abd0f5ba"
 AEAD_tag_11="a7877c99"
 AEAD_taglen_11="4"
 AEAD_assoc_11="fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d"
-AEAD_exp_11="fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723"
+AEAD_exp_11="8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723"
 
 AEAD_name_12="ccm(aes)"
 AEAD_enc_12="1"
@@ -283,7 +283,7 @@ AEAD_key_12="7d914f16eb64be52ddd3dee96d62b229"
 AEAD_nonce_12="964c1a8f87cce2"
 AEAD_taglen_12="16"
 AEAD_assoc_12="2a809be85a67c605636ba009e47fde2068d1858c3c505e487e6ca3eb771cffce"
-AEAD_exp_12="2a809be85a67c605636ba009e47fde2068d1858c3c505e487e6ca3eb771cffce85ae7dde17be19dbd126ac77a4a4d3689129ac7de57397a23e66b682308a90d2b103d7659f49e47d57bd3f4297c13ff8"
+AEAD_exp_12="85ae7dde17be19dbd126ac77a4a4d3689129ac7de57397a23e66b682308a90d2b103d7659f49e47d57bd3f4297c13ff8"
 
 AEAD_name_13="gcm(aes)"
 AEAD_enc_13="1"
@@ -293,7 +293,7 @@ AEAD_iv_13="34427393d6a50fb5d73d7ba5"
 AEAD_tag_13="e99834b370b6774b25abe7b3f09b08"
 AEAD_taglen_13="15"
 AEAD_assoc_13="8ec635f54062411e73c7824fe2399721"
-AEAD_exp_13="8ec635f54062411e73c7824fe2399721"
+AEAD_exp_13=""
 
 AEAD_name_14="rfc4106(gcm(aes))"
 AEAD_enc_14="1"
@@ -303,7 +303,7 @@ AEAD_iv_14="c4edb5723d2a4029"
 AEAD_tag_14="40d75ea68c8ccfefdde5cfb4"
 AEAD_taglen_14="12"
 AEAD_assoc_14="44c9efe4b0a7b98d"
-AEAD_exp_14="44c9efe4b0a7b98dc4edb5723d2a4029ada6f4f78913d4bc62a8d546bec17036" #AAD || IV || CT || Tag
+AEAD_exp_14="ada6f4f78913d4bc62a8d546bec17036" # CT || Tag
 
 AEAD_name_15="rfc4106(gcm(aes))"
 AEAD_enc_15="0"
@@ -313,7 +313,7 @@ AEAD_iv_15="d5f216491cc28e88"
 AEAD_tag_15="52b086ea34e1ee94b32457d7"
 AEAD_taglen_15="12"
 AEAD_assoc_15="1e6e275ca7c93f6d"
-AEAD_exp_15="1e6e275ca7c93f6dd5f216491cc28e8836303126cc98c832399ae827a853c6a9"
+AEAD_exp_15="36303126cc98c832399ae827a853c6a9"
 
 AEAD_name_16="gcm(aes)"
 AEAD_enc_16="1"
@@ -765,12 +765,6 @@ aeadfunc()
 			aout="aligned"
 		fi
 
-		# needed to cover shortcoming of C code
-		if [ $impl -eq 10 -a "$AEAD_enc" = 0 -a "$expected" != "EBADMSG" ]
-		then
-			expected="${expected}${AEAD_tag}"
-		fi
-
 		if [ x"$result" = x"$expected" ]
 		then
 			echo_pass "AEAD $impl_type $sout $aout test $i"
@@ -976,10 +970,10 @@ multipletest_aead() {
 	then
 		expected="fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723a7877c99fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723a7877c99fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723a7877c99fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723a7877c99"
 	else
-		expected="fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
-fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
-fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
-fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723"
+		expected="8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
+8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
+8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
+8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723"
 	fi
 	if [ x"$expected" = x"$result" ]
 	then
