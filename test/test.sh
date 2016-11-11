@@ -470,6 +470,20 @@ PBKDF_exp_13="d197b1b33db0143e018b12f3d1d1479e6cdebdcc97c5c0f87f6902e072f457b514
 
 failures=0
 
+# check whether a given kernel version is present
+# returns true for yes, false for no
+check_min_kernelver() {
+	major=$1
+	minor=$2
+
+	if [ $(uname -r | cut -d"." -f1) -ge $major ]; then
+		if [ $(uname -r | cut -d"." -f2) -ge $minor ]; then
+			return 0
+		fi
+	fi
+	return 1
+}
+
 # color -- emit ansi color codes
 color()
 {
@@ -504,6 +518,11 @@ echo_pass()
 echo_fail()
 {
 	echo $(color "red")[FAILED]$(color off) $@
+}
+
+echo_deact()
+{
+	echo $(color "yellow")[DEACTIVATED]$(color off) $@
 }
 
 hashfunc()
@@ -961,6 +980,10 @@ multipletest_aead() {
 	if [ $impl -eq 10 ]
 	then
 		impl_type="asynchronous"
+		if ! $(check_min_kernelver 4 9); then
+			echo_deact "AEAD $impl_type $sout multiple test"
+			return
+		fi
 	fi
 
 	result=$(./kcapi $stream -d 4 -x $impl -c "ccm(aes)" -q 4edb58e8d5eb6bc711c43a6f3693daebde2e5524f1b55297abb29f003236e43d -t a7877c99 -n 674742abd0f5ba -k 2861fd0253705d7875c95ba8a53171b4 -a fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d)
@@ -968,7 +991,7 @@ multipletest_aead() {
 	# counter part for each encryption operation to 1
 	if [ $impl -eq 10 ]
 	then
-		expected="fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723a7877c99fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723a7877c99fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723a7877c99fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723a7877c99"
+		expected="8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d7238dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d7238dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d7238dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723"
 	else
 		expected="8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
 8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
@@ -1110,11 +1133,11 @@ multipletest_sym 1 -s	# sync, no splice, stream sendmsg
 multipletest_sym 1 -v	# sync, splice
 #multipletest_sym 9 -v	# async splice
 multipletest_aead 2		# sync, no splice, one shot sendmsg
-#multipletest_aead 10		# async, no splice, one shot sendmsg
+multipletest_aead 10		# async, no splice, one shot sendmsg
 multipletest_aead 2 -s	# sync, no splice, stream sendmsg
-#multipletest_aead 10 -s	# async, no splice, stream sendmsg
+multipletest_aead 10 -s	# async, no splice, stream sendmsg
 multipletest_aead 2 -v	# sync, splice
-#multipletest_aead 10 -v	# async splice
+multipletest_aead 10 -v	# async splice
 multipletest_hash 3		# sync, no splice, one shot sendmsg
 multipletest_hash 3 -s	# sync, no splice, stream sendmsg
 multipletest_hash 3 -v	# sync, splice
