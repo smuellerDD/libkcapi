@@ -471,7 +471,7 @@ int32_t kcapi_pbkdf(const char *hashname,
 			if (keylen < h)
 				kcapi_xor_64_aligned(T, u, h);
 			else
-				kcapi_xor_64_aligned(key, u, h);
+				kcapi_xor_64(key, u, h);
 		}
 
 		if (keylen < h) {
