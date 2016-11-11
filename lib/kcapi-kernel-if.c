@@ -1,5 +1,4 @@
-/*
- * Generic kernel crypto API user space interface library
+/* Kernel crypto API AF_ALG interface code
  *
  * Copyright (C) 2014 - 2016, Stephan Mueller <smueller@chronox.de>
  *

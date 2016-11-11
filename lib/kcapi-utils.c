@@ -1,4 +1,5 @@
-/*
+/* libkcapi Utilities API
+ *
  * Copyright (C) 2016, Stephan Mueller <smueller@chronox.de>
  *
  * License: see COPYING file in root directory
