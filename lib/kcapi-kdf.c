@@ -418,7 +418,9 @@ int32_t kcapi_pbkdf(const char *hashname,
 	struct kcapi_handle *handle;
 	uint32_t h, i = 1;
 #define MAX_DIGESTSIZE 64
-	uint8_t u[MAX_DIGESTSIZE], T[MAX_DIGESTSIZE] = { 0 };
+	uint8_t u[MAX_DIGESTSIZE] __attribute__ ((aligned (sizeof(uint64_t))));
+	uint8_t T[MAX_DIGESTSIZE] __attribute__ ((aligned (sizeof(uint64_t)))) =
+									{ 0 };
 	uint8_t iteration[sizeof(uint32_t)];
 	int32_t err = 0;
 
@@ -467,9 +469,9 @@ int32_t kcapi_pbkdf(const char *hashname,
 				goto err;
 
 			if (keylen < h)
-				kcapi_xor_64(T, u, h);
+				kcapi_xor_64_aligned(T, u, h);
 			else
-				kcapi_xor_64(key, u, h);
+				kcapi_xor_64_aligned(key, u, h);
 		}
 
 		if (keylen < h) {
