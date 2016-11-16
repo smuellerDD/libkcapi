@@ -547,7 +547,7 @@ static int cavs_sym(struct kcapi_cavs *cavs_test, uint32_t loops,
 	}
 
 	if (cavs_test->timing)
-		printf("duration %lu\n", total);
+		printf("duration %lu\n", (unsigned long)total);
 
 	ret = 0;
 
@@ -740,7 +740,7 @@ static int cavs_sym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	}
 
 	if (cavs_test->timing)
-		printf("duration %lu\n", _time_delta(&begin, &end));
+		printf("duration %lu\n", (unsigned long)_time_delta(&begin, &end));
 
 	ret = 0;
 out:
@@ -930,7 +930,7 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 	}
 
 	if (cavs_test->timing)
-		printf("duration %lu\n", total);
+		printf("duration %lu\n", (unsigned long)total);
 
 	ret = 0;
 
@@ -1110,7 +1110,7 @@ static int cavs_aead_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	}
 
 	if (cavs_test->timing)
-		printf("duration %lu\n", _time_delta(&begin, &end));
+		printf("duration %lu\n", (unsigned long)_time_delta(&begin, &end));
 
 	ret = 0;
 
@@ -1142,6 +1142,7 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 
 	uint8_t *assoc = NULL, *data = NULL, *tag = NULL;
 	uint32_t assoclen = 0, datalen = 0, taglen = 0;
+	uint32_t i_assoclen = 0, i_datalen = 0, i_taglen = 0;
 
 #if 0
 	if (cavs_test->enc) {
@@ -1204,6 +1205,9 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 	kcapi_aead_getdata_output(handle, outbuf, outbuflen, cavs_test->enc,
 				  &assoc, &assoclen, &data, &datalen,
 				  &tag, &taglen);
+	kcapi_aead_getdata_input(handle, NULL, inbuflen, cavs_test->enc,
+				 NULL, &i_assoclen, NULL, &i_datalen,
+				 NULL, &i_taglen);
 
 	/* Set key */
 	if (!cavs_test->keylen || !cavs_test->key ||
@@ -1238,7 +1242,16 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 		if (cavs_test->enc) {
 			struct iovec pttag;
 
-			ret = kcapi_aead_stream_update(handle, &iov, 1);
+			/*
+			 * usually we would send all in one call of
+			 * update_last, but here we want to test
+			 * the individual calls
+			 */
+			if (cavs_test->ptlen)
+				ret = kcapi_aead_stream_update(handle, &iov, 1);
+			else
+				ret = kcapi_aead_stream_update_last
+							(handle, &iov, 1);
 			if (0 > ret) {
 				printf("Sending update buffer failed\n");
 				goto out;
@@ -1247,8 +1260,17 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 			if (cavs_test->ptlen) {
 				pttag.iov_base = cavs_test->pt;
 				pttag.iov_len = cavs_test->ptlen;
-				ret = kcapi_aead_stream_update(handle,
-							       &pttag, 1);
+				/*
+				 * usually we would send all in one call of
+				 * update_last, but here we want to test
+				 * the individual calls
+				 */
+				if (i_taglen)
+					ret = kcapi_aead_stream_update
+							(handle, &pttag, 1);
+				else
+					ret = kcapi_aead_stream_update_last
+							(handle, &pttag, 1);
 				if (0 > ret) {
 					printf("Sending last update buffer failed\n");
 					goto out;
@@ -1256,9 +1278,9 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 			}
 
 			/* only set the tag if we need to */
-			if (inbuflen >= cavs_test->assoclen + cavs_test->ptlen) {
-				pttag.iov_base = tag;
-				pttag.iov_len = taglen;
+			if (i_taglen) {
+				pttag.iov_base = cavs_test->tag;
+				pttag.iov_len = i_taglen;
 				ret = kcapi_aead_stream_update_last(handle,
 							            &pttag, 1);
 				if (0 > ret) {
