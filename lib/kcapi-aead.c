@@ -123,7 +123,7 @@ void kcapi_aead_getdata_input(struct kcapi_handle *handle,
 		encdatalen -= l_datalen;
 	}
 
-	if (enc) {
+	if (enc && handle->flags.newaeadif) {
 		l_tag = NULL;
 		l_taglen = 0;
 	} else {
@@ -137,15 +137,15 @@ void kcapi_aead_getdata_input(struct kcapi_handle *handle,
 		}
 	}
 
-	if (aad)
+	if (aad && encdata)
 		*aad = l_aad;
 	if (aadlen)
 		*aadlen = l_aadlen;
-	if (data)
+	if (data && encdata)
 		*data = l_data;
 	if (datalen)
 		*datalen = l_datalen;
-	if (tag)
+	if (tag && encdata)
 		*tag = l_tag;
 	if (taglen)
 		*taglen = l_taglen;
@@ -161,11 +161,7 @@ void kcapi_aead_getdata_output(struct kcapi_handle *handle,
 	uint8_t *l_aad, *l_data, *l_tag;
 	uint32_t l_aadlen, l_datalen, l_taglen;
 
-	/* with 4.9.0 we do not have AAD in output buffer */
-	if (handle->flags.newaeadif) {
-		l_aad = NULL;
-		l_aadlen = 0;
-	} else if (encdatalen < handle->aead.assoclen) {
+	if (encdatalen < handle->aead.assoclen) {
 		kcapi_dolog(LOG_ERR, "AAD data not found");
 		l_aad = NULL;
 		l_aadlen = 0;
@@ -205,15 +201,15 @@ void kcapi_aead_getdata_output(struct kcapi_handle *handle,
 		l_taglen = 0;
 	}
 
-	if (aad)
+	if (aad && encdata)
 		*aad = l_aad;
 	if (aadlen)
 		*aadlen = l_aadlen;
-	if (data)
+	if (data && encdata)
 		*data = l_data;
 	if (datalen)
 		*datalen = l_datalen;
-	if (tag)
+	if (tag && encdata)
 		*tag = l_tag;
 	if (taglen)
 		*taglen = l_taglen;
@@ -435,10 +431,7 @@ uint32_t kcapi_aead_outbuflen_enc(struct kcapi_handle *handle,
 				  uint32_t taglen)
 {
 	int bs = handle->info.blocksize;
-	uint32_t outlen = (inlen + bs - 1) / bs * bs + taglen;
-
-	if (!handle->flags.newaeadif)
-		outlen += assoclen;
+	uint32_t outlen = (inlen + bs - 1) / bs * bs + taglen + assoclen;
 
 	/* the kernel does not like zero length output buffers */
 	if (!outlen)
@@ -453,10 +446,10 @@ uint32_t kcapi_aead_outbuflen_dec(struct kcapi_handle *handle,
 				  uint32_t taglen)
 {
 	int bs = handle->info.blocksize;
-	uint32_t outlen = (inlen + bs - 1) / bs * bs;
+	uint32_t outlen = (inlen + bs - 1) / bs * bs + assoclen;
 
 	if (!handle->flags.newaeadif)
-		outlen += assoclen + taglen;
+		outlen += taglen;
 
 	/* the kernel does not like zero length output buffers */
 	if (!outlen)
