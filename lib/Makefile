@@ -138,7 +138,7 @@ install:
 man:
 	LIBVERSION=$(LIBVERSION) doc/gendocs.sh man
 
-maninstall: man
+maninstall:
 	install -m 0644 doc/man/* $(MAN3)/
 
 html:
