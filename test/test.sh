@@ -528,7 +528,8 @@ hashfunc()
 		then
 			HASH_msg="-"
 		fi
-		result=$(./kcapi -x 3 $stream -c ${HASH_name} ${key} -p ${HASH_msg})
+		cmd="./kcapi -x 3 $stream -c ${HASH_name} ${key} -p ${HASH_msg}"
+		result=$($cmd)
 
 		outlen=$(echo -n $result | wc -c)
 
@@ -547,6 +548,7 @@ hashfunc()
 			echo_pass "Hash $sout test $i"
 		else
 			echo_fail "Hash $sout test $i"
+			echo "($cmd)"
 			echo " Exp $HASH_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -583,10 +585,11 @@ symfunc()
 		fi
 		if [ "$SYM_enc" = 1  ]
 		then
-			result=$(./kcapi -x $impl $stream $aligned -e -c $SYM_name $iv -k $SYM_key -p $SYM_msg)
+		        cmd="./kcapi -x $impl $stream $aligned -e -c $SYM_name $iv -k $SYM_key -p $SYM_msg"
 		else
-			result=$(./kcapi -x $impl $stream $aligned -c $SYM_name $iv -k $SYM_key -q $SYM_msg)
+			cmd="./kcapi -x $impl $stream $aligned -c $SYM_name $iv -k $SYM_key -q $SYM_msg"
 		fi
+		result=$($cmd)
 
 		impl_type="synchronous"
 		sout="one shot"
@@ -612,6 +615,7 @@ symfunc()
 			echo_pass "Symmetric $impl_type $sout $aout test $i"
 		else
 			echo_fail "Symmetric $impl_type $sout $aout test $i"
+			echo "($cmd)"
 			echo " Exp $SYM_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -656,7 +660,8 @@ asymfunc()
 
 		enc="-o $ASYM_enc"
 
-		result=$(./kcapi -x 4 $stream $vmsplice $aligned $enc -c $ASYM_name $keyopt -p $ASYM_msg)
+		cmd="./kcapi -x 4 $stream $vmsplice $aligned $enc -c $ASYM_name $keyopt -p $ASYM_msg"
+		result=$($cmd)
 
 		sout="one-shot"
 		vout=""
@@ -678,6 +683,7 @@ asymfunc()
 			echo_pass "Asymmetric $sout $vout $aout test $i"
 		else
 			echo_fail "Asymmetric $sout $vout $aout test $i"
+			echo "($cmd)"
 			echo " Exp $ASYM_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -738,12 +744,13 @@ aeadfunc()
 		expected=""
 		if [ "$AEAD_enc" = 1  ]
 		then
-			result=$(./kcapi -x $impl $stream $aligned -e -c "$AEAD_name" $iv -k "$AEAD_key" -a "$AEAD_assoc" -p "$AEAD_msg" -l $AEAD_taglen)
+			cmd="./kcapi -x $impl $stream $aligned -e -c $AEAD_name $iv -k $AEAD_key -l $AEAD_taglen -p"
 			expected="${AEAD_exp}${AEAD_tag}"
 		else
-			result=$(./kcapi -x $impl $stream $aligned -c "$AEAD_name" $iv -k "$AEAD_key" -a "$AEAD_assoc" -t "$AEAD_tag" -q "$AEAD_msg")
+		        cmd="./kcapi -x $impl $stream $aligned -c $AEAD_name $iv -k $AEAD_key -t $AEAD_tag -q"
 			expected="${AEAD_exp}"
 		fi
+		result=$($cmd "$AEAD_msg" -a "$AEAD_assoc")
 
 		impl_type="synchronous"
 		sout="one shot"
@@ -770,6 +777,7 @@ aeadfunc()
 			echo_pass "AEAD $impl_type $sout $aout test $i"
 		else
 			echo_fail "AEAD $impl_type $sout $aout test $i"
+			echo "($cmd '$AEAD_msg' -a '$AEAD_assoc')"
 			echo " Exp $expected"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -808,10 +816,12 @@ aeadfunc()
 
 auxtest()
 {
-	./kcapi -z
+        cmd="./kcapi -z"
+	$cmd
 	if [ $? -ne 0 ]
 	then
 		echo_fail "Auxiliary test failure detected"
+		echo "($cmd)"
 		let failures=($failures+1)
 	else
 		echo_pass "Auxiliary test"
@@ -835,7 +845,8 @@ kdftest()
 		explen=$(echo -n $KDF_exp | wc -c)
 		let explen=(explen/2)
 
-		result=$(./kcapi $aligned -x $KDF_type -c $KDF_name -k $KDF_key -p $KDF_msg -b $explen)
+		cmd="./kcapi $aligned -x $KDF_type -c $KDF_name -k $KDF_key -p $KDF_msg -b $explen"
+		result=$($cmd)
 
 		aout="non-aligned"
 		if [ x"$aligned" = x"-m" ]
@@ -858,6 +869,7 @@ kdftest()
 			echo_pass "KDF $type $aout test $i"
 		else
 			echo_fail "KDF $type $aout test $i"
+			echo "($cmd)"
 			echo " Exp $KDF_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -881,7 +893,8 @@ pbkdftest()
 		explen=$(echo -n $PBKDF_exp | wc -c)
 		let explen=(explen/2)
 
-		result=$(./kcapi $aligned -x 8 -c $PBKDF_name -k $PBKDF_salt -p "$PBKDF_pw" -d $PBKDF_count -b $explen)
+		cmd="./kcapi $aligned -x 8 -c $PBKDF_name -k $PBKDF_salt -d $PBKDF_count -b $explen -p"
+		result=$($cmd "$PBKDF_pw")
 
 		aout="non-aligned"
 		if [ x"$aligned" = x"-m" ]
@@ -894,6 +907,7 @@ pbkdftest()
 			echo_pass "PBKDF $aout test $i"
 		else
 			echo_fail "PBKDF $aout test $i"
+			echo "($cmd '$PBKDF_pw')"
 			echo " Exp $PBKDF_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -920,7 +934,8 @@ multipletest_sym() {
 		impl_type="asynchronous"
 	fi
 
-	result=$(./kcapi $stream -d 2 -x $symimpl -e -c "cbc(aes)" -k 8d7dd9b0170ce0b5f2f8e1aa768e01e91da8bfc67fd486d081b28254c99eb423 -i 7fbc02ebf5b93322329df9bfccb635af -p 48981da18e4bb9ef7e2e3162d16b1910)
+	cmd="./kcapi $stream -d 2 -x $symimpl -e -c cbc(aes) -k 8d7dd9b0170ce0b5f2f8e1aa768e01e91da8bfc67fd486d081b28254c99eb423 -i 7fbc02ebf5b93322329df9bfccb635af -p 48981da18e4bb9ef7e2e3162d16b1910"
+	result=$($cmd)
 	if [ $symimpl -eq 9 ]
 	then
 		expected="8b19050f66582cb7f7e4b6c873819b718b19050f66582cb7f7e4b6c873819b71"
@@ -938,6 +953,7 @@ multipletest_sym() {
 		echo_pass "Symmetric $impl_type cipher $sout multiple test"
 	else
 		echo_fail "Symmetric $impl_type cipher $sout multiple test"
+		echo "($cmd)"
 		echo "Exp $expected"
 		echo "Got $result"
 		let failures=($failures+1)
