@@ -547,7 +547,8 @@ hashfunc()
 		then
 			HASH_msg="-"
 		fi
-		result=$(./kcapi -x 3 $stream -c ${HASH_name} ${key} -p ${HASH_msg})
+		cmd="./kcapi -x 3 $stream -c ${HASH_name} ${key} -p ${HASH_msg}"
+		result=$($cmd)
 
 		outlen=$(echo -n $result | wc -c)
 
@@ -566,6 +567,7 @@ hashfunc()
 			echo_pass "Hash $sout test $i"
 		else
 			echo_fail "Hash $sout test $i"
+			echo "($cmd)"
 			echo " Exp $HASH_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -602,10 +604,11 @@ symfunc()
 		fi
 		if [ "$SYM_enc" = 1  ]
 		then
-			result=$(./kcapi -x $impl $stream $aligned -e -c $SYM_name $iv -k $SYM_key -p $SYM_msg)
+			cmd="./kcapi -x $impl $stream $aligned -e -c $SYM_name $iv -k $SYM_key -p $SYM_msg"
 		else
-			result=$(./kcapi -x $impl $stream $aligned -c $SYM_name $iv -k $SYM_key -q $SYM_msg)
+			cmd="./kcapi -x $impl $stream $aligned -c $SYM_name $iv -k $SYM_key -q $SYM_msg"
 		fi
+		result=$($cmd)
 
 		impl_type="synchronous"
 		sout="one shot"
@@ -631,6 +634,7 @@ symfunc()
 			echo_pass "Symmetric $impl_type $sout $aout test $i"
 		else
 			echo_fail "Symmetric $impl_type $sout $aout test $i"
+			echo "($cmd)"
 			echo " Exp $SYM_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -675,7 +679,8 @@ asymfunc()
 
 		enc="-o $ASYM_enc"
 
-		result=$(./kcapi -x 4 $stream $vmsplice $aligned $enc -c $ASYM_name $keyopt -p $ASYM_msg)
+		cmd="./kcapi -x 4 $stream $vmsplice $aligned $enc -c $ASYM_name $keyopt -p $ASYM_msg"
+		result=$($cmd)
 
 		sout="one-shot"
 		vout=""
@@ -697,6 +702,7 @@ asymfunc()
 			echo_pass "Asymmetric $sout $vout $aout test $i"
 		else
 			echo_fail "Asymmetric $sout $vout $aout test $i"
+			echo "($cmd)"
 			echo " Exp $ASYM_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -757,10 +763,13 @@ aeadfunc()
 		expected=""
 		if [ "$AEAD_enc" = 1  ]
 		then
-			result=$(./kcapi -x $impl $stream $aligned -e -c "$AEAD_name" $iv -k "$AEAD_key" -a "$AEAD_assoc" -p "$AEAD_msg" -l $AEAD_taglen)
+			result=$(./kcapi -x $impl $stream $aligned -e -c $AEAD_name $iv -k $AEAD_key -a "$AEAD_assoc" -p "$AEAD_msg" -l $AEAD_taglen)
+			cmd="./kcapi -x $impl $stream $aligned -e -c \"$AEAD_name\" $iv -k $AEAD_key -a \"$AEAD_assoc\" -p \"$AEAD_msg\" -l $AEAD_taglen"
 			expected="${AEAD_exp}${AEAD_tag}"
 		else
-			result=$(./kcapi -x $impl $stream $aligned -c "$AEAD_name" $iv -k "$AEAD_key" -a "$AEAD_assoc" -t "$AEAD_tag" -q "$AEAD_msg")
+			result=$(./kcapi -x $impl $stream $aligned -c $AEAD_name $iv -k $AEAD_key -a "$AEAD_assoc" -t "$AEAD_tag" -q "$AEAD_msg")
+			cmd="./kcapi -x $impl $stream $aligned -c \"$AEAD_name\" $iv -k $AEAD_key -a \"$AEAD_assoc\" -t \"$AEAD_tag\" -q
+			\"$AEAD_msg\""
 			expected="${AEAD_exp}"
 		fi
 
@@ -789,6 +798,7 @@ aeadfunc()
 			echo_pass "AEAD $impl_type $sout $aout test $i"
 		else
 			echo_fail "AEAD $impl_type $sout $aout test $i"
+			echo "($cmd)"
 			echo " Exp $expected"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -813,12 +823,14 @@ aeadfunc()
 	#else
 		expected=$expectedshort
 	#fi
-	result=$(./kcapi -y $stream)
+	cmd="./kcapi -y $stream"
+	result=$($cmd)
 	if [ x"$result" = x"$expected" ]
 	then
 		echo_pass "AEAD $sout long AAD test"
 	else
 		echo_fail "AEAD $sout long AAD test"
+		echo "($cmd)"
 		echo "Exp $exoected"
 		echo "Got $result"
 		let failures=($failures+1)
@@ -854,7 +866,8 @@ kdftest()
 		explen=$(echo -n $KDF_exp | wc -c)
 		let explen=(explen/2)
 
-		result=$(./kcapi $aligned -x $KDF_type -c $KDF_name -k $KDF_key -p $KDF_msg -b $explen)
+		cmd="./kcapi $aligned -x $KDF_type -c $KDF_name -k $KDF_key -p $KDF_msg -b $explen"
+		result=$($cmd)
 
 		aout="non-aligned"
 		if [ x"$aligned" = x"-m" ]
@@ -877,6 +890,7 @@ kdftest()
 			echo_pass "KDF $type $aout test $i"
 		else
 			echo_fail "KDF $type $aout test $i"
+			echo "($cmd)"
 			echo " Exp $KDF_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -913,6 +927,7 @@ pbkdftest()
 			echo_pass "PBKDF $aout test $i"
 		else
 			echo_fail "PBKDF $aout test $i"
+			echo "(./kcapi $aligned -x 8 -c $PBKDF_name -k $PBKDF_salt -p \"$PBKDF_pw\" -d $PBKDF_count -b $explen)"
 			echo " Exp $PBKDF_exp"
 			echo " Got $result"
 			let failures=($failures+1)
@@ -939,7 +954,8 @@ multipletest_sym() {
 		impl_type="asynchronous"
 	fi
 
-	result=$(./kcapi $stream -d 2 -x $symimpl -e -c "cbc(aes)" -k 8d7dd9b0170ce0b5f2f8e1aa768e01e91da8bfc67fd486d081b28254c99eb423 -i 7fbc02ebf5b93322329df9bfccb635af -p 48981da18e4bb9ef7e2e3162d16b1910)
+	cmd="./kcapi $stream -d 2 -x $symimpl -e -c cbc(aes) -k 8d7dd9b0170ce0b5f2f8e1aa768e01e91da8bfc67fd486d081b28254c99eb423 -i 7fbc02ebf5b93322329df9bfccb635af -p 48981da18e4bb9ef7e2e3162d16b1910"
+	result=$($cmd)
 	if [ $symimpl -eq 9 ]
 	then
 		expected="8b19050f66582cb7f7e4b6c873819b718b19050f66582cb7f7e4b6c873819b71"
@@ -957,6 +973,7 @@ multipletest_sym() {
 		echo_pass "Symmetric $impl_type cipher $sout multiple test"
 	else
 		echo_fail "Symmetric $impl_type cipher $sout multiple test"
+		echo "($cmd)"
 		echo "Exp $expected"
 		echo "Got $result"
 		let failures=($failures+1)
@@ -986,7 +1003,8 @@ multipletest_aead() {
 		fi
 	fi
 
-	result=$(./kcapi $stream -d 4 -x $impl -c "ccm(aes)" -q 4edb58e8d5eb6bc711c43a6f3693daebde2e5524f1b55297abb29f003236e43d -t a7877c99 -n 674742abd0f5ba -k 2861fd0253705d7875c95ba8a53171b4 -a fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d)
+	cmd="./kcapi $stream -d 4 -x $impl -c ccm(aes) -q 4edb58e8d5eb6bc711c43a6f3693daebde2e5524f1b55297abb29f003236e43d -t a7877c99 -n 674742abd0f5ba -k 2861fd0253705d7875c95ba8a53171b4 -a fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d"
+	result=$($cmd)
 	# there is no block chaining effect here, because GCM/CCM initialize the
 	# counter part for each encryption operation to 1
 	if [ $impl -eq 10 ]
@@ -1003,6 +1021,7 @@ multipletest_aead() {
 		echo_pass "AEAD $impl_type $sout multiple test"
 	else
 		echo_fail "AEAD $impl_type $sout multiple test"
+		echo "($cmd)"
 		echo "Exp $expected"
 		echo "Got $result"
 		let failures=($failures+1)
@@ -1028,7 +1047,8 @@ multipletest_hash() {
 		impl_type="asynchronous"
 	fi
 
-	result=$(./kcapi -d 8 -x $impl -c "hmac(sha1)" -k 6e77ebd479da794707bc6cde3694f552ea892dab -p  31b62a797adbff6b8a358d2b5206e01fee079de8cdfc4695138bba163b4efbf30127343e7fd4fbc696c3d38d8f27f57c024b5056f726ceeb4c31d98e57751ec8cbe8904ee0f9b031ae6a0c55da5e062475b3d7832191d4057643ef5fa446801d59a04693e573a8159cd2416b7bd39c7f0fe63c599365e04d596c05736beaab58)
+	cmd="./kcapi -d 8 -x $impl -c hmac(sha1) -k 6e77ebd479da794707bc6cde3694f552ea892dab -p  31b62a797adbff6b8a358d2b5206e01fee079de8cdfc4695138bba163b4efbf30127343e7fd4fbc696c3d38d8f27f57c024b5056f726ceeb4c31d98e57751ec8cbe8904ee0f9b031ae6a0c55da5e062475b3d7832191d4057643ef5fa446801d59a04693e573a8159cd2416b7bd39c7f0fe63c599365e04d596c05736beaab58"
+	result=$($cmd)
 	expected="7f204ea665666f5bd2b370e546d1b408005e4d85
 7f204ea665666f5bd2b370e546d1b408005e4d85
 7f204ea665666f5bd2b370e546d1b408005e4d85
@@ -1042,6 +1062,7 @@ multipletest_hash() {
 		echo_pass "Hash $sout multiple test"
 	else
 		echo_fail "Hash $sout multiple test"
+		echo "($cmd)"
 		echo "Exp $exoected"
 		echo "Got $result"
 		let failures=($failures+1)
@@ -1067,7 +1088,8 @@ multipletest_asym() {
 		impl_type="asynchronous"
 	fi
 
-	result=$(./kcapi -d 10 -x $impl -o 1 -c "rsa" -k 3082021F02010102820100DB101AC2A3F1DCFF136BED44DFF0026D13C788DA706B54F1E827DCC30F996AFAC667FF1D1E3C1DC1B55F6CC0B2073A6D41E42599ACFCD20F02D3D154061A5177BDB6BFEAA75C06A95D698445D7F505BA47F01BD72B24ECCB9B1B108D81A0BEB18C33E436B843EB192A818DDE810A9948B6F6BCCD49343A8F2694E328821A7C8F599F45E85D1A4576045605A1D01B8C776DAF53FA71E267E09AFE03A985D2C9AABA2ABCF4A008F51398135DF0D933342A61C38955F0AE1A9C22EE19058D32FEEC9C84BAB7F96C3A4F07FC45EB12E57BFD55E62969D1C2E8B97859F67910C64EEB6A5EB99AC7C45B63DAA33F5E927A815ED6B0E2628F7426C20CD39A1747E68EAB0203010001028201005241F4DA7BB75955CAD42F0F3ACBA40D936CCC9DC1B2FBFDAE4031AC69522192B327DFEAEE2C82BBF74032D514C49412ECB81FCA59E3C178F385D847A5D7021A6579970D24F4F0676E752DBF103DA87DEF7F60E4E60582895DDFC6D26C0791339842F002002538C585698A7D2F956C439AB881E2D00735AA0541C91EAFE4043B19B873A2AC4B1E6648D8721FACF6CBBC9009CAEC0CDCF92CD7EBAEA3A447D7332F8ACABC5EF077E4979897C710917D2AA6FF468397DEE9E217030614E2D7B11D77AF51275B5E69B881E611C54323810462FFE946B8D844DBA5CC315434CE3E82D6BF7A0B64216D887E5B45121E638D49A71DD91E06CDE8BA2C8C6932EABE6071020100020100020100020100020100 -p b29776b4ae3e383c7e641fcca27ff6becf49bc48d36c8f0a0ec173bd7b5579360ea18788b92c90a6535ee9efc4e24dddf7a669823f56a47bfb62e0aeb8d304b3ac5a152ae3199b039a0b41da64ec0a69fcf21092f3c1bf847ffd2caec8b5f64170c547038af8ff6f3fd26f09b422f330bea985cb9c8df98feb3291a225848ff5dcc7069c2de5112c09098709a9f6337390f160f265dd30a566ce627bd0f82d3d198277e30a5f752f8eb1e5e891351b3b33b76692d1f28e6fe5750cad36fb4ed06661bd49fef41aa22b49fe034c74478d9a66b249464d77ea334d6b3cb4494ac67d3db5b9564115670f943c936527e0215d59c362d5a6da3826225e341c94af98)
+	cmd="./kcapi -d 10 -x $impl -o 1 -c rsa -k 3082021F02010102820100DB101AC2A3F1DCFF136BED44DFF0026D13C788DA706B54F1E827DCC30F996AFAC667FF1D1E3C1DC1B55F6CC0B2073A6D41E42599ACFCD20F02D3D154061A5177BDB6BFEAA75C06A95D698445D7F505BA47F01BD72B24ECCB9B1B108D81A0BEB18C33E436B843EB192A818DDE810A9948B6F6BCCD49343A8F2694E328821A7C8F599F45E85D1A4576045605A1D01B8C776DAF53FA71E267E09AFE03A985D2C9AABA2ABCF4A008F51398135DF0D933342A61C38955F0AE1A9C22EE19058D32FEEC9C84BAB7F96C3A4F07FC45EB12E57BFD55E62969D1C2E8B97859F67910C64EEB6A5EB99AC7C45B63DAA33F5E927A815ED6B0E2628F7426C20CD39A1747E68EAB0203010001028201005241F4DA7BB75955CAD42F0F3ACBA40D936CCC9DC1B2FBFDAE4031AC69522192B327DFEAEE2C82BBF74032D514C49412ECB81FCA59E3C178F385D847A5D7021A6579970D24F4F0676E752DBF103DA87DEF7F60E4E60582895DDFC6D26C0791339842F002002538C585698A7D2F956C439AB881E2D00735AA0541C91EAFE4043B19B873A2AC4B1E6648D8721FACF6CBBC9009CAEC0CDCF92CD7EBAEA3A447D7332F8ACABC5EF077E4979897C710917D2AA6FF468397DEE9E217030614E2D7B11D77AF51275B5E69B881E611C54323810462FFE946B8D844DBA5CC315434CE3E82D6BF7A0B64216D887E5B45121E638D49A71DD91E06CDE8BA2C8C6932EABE6071020100020100020100020100020100 -p b29776b4ae3e383c7e641fcca27ff6becf49bc48d36c8f0a0ec173bd7b5579360ea18788b92c90a6535ee9efc4e24dddf7a669823f56a47bfb62e0aeb8d304b3ac5a152ae3199b039a0b41da64ec0a69fcf21092f3c1bf847ffd2caec8b5f64170c547038af8ff6f3fd26f09b422f330bea985cb9c8df98feb3291a225848ff5dcc7069c2de5112c09098709a9f6337390f160f265dd30a566ce627bd0f82d3d198277e30a5f752f8eb1e5e891351b3b33b76692d1f28e6fe5750cad36fb4ed06661bd49fef41aa22b49fe034c74478d9a66b249464d77ea334d6b3cb4494ac67d3db5b9564115670f943c936527e0215d59c362d5a6da3826225e341c94af98"
+	result=$($cmd)
 	expected="54859b342c49ea2a
 54859b342c49ea2a
 54859b342c49ea2a
@@ -1083,6 +1105,7 @@ multipletest_asym() {
 		echo_pass "Asymmetric $sout multiple test"
 	else
 		echo_fail "Asymmetric $sout multiple test"
+		echo "($cmd)"
 		echo "Exp $exoected"
 		echo "Got $result"
 		let failures=($failures+1)

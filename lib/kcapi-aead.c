@@ -102,7 +102,7 @@ void kcapi_aead_getdata_input(struct kcapi_handle *handle,
 	uint32_t l_aadlen, l_datalen, l_taglen;
 
 	if (encdatalen < handle->aead.assoclen) {
-		kcapi_dolog(LOG_ERR, "AAD data not found");
+		kcapi_dolog(LOG_DEBUG, "AAD data not found");
 		l_aad = NULL;
 		l_aadlen = 0;
 	} else {
@@ -111,10 +111,10 @@ void kcapi_aead_getdata_input(struct kcapi_handle *handle,
 		encdatalen -= handle->aead.assoclen;
 	}
 
-	l_taglen = (enc) ? 0 : handle->aead.taglen;
+	l_taglen = (enc && handle->flags.newaeadif) ? 0 : handle->aead.taglen;
 	/* databuffer is all between AAD buffer (if present) and tag */
 	if (encdatalen < l_taglen) {
-		kcapi_dolog(LOG_ERR, "Cipher result data not found");
+		kcapi_dolog(LOG_DEBUG, "Cipher result data not found");
 		l_data = NULL;
 		l_datalen = 0;
 	} else {
@@ -123,18 +123,11 @@ void kcapi_aead_getdata_input(struct kcapi_handle *handle,
 		encdatalen -= l_datalen;
 	}
 
-	if (enc && handle->flags.newaeadif) {
+	if (l_taglen && encdatalen >= l_taglen)
+		l_tag = encdata + l_aadlen + l_datalen;
+	else {
 		l_tag = NULL;
 		l_taglen = 0;
-	} else {
-		if (encdatalen >= handle->aead.taglen) {
-			l_tag = encdata + l_aadlen + l_datalen;
-			l_taglen = handle->aead.taglen;
-		} else {
-			kcapi_dolog(LOG_ERR, "Tag data not found");
-			l_tag = NULL;
-			l_taglen = 0;
-		}
 	}
 
 	if (aad && encdata)
@@ -178,7 +171,7 @@ void kcapi_aead_getdata_output(struct kcapi_handle *handle,
 		l_taglen = handle->aead.taglen;
 	/* databuffer is all between AAD buffer (if present) and tag */
 	if (encdatalen < l_taglen) {
-		kcapi_dolog(LOG_ERR, "Cipher result data not found");
+		kcapi_dolog(LOG_DEBUG, "Cipher result data not found");
 		l_data = NULL;
 		l_datalen = 0;
 	} else {
@@ -192,7 +185,7 @@ void kcapi_aead_getdata_output(struct kcapi_handle *handle,
 			l_tag = encdata + l_aadlen + l_datalen;
 			l_taglen = handle->aead.taglen;
 		} else {
-			kcapi_dolog(LOG_ERR, "Tag data not found");
+			kcapi_dolog(LOG_DEBUG, "Tag data not found");
 			l_tag = NULL;
 			l_taglen = 0;
 		}

@@ -1133,6 +1133,7 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 	uint8_t *outbuf = NULL;
 	uint32_t outbuflen = 0;
 	uint32_t inbuflen = 0;
+	uint32_t maxbuflen = 0;
 	int ret = -ENOMEM;
 	uint8_t *newiv = NULL;
 	uint32_t newivlen = 0;
@@ -1193,12 +1194,13 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 						   cavs_test->assoclen,
 						   cavs_test->taglen);
 
+	maxbuflen = (inbuflen > outbuflen) ? inbuflen : outbuflen;
 	if (cavs_test->aligned) {
-		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), outbuflen))
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), maxbuflen))
 			goto out;
-		memset(outbuf, 0, outbuflen);
+		memset(outbuf, 0, maxbuflen);
 	} else {
-		outbuf = calloc(1, outbuflen);
+		outbuf = calloc(1, maxbuflen);
 		if (!outbuf)
 			goto out;
 	}
@@ -1247,7 +1249,7 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 			 * update_last, but here we want to test
 			 * the individual calls
 			 */
-			if (cavs_test->ptlen)
+			if (cavs_test->ptlen || i_taglen)
 				ret = kcapi_aead_stream_update(handle, &iov, 1);
 			else
 				ret = kcapi_aead_stream_update_last
@@ -1279,7 +1281,7 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 
 			/* only set the tag if we need to */
 			if (i_taglen) {
-				pttag.iov_base = cavs_test->tag;
+				pttag.iov_base = tag;
 				pttag.iov_len = i_taglen;
 				ret = kcapi_aead_stream_update_last(handle,
 							            &pttag, 1);
@@ -1288,7 +1290,7 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 					goto out;
 				}
 			}
-			
+
 			if ((outbuflen - cavs_test->taglen) >= 16) {
 				/* test of multiple iovecs */
 				outiov[0].iov_base = outbuf;
