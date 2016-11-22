@@ -71,10 +71,14 @@ struct kcapi_handle;
  * This function provides the initialization of a symmetric cipher handle and
  * establishes the connection to the kernel.
  *
- * @return 0 upon success; ENOENT - algorithm not available;
- *	    -EOPNOTSUPP - AF_ALG family not available;
- *	    -EINVAL - accept syscall failed
- *	    -ENOMEM - cipher handle cannot be allocated
+ * On success, a pointer to kcapi_handle object is returned in *handle. Function
+ * kcapi_cipher_destroy should be called afterwards to free resources.
+ *
+ * @return 0 upon success;
+ *          -ENOENT - algorithm not available;
+ *          -EOPNOTSUPP - AF_ALG family not available;
+ *          -EINVAL - accept syscall failed
+ *          -ENOMEM - cipher handle cannot be allocated
  */
 int kcapi_cipher_init(struct kcapi_handle **handle, const char *ciphername,
 		      uint32_t flags);
@@ -129,7 +133,7 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
  * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
  *
  * @return number of bytes encrypted upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 			     const uint8_t *in, uint32_t inlen,
@@ -159,7 +163,7 @@ int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
  * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
  *
  * @return number of bytes encrypted upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
 				 struct iovec *iniov, struct iovec *outiov,
@@ -190,7 +194,7 @@ int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
  * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
  *
  * @return number of bytes decrypted upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 			     const uint8_t *in, uint32_t inlen,
@@ -220,7 +224,7 @@ int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
  * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
  *
  * @return number of bytes decrypted upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
 				 struct iovec *iniov, struct iovec *outiov,
@@ -254,7 +258,7 @@ int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
  * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
  *
  * @return number of bytes sent to the kernel upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
 				     const uint8_t *iv,
@@ -286,7 +290,7 @@ int32_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
  * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
  *
  * @return number of bytes sent to the kernel upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
 				     const uint8_t *iv,
@@ -322,7 +326,7 @@ int32_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
  * will be put to sleep until another thread invokes kcapi_cipher_stream_op().
  *
  * @return number of bytes sent to the kernel upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
 				   struct iovec *iov, uint32_t iovlen);
@@ -347,7 +351,7 @@ int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
  * into the buffer.
  *
  * @return number of bytes obtained from the kernel upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
 			       struct iovec *iov, uint32_t iovlen);
@@ -390,6 +394,9 @@ uint32_t kcapi_cipher_blocksize(struct kcapi_handle *handle);
  *
  * This function initializes an AEAD cipher handle and establishes the
  * connection to the kernel.
+ *
+ * On success, a pointer to kcapi_handle object is returned in *handle. Function
+ * kcapi_aead_destroy should be called afterwards to free resources.
  *
  * @return 0 upon success;
  *	    -ENOENT - algorithm not available;
@@ -436,7 +443,7 @@ int kcapi_aead_setkey(struct kcapi_handle *handle,
  * created during encryption operation with the size provided with this call.
  *
  * @return 0 upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int kcapi_aead_settaglen(struct kcapi_handle *handle, uint32_t taglen);
 
@@ -490,7 +497,7 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, uint32_t assoclen);
  * be handled by the kernel.
  *
  * @return number of bytes encrypted upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 			   uint8_t *in, uint32_t inlen,
@@ -532,7 +539,7 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
  * be handled by the kernel.
  *
  * @return number of bytes encrypted upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 			       struct iovec *outiov, uint32_t iovlen,
@@ -659,17 +666,17 @@ void kcapi_aead_getdata_output(struct kcapi_handle *handle,
  *
  * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
  *
- * To catch authentication errors (i.e. integrity violations) during the
- * decryption operation, the errno of this call shall be checked for EBADMSG.
- * If this function returns < 0 and errno is set to EBADMSG, an authentication
- * error is detected.
+ * To catch authentication errors (i.e. integrity violations) during
+ * the decryption operation, the return value of this call should be
+ * checked. If this function returns -EBADMSG, an authentication error
+ * was detected.
  *
  * IMPORTANT NOTE: The kernel will only process
  * sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES at one time. Longer input data cannot
  * be handled by the kernel.
  *
  * @return number of bytes decrypted upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   uint8_t *in, uint32_t inlen,
@@ -701,17 +708,17 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
  *
  * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
  *
- * To catch authentication errors (i.e. integrity violations) during the
- * decryption operation, the errno of this call shall be checked for EBADMSG.
- * If this function returns < 0 and errno is set to EBADMSG, an authentication
- * error is detected.
+ * To catch authentication errors (i.e. integrity violations) during
+ * the decryption operation, the return value of this call should be
+ * checked. If this function returns -EBADMSG, an authentication error
+ * was detected.
  *
  * IMPORTANT NOTE: The kernel will only process
  * sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES at one time. Longer input data cannot
  * be handled by the kernel.
  *
  * @return number of bytes encrypted upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 			       struct iovec *outiov, uint32_t iovlen,
@@ -752,7 +759,7 @@ int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
  * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
  *
  * @return number of bytes sent to the kernel upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
 				   const uint8_t *iv,
@@ -792,7 +799,7 @@ int32_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
  * The IV buffer must be exactly kcapi_cipher_ivsize() bytes in size.
  *
  * @return number of bytes sent to the kernel upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
 				   const uint8_t *iv,
@@ -830,7 +837,7 @@ int32_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
  * be handled by the kernel.
  *
  * @return number of bytes sent to the kernel upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_aead_stream_update(struct kcapi_handle *handle,
 				 struct iovec *iov, uint32_t iovlen);
@@ -851,7 +858,7 @@ int32_t kcapi_aead_stream_update(struct kcapi_handle *handle,
  * is triggered. Typically, the tag value is provided with this call.
  *
  * @return number of bytes sent to the kernel upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
 				      struct iovec *iov, uint32_t iovlen);
@@ -873,7 +880,7 @@ int32_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
  * into the buffer.
  *
  * @return number of bytes obtained from the kernel upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_aead_stream_op(struct kcapi_handle *handle,
 			     struct iovec *iov, uint32_t iovlen);
@@ -1017,10 +1024,14 @@ int kcapi_aead_ccm_nonce_to_iv(const uint8_t *nonce, uint32_t noncelen,
  * This function provides the initialization of a (keyed) message digest handle
  * and establishes the connection to the kernel.
  *
- * @return 0 upon success; ENOENT - algorithm not available;
- *	    -EOPNOTSUPP - AF_ALG family not available;
- *	    -EINVAL - accept syscall failed;
- *	    -ENOMEM - cipher handle cannot be allocated
+ * On success, a pointer to kcapi_handle object is returned in *handle. Function
+ * kcapi_md_destroy should be called afterwards to free resources.
+ *
+ * @return 0 upon success;
+ *          -ENOENT - algorithm not available;
+ *          -EOPNOTSUPP - AF_ALG family not available;
+ *          -EINVAL - accept syscall failed;
+ *          -ENOMEM - cipher handle cannot be allocated
  */
 int kcapi_md_init(struct kcapi_handle **handle, const char *ciphername,
 		  uint32_t flags);
@@ -1144,10 +1155,14 @@ uint32_t kcapi_md_blocksize(struct kcapi_handle *handle);
  * This function provides the initialization of a random number generator handle
  * and establishes the connection to the kernel.
  *
- * @return 0 upon success; ENOENT - algorithm not available;
- *	    -EOPNOTSUPP - AF_ALG family not available;
- *	    -EINVAL - accept syscall failed
- *	    -ENOMEM - cipher handle cannot be allocated
+ * On success, a pointer to kcapi_handle object is returned in *handle. Function
+ * kcapi_rng_destroy should be called afterwards to free resources.
+ *
+ * @return 0 upon success;
+ *          -ENOENT - algorithm not available;
+ *          -EOPNOTSUPP - AF_ALG family not available;
+ *          -EINVAL - accept syscall failed
+ *          -ENOMEM - cipher handle cannot be allocated
  */
 int kcapi_rng_init(struct kcapi_handle **handle, const char *ciphername,
 		   uint32_t flags);
@@ -1292,10 +1307,14 @@ void kcapi_memset_secure(void *s, int c, uint32_t n);
  * This function provides the initialization of an asymmetric cipher handle and
  * establishes the connection to the kernel.
  *
- * @return 0 upon success; ENOENT - algorithm not available;
- *	    -EOPNOTSUPP - AF_ALG family not available;
- *	    -EINVAL - accept syscall failed
- *	    -ENOMEM - cipher handle cannot be allocated
+ * On success, a pointer to kcapi_handle object is returned in *handle. Function
+ * kcapi_akcipher_destroy should be called afterwards to free all resources.
+ *
+ * @return 0 upon success;
+ *          -ENOENT - algorithm not available;
+ *          -EOPNOTSUPP - AF_ALG family not available;
+ *          -EINVAL - accept syscall failed
+ *          -ENOMEM - cipher handle cannot be allocated
  */
 int kcapi_akcipher_init(struct kcapi_handle **handle, const char *ciphername,
 			uint32_t flags);
@@ -1388,7 +1407,7 @@ int kcapi_akcipher_setpubkey(struct kcapi_handle *handle,
  * output buffer must be at least as large as the modululs of the uses key.
  *
  * @return number of bytes returned by the encryption operation upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
 			       const uint8_t *in, uint32_t inlen,
@@ -1418,7 +1437,7 @@ int32_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
  * output buffer must be at least as large as the modululs of the uses key.
  *
  * @return number of bytes returned by the decryption operation upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
 			       const uint8_t *in, uint32_t inlen,
@@ -1448,7 +1467,7 @@ int32_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
  * output buffer must be at least as large as the modululs of the uses key.
  *
  * @return number of bytes returned by the signature gen operation upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_akcipher_sign(struct kcapi_handle *handle,
 			    const uint8_t *in, uint32_t inlen,
@@ -1477,12 +1496,12 @@ int32_t kcapi_akcipher_sign(struct kcapi_handle *handle,
  * If the output size is insufficiently large, -EINVAL is returned. The
  * output buffer must be at least as large as the modululs of the uses key.
  *
- * To catch signature verification errors, the errno of this call shall be
- * checked for EBADMSG. If this function returns < 0 and errno is set to
- * EBADMSG, the verification of the signature failed.
+ * To catch signature verification errors, the return value of this
+ * call should be checked. If this function returns -EBADMSG, the
+ * verification of the signature failed.
  *
  * @return number of bytes returned by the signature ver operation upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_akcipher_verify(struct kcapi_handle *handle,
 			      const uint8_t *in, uint32_t inlen,
@@ -1512,7 +1531,7 @@ int32_t kcapi_akcipher_verify(struct kcapi_handle *handle,
  * application.
  *
  * @return number of bytes sent to the kernel upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_akcipher_stream_init_enc(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen);
@@ -1540,7 +1559,7 @@ int32_t kcapi_akcipher_stream_init_enc(struct kcapi_handle *handle,
  * application.
  *
  * @return number of bytes sent to the kernel upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_akcipher_stream_init_dec(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen);
@@ -1569,7 +1588,7 @@ int32_t kcapi_akcipher_stream_init_dec(struct kcapi_handle *handle,
  * application.
  *
  * @return number of bytes sent to the kernel upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_akcipher_stream_init_sgn(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen);
@@ -1599,7 +1618,7 @@ int32_t kcapi_akcipher_stream_init_sgn(struct kcapi_handle *handle,
  * application.
  *
  * @return number of bytes sent to the kernel upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_akcipher_stream_init_vfy(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen);
@@ -1625,7 +1644,7 @@ int32_t kcapi_akcipher_stream_init_vfy(struct kcapi_handle *handle,
  * processed by the cipher operation.
  *
  * @return number of bytes sent to the kernel upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
 				     struct iovec *iov, uint32_t iovlen);
@@ -1649,7 +1668,7 @@ int32_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
  * notifies the kernel that no further data is to be expected.
  *
  * @return number of bytes sent to the kernel upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
 					  struct iovec *iov, uint32_t iovlen);
@@ -1675,7 +1694,7 @@ int32_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
  * into the buffer.
  *
  * @return number of bytes obtained from the kernel upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
 			         struct iovec *iov, uint32_t iovlen);
@@ -1710,7 +1729,7 @@ int32_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
  * may also be NULL if the caller wishes not to provide anything.
  *
  * @return 0 upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
 		      const uint8_t *src, uint32_t slen,
@@ -1740,7 +1759,7 @@ int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
  * hash) of the PRF.
  *
  * @return 0 upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_kdf_fb(struct kcapi_handle *handle,
 		     const uint8_t *src, uint32_t slen,
@@ -1773,7 +1792,7 @@ int32_t kcapi_kdf_fb(struct kcapi_handle *handle,
  * arbitrary string (see SP800-56A section 5.8.1.2).
  *
  * @return 0 upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
 		      const uint8_t *src, uint32_t slen,
@@ -1794,7 +1813,7 @@ int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
  * This function is an implementation of the PBKDF as defined in SP800-132.
  *
  * @return 0 upon success;
- *	    < 0 in case of error with errno set
+ *         a negative errno-style error code if an error occured.
  */
 int32_t kcapi_pbkdf(const char *hashname,
 		    const uint8_t *pw, uint32_t pwlen,
