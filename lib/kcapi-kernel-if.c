@@ -790,6 +790,7 @@ void _kcapi_handle_destroy(struct kcapi_handle *handle)
 		close(handle->pipes[1]);
 	_kcapi_aio_destroy(handle);
 	memset(handle, 0, sizeof(struct kcapi_handle));
+	free(handle);
 }
 
 /* return 1 if kernel is greater or equal to given values, otherwise 0 */
