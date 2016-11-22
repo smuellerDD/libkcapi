@@ -124,10 +124,9 @@ cppcheck:
 	cppcheck --enable=performance --enable=warning --enable=portability *.h *.c
 
 install:
-	install -m 0755 -s $(LIBNAME) $(DESTDIR)$(LIBDIR)/
-	$(RM) $(LIBDIR)/$(SONAME)
-	$(LNS) $(DESTDIR)$(LIBDIR)/$(LIBNAME) $(DESTDIR)$(LIBDIR)/$(SONAME)
-	install -m 0644 kcapi.h $(DESTDIR)$(INCLUDEDIR)
+	install -m 0755 $(LIBNAME) -D -t $(DESTDIR)$(LIBDIR)/
+	$(LNS) $(LIBNAME) $(DESTDIR)$(LIBDIR)/$(SONAME)
+	install -m 0644 kcapi.h -D -t $(DESTDIR)$(INCLUDEDIR)
 
 ###############################################################################
 #
@@ -139,7 +138,7 @@ man:
 	LIBVERSION=$(LIBVERSION) doc/gendocs.sh man
 
 maninstall:
-	install -m 0644 doc/man/* $(MAN3)/
+	install -m 0644 doc/man/* -D -t $(DESTDIR)$(MAN3)/
 
 html:
 	LIBVERSION=$(LIBVERSION) doc/gendocs.sh html
