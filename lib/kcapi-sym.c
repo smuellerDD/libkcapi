@@ -31,10 +31,7 @@ int kcapi_cipher_init(struct kcapi_handle **handle, const char *ciphername,
 DSO_PUBLIC
 void kcapi_cipher_destroy(struct kcapi_handle *handle)
 {
-	if (!handle)
-		return;
 	_kcapi_handle_destroy(handle);
-	kcapi_memset_secure(handle, 0, sizeof(struct kcapi_handle));
 }
 
 DSO_PUBLIC

@@ -789,7 +789,7 @@ void _kcapi_handle_destroy(struct kcapi_handle *handle)
 	if (handle->pipes[1] != -1)
 		close(handle->pipes[1]);
 	_kcapi_aio_destroy(handle);
-	memset(handle, 0, sizeof(struct kcapi_handle));
+	kcapi_memset_secure(handle, 0, sizeof(struct kcapi_handle));
 	free(handle);
 }
 
