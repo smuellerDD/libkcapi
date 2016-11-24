@@ -972,7 +972,8 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 
 	_kcapi_handle_flags(handle);
 
-	kcapi_dolog(LOG_VERBOSE, "communication for %s with kernel initialized", ciphername);
+	kcapi_dolog(LOG_VERBOSE, "communication for %s with kernel initialized",
+		    ciphername);
 
 	*caller = handle;
 
