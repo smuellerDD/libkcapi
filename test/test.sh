@@ -814,15 +814,15 @@ aeadfunc()
 	# AEAD long message test
 	expectedlong="5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d75874d85cb992b7e7aeab81ba7cf77285969"
 	expectedshort="5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d75874da5e05a23b8902677480ee92c7ff6bc"
+	expectedsmall="5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d7587fa431e683949010ded4a091fa7b5bf0b"
 
 	# vmsplice does not take long strings
-	#if [ x"$stream" = x"-s" ]
-	#then
-	#	expected="${expectedlong}
-#${expectedshort}"
-	#else
+	if [ x"$stream" = x"-s" ]
+	then
+		expected=$expectedsmall
+	else
 		expected=$expectedshort
-	#fi
+	fi
 	cmd="./kcapi -y $stream"
 	result=$($cmd)
 	if [ x"$result" = x"$expected" ]

@@ -1437,6 +1437,7 @@ static int cavs_aead_large(int stream, uint32_t loops, int splice)
 
 	/* expected: full AAD: 5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d75874d85cb992b7e7aeab81ba7cf77285969
 	 * partial AAD: 5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d75874da5e05a23b8902677480ee92c7ff6bc
+	 * small AAD: 5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d7587fa431e683949010ded4a091fa7b5bf0b
 	 */
 
 	if (stream) {
@@ -1447,7 +1448,7 @@ static int cavs_aead_large(int stream, uint32_t loops, int splice)
 			goto out;
 		test.assoclen -= (8192); */
 		/* However, we now have vmsplice here */
-		test.assoclen -= 8192 + test.taglen;
+		test.assoclen -= 12288 + test.taglen;
 		ret = cavs_aead_stream(&test, loops);
 	} else {
 		/*
