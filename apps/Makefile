@@ -23,7 +23,9 @@ CFLAGS += $(foreach includedir,$(INCLUDE_DIRS),-I$(includedir))
 LDFLAGS += $(foreach librarydir,$(LIBRARY_DIRS),-L$(librarydir))
 LDFLAGS += $(foreach library,$(LIBRARIES),-l$(library))
 
-.PHONY: all scan asm clean distclean
+BINDIR := $(DESTDIR)/usr/local/bin
+
+.PHONY: all scan asm clean distclean install
 
 all: $(NAME)
 
@@ -32,19 +34,19 @@ cleanlinks:
 
 $(NAME): cleanlinks $(OBJS)
 	$(CC) $(OBJS) -o $(NAME) $(LDFLAGS)
-	@- ln -s $(NAME) sha1sum
-	@- ln -s $(NAME) sha224sum
-	@- ln -s $(NAME) sha256sum
-	@- ln -s $(NAME) sha384sum
-	@- ln -s $(NAME) sha512sum
-	@- ln -s $(NAME) md5sum
-	@- ln -s $(NAME) fipscheck
-	@- ln -s $(NAME) fipshmac
-	@- ln -s $(NAME) sha1hmac
-	@- ln -s $(NAME) sha224hmac
-	@- ln -s $(NAME) sha256hmac
-	@- ln -s $(NAME) sha384hmac
-	@- ln -s $(NAME) sha512hmac
+	@- ln $(NAME) sha1sum
+	@- ln $(NAME) sha224sum
+	@- ln $(NAME) sha256sum
+	@- ln $(NAME) sha384sum
+	@- ln $(NAME) sha512sum
+	@- ln $(NAME) md5sum
+	@- ln $(NAME) fipscheck
+	@- ln $(NAME) fipshmac
+	@- ln $(NAME) sha1hmac
+	@- ln $(NAME) sha224hmac
+	@- ln $(NAME) sha256hmac
+	@- ln $(NAME) sha384hmac
+	@- ln $(NAME) sha512hmac
 
 scan:	$(OBJS)
 	scan-build --use-analyzer=/usr/bin/clang $(CC) $(OBJS) -o $(NAME) $(LDFLAGS)
@@ -58,3 +60,30 @@ clean:
 	@- $(RM) $(OBJS)
 
 distclean: clean
+
+install:
+	install -m 0755 $(NAME) -D -t $(BINDIR)/
+	install -m 0755 sha1sum -D -t $(BINDIR)/
+	./fipshmac $(BINDIR)/sha1sum
+	install -m 0755 sha224sum -D -t $(BINDIR)/
+	./fipshmac $(BINDIR)/sha224sum
+	install -m 0755 sha256sum -D -t $(BINDIR)/
+	./fipshmac $(BINDIR)/sha256sum
+	install -m 0755 sha384sum -D -t $(BINDIR)/
+	./fipshmac $(BINDIR)/sha384sum
+	install -m 0755 sha512sum -D -t $(BINDIR)/
+	./fipshmac $(BINDIR)/sha512sum
+	install -m 0755 fipscheck -D -t $(BINDIR)/
+	./fipshmac $(BINDIR)/fipscheck
+	install -m 0755 fipshmac -D -t $(BINDIR)/
+	./fipshmac $(BINDIR)/fipshmac
+	install -m 0755 sha1hmac -D -t $(BINDIR)/
+	./sha512hmac sha1hmac > $(BINDIR)/.sha1hmac.hmac
+	install -m 0755 sha224hmac -D -t $(BINDIR)/
+	./sha512hmac sha224hmac > $(BINDIR)/.sha224hmac.hmac
+	install -m 0755 sha256hmac -D -t $(BINDIR)/
+	./sha512hmac sha256hmac > $(BINDIR)/.sha256hmac.hmac
+	install -m 0755 sha384hmac -D -t $(BINDIR)/
+	./sha512hmac sha384hmac > $(BINDIR)/.sha384hmac.hmac
+	install -m 0755 sha512hmac -D -t $(BINDIR)/
+	./sha512hmac sha512hmac > $(BINDIR)/.sha512hmac.hmac

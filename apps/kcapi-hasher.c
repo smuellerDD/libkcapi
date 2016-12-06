@@ -463,28 +463,34 @@ static int fipscheck_self(char *hash,
 	char *checkfile = NULL;
 	uint32_t n = 0;
 	int ret = -EINVAL;
-	FILE *fipsfile = NULL;
 	char fipsflag[1];
 #define BUFSIZE 4096
 	char selfname[BUFSIZE];
 	int32_t selfnamesize = 0;
 
-	fipsfile = fopen("/proc/sys/crypto/fips_enabled", "r");
-	if (!fipsfile) {
-		if (errno == ENOENT) {
-			/* FIPS support not enabled in kernel */
-			return 0;
-		} else {
-			fprintf(stderr, "Cannot open fips_enabled file: %s\n",
-				strerror(errno));
-			return -EIO;
-		}
-	}
+	if (secure_getenv("KCAPI_HASHER_FORCE_FIPS")) {
+		fipsflag[0] = 1;
+	} else {
+		FILE *fipsfile = NULL;
 
-	n = fread((void *)fipsflag, 1, 1, fipsfile);
-	if (n != 1) {
-		fprintf(stderr, "Cannot read FIPS flag\n");
-		goto out;
+		fipsfile = fopen("/proc/sys/crypto/fips_enabled", "r");
+		if (!fipsfile) {
+			if (errno == ENOENT) {
+				/* FIPS support not enabled in kernel */
+				return 0;
+			} else {
+				fprintf(stderr, "Cannot open fips_enabled file: %s\n",
+					strerror(errno));
+				return -EIO;
+			}
+		}
+
+		n = fread((void *)fipsflag, 1, 1, fipsfile);
+		fclose(fipsfile);
+		if (n != 1) {
+			fprintf(stderr, "Cannot read FIPS flag\n");
+			goto out;
+		}
 	}
 
 	if (fipsflag[0] == '0') {
@@ -511,8 +517,6 @@ static int fipscheck_self(char *hash,
 out:
 	if (checkfile)
 		free(checkfile);
-	if (fipsfile)
-		fclose(fipsfile);
 	return ret;
 }
 
