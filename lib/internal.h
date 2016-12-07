@@ -181,6 +181,10 @@ struct kcapi_flags {
 	int newaeadif:1;
 };
 
+struct kcapi_sys {
+	unsigned long kernel_maj, kernel_minor, kernel_patchlevel;
+};
+
 /**
  * Cipher handle
  * @tfmfd: Socket descriptor for AF_ALG
@@ -197,6 +201,7 @@ struct kcapi_handle {
 	int opfd;
 	int pipes[2];
 	uint32_t processed_sg;
+	struct kcapi_sys sysinfo;
 	struct kcapi_cipher_data cipher;
 	struct kcapi_aead_data aead;
 	struct kcapi_cipher_info info;

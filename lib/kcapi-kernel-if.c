@@ -793,59 +793,84 @@ void _kcapi_handle_destroy(struct kcapi_handle *handle)
 	free(handle);
 }
 
-/* return 1 if kernel is greater or equal to given values, otherwise 0 */
-static int _kcapi_kernver_ge(unsigned int maj, unsigned int minor,
-			     unsigned int patchlevel)
+static int _kcapi_get_kernver(struct kcapi_handle *handle)
 {
 	struct utsname kernel;
 	char *saveptr = NULL;
 	char *res = NULL;
-	unsigned long found_maj, found_minor, found_patchlevel;
 
 	if (uname(&kernel))
-		return 0;
+		return errno;
 
 	/* 3.15.0 */
 	res = strtok_r(kernel.release, ".", &saveptr);
 	if (!res) {
 		printf("Could not parse kernel version");
-		return 0;
+		return EFAULT;
 	}
-	found_maj = strtoul(res, NULL, 10);
+	handle->sysinfo.kernel_maj = strtoul(res, NULL, 10);
 	res = strtok_r(NULL, ".", &saveptr);
 	if (!res) {
 		printf("Could not parse kernel version");
-		return 0;
+		return EFAULT;
 	}
-	found_minor = strtoul(res, NULL, 10);
+	handle->sysinfo.kernel_minor = strtoul(res, NULL, 10);
 	res = strtok_r(NULL, ".", &saveptr);
 	if (!res) {
 		printf("Could not parse kernel version");
-		return 0;
+		return EFAULT;
 	}
-	found_patchlevel = strtoul(res, NULL, 10);
+	handle->sysinfo.kernel_patchlevel = strtoul(res, NULL, 10);
 
-	if (maj < found_maj)
+	return 0;
+}
+
+/* return 1 if kernel is greater or equal to given values, otherwise 0 */
+static int _kcapi_kernver_ge(struct kcapi_handle *handle, unsigned int maj,
+			     unsigned int minor, unsigned int patchlevel)
+{
+	if (maj < handle->sysinfo.kernel_maj)
 		return 1;
-	if (maj == found_maj) {
-		if (minor < found_minor)
+	if (maj == handle->sysinfo.kernel_maj) {
+		if (minor < handle->sysinfo.kernel_minor)
 			return 1;
-		if (minor == found_minor) {
-			if (patchlevel <= found_patchlevel)
+		if (minor == handle->sysinfo.kernel_minor) {
+			if (patchlevel <= handle->sysinfo.kernel_patchlevel)
 				return 1;
 		}
 	}
 	return 0;
 }
 
-static int _kcapi_aio_init(struct kcapi_handle *handle)
+static int _kcapi_aio_init(struct kcapi_handle *handle, const char *type)
 {
 	uint32_t i;
 	int err;
 
+	if (!strncmp("aead", type, 4)) {
+		if (!_kcapi_kernver_ge(handle, 4, 7, 0)) {
+			kcapi_dolog(LOG_WARN, "AIO support for AEAD cipher not present on current kernel\n");
+			err = EFAULT;
+			goto err;
+		}
+	} else if (!strncmp("skcipher", type, 8)) {
+		if (!_kcapi_kernver_ge(handle, 4, 1, 0)) {
+			kcapi_dolog(LOG_WARN, "AIO support for symmetric ciphers not present on current kernel\n");
+			err = EFAULT;
+			goto err;
+		}
+	} else {
+		kcapi_dolog(LOG_WARN, "AIO support for unknown cipher type %s not present\n",
+			    type);
+		err = EFAULT;
+		goto err;
+	}
+
 	handle->aio.cio = calloc(KCAPI_AIO_CONCURRENT, sizeof(struct iocb));
-	if (!handle->aio.cio)
-		return ENOMEM;
+	if (!handle->aio.cio) {
+		err = ENOMEM;
+		goto err;
+	}
 
 	handle->aio.ciopp = calloc(KCAPI_AIO_CONCURRENT, sizeof(void *));
 	if (!handle->aio.ciopp) {
@@ -897,7 +922,7 @@ err:
 static void _kcapi_handle_flags(struct kcapi_handle *handle)
 {
 	/* new memory structure for AF_ALG AEAD interface */
-	handle->flags.newaeadif = _kcapi_kernver_ge(4, 9, 0);
+	handle->flags.newaeadif = _kcapi_kernver_ge(handle, 4, 9, 0);
 }
 
 int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
@@ -921,6 +946,10 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 	handle->tfmfd = -1;
 	handle->pipes[0] = -1;
 	handle->pipes[1] = -1;
+
+	errsv = _kcapi_get_kernver(handle);
+	if (errsv)
+		goto err;
 
 	memset(&sa, 0, sizeof(sa));
 	sa.salg_family = AF_ALG;
@@ -964,7 +993,7 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 	}
 
 	if (flags & KCAPI_INIT_AIO) {
-		errsv = _kcapi_aio_init(handle);
+		errsv = _kcapi_aio_init(handle, type);
 		if (errsv)
 			goto err;
 	} else
