@@ -238,9 +238,9 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
  * Fallback function if AIO is not present, but caller requested AIO operation.
  */
 static int32_t
-_kcapi_aead_encrypt_aio_helper(struct kcapi_handle *handle, struct iovec *iniov,
-			       struct iovec *outiov, uint32_t iovlen,
-			       const uint8_t *iv)
+_kcapi_aead_encrypt_aio_fallback(struct kcapi_handle *handle,
+				 struct iovec *iniov, struct iovec *outiov,
+				 uint32_t iovlen, const uint8_t *iv)
 {
 	int32_t ret = kcapi_aead_stream_init_enc(handle, iv, NULL, 0);
 
@@ -279,10 +279,8 @@ int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 		if (rc < 0) {
 			/* if AIO support is not present */
 			if (rc == -EOPNOTSUPP) {
-				rc = _kcapi_aead_encrypt_aio_helper(handle,
-								    &iniov[i],
-								    &outiov[i],
-								    1, iv);
+				rc = _kcapi_aead_encrypt_aio_fallback(handle,
+						&iniov[i], &outiov[i], 1, iv);
 				if (rc < 0)
 					return rc;
 			} else
@@ -317,9 +315,9 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
  * Fallback function if AIO is not present, but caller requested AIO operation.
  */
 static int32_t
-_kcapi_aead_decrypt_aio_helper(struct kcapi_handle *handle, struct iovec *iniov,
-			       struct iovec *outiov, uint32_t iovlen,
-			       const uint8_t *iv)
+_kcapi_aead_decrypt_aio_fallback(struct kcapi_handle *handle,
+				 struct iovec *iniov, struct iovec *outiov,
+				 uint32_t iovlen, const uint8_t *iv)
 {
 	int32_t ret = kcapi_aead_stream_init_dec(handle, iv, NULL, 0);
 
@@ -358,10 +356,8 @@ int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 		if (rc < 0) {
 			/* if AIO support is not present */
 			if (rc == -EOPNOTSUPP) {
-				rc = _kcapi_aead_decrypt_aio_helper(handle,
-								    &iniov[i],
-								    &outiov[i],
-								    1, iv);
+				rc = _kcapi_aead_decrypt_aio_fallback(handle,
+						&iniov[i], &outiov[i], 1, iv);
 				if (rc < 0)
 					return rc;
 			} else

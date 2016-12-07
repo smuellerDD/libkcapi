@@ -66,7 +66,7 @@ int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
  * Fallback function if AIO is not present, but caller requested AIO operation.
  */
 static int32_t
-_kcapi_cipher_encrypt_aio_helper(struct kcapi_handle *handle,
+_kcapi_cipher_encrypt_aio_fallback(struct kcapi_handle *handle,
 				 struct iovec *iniov, struct iovec *outiov,
 				 uint32_t iovlen, const uint8_t *iv)
 {
@@ -103,8 +103,8 @@ int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
 				      ALG_OP_ENCRYPT);
 
 	if (ret == -EOPNOTSUPP)
-		return _kcapi_cipher_encrypt_aio_helper(handle, iniov, outiov,
-							iovlen, iv);
+		return _kcapi_cipher_encrypt_aio_fallback(handle, iniov, outiov,
+							  iovlen, iv);
 
 	return ret;
 }
@@ -139,9 +139,9 @@ int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
  * Fallback function if AIO is not present, but caller requested AIO operation.
  */
 static int32_t
-_kcapi_cipher_decrypt_aio_helper(struct kcapi_handle *handle,
-				 struct iovec *iniov, struct iovec *outiov,
-				 uint32_t iovlen, const uint8_t *iv)
+_kcapi_cipher_decrypt_aio_fallback(struct kcapi_handle *handle,
+				   struct iovec *iniov, struct iovec *outiov,
+				   uint32_t iovlen, const uint8_t *iv)
 {
 	int32_t ret = 0;
 	uint32_t i;
@@ -176,8 +176,8 @@ int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
 				      ALG_OP_DECRYPT);
 
 	if (ret == -EOPNOTSUPP)
-		return _kcapi_cipher_decrypt_aio_helper(handle, iniov, outiov,
-							iovlen, iv);
+		return _kcapi_cipher_decrypt_aio_fallback(handle, iniov, outiov,
+							  iovlen, iv);
 
 	return ret;
 }
