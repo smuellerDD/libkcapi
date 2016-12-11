@@ -5,11 +5,29 @@ Changes 0.13.0
  * addition of kcapi_aead_inbuflen_enc, kcapi_aead_inbuflen_dec,
    kcapi_aead_outbuflen_enc, kcapi_aead_outbuflen_dec, kcapi_aead_getdata_input,
    kcapi_aead_getdata_output to allow apps to be programmed without specific
-   code handling for old and new AEAD AF_ALG interface (AAD and tag handling)
+   code handling for old and new AEAD AF_ALG interface (AAD and tag handling).
+   See the documentation section "AEAD Memory Structure" for an explanation
+   on how to use the API in a way to make the calling application agnostic
+   of the kernel interface differences.
  * significant addition to library to handle old / new AEAD AF_ALG interface
    without the caller being aware of that
  * change AEAD tests such to use the new API calls to make code independent
    of AEAD interface changes
+ * split up of the library implementation into individual files to allow
+   a more clear code management and to allow even to selectively disable
+   code to make the library smaller
+ * various small fixes suggested by Zbigniew Jędrzejewski-Szmek
+ * fix memleak in kcapi_*_destroy suggested by Zbigniew Jędrzejewski-Szmek
+ * use hard-links for the kcapi-hasher apps
+ * add bi-arch tests
+ * add check that AIO interface is only initialized if the kernel supports
+   AIO (library requires kernel 4.1.0 or larger for skcipher AIO and
+   4.7.0 or larger for AEAD AIO support)
+ * add transparent fallback in case the caller requests AIO operation but
+   the AIO interface was not or could not be initialized -- the AIO API can be
+   used on systems without AIO support as the library transparently falls back
+   to the non-AIO operation (however, the library complains at the beginning
+   about the use of the AIO API on unsupported systems).
 
 Changes 0.12.0
  * add version.lds
