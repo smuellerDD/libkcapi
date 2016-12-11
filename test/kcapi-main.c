@@ -838,6 +838,13 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 		inbuflen = kcapi_aead_inbuflen_dec(handle, cavs_test->ctlen,
 						   cavs_test->assoclen,
 						   cavs_test->taglen);
+
+	/* 
+	 * For the splice operation, this test performs a special memory
+	 * structure test to invoke all kernel code paths available.
+	 * This special handling is not needed for regular operation
+	 * though.
+	 */
 	if (splice)
 		fullbuflen = cavs_test->assoclen + cavs_test->taglen +
 			     ((cavs_test->enc) ? cavs_test->ptlen : cavs_test->ctlen);
