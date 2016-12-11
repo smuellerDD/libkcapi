@@ -215,9 +215,9 @@
   <sect1><title>Asynchronous Symmetric Cipher API</title>
    <para>
     In addition to the symmetric cipher API, an asynchronous API is offered
-    with the kcapi_cipher_*_aio API calls. The concept of that API is to
-    perform parallel operations of multiple encryption or decryption
-    data streams.
+    with the kcapi_cipher_*_aio and kcapi_aead_*_aio API calls. The concept of
+    that API is to perform parallel operations of multiple encryption or
+    decryption data streams.
    </para>
 
    <para>
@@ -257,6 +257,16 @@
     number of parallel invocations and -x 1 for a symmetric one-shot cipher
     invocation and -x 9 for an asymmetric cipher operation with the given input
     data.
+   </para>
+
+   <para>
+    The kernel offers the AIO interface since kernel version 4.1 (symmetric
+    ciphers) and 4.7 (AEAD ciphers). The libkcapi implements a transparent
+    fallback to use the synchronous cipher API in case the AIO support is not
+    present for the current kernel. This allows the calling users to be
+    agnostic of the kernel support. Nonetheless, libkcapi with report the lack
+    of AIO support if AIO is requested as the fallback implementation has a
+    slight performance overhead.
    </para>
   </sect1>
 
@@ -303,7 +313,9 @@
      When using the stream API for AEAD, the caller must observe a particular
      order of data components. It is permissible that for each of the following
      data components multiple send calls are used. But in total, all send calls
-     must send the AEAD data in the following sequence:
+     must send the AEAD data in the requested sequence. That sequence has
+     changed with kernel 4.9. The following sequence is applicable to kernel
+     versions up to and including 4.8:
     </para>
 
     <orderedlist>
@@ -317,9 +329,8 @@
       or decrypted and whose integrity shall be verified.</para>
      </listitem>
      <listitem>
-      <para>(in case of decryption) Authentication Tag: If data is to be
-      decrypted, the authentication tag must be supplied as the last data
-      component.</para>
+      <para>Authentication Tag: Regardless of an encryption or decryption,
+      the authentication tag memory must be provided.</para>
      </listitem>
     </orderedlist>
 
@@ -331,12 +342,90 @@
      hold the tag as well. This requirement particularly aids the in-place
      cipher operation.
     </para>
+
+    <para>
+     Starting with kernel 4.9, the interface changed slightly such that the
+     authentication tag memory is only needed in the output buffer for
+     encryption and in the input buffer for decryption.
+    </para>
+
+    <para>
+     To allow the calling application to be agnostic about the differences
+     in the kernel interface, the calling application is offered additional
+     API calls which should be used as follows:
+    </para>
+
+    <orderedlist>
+     <listitem>
+      <para>Obtain the required input buffer length for the cryptographic
+      operation using the calls kcapi_aead_inbuflen_enc or
+      kcapi_aead_inbuflen_dec.</para>
+     </listitem>
+     <listitem>
+      <para>Obtain the required output buffer length for the cryptographic
+      operation using the APIs of kcapi_aead_outbuflen_enc or
+      kcapi_aead_outbuflen_dec.</para>
+     </listitem>
+
+     <listitem>
+      <para>For an in-place operation with a linear buffer, do the following
+      (for an example, see test/kcapi-main.c:cavs_aead()):
+       <orderedlist>
+        <listitem>
+         <para>allocate memory that is max(inbuflen, outbuflen),</para>
+        </listitem>
+        <listitem>
+         <para>call to kcapi_aead_getdata_input and kcapi_aead_getdata_output
+         with the allocated memory pointer to obtain the pointers into that
+         allocated memory where the AAD, plaintext / ciphertext and tag is to be
+         provided,</para>
+        </listitem>
+        <listitem>
+         <para>fill these AAD, plaintext/ciphertext and tag pointers with the
+         respective data if they are non-NULL -- note, a NULL pointer may
+         be returned for the tag pointer,</para>
+        </listitem>
+        <listitem>
+         <para>invoke the crypto operation with the pointer to the allocated
+         buffer and inbuflen is supplied to the.</para>
+        </listitem>
+       </orderedlist>
+      </para>
+     </listitem>
+
+     <listitem>
+      <para>For for separate, potentially non-contiguous buffers, do the
+      following (for an example, see test/kcapi-main.c:cavs_aead_stream()):
+       <orderedlist>
+        <listitem>
+         <para>ensure that your total buffer size for input and output complies
+         with the result from the buffer lengths supplied by the aforementioned
+         API calls,</para>
+        </listitem>
+        <listitem>
+         <para>call to kcapi_aead_getdata_input and kcapi_aead_getdata_output
+         with NULL pointers for the memory buffers to obtain the lengths for the
+         AEAD data components,</para>
+        </listitem>
+        <listitem>
+         <para>initialize the IOVECs and/or invoke the stream API with the
+         independent buffers with the AAD, plaintext/ciphertext and tag if the
+         associated length values are non-zero.</para>
+        </listitem>
+       </orderedlist>
+      </para>
+     </listitem>
+
+    </orderedlist>
+
     <para>
      If the caller chooses to not implement an in-place operation, the kernel
      will copy the AAD data into the output buffer, so that the destination
      buffer will hold the the ciphertext or plaintext, the AAD data and the
      authentication tag (encryption only). The memory structure of the
-     destination buffer is identical to the source buffer.
+     destination buffer is identical to the source buffer. (This is currently
+     not yet implemented for all ciphers and will be fixed in future
+     kernel versions.)
     </para>
    </sect2>
   </sect1>
