@@ -1124,7 +1124,7 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 		iniov += process;
 		outiov += process;
 		ret += rc;
-		tosend -= handle->aio.completed_reads;
+		tosend = iovlen - handle->aio.completed_reads;
 	}
 
 	/*
