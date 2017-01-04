@@ -150,7 +150,7 @@ char *cp_print_status(struct cp_test *test, int raw)
 {
 	char *str = NULL;
 	uint64_t processed_bytes = test->results.rounds * test->results.byteperop;
-	uint64_t totaltime = test->results.totaltime>>30;
+	uint64_t totaltime = test->results.totaltime>>32;
 	uint64_t ops = 0;
 
 	str = calloc(1, 121);
