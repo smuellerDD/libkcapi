@@ -96,19 +96,30 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm)
 		goto out;
 	}
 
-	test->u.aead.datalen = kcapi_aead_outbuflen(test->u.aead.handle,
-						    BLOCKLEN * len, 
-						    test->u.aead.assoclen,
-						    TAGLEN);
-		
+	if (enc) {
+		test->u.aead.indatalen = kcapi_aead_inbuflen_enc(
+			test->u.aead.handle, BLOCKLEN * len,
+			test->u.aead.assoclen, TAGLEN);
+		test->u.aead.outdatalen = kcapi_aead_outbuflen_enc(
+			test->u.aead.handle, BLOCKLEN * len,
+			test->u.aead.assoclen, TAGLEN);
+	} else {
+		test->u.aead.indatalen = kcapi_aead_inbuflen_dec(
+			test->u.aead.handle, BLOCKLEN * len,
+			test->u.aead.assoclen, TAGLEN);
+		test->u.aead.outdatalen = kcapi_aead_outbuflen_dec(
+			test->u.aead.handle, BLOCKLEN * len,
+			test->u.aead.assoclen, TAGLEN);
+	}
+
 	if (posix_memalign((void *)&input, sysconf(_SC_PAGESIZE),
-			   test->u.aead.datalen)) {
+			   test->u.aead.indatalen)) {
 		printf(DRIVER_NAME": could not allocate input buffer for "
 		       "%s\n", test->driver_name);
 		goto out;
 	}
 	if (posix_memalign((void *)&output, sysconf(_SC_PAGESIZE),
-			   test->u.aead.datalen)) {
+			   test->u.aead.outdatalen)) {
 		printf(DRIVER_NAME": could not allocate output buffer for "
 		       "%s\n", test->driver_name);
 		goto out;
@@ -119,17 +130,17 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm)
 	test->u.aead.output = output;
 
 	if (enc) {
-		cp_read_random(input, test->u.aead.datalen);
+		cp_read_random(input, test->u.aead.indatalen);
 	} else {
 		int ret = 0;
 		/* we need good data to avoid testing just the hash */
-		cp_read_random(output, test->u.aead.datalen);
+		cp_read_random(output, test->u.aead.outdatalen);
 		ret = kcapi_aead_encrypt(test->u.aead.handle,
 					 test->u.aead.output,
-					 test->u.aead.datalen,
+					 test->u.aead.outdatalen,
 					 test->u.aead.iv,
 					 test->u.aead.input,
-					 test->u.aead.datalen, 0);
+					 test->u.aead.indatalen, 0);
 		if (ret < 0) {
 			printf(DRIVER_NAME": could not create ciphertext for "
 		       "%s (%d)\n", test->driver_name, ret);
@@ -141,10 +152,10 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm)
 		/* just a verification to avoid being fooled */
 		ret = kcapi_aead_decrypt(test->u.aead.handle,
 					 test->u.aead.input,
-					 test->u.aead.datalen,
+					 test->u.aead.indatalen,
 					 test->u.aead.iv,
 					 test->u.aead.output,
-					 test->u.aead.datalen,
+					 test->u.aead.outdatalen,
 					 test->accesstype);
 		if (ret < 0) {
 			printf(DRIVER_NAME": could not decrypt ciphertext for "
@@ -199,24 +210,24 @@ static unsigned int cp_ablkcipher_enc_test(struct cp_test *test)
 {
 	kcapi_aead_encrypt(test->u.aead.handle,
 			   test->u.aead.input,
-			   test->u.aead.datalen,
+			   test->u.aead.indatalen,
 			   test->u.aead.iv,
 			   test->u.aead.output,
-			   test->u.aead.datalen,
+			   test->u.aead.outdatalen,
 			   test->accesstype);
-	return test->u.aead.datalen;
+	return test->u.aead.outdatalen;
 }
 
 static unsigned int cp_ablkcipher_dec_test(struct cp_test *test)
 {
 	kcapi_aead_decrypt(test->u.aead.handle,
 			   test->u.aead.input,
-			   test->u.aead.datalen,
+			   test->u.aead.indatalen,
 			   test->u.aead.iv,
 			   test->u.aead.output,
-			   test->u.aead.datalen,
+			   test->u.aead.outdatalen,
 			   test->accesstype);
-	return test->u.aead.datalen;
+	return test->u.aead.outdatalen;
 }
 
 struct cp_aead_tests {
