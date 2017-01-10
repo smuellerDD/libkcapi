@@ -28,6 +28,9 @@ extern "C"
 {
 #endif
 
+#define DSO_DEPRECATED(x) \
+	__attribute__ ((deprecated ("API deprecated with library version " x)))
+
 /*
  * Flags for the encrypt / decrypt operations
  * 
@@ -571,6 +574,7 @@ int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
  * provides the consumer with the length of the tag and the length of the
  * ciphertext.
  */
+DSO_DEPRECATED("0.13.0")
 void kcapi_aead_getdata(struct kcapi_handle *handle,
 			uint8_t *encdata, uint32_t encdatalen,
 			uint8_t **aad, uint32_t *aadlen,
@@ -931,6 +935,7 @@ uint32_t kcapi_aead_authsize(struct kcapi_handle *handle);
  *
  * @return minimum size of output data length in bytes
  */
+DSO_DEPRECATED("0.13.0")
 uint32_t kcapi_aead_outbuflen(struct kcapi_handle *handle, uint32_t inlen,
 			      uint32_t assoclen, uint32_t taglen);
 
