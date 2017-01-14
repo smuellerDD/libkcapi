@@ -926,7 +926,7 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 		if (EBADMSG == errsv) {
 			printf("EBADMSG\n");
 		} else if ((uint32_t)ret != outbuflen) {
-			printf("Received data length %u does not match expected length %u\n", ret, outbuflen);
+			printf("Received data length %d does not match expected length %u\n", ret, outbuflen);
 		} else {
 			bin2print(data, datalen);
 
