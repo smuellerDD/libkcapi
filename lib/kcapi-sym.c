@@ -70,25 +70,12 @@ _kcapi_cipher_encrypt_aio_fallback(struct kcapi_handle *handle,
 				 struct iovec *iniov, struct iovec *outiov,
 				 uint32_t iovlen, const uint8_t *iv)
 {
-	int32_t ret = 0;
-	uint32_t i;
+	int32_t rc = kcapi_cipher_stream_init_enc(handle, iv, iniov, iovlen);
 
-	/* every IOVEC for AIO is an independent cipher invocation */
-	for (i = 0; i < iovlen; i++) {
-		int32_t rc = kcapi_cipher_stream_init_enc(handle, iv, &iniov[i],
-							  1);
+	if (rc < 0)
+		return rc;
 
-		if (rc < 0)
-			return rc;
-
-		rc = kcapi_cipher_stream_op(handle, &outiov[i], 1);
-		if (rc < 0)
-			return rc;
-
-		ret += rc;
-	}
-
-	return ret;
+	return kcapi_cipher_stream_op(handle, outiov, iovlen);
 }
 
 DSO_PUBLIC
@@ -99,14 +86,18 @@ int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
 	int32_t ret;
 
 	handle->cipher.iv = iv;
-	ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen, access,
-				      ALG_OP_ENCRYPT);
 
-	if (ret == -EOPNOTSUPP)
-		return _kcapi_cipher_encrypt_aio_fallback(handle, iniov, outiov,
-							  iovlen, iv);
+	if (handle->flags.aiofix) {
+		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
+					      access, ALG_OP_ENCRYPT);
 
-	return ret;
+		if (ret != -EOPNOTSUPP)
+			return ret;
+	}
+
+	/* The kernel's AIO interface is broken. */
+	return _kcapi_cipher_encrypt_aio_fallback(handle, iniov, outiov,
+						  iovlen, iv);
 }
 
 DSO_PUBLIC
@@ -143,25 +134,12 @@ _kcapi_cipher_decrypt_aio_fallback(struct kcapi_handle *handle,
 				   struct iovec *iniov, struct iovec *outiov,
 				   uint32_t iovlen, const uint8_t *iv)
 {
-	int32_t ret = 0;
-	uint32_t i;
+	int32_t rc = kcapi_cipher_stream_init_dec(handle, iv, iniov, iovlen);
 
-	/* every IOVEC for AIO is an independent cipher invocation */
-	for (i = 0; i < iovlen; i++) {
-		int32_t rc = kcapi_cipher_stream_init_dec(handle, iv, &iniov[i],
-							  1);
+	if (rc < 0)
+		return rc;
 
-		if (rc < 0)
-			return rc;
-
-		rc = kcapi_cipher_stream_op(handle, &outiov[i], 1);
-		if (rc < 0)
-			return rc;
-
-		ret += rc;
-	}
-
-	return ret;
+	return kcapi_cipher_stream_op(handle, outiov, iovlen);
 }
 
 DSO_PUBLIC
@@ -172,14 +150,18 @@ int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
 	int32_t ret;
 
 	handle->cipher.iv = iv;
-	ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen, access,
-				      ALG_OP_DECRYPT);
 
-	if (ret == -EOPNOTSUPP)
-		return _kcapi_cipher_decrypt_aio_fallback(handle, iniov, outiov,
-							  iovlen, iv);
+	if (handle->flags.aiofix) {
+		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
+					      access, ALG_OP_DECRYPT);
 
-	return ret;
+		if (ret != -EOPNOTSUPP)
+			return ret;
+	}
+
+	/* The kernel's AIO interface is broken. */
+	return _kcapi_cipher_decrypt_aio_fallback(handle, iniov, outiov,
+						  iovlen, iv);
 }
 
 DSO_PUBLIC

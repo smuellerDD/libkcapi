@@ -111,7 +111,7 @@ void kcapi_aead_getdata_input(struct kcapi_handle *handle,
 		encdatalen -= handle->aead.assoclen;
 	}
 
-	l_taglen = (enc && handle->flags.newaeadif) ? 0 : handle->aead.taglen;
+	l_taglen = (enc && handle->flags.newtag) ? 0 : handle->aead.taglen;
 	/* databuffer is all between AAD buffer (if present) and tag */
 	if (encdatalen < l_taglen) {
 		kcapi_dolog(LOG_DEBUG, "Cipher result data not found");
@@ -165,7 +165,7 @@ void kcapi_aead_getdata_output(struct kcapi_handle *handle,
 	}
 
 	/* with 4.9.0 we do not have a tag for decryption */
-	if (handle->flags.newaeadif)
+	if (handle->flags.newtag)
 		l_taglen = (enc) ? handle->aead.taglen : 0;
 	else
 		l_taglen = handle->aead.taglen;
@@ -264,6 +264,18 @@ int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 
 	handle->cipher.iv = iv;
 
+	if (handle->flags.aiofix) {
+		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
+					      access, ALG_OP_ENCRYPT);
+
+		if (ret == -EOPNOTSUPP)
+			return _kcapi_aead_encrypt_aio_fallback(handle, iniov,
+								outiov,	iovlen,
+								iv);
+
+		return ret;
+	}
+
 	/*
 	 * Currently the kernel is only able to handle one complete individual
 	 * AEAD cipher operation at a time.
@@ -341,8 +353,20 @@ int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 
 	handle->cipher.iv = iv;
 
+	if (handle->flags.aiofix) {
+		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
+					      access, ALG_OP_DECRYPT);
+
+		if (ret == -EOPNOTSUPP)
+			return _kcapi_aead_decrypt_aio_fallback(handle, iniov,
+								outiov,	iovlen,
+								iv);
+
+		return ret;
+	}
+
 	/*
-	 * Currently the kernel is only able to handle one complete individual
+	 * The kernel is only able to handle one complete individual
 	 * AEAD cipher operation at a time.
 	 *
 	 * The key to this limitation lies in the check (usedpages < outlen)
@@ -459,7 +483,7 @@ uint32_t kcapi_aead_inbuflen_enc(struct kcapi_handle *handle,
 {
 	uint32_t len = inlen + assoclen;
 
-	if (!handle->flags.newaeadif)
+	if (!handle->flags.newtag)
 		len += taglen;
 
 	return len;
@@ -497,7 +521,7 @@ uint32_t kcapi_aead_outbuflen_dec(struct kcapi_handle *handle,
 	int bs = handle->info.blocksize;
 	uint32_t outlen = (inlen + bs - 1) / bs * bs + assoclen;
 
-	if (!handle->flags.newaeadif)
+	if (!handle->flags.newtag)
 		outlen += taglen;
 
 	/* the kernel does not like zero length output buffers */

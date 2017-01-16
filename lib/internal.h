@@ -178,7 +178,14 @@ struct kcapi_aio {
 };
 
 struct kcapi_flags {
-	int newaeadif:1;
+	/*
+	 * New AEAD interface introduced with 4.9.0 to only require a tag
+	 * if it is required as input or output.
+	 */
+	unsigned int newtag:1;
+
+	/* Include of the patch that fixes the entire AIO handling. */
+	unsigned int aiofix:1;
 };
 
 struct kcapi_sys {
