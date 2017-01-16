@@ -660,10 +660,6 @@ static int cavs_sym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	if (!loops)
 		return -EINVAL;
 
-	iov = calloc(1, loops * sizeof(struct iovec));
-	if (!iov)
-		return -ENOMEM;
-
 	if (cavs_test->enc) {
 		if (!cavs_test->ptlen)
 			return -EINVAL;
@@ -673,6 +669,11 @@ static int cavs_sym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 			return -EINVAL;
 		outbuflen = cavs_test->ctlen * loops;
 	}
+
+	iov = calloc(1, loops * sizeof(struct iovec));
+	if (!iov)
+		return -ENOMEM;
+
 	if (cavs_test->aligned) {
 		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), outbuflen))
 			goto out;
@@ -915,7 +916,7 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 		if (EBADMSG == errsv) {
 			printf("EBADMSG\n");
 		} else if ((uint32_t)ret != outbuflen) {
-			printf("Received data length %u does not match expected length %u\n", ret, outbuflen);
+			printf("Received data length %d does not match expected length %u\n", ret, outbuflen);
 		} else {
 			if (printaad && assoc && assoclen)
 				bin2print(assoc, assoclen);
@@ -944,7 +945,7 @@ out:
 static int cavs_aead_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 			 int splice, int printaad)
 {
-	struct kcapi_handle *handle;
+	struct kcapi_handle *handle = NULL;
 	uint8_t *outbuf = NULL;
 	uint32_t outbuflen = 0;
 	uint8_t *inbuf = NULL;
@@ -976,8 +977,10 @@ static int cavs_aead_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	if (!iniov)
 		return -ENOMEM;
 	outiov = calloc(1, loops * sizeof(struct iovec));
-	if (!outiov)
-		return -ENOMEM;
+	if (!outiov) {
+		ret = -ENOMEM;
+		goto out;
+	}
 
 	ret = -EINVAL;
 	if (kcapi_aead_init(&handle, cavs_test->cipher, KCAPI_INIT_AIO)) {
@@ -1899,7 +1902,7 @@ out:
  */
 static int cavs_kdf_common(struct kcapi_cavs *cavs_test, uint32_t loops)
 {
-	struct kcapi_handle *handle;
+	struct kcapi_handle *handle = NULL;
 	uint8_t *outbuf = NULL;
 	char *mdhex = NULL;
 	uint32_t mdhexlen = cavs_test->outlen * 2 + 1;
