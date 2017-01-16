@@ -728,17 +728,6 @@ static int cavs_sym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	bin2print(outbuf, outbuflen);
 	printf("\n");
 
-	for (i = 0; i < loops; i++) {
-		int rc;
-
-		if (cavs_test->enc)
-			rc = memcmp(outbuf, outbuf + (i * cavs_test->ptlen), cavs_test->ptlen);
-		else
-			rc = memcmp(outbuf, outbuf + (i * cavs_test->ctlen), cavs_test->ctlen);
-		if (rc)
-			printf("failure %u\n", i);
-	}
-
 	if (cavs_test->timing)
 		printf("duration %lu\n", (unsigned long)_time_delta(&begin, &end));
 
@@ -776,7 +765,7 @@ out:
  * e353779c1079aeb82708942dbe77181a1b13cbaf895ee12c13c52ea3cceddcb50371a206
  */
 static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
-		     int splice)
+		     int splice, int printaad)
 {
 	struct kcapi_handle *handle;
 	uint8_t *outbuf = NULL;
@@ -928,6 +917,8 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 		} else if ((uint32_t)ret != outbuflen) {
 			printf("Received data length %u does not match expected length %u\n", ret, outbuflen);
 		} else {
+			if (printaad && assoc && assoclen)
+				bin2print(assoc, assoclen);
 			bin2print(data, datalen);
 
 			if (tag && taglen) 
@@ -951,7 +942,7 @@ out:
 }
 
 static int cavs_aead_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
-			 int splice)
+			 int splice, int printaad)
 {
 	struct kcapi_handle *handle;
 	uint8_t *outbuf = NULL;
@@ -1108,6 +1099,8 @@ static int cavs_aead_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 		printf("EBADMSG\n");
 	} else {
 		for (i = 0; i < loops; i++) {
+			if (printaad && assoc && assoclen)
+				bin2print(assoc + (i * maxbuflen), assoclen);
 			bin2print(data + (i * maxbuflen), datalen);
 
 			if (tag && taglen) 
@@ -1134,7 +1127,8 @@ out:
 	return ret;
 }
 
-static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
+static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
+			    int printaad)
 {
 	struct kcapi_handle *handle;
 	uint8_t *outbuf = NULL;
@@ -1377,6 +1371,8 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 		if (EBADMSG == errsv) {
 			printf("EBADMSG\n");
 		} else {
+			if (printaad && assoc && assoclen)
+				bin2print(assoc, assoclen);
 			bin2print(data, datalen);
 
 			if (tag && taglen) 
@@ -1456,7 +1452,7 @@ static int cavs_aead_large(int stream, uint32_t loops, int splice)
 		test.assoclen -= (8192); */
 		/* However, we now have vmsplice here */
 		test.assoclen -= 12288 + test.taglen;
-		ret = cavs_aead_stream(&test, loops);
+		ret = cavs_aead_stream(&test, loops, 0);
 	} else {
 		/*
 		 * vmsplice: AAD must be at most 14 pages as otherwise the
@@ -1468,7 +1464,7 @@ static int cavs_aead_large(int stream, uint32_t loops, int splice)
 		 * AAD to 14 pages
 		 */
 		test.assoclen -= 8192 + test.taglen;
-		ret = cavs_aead(&test, loops, splice);
+		ret = cavs_aead(&test, loops, splice, 0);
 	}
 out:
 	if (test.pt)
@@ -2266,11 +2262,11 @@ int main(int argc, char *argv[])
 		rc = cavs_sym_aio(&cavs_test, loops, splice);
 	else if (AEAD == cavs_test.type) {
 		if (stream)
-			rc = cavs_aead_stream(&cavs_test, loops);
+			rc = cavs_aead_stream(&cavs_test, loops, 0);
 		else
-			rc = cavs_aead(&cavs_test, loops, splice);
+			rc = cavs_aead(&cavs_test, loops, splice, 0);
 	} else if (AEAD_AIO == cavs_test.type)
-		rc = cavs_aead_aio(&cavs_test, loops, splice);
+		rc = cavs_aead_aio(&cavs_test, loops, splice, 0);
 	else if (HASH == cavs_test.type) {
 		if (stream)
 			rc = cavs_hash_stream(&cavs_test, loops);

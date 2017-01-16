@@ -315,7 +315,7 @@ AEAD_iv_14="c4edb5723d2a4029"
 AEAD_tag_14="40d75ea68c8ccfefdde5cfb4"
 AEAD_taglen_14="12"
 AEAD_assoc_14="44c9efe4b0a7b98d"
-AEAD_exp_14="ada6f4f78913d4bc62a8d546bec17036" # CT || Tag
+AEAD_exp_14="ada6f4f78913d4bc62a8d546bec17036"
 
 AEAD_name_15="rfc4106(gcm(aes))"
 AEAD_enc_15="0"
@@ -777,12 +777,17 @@ aeadfunc()
 		then
 			result=$($KCAPI -x $impl $stream $aligned -e -c $AEAD_name $iv -k $AEAD_key -a "$AEAD_assoc" -p "$AEAD_msg" -l $AEAD_taglen 2>/dev/null)
 			cmd="$KCAPI -x $impl $stream $aligned -e -c \"$AEAD_name\" $iv -k $AEAD_key -a \"$AEAD_assoc\" -p \"$AEAD_msg\" -l $AEAD_taglen"
-			expected="${AEAD_exp}${AEAD_tag}"
+			expected1="${AEAD_exp}${AEAD_tag}"
+			#expected1="${AEAD_assoc}${AEAD_exp}${AEAD_tag}"
+			#expected2="invalid"
 		else
 			result=$($KCAPI -x $impl $stream $aligned -c $AEAD_name $iv -k $AEAD_key -a "$AEAD_assoc" -t "$AEAD_tag" -q "$AEAD_msg" 2>/dev/null)
 			cmd="$KCAPI -x $impl $stream $aligned -c \"$AEAD_name\" $iv -k $AEAD_key -a \"$AEAD_assoc\" -t \"$AEAD_tag\" -q
 			\"$AEAD_msg\""
-			expected="${AEAD_exp}"
+			expected1="${AEAD_exp}"
+			#expected1="${AEAD_assoc}${AEAD_exp}"
+			#null_assoc=printf "%0.s0" $(seq 1 ${#AEAD_assoc})
+			#expected2="${null_assoc}${AEAD_exp}"
 		fi
 
 		impl_type="synchronous"
@@ -805,7 +810,7 @@ aeadfunc()
 			aout="aligned"
 		fi
 
-		if [ x"$result" = x"$expected" ]
+		if [ x"$result" = x"$expected1" ]
 		then
 			echo_pass "AEAD $impl_type $sout $aout test $i"
 		else
@@ -823,7 +828,7 @@ aeadfunc()
 		return
 	fi
 
-	# AEAD long message test
+	# AEAD long message test (AAD is not printed by test program)
 	expectedlong="5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d75874d85cb992b7e7aeab81ba7cf77285969"
 	expectedshort="5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d75874da5e05a23b8902677480ee92c7ff6bc"
 	expectedsmall="5b77260fcfd3ac8a714a7a6fe3795ed39d6abeda3b199c0de8e64b57569d7587fa431e683949010ded4a091fa7b5bf0b"
@@ -970,7 +975,8 @@ multipletest_sym() {
 	result=$($cmd 2>/dev/null)
 	if [ $symimpl -eq 9 ]
 	then
-		expected="8b19050f66582cb7f7e4b6c873819b718b19050f66582cb7f7e4b6c873819b71"
+		#block chaining
+		expected="8b19050f66582cb7f7e4b6c873819b7108afa0eaa7de29bac7d903576b674c32"
 	elif [ x"$stream" = x"-s" ]
 	then
 		#block chaining
@@ -1162,23 +1168,23 @@ aeadfunc 10 -v -m
 
 auxtest
 multipletest_sym 1		# sync, no splice, one shot sendmsg
-#multipletest_sym 9		# async, no splice, one shot sendmsg
-multipletest_sym 1 -s	# sync, no splice, stream sendmsg
-#multipletest_sym 9 -s	# async, no splice, stream sendmsg
-multipletest_sym 1 -v	# sync, splice
-#multipletest_sym 9 -v	# async splice
+multipletest_sym 9		# async, no splice, one shot sendmsg
+multipletest_sym 1 -s		# sync, no splice, stream sendmsg
+multipletest_sym 9 -s		# async, no splice, stream sendmsg
+multipletest_sym 1 -v		# sync, splice
+multipletest_sym 9 -v		# async splice
 multipletest_aead 2		# sync, no splice, one shot sendmsg
 multipletest_aead 10		# async, no splice, one shot sendmsg
-multipletest_aead 2 -s	# sync, no splice, stream sendmsg
-multipletest_aead 10 -s	# async, no splice, stream sendmsg
-multipletest_aead 2 -v	# sync, splice
-multipletest_aead 10 -v	# async splice
+multipletest_aead 2 -s		# sync, no splice, stream sendmsg
+multipletest_aead 10 -s		# async, no splice, stream sendmsg
+multipletest_aead 2 -v		# sync, splice
+multipletest_aead 10 -v		# async splice
 multipletest_hash 3		# sync, no splice, one shot sendmsg
-multipletest_hash 3 -s	# sync, no splice, stream sendmsg
-multipletest_hash 3 -v	# sync, splice
+multipletest_hash 3 -s		# sync, no splice, stream sendmsg
+multipletest_hash 3 -v		# sync, splice
 #multipletest_asym 4		# sync, no splice, one shot sendmsg
-#multipletest_asym 4 -s	# sync, no splice, stream sendmsg
-#multipletest_asym 4 -v	# sync, splice
+#multipletest_asym 4 -s		# sync, no splice, stream sendmsg
+#multipletest_asym 4 -v		# sync, splice
 
 kdftest
 kdftest -m
