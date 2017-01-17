@@ -51,7 +51,8 @@ extern "C"
 			       * enhancements only, consumer can be left
 			       * unchanged if enhancements are not considered */
 #define KCAPI_PATCHLEVEL 0.6  /* API / ABI compatible, no functional changes, no
-			       * enhancements, bug fixes only */
+			       * enhancements, bug fixes only. Versions with
+			       * a decimal point are pre-releases. */
 
 /* remove once in if_alg.h */
 #ifndef ALG_SET_AEAD_ASSOCLEN
