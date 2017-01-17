@@ -384,11 +384,11 @@ static int auxiliary_tests(void)
 
 static void usage(void)
 {
-	char version[20];
+	char version[30];
 	uint32_t ver = kcapi_version();
 
-	memset(version, 0, 20);
-	kcapi_versionstring(version, 20);
+	memset(version, 0, sizeof(version));
+	kcapi_versionstring(version, sizeof(version));
 
 	fprintf(stderr, "\nKernel Crypto API CAVS Test\n");
 	fprintf(stderr, "\nKernel Crypto API interface library version: %s\n", version);

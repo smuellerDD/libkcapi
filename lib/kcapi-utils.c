@@ -30,8 +30,10 @@ void kcapi_set_verbosity(enum kcapi_verbosity level)
 DSO_PUBLIC
 void kcapi_versionstring(char *buf, uint32_t buflen)
 {
-	snprintf(buf, buflen, "libkcapi %d.%d.%d", KCAPI_MAJVERSION,
-		 KCAPI_MINVERSION, KCAPI_PATCHLEVEL);
+	snprintf(buf, buflen, "libkcapi%s%d.%d.%.f",
+		 (((uint32_t)KCAPI_PATCHLEVEL != KCAPI_PATCHLEVEL) ?
+							 " pre-release " : " "),
+		 KCAPI_MAJVERSION, KCAPI_MINVERSION, (double)KCAPI_PATCHLEVEL);
 }
 
 DSO_PUBLIC
