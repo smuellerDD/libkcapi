@@ -153,3 +153,146 @@ int32_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
 	}
 	return _kcapi_common_recv_data(handle, iov, iovlen);
 }
+
+/*
+ * Fallback function if AIO is not present, but caller requested AIO operation.
+ */
+static int32_t
+_kcapi_akcipher_encrypt_aio_fallback(struct kcapi_handle *handle,
+				     struct iovec *iniov, struct iovec *outiov,
+				     uint32_t iovlen)
+{
+	int32_t rc = kcapi_akcipher_stream_init_enc(handle, iniov, iovlen);
+
+	if (rc < 0)
+		return rc;
+
+	return kcapi_cipher_stream_op(handle, outiov, iovlen);
+}
+
+DSO_PUBLIC
+int32_t kcapi_akcipher_encrypt_aio(struct kcapi_handle *handle,
+				   struct iovec *iniov, struct iovec *outiov,
+				   uint32_t iovlen, int access)
+{
+	int32_t ret;
+
+	if (handle->flags.aiosupp) {
+		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
+					      access, ALG_OP_ENCRYPT);
+
+		if (ret != -EOPNOTSUPP)
+			return ret;
+	}
+
+	/* The kernel's AIO interface is broken. */
+	return _kcapi_akcipher_encrypt_aio_fallback(handle, iniov, outiov,
+						    iovlen);
+}
+
+/*
+ * Fallback function if AIO is not present, but caller requested AIO operation.
+ */
+static int32_t
+_kcapi_akcipher_decrypt_aio_fallback(struct kcapi_handle *handle,
+				     struct iovec *iniov, struct iovec *outiov,
+				     uint32_t iovlen)
+{
+	int32_t rc = kcapi_akcipher_stream_init_dec(handle, iniov, iovlen);
+
+	if (rc < 0)
+		return rc;
+
+	return kcapi_akcipher_stream_op(handle, outiov, iovlen);
+}
+
+DSO_PUBLIC
+int32_t kcapi_akcipher_decrypt_aio(struct kcapi_handle *handle,
+				   struct iovec *iniov, struct iovec *outiov,
+				   uint32_t iovlen, int access)
+{
+	int32_t ret;
+
+	if (handle->flags.aiosupp) {
+		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
+					      access, ALG_OP_DECRYPT);
+
+		if (ret != -EOPNOTSUPP)
+			return ret;
+	}
+
+	/* The kernel's AIO interface is broken. */
+	return _kcapi_akcipher_decrypt_aio_fallback(handle, iniov, outiov,
+						    iovlen);
+}
+
+/*
+ * Fallback function if AIO is not present, but caller requested AIO operation.
+ */
+static int32_t
+_kcapi_akcipher_sign_aio_fallback(struct kcapi_handle *handle,
+				  struct iovec *iniov, struct iovec *outiov,
+				  uint32_t iovlen)
+{
+	int32_t rc = kcapi_akcipher_stream_init_sgn(handle, iniov, iovlen);
+
+	if (rc < 0)
+		return rc;
+
+	return kcapi_akcipher_stream_op(handle, outiov, iovlen);
+}
+
+DSO_PUBLIC
+int32_t kcapi_akcipher_sign_aio(struct kcapi_handle *handle,
+				struct iovec *iniov, struct iovec *outiov,
+				uint32_t iovlen, int access)
+{
+	int32_t ret;
+
+	if (handle->flags.aiosupp) {
+		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
+					      access, ALG_OP_SIGN);
+
+		if (ret != -EOPNOTSUPP)
+			return ret;
+	}
+
+	/* The kernel's AIO interface is broken. */
+	return _kcapi_akcipher_sign_aio_fallback(handle, iniov, outiov, iovlen);
+}
+
+/*
+ * Fallback function if AIO is not present, but caller requested AIO operation.
+ */
+static int32_t
+_kcapi_akcipher_verify_aio_fallback(struct kcapi_handle *handle,
+				    struct iovec *iniov, struct iovec *outiov,
+				    uint32_t iovlen)
+{
+	int32_t rc = kcapi_akcipher_stream_init_vfy(handle, iniov, iovlen);
+
+	if (rc < 0)
+		return rc;
+
+	return kcapi_akcipher_stream_op(handle, outiov, iovlen);
+}
+
+DSO_PUBLIC
+int32_t kcapi_akcipher_verify_aio(struct kcapi_handle *handle,
+				  struct iovec *iniov, struct iovec *outiov,
+				  uint32_t iovlen, int access)
+{
+	int32_t ret;
+
+	if (handle->flags.aiosupp) {
+		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
+					      access, ALG_OP_VERIFY);
+
+		if (ret != -EOPNOTSUPP)
+			return ret;
+	}
+
+	/* The kernel's AIO interface is broken. */
+	return _kcapi_akcipher_verify_aio_fallback(handle, iniov, outiov,
+						   iovlen);
+}

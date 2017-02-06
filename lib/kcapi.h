@@ -1420,6 +1420,32 @@ int32_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
 			       uint8_t *out, uint32_t outlen, int access);
 
 /**
+ * kcapi_akcipher_encrypt_aio() - encrypt data (asynchronous one shot)
+ *
+ * @handle: [in] cipher handle
+ * @iniov: [in] head of scatter-gather list array holding the plaintext
+ * @outiov: [out] head of scatter-gather list of the destination buffers filled
+ *	with ciphertext
+ * @iovlen: [in] number of scatter-gather list entries
+ * @access: [in] kernel access type (KCAPI_ACCESS_HEURISTIC - use internal
+ *	heuristic for  fastest kernel access; KCAPI_ACCESS_VMSPLICE - use
+ *	vmsplice access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * The individual scatter-gather list entries are processed with
+ * separate invocations of the the given cipher.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page
+ * boundary, the vmsplice call may not send all data to the kernel.
+ *
+ * @return number of bytes encrypted upon success;
+ *	   a negative errno-style error code if an error occurred
+ */
+int32_t kcapi_akcipher_encrypt_aio(struct kcapi_handle *handle,
+				   struct iovec *iniov, struct iovec *outiov,
+				   uint32_t iovlen, int access);
+
+/**
  * kcapi_akcipher_decrypt() - decrypt data
  *
  * @handle: [in] cipher handle
@@ -1450,6 +1476,32 @@ int32_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
 			       uint8_t *out, uint32_t outlen, int access);
 
 /**
+ * kcapi_akcipher_decrypt_aio() - decrypt data (asynchronous one shot)
+ *
+ * @handle: [in] cipher handle
+ * @iniov: [in] head of scatter-gather list array holding the plaintext
+ * @outiov: [out] head of scatter-gather list of the destination buffers filled
+ *	with ciphertext
+ * @iovlen: [in] number of scatter-gather list entries
+ * @access: [in] kernel access type (KCAPI_ACCESS_HEURISTIC - use internal
+ *	heuristic for  fastest kernel access; KCAPI_ACCESS_VMSPLICE - use
+ *	vmsplice access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * The individual scatter-gather list entries are processed with
+ * separate invocations of the the given cipher.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page
+ * boundary, the vmsplice call may not send all data to the kernel.
+ *
+ * @return number of bytes decrypted upon success;
+ *	   a negative errno-style error code if an error occurred
+ */
+int32_t kcapi_akcipher_decrypt_aio(struct kcapi_handle *handle,
+				   struct iovec *iniov, struct iovec *outiov,
+				   uint32_t iovlen, int access);
+
+/**
  * kcapi_akcipher_sign() - signature generation
  *
  * @handle: [in] cipher handle
@@ -1478,6 +1530,32 @@ int32_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
 int32_t kcapi_akcipher_sign(struct kcapi_handle *handle,
 			    const uint8_t *in, uint32_t inlen,
 			    uint8_t *out, uint32_t outlen, int access);
+
+/**
+ * kcapi_akcipher_sign_aio() - sign data (asynchronous one shot)
+ *
+ * @handle: [in] cipher handle
+ * @iniov: [in] head of scatter-gather list array holding the plaintext
+ * @outiov: [out] head of scatter-gather list of the destination buffers filled
+ *	with ciphertext
+ * @iovlen: [in] number of scatter-gather list entries
+ * @access: [in] kernel access type (KCAPI_ACCESS_HEURISTIC - use internal
+ *	heuristic for  fastest kernel access; KCAPI_ACCESS_VMSPLICE - use
+ *	vmsplice access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * The individual scatter-gather list entries are processed with
+ * separate invocations of the the given cipher.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page
+ * boundary, the vmsplice call may not send all data to the kernel.
+ *
+ * @return number of bytes signed upon success;
+ *	   a negative errno-style error code if an error occurred
+ */
+int32_t kcapi_akcipher_sign_aio(struct kcapi_handle *handle,
+				struct iovec *iniov, struct iovec *outiov,
+				uint32_t iovlen, int access);
 
 /**
  * kcapi_akcipher_verify() - signature verification
@@ -1512,6 +1590,32 @@ int32_t kcapi_akcipher_sign(struct kcapi_handle *handle,
 int32_t kcapi_akcipher_verify(struct kcapi_handle *handle,
 			      const uint8_t *in, uint32_t inlen,
 			      uint8_t *out, uint32_t outlen, int access);
+
+/**
+ * kcapi_akcipher_verify_aio() - verify data (asynchronous one shot)
+ *
+ * @handle: [in] cipher handle
+ * @iniov: [in] head of scatter-gather list array holding the plaintext
+ * @outiov: [out] head of scatter-gather list of the destination buffers filled
+ *	with ciphertext
+ * @iovlen: [in] number of scatter-gather list entries
+ * @access: [in] kernel access type (KCAPI_ACCESS_HEURISTIC - use internal
+ *	heuristic for  fastest kernel access; KCAPI_ACCESS_VMSPLICE - use
+ *	vmsplice access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * The individual scatter-gather list entries are processed with
+ * separate invocations of the the given cipher.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page
+ * boundary, the vmsplice call may not send all data to the kernel.
+ *
+ * @return number of bytes verify upon success;
+ *	   a negative errno-style error code if an error occurred
+ */
+int32_t kcapi_akcipher_verify_aio(struct kcapi_handle *handle,
+				  struct iovec *iniov, struct iovec *outiov,
+				  uint32_t iovlen, int access);
 
 /**
  * kcapi_akcipher_stream_init_enc() - start an encryption operation (stream)
