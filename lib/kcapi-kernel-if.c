@@ -924,7 +924,8 @@ static void _kcapi_handle_flags(struct kcapi_handle *handle)
 	/* new memory structure for AF_ALG AEAD interface */
 	handle->flags.newtag = _kcapi_kernver_ge(handle, 4, 9, 0);
 
-	handle->flags.aiofix = 0; //_kcapi_kernver_ge(handle, 4, 10, 0);
+	/* AIO support for older kernels is simply broken. */
+	handle->flags.aiosupp = 0; //_kcapi_kernver_ge(handle, 4, 10, 0);
 }
 
 int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,

@@ -185,8 +185,8 @@ struct kcapi_flags {
 	 */
 	unsigned int newtag:1;
 
-	/* Include of the patch that fixes the entire AIO handling. */
-	unsigned int aiofix:1;
+	/* Kernel support for AIO operation found. */
+	unsigned int aiosupp:1;
 };
 
 struct kcapi_sys {
