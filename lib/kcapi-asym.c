@@ -115,7 +115,7 @@ DSO_PUBLIC
 int32_t kcapi_akcipher_stream_init_vfy(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen)
 {
-	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_DECRYPT,
+	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_VERIFY,
 				       MSG_MORE);
 }
 
