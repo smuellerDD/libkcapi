@@ -441,6 +441,7 @@ enum type {
 	PBKDF,
 	SYM_AIO,
 	AEAD_AIO,
+	ASYM_AIO,
 };
 
 struct kcapi_cavs {
@@ -1609,6 +1610,11 @@ static int cavs_hash_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
  * Decryption command line:
  * $ ./kcapi -x 4 -o 1 -c "rsa" -k 3082021F02010102820100DB101AC2A3F1DCFF136BED44DFF0026D13C788DA706B54F1E827DCC30F996AFAC667FF1D1E3C1DC1B55F6CC0B2073A6D41E42599ACFCD20F02D3D154061A5177BDB6BFEAA75C06A95D698445D7F505BA47F01BD72B24ECCB9B1B108D81A0BEB18C33E436B843EB192A818DDE810A9948B6F6BCCD49343A8F2694E328821A7C8F599F45E85D1A4576045605A1D01B8C776DAF53FA71E267E09AFE03A985D2C9AABA2ABCF4A008F51398135DF0D933342A61C38955F0AE1A9C22EE19058D32FEEC9C84BAB7F96C3A4F07FC45EB12E57BFD55E62969D1C2E8B97859F67910C64EEB6A5EB99AC7C45B63DAA33F5E927A815ED6B0E2628F7426C20CD39A1747E68EAB0203010001028201005241F4DA7BB75955CAD42F0F3ACBA40D936CCC9DC1B2FBFDAE4031AC69522192B327DFEAEE2C82BBF74032D514C49412ECB81FCA59E3C178F385D847A5D7021A6579970D24F4F0676E752DBF103DA87DEF7F60E4E60582895DDFC6D26C0791339842F002002538C585698A7D2F956C439AB881E2D00735AA0541C91EAFE4043B19B873A2AC4B1E6648D8721FACF6CBBC9009CAEC0CDCF92CD7EBAEA3A447D7332F8ACABC5EF077E4979897C710917D2AA6FF468397DEE9E217030614E2D7B11D77AF51275B5E69B881E611C54323810462FFE946B8D844DBA5CC315434CE3E82D6BF7A0B64216D887E5B45121E638D49A71DD91E06CDE8BA2C8C6932EABE6071020100020100020100020100020100 -p b29776b4ae3e383c7e641fcca27ff6becf49bc48d36c8f0a0ec173bd7b5579360ea18788b92c90a6535ee9efc4e24dddf7a669823f56a47bfb62e0aeb8d304b3ac5a152ae3199b039a0b41da64ec0a69fcf21092f3c1bf847ffd2caec8b5f64170c547038af8ff6f3fd26f09b422f330bea985cb9c8df98feb3291a225848ff5dcc7069c2de5112c09098709a9f6337390f160f265dd30a566ce627bd0f82d3d198277e30a5f752f8eb1e5e891351b3b33b76692d1f28e6fe5750cad36fb4ed06661bd49fef41aa22b49fe034c74478d9a66b249464d77ea334d6b3cb4494ac67d3db5b9564115670f943c936527e0215d59c362d5a6da3826225e341c94af98
  * 54859b342c49ea2a
+ *
+ * ./kcapi -x 4 -o 2 -c "pkcs1pad(rsa-generic,sha256)" -k 308202200201100282010100d71e77828c9231e76902a2d55c78dea20c8ffe285931df409c606106b92f62408076cb674ab55956691707faf94cbd6c377a467d70a76722b34d7a94c3ba4b7c4ba9327cb738954564a405a89f127c4ec6c82d400630f460a691bb9bca0479111375f0aed35189c574b9aa3fb683e4786bcdf95c4c85ea523b5193fc146b335d3070fa501b1b3881138df7a50cc08ef96352184ea9f9f85c5dcd7a0dd48e7bee917bad7db492d5ab163b0a8ace8ede471a1701867bab99f14b0c3a0d8247c1918cbb2e229e49636e02c1c93a9ba5221b0795d6100250fdfdd19bbeabc2c074d7ec00fb1171cb7adc81799f86684663824db7f1e6166f4263f494a0ca33cc751302031000100282010062b560314f3f6616c160ac472aff6b69004ab25ce150b91874a8e4dca8eccd30bbc1c6e3c6ac202a3e5e8b12e6820809380bab7cb3cc9cce9767ddef95404e92e244e91dc114fda9b1dc719c4621bd58886e221556c1efe0c98de5803eda7e930f52f6f5c191909e42494f8d9cba3883e933c2504fecc2f0a8b76e2825566b6267fe08f156e56f0e99f1e5957befeb0a2c92975723333607ddfbaef1b1d833b796714236c5a4a9194b1b524c506991f00efa80374bb5d02fb7440dd4f8398dab71675905883deb484833884efef8271bd655605e48b76d9aa837f97ade1bcd5d1a30d4e99e5b3c15f89c1fdad1864855ce83ee8e51c7de3212477d46b835df41020130020130020130020130020130 -p 3ec8a12620544452480de566f3b3f504be10a84894222dddba7ab4768d799889
+ * c7a398eb43d108c23d78450470c901eef885377c0bf919705c457b2f3a0bb78bc40d7b3a640b0fdb78a90bfd8d82a48639bf21b884c4ce9fc2e8b6614617b94e0b5705b44ff99c932d9bd5481d8012ef3a777fbcb58e2b6b7cfc9f8c9da2c485b087e9179bb62362d2a99f57e8f70445243a45ebeb6a088eafc8a084bc5d1338f5178ca3969ba9388df035ad328a725bdf21ab4b0ea829bb6154bf05db8484dedd163631daf3426d7a90229b1129a6f83061dad38b541e42d1471d6fd1cd420bd1e415857e08d659644c0134919226e8b0258cf8f4fa8bc931337672fb64929fda628de12a71914340613c5abe86fc5be6f9a916311faf256dc24a236e6302a2
+ *
+ *
  */
 static int cavs_asym(struct kcapi_cavs *cavs_test, uint32_t loops,
 		     int splice)
@@ -1711,6 +1717,99 @@ out:
 	return ret;
 }
 
+static int cavs_asym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
+			 int splice)
+{
+	struct kcapi_handle *handle = NULL;
+	struct iovec iniov, outiov;
+	uint8_t *outbuf = NULL;
+	uint32_t outbuflen = 8192;
+	int ret = -EINVAL;
+	struct timespec begin, end;
+
+	(void)loops;
+
+	if (!cavs_test->ptlen)
+		return -EINVAL;
+
+	if (cavs_test->aligned) {
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), outbuflen))
+			goto out;
+		memset(outbuf, 0, outbuflen);
+	} else {
+		outbuf = calloc(1, outbuflen);
+		if (!outbuf)
+			goto out;
+	}
+
+	if (kcapi_akcipher_init(&handle, cavs_test->cipher, KCAPI_INIT_AIO)) {
+		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
+		goto out;
+	}
+
+	/* Set key */
+	if (cavs_test->keylen && cavs_test->key) {
+		if (kcapi_akcipher_setkey(handle, cavs_test->key,
+					  cavs_test->keylen)) {
+			printf("Asymmetric cipher set pivate key failed\n");
+			goto out;
+		}
+	}
+	if (cavs_test->pubkeylen && cavs_test->pubkey) {
+		if (kcapi_akcipher_setpubkey(handle, cavs_test->pubkey,
+					     cavs_test->pubkeylen)) {
+			printf("Asymmetric cipher set public key failed\n");
+			goto out;
+		}
+	}
+
+	iniov.iov_base = cavs_test->pt;
+	iniov.iov_len  = cavs_test->ptlen;
+	outiov.iov_base = outbuf;
+	outiov.iov_len  = outbuflen;
+
+	_get_time(&begin);
+	if (cavs_test->enc == 0) {
+		ret = kcapi_akcipher_encrypt_aio(handle, &iniov,
+						 &outiov, 1, splice);
+	} else if (cavs_test->enc == 1) {
+		ret = kcapi_akcipher_decrypt_aio(handle, &iniov,
+						 &outiov, 1, splice);
+	} else if (cavs_test->enc == 2) {
+		ret = kcapi_akcipher_sign_aio(handle, &iniov, &outiov,
+					      1, splice);
+	} else if (cavs_test->enc == 3) {
+		ret = kcapi_akcipher_verify_aio(handle, &iniov, &outiov,
+						1, splice);
+	} else
+		ret = -EINVAL;
+	_get_time(&end);
+
+	if (0 > ret && EBADMSG != errno) {
+		printf("Cipher operation of buffer failed: %d %d\n",
+		       errno, ret);
+		goto out;
+	}
+
+	if (EBADMSG == errno) {
+		printf("EBADMSG\n");
+	} else {
+		bin2print(outbuf, ret);
+		printf("\n");
+	}
+
+	if (cavs_test->timing)
+		printf("duration %lu\n", (unsigned long)_time_delta(&begin, &end));
+
+	ret = 0;
+
+out:
+	kcapi_akcipher_destroy(handle);
+	if (outbuf)
+		free(outbuf);
+	return ret;
+}
+
 static int cavs_asym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 			    int splice)
 {
@@ -1792,7 +1891,8 @@ static int cavs_asym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 	 * kcapi_akcipher_stream_update[|_last].
 	 */
 	if (splice)
-		inputiovlen = 15;
+		inputiovlen = (inputiovlen > 15) ? 15 : inputiovlen;
+
 	/* fill scatter lists */
 	for (i = 0; i < inputiovlen; i++) {
 		uint8_t *inbuf_working = inbuf + (i * 1024);
@@ -2280,6 +2380,8 @@ int main(int argc, char *argv[])
 			rc = cavs_asym_stream(&cavs_test, loops, splice);
 		else
 			rc = cavs_asym(&cavs_test, loops, splice);
+	} else if (ASYM_AIO == cavs_test.type) {
+		rc = cavs_asym_aio(&cavs_test, loops, splice);
 	} else if (KDF_CTR == cavs_test.type ||
 		   KDF_FB == cavs_test.type ||
 		   KDF_DPI == cavs_test.type) {
