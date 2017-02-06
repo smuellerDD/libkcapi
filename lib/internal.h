@@ -185,7 +185,7 @@ struct kcapi_flags {
 	 */
 	unsigned int newtag:1;
 
-	/* Kernel support for AIO operation found. */
+	/* Kernel support for working AIO operation found. */
 	unsigned int aiosupp:1;
 };
 

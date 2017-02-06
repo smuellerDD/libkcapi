@@ -162,10 +162,15 @@ _kcapi_akcipher_encrypt_aio_fallback(struct kcapi_handle *handle,
 				     struct iovec *iniov, struct iovec *outiov,
 				     uint32_t iovlen)
 {
-	int32_t rc = kcapi_akcipher_stream_init_enc(handle, iniov, iovlen);
+	int32_t ret = kcapi_akcipher_stream_init_enc(handle, NULL, 0);
 
-	if (rc < 0)
-		return rc;
+	if (ret < 0)
+		return ret;
+
+	ret = kcapi_akcipher_stream_update_last(handle, iniov, iovlen);
+	if (ret < 0)
+		return ret;
+
 
 	return kcapi_cipher_stream_op(handle, outiov, iovlen);
 }
@@ -198,10 +203,15 @@ _kcapi_akcipher_decrypt_aio_fallback(struct kcapi_handle *handle,
 				     struct iovec *iniov, struct iovec *outiov,
 				     uint32_t iovlen)
 {
-	int32_t rc = kcapi_akcipher_stream_init_dec(handle, iniov, iovlen);
+	int32_t ret = kcapi_akcipher_stream_init_dec(handle, NULL, 0);
 
-	if (rc < 0)
-		return rc;
+	if (ret < 0)
+		return ret;
+
+	ret = kcapi_akcipher_stream_update_last(handle, iniov, iovlen);
+	if (ret < 0)
+		return ret;
+
 
 	return kcapi_akcipher_stream_op(handle, outiov, iovlen);
 }
@@ -234,10 +244,15 @@ _kcapi_akcipher_sign_aio_fallback(struct kcapi_handle *handle,
 				  struct iovec *iniov, struct iovec *outiov,
 				  uint32_t iovlen)
 {
-	int32_t rc = kcapi_akcipher_stream_init_sgn(handle, iniov, iovlen);
+	int32_t ret = kcapi_akcipher_stream_init_sgn(handle, NULL, 0);
 
-	if (rc < 0)
-		return rc;
+	if (ret < 0)
+		return ret;
+
+	ret = kcapi_akcipher_stream_update_last(handle, iniov, iovlen);
+	if (ret < 0)
+		return ret;
+
 
 	return kcapi_akcipher_stream_op(handle, outiov, iovlen);
 }
@@ -269,10 +284,16 @@ _kcapi_akcipher_verify_aio_fallback(struct kcapi_handle *handle,
 				    struct iovec *iniov, struct iovec *outiov,
 				    uint32_t iovlen)
 {
-	int32_t rc = kcapi_akcipher_stream_init_vfy(handle, iniov, iovlen);
+	int32_t ret = kcapi_akcipher_stream_init_vfy(handle, NULL, 0);
 
-	if (rc < 0)
-		return rc;
+	if (ret < 0)
+		return ret;
+
+	ret = kcapi_akcipher_stream_update_last(handle, iniov, iovlen);
+	if (ret < 0)
+		return ret;
+
+	return kcapi_aead_stream_op(handle, outiov, iovlen);
 
 	return kcapi_akcipher_stream_op(handle, outiov, iovlen);
 }

@@ -340,7 +340,16 @@ static int32_t _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
 				return events[i].res;
 
 			cb = (struct iocb *)(uintptr_t)events[i].obj;
-			processed += cb->aio_nbytes;
+
+			/*
+			 * Older symmetric AIO implementations used a wrong
+			 * return code.
+			 */
+			if (events[i].res > 0)
+				processed = processed + events[i].res;
+			else
+				processed = processed + cb->aio_nbytes;
+
 			cb->aio_fildes = 0;
 			handle->aio.completed_reads++;
 		}
@@ -856,6 +865,12 @@ static int _kcapi_aio_init(struct kcapi_handle *handle, const char *type)
 	} else if (!strncmp("skcipher", type, 8)) {
 		if (!_kcapi_kernver_ge(handle, 4, 1, 0)) {
 			kcapi_dolog(LOG_WARN, "AIO support for symmetric ciphers not present on current kernel\n");
+			err = EFAULT;
+			goto err;
+		}
+	} else if (!strncmp("akcipher", type, 8)) {
+		if (!_kcapi_kernver_ge(handle, 4, 10, 0)) {
+			kcapi_dolog(LOG_WARN, "AIO support for asymmetric ciphers not present on current kernel\n");
 			err = EFAULT;
 			goto err;
 		}
