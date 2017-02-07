@@ -857,20 +857,20 @@ static int _kcapi_aio_init(struct kcapi_handle *handle, const char *type)
 
 	if (!strncmp("aead", type, 4)) {
 		if (!_kcapi_kernver_ge(handle, 4, 10, 0)) {
-			kcapi_dolog(LOG_WARN, "AIO support for AEAD cipher not present on current kernel\n");
-			err = EFAULT;
+			kcapi_dolog(LOG_VERBOSE, "AIO support for AEAD cipher not present on current kernel\n");
+			err = EOPNOTSUPP;
 			goto err;
 		}
 	} else if (!strncmp("skcipher", type, 8)) {
 		if (!_kcapi_kernver_ge(handle, 4, 10, 0)) {
-			kcapi_dolog(LOG_WARN, "AIO support for symmetric ciphers not present on current kernel\n");
-			err = EFAULT;
+			kcapi_dolog(LOG_VERBOSE, "AIO support for symmetric ciphers not present on current kernel\n");
+			err = EOPNOTSUPP;
 			goto err;
 		}
 	} else if (!strncmp("akcipher", type, 8)) {
 		if (!_kcapi_kernver_ge(handle, 4, 10, 0)) {
-			kcapi_dolog(LOG_WARN, "AIO support for asymmetric ciphers not present on current kernel\n");
-			err = EFAULT;
+			kcapi_dolog(LOG_VERBOSE, "AIO support for asymmetric ciphers not present on current kernel\n");
+			err = EOPNOTSUPP;
 			goto err;
 		}
 	} else {
@@ -915,7 +915,7 @@ static int _kcapi_aio_init(struct kcapi_handle *handle, const char *type)
 		goto err;
 	}
 
-	kcapi_dolog(LOG_VERBOSE, "asynchronoous I/O initialized");
+	kcapi_dolog(LOG_VERBOSE, "asynchronous I/O initialized");
 
 	return 0;
 
@@ -1008,7 +1008,15 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 
 	if (flags & KCAPI_INIT_AIO) {
 		errsv = _kcapi_aio_init(handle, type);
-		if (errsv)
+
+		/*
+		 * We complain about kernels without AIO support, but allow
+		 * the allocation nonetheless as we have synchronous fallbacks
+		 * for all AIO implementations. This allows the use of
+		 * libkcaip AIO API even though the kernel does not support it.
+		 * This allows compatibility for applications.
+		 */
+		if (errsv && errsv != EOPNOTSUPP)
 			goto err;
 	} else
 		handle->aio.disable = 1;
