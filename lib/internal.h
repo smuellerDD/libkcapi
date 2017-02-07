@@ -170,7 +170,7 @@ struct kcapi_aead_data {
  * @cio: Active concurrent IOCBs
  */
 struct kcapi_aio {
-	unsigned int skcipher_aio_disable:1;
+	unsigned int disable:1;
 	int efd;
 	aio_context_t aio_ctx;
 	uint32_t completed_reads;
@@ -184,9 +184,6 @@ struct kcapi_flags {
 	 * if it is required as input or output.
 	 */
 	unsigned int newtag:1;
-
-	/* Kernel support for working AIO operation found. */
-	unsigned int aiosupp:1;
 };
 
 struct kcapi_sys {

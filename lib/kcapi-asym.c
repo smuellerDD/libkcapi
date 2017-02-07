@@ -163,7 +163,7 @@ _kcapi_akcipher_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 	int32_t rc;
 	uint32_t tosend = iovlen;
 
-	if (handle->aio.skcipher_aio_disable) {
+	if (handle->aio.disable) {
 		kcapi_dolog(LOG_WARN, "AIO support disabled\n");
 		return -EOPNOTSUPP;
 	}
@@ -254,7 +254,7 @@ int32_t kcapi_akcipher_encrypt_aio(struct kcapi_handle *handle,
 {
 	int32_t ret;
 
-	if (handle->flags.aiosupp) {
+	if (handle->aio.disable) {
 		ret = _kcapi_akcipher_crypt_aio(handle, iniov, outiov, iovlen,
 						access, ALG_OP_ENCRYPT);
 
@@ -307,7 +307,7 @@ int32_t kcapi_akcipher_decrypt_aio(struct kcapi_handle *handle,
 {
 	int32_t ret;
 
-	if (handle->flags.aiosupp) {
+	if (handle->aio.disable) {
 		ret = _kcapi_akcipher_crypt_aio(handle, iniov, outiov, iovlen,
 						access, ALG_OP_DECRYPT);
 
@@ -360,7 +360,7 @@ int32_t kcapi_akcipher_sign_aio(struct kcapi_handle *handle,
 {
 	int32_t ret;
 
-	if (handle->flags.aiosupp) {
+	if (handle->aio.disable) {
 		ret = _kcapi_akcipher_crypt_aio(handle, iniov, outiov, iovlen,
 						access, ALG_OP_SIGN);
 
@@ -412,7 +412,7 @@ int32_t kcapi_akcipher_verify_aio(struct kcapi_handle *handle,
 {
 	int32_t ret;
 
-	if (handle->flags.aiosupp) {
+	if (handle->aio.disable) {
 		ret = _kcapi_akcipher_crypt_aio(handle, iniov, outiov, iovlen,
 						access, ALG_OP_VERIFY);
 

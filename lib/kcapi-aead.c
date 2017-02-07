@@ -264,7 +264,7 @@ int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 
 	handle->cipher.iv = iv;
 
-	if (handle->flags.aiosupp) {
+	if (handle->aio.disable) {
 		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
 					      access, ALG_OP_ENCRYPT);
 
@@ -353,7 +353,7 @@ int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 
 	handle->cipher.iv = iv;
 
-	if (handle->flags.aiosupp) {
+	if (handle->aio.disable) {
 		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
 					      access, ALG_OP_DECRYPT);
 

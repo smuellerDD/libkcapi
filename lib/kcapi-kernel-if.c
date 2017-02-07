@@ -771,7 +771,7 @@ static int _kcapi_common_getinfo(struct kcapi_handle *handle,
 
 static inline void _kcapi_aio_destroy(struct kcapi_handle *handle)
 {
-	if (handle->aio.skcipher_aio_disable)
+	if (handle->aio.disable)
 		return;
 	if (handle->aio.efd != -1)
 		close(handle->aio.efd);
@@ -856,13 +856,13 @@ static int _kcapi_aio_init(struct kcapi_handle *handle, const char *type)
 	int err;
 
 	if (!strncmp("aead", type, 4)) {
-		if (!_kcapi_kernver_ge(handle, 4, 7, 0)) {
+		if (!_kcapi_kernver_ge(handle, 4, 10, 0)) {
 			kcapi_dolog(LOG_WARN, "AIO support for AEAD cipher not present on current kernel\n");
 			err = EFAULT;
 			goto err;
 		}
 	} else if (!strncmp("skcipher", type, 8)) {
-		if (!_kcapi_kernver_ge(handle, 4, 1, 0)) {
+		if (!_kcapi_kernver_ge(handle, 4, 10, 0)) {
 			kcapi_dolog(LOG_WARN, "AIO support for symmetric ciphers not present on current kernel\n");
 			err = EFAULT;
 			goto err;
@@ -920,7 +920,7 @@ static int _kcapi_aio_init(struct kcapi_handle *handle, const char *type)
 	return 0;
 
 err:
-	handle->aio.skcipher_aio_disable = 1;
+	handle->aio.disable = 1;
 	if (handle->aio.efd != -1)
 		close(handle->aio.efd);
 	handle->aio.efd = -1;
@@ -937,9 +937,6 @@ static void _kcapi_handle_flags(struct kcapi_handle *handle)
 {
 	/* new memory structure for AF_ALG AEAD interface */
 	handle->flags.newtag = _kcapi_kernver_ge(handle, 4, 9, 0);
-
-	/* AIO support for older kernels is simply broken. */
-	handle->flags.aiosupp = _kcapi_kernver_ge(handle, 4, 10, 0);
 }
 
 int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
@@ -1014,7 +1011,7 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 		if (errsv)
 			goto err;
 	} else
-		handle->aio.skcipher_aio_disable = 1;
+		handle->aio.disable = 1;
 
 	_kcapi_handle_flags(handle);
 
@@ -1113,7 +1110,7 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 	int32_t rc;
 	uint32_t tosend = iovlen;
 
-	if (handle->aio.skcipher_aio_disable) {
+	if (handle->aio.disable) {
 		kcapi_dolog(LOG_WARN, "AIO support disabled\n");
 		return -EOPNOTSUPP;
 	}
