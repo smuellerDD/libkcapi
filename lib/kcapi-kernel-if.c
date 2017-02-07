@@ -312,8 +312,8 @@ int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 }
 
 /* Wrapper for io_getevents -- returns < 0 on error, or processed bytes */
-static int32_t _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
-				   struct timespec *timeout)
+int32_t _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
+			    struct timespec *timeout)
 {
 	int32_t processed = 0;
 
@@ -395,9 +395,8 @@ static int _kcapi_aio_poll_data(struct kcapi_handle *handle, suseconds_t wait)
 	return _kcapi_aio_read_all(handle, eval, &timeout);
 }
 
-static int _kcapi_aio_send_iov(struct kcapi_handle *handle,
-			       struct iovec *iov, uint32_t iovlen,
-			       int access, int enc)
+int _kcapi_aio_send_iov(struct kcapi_handle *handle, struct iovec *iov,
+			uint32_t iovlen, int access, int enc)
 {
 	int ret;
 
@@ -423,8 +422,8 @@ static int _kcapi_aio_send_iov(struct kcapi_handle *handle,
 	return 0;
 }
 
-static int32_t _kcapi_aio_read_iov(struct kcapi_handle *handle,
-				   struct iovec *iov, uint32_t iovlen)
+int32_t _kcapi_aio_read_iov(struct kcapi_handle *handle, struct iovec *iov,
+			    uint32_t iovlen)
 {
 	struct iocb *cb = handle->aio.cio;
 	uint32_t i;
@@ -940,7 +939,7 @@ static void _kcapi_handle_flags(struct kcapi_handle *handle)
 	handle->flags.newtag = _kcapi_kernver_ge(handle, 4, 9, 0);
 
 	/* AIO support for older kernels is simply broken. */
-	handle->flags.aiosupp = 0; //_kcapi_kernver_ge(handle, 4, 10, 0);
+	handle->flags.aiosupp = _kcapi_kernver_ge(handle, 4, 10, 0);
 }
 
 int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,

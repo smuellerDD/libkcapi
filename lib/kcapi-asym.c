@@ -154,6 +154,66 @@ int32_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
 	return _kcapi_common_recv_data(handle, iov, iovlen);
 }
 
+static int32_t
+_kcapi_akcipher_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
+			  struct iovec *outiov, uint32_t iovlen, int access,
+			  int enc)
+{
+	int32_t ret;
+	int32_t rc;
+	uint32_t tosend = iovlen;
+
+	if (handle->aio.skcipher_aio_disable) {
+		kcapi_dolog(LOG_WARN, "AIO support disabled\n");
+		return -EOPNOTSUPP;
+	}
+
+	ret = _kcapi_common_accept(handle);
+	if (ret)
+		return ret;
+
+	handle->aio.completed_reads = 0;
+
+	/* Every IOVEC is processed as its individual cipher operation. */
+	while (tosend) {
+		uint32_t process = 1;
+		int32_t rc = _kcapi_aio_send_iov(handle, iniov, process,
+						 access, enc);
+
+		if (rc < 0)
+			return rc;
+
+		rc = _kcapi_aio_read_iov(handle, outiov, process);
+		if (rc < 0)
+			return rc;
+
+		iniov += process;
+		outiov += process;
+		ret += rc;
+		tosend = iovlen - handle->aio.completed_reads;
+	}
+
+	/*
+	 * If a multi-staged AIO operation shall be designed, the following
+	 * loop needs to be moved to a closing API call. If done so, the
+	 * current function could be invoked multiple times to send more data
+	 * to the kernel before the closing call requires that all outstanding
+	 * requests are to be completed.
+	 *
+	 * If a multi-staged AIO operation is to be implemented, the issue
+	 * is that when submitting a number of requests, the caller is not
+	 * able to detect which particular request is completed. Thus, an
+	 * "open-ended" multi-staged AIO operation could not be implemented.
+	 */
+	rc = _kcapi_aio_read_all(handle, iovlen - handle->aio.completed_reads,
+				 NULL);
+	if (rc < 0)
+		return rc;
+	ret += rc;
+
+	return ret;
+}
+
 /*
  * Fallback function if AIO is not present, but caller requested AIO operation.
  */
@@ -162,17 +222,29 @@ _kcapi_akcipher_encrypt_aio_fallback(struct kcapi_handle *handle,
 				     struct iovec *iniov, struct iovec *outiov,
 				     uint32_t iovlen)
 {
+	uint32_t i;
 	int32_t ret = kcapi_akcipher_stream_init_enc(handle, NULL, 0);
 
 	if (ret < 0)
 		return ret;
 
-	ret = kcapi_akcipher_stream_update_last(handle, iniov, iovlen);
-	if (ret < 0)
-		return ret;
+	for (i = 0; i < iovlen; i++) {
+		int32_t rc = kcapi_akcipher_stream_update_last(handle, iniov,
+							       1);
+		if (rc < 0)
+			return ret;
 
+		rc = kcapi_akcipher_stream_op(handle, outiov, 1);
+		if (rc < 0)
+			return rc;
 
-	return kcapi_cipher_stream_op(handle, outiov, iovlen);
+		ret += rc;
+
+		iniov++;
+		outiov++;
+	}
+
+	return ret;
 }
 
 DSO_PUBLIC
@@ -183,8 +255,8 @@ int32_t kcapi_akcipher_encrypt_aio(struct kcapi_handle *handle,
 	int32_t ret;
 
 	if (handle->flags.aiosupp) {
-		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
-					      access, ALG_OP_ENCRYPT);
+		ret = _kcapi_akcipher_crypt_aio(handle, iniov, outiov, iovlen,
+						access, ALG_OP_ENCRYPT);
 
 		if (ret != -EOPNOTSUPP)
 			return ret;
@@ -203,17 +275,29 @@ _kcapi_akcipher_decrypt_aio_fallback(struct kcapi_handle *handle,
 				     struct iovec *iniov, struct iovec *outiov,
 				     uint32_t iovlen)
 {
+	uint32_t i;
 	int32_t ret = kcapi_akcipher_stream_init_dec(handle, NULL, 0);
 
 	if (ret < 0)
 		return ret;
 
-	ret = kcapi_akcipher_stream_update_last(handle, iniov, iovlen);
-	if (ret < 0)
-		return ret;
+	for (i = 0; i < iovlen; i++) {
+		int32_t rc = kcapi_akcipher_stream_update_last(handle, iniov,
+							       1);
+		if (rc < 0)
+			return ret;
 
+		rc = kcapi_akcipher_stream_op(handle, outiov, 1);
+		if (rc < 0)
+			return rc;
 
-	return kcapi_akcipher_stream_op(handle, outiov, iovlen);
+		ret += rc;
+
+		iniov++;
+		outiov++;
+	}
+
+	return ret;
 }
 
 DSO_PUBLIC
@@ -224,8 +308,8 @@ int32_t kcapi_akcipher_decrypt_aio(struct kcapi_handle *handle,
 	int32_t ret;
 
 	if (handle->flags.aiosupp) {
-		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
-					      access, ALG_OP_DECRYPT);
+		ret = _kcapi_akcipher_crypt_aio(handle, iniov, outiov, iovlen,
+						access, ALG_OP_DECRYPT);
 
 		if (ret != -EOPNOTSUPP)
 			return ret;
@@ -244,17 +328,29 @@ _kcapi_akcipher_sign_aio_fallback(struct kcapi_handle *handle,
 				  struct iovec *iniov, struct iovec *outiov,
 				  uint32_t iovlen)
 {
+	uint32_t i;
 	int32_t ret = kcapi_akcipher_stream_init_sgn(handle, NULL, 0);
 
 	if (ret < 0)
 		return ret;
 
-	ret = kcapi_akcipher_stream_update_last(handle, iniov, iovlen);
-	if (ret < 0)
-		return ret;
+	for (i = 0; i < iovlen; i++) {
+		int32_t rc = kcapi_akcipher_stream_update_last(handle, iniov,
+							       1);
+		if (rc < 0)
+			return ret;
 
+		rc = kcapi_akcipher_stream_op(handle, outiov, 1);
+		if (rc < 0)
+			return rc;
 
-	return kcapi_akcipher_stream_op(handle, outiov, iovlen);
+		ret += rc;
+
+		iniov++;
+		outiov++;
+	}
+
+	return ret;
 }
 
 DSO_PUBLIC
@@ -265,8 +361,8 @@ int32_t kcapi_akcipher_sign_aio(struct kcapi_handle *handle,
 	int32_t ret;
 
 	if (handle->flags.aiosupp) {
-		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
-					      access, ALG_OP_SIGN);
+		ret = _kcapi_akcipher_crypt_aio(handle, iniov, outiov, iovlen,
+						access, ALG_OP_SIGN);
 
 		if (ret != -EOPNOTSUPP)
 			return ret;
@@ -284,18 +380,29 @@ _kcapi_akcipher_verify_aio_fallback(struct kcapi_handle *handle,
 				    struct iovec *iniov, struct iovec *outiov,
 				    uint32_t iovlen)
 {
+	uint32_t i;
 	int32_t ret = kcapi_akcipher_stream_init_vfy(handle, NULL, 0);
 
 	if (ret < 0)
 		return ret;
 
-	ret = kcapi_akcipher_stream_update_last(handle, iniov, iovlen);
-	if (ret < 0)
-		return ret;
+	for (i = 0; i < iovlen; i++) {
+		int32_t rc = kcapi_akcipher_stream_update_last(handle, iniov,
+							       1);
+		if (rc < 0)
+			return ret;
 
-	return kcapi_aead_stream_op(handle, outiov, iovlen);
+		rc = kcapi_akcipher_stream_op(handle, outiov, 1);
+		if (rc < 0)
+			return rc;
 
-	return kcapi_akcipher_stream_op(handle, outiov, iovlen);
+		ret += rc;
+
+		iniov++;
+		outiov++;
+	}
+
+	return ret;
 }
 
 DSO_PUBLIC
@@ -306,8 +413,8 @@ int32_t kcapi_akcipher_verify_aio(struct kcapi_handle *handle,
 	int32_t ret;
 
 	if (handle->flags.aiosupp) {
-		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
-					      access, ALG_OP_VERIFY);
+		ret = _kcapi_akcipher_crypt_aio(handle, iniov, outiov, iovlen,
+						access, ALG_OP_VERIFY);
 
 		if (ret != -EOPNOTSUPP)
 			return ret;

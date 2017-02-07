@@ -254,6 +254,13 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 				struct iovec *iniov, struct iovec *outiov,
 				uint32_t iovlen, int access, int enc);
 
+int _kcapi_aio_send_iov(struct kcapi_handle *handle, struct iovec *iov,
+			uint32_t iovlen, int access, int enc);
+int32_t _kcapi_aio_read_iov(struct kcapi_handle *handle, struct iovec *iov,
+			    uint32_t iovlen);
+int32_t _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
+			    struct timespec *timeout);
+
 /************************************************************
  * Declarations for system calls
  ************************************************************/
