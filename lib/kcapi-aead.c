@@ -242,16 +242,28 @@ _kcapi_aead_encrypt_aio_fallback(struct kcapi_handle *handle,
 				 struct iovec *iniov, struct iovec *outiov,
 				 uint32_t iovlen, const uint8_t *iv)
 {
+	uint32_t i;
 	int32_t ret = kcapi_aead_stream_init_enc(handle, iv, NULL, 0);
 
 	if (ret < 0)
 		return ret;
 
-	ret = kcapi_aead_stream_update_last(handle, iniov, iovlen);
-	if (ret < 0)
-		return ret;
+	for (i = 0; i < iovlen; i++) {
+		int rc = kcapi_aead_stream_update_last(handle, iniov, 1);
+		if (rc < 0)
+			return rc;
 
-	return kcapi_aead_stream_op(handle, outiov, iovlen);
+		rc = kcapi_aead_stream_op(handle, outiov, 1);
+		if (rc < 0)
+			return rc;
+
+		ret += rc;
+
+		iniov++;
+		outiov++;
+	}
+
+	return ret;
 }
 
 DSO_PUBLIC
@@ -260,23 +272,21 @@ int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 			       const uint8_t *iv, int access)
 {
 	int32_t ret = 0;
-	uint32_t i;
 
 	handle->cipher.iv = iv;
 
-	if (handle->aio.disable) {
-		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
-					      access, ALG_OP_ENCRYPT);
+	ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
+				      access, ALG_OP_ENCRYPT);
 
-		if (ret == -EOPNOTSUPP)
-			return _kcapi_aead_encrypt_aio_fallback(handle, iniov,
-								outiov,	iovlen,
-								iv);
+	if (ret == -EOPNOTSUPP)
+		return _kcapi_aead_encrypt_aio_fallback(handle, iniov,
+							outiov,	iovlen, iv);
 
-		return ret;
-	}
+	return ret;
 
+#if 0
 	/*
+	 * For kernels older than 4.9:
 	 * Currently the kernel is only able to handle one complete individual
 	 * AEAD cipher operation at a time.
 	 *
@@ -300,6 +310,7 @@ int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 		}
 		ret += rc;
 	}
+#endif
 
 	return ret;
 }
@@ -331,16 +342,28 @@ _kcapi_aead_decrypt_aio_fallback(struct kcapi_handle *handle,
 				 struct iovec *iniov, struct iovec *outiov,
 				 uint32_t iovlen, const uint8_t *iv)
 {
+	uint32_t i;
 	int32_t ret = kcapi_aead_stream_init_dec(handle, iv, NULL, 0);
 
 	if (ret < 0)
 		return ret;
 
-	ret = kcapi_aead_stream_update_last(handle, iniov, iovlen);
-	if (ret < 0)
-		return ret;
+	for (i = 0; i < iovlen; i++) {
+		int rc = kcapi_aead_stream_update_last(handle, iniov, 1);
+		if (rc < 0)
+			return rc;
 
-	return kcapi_aead_stream_op(handle, outiov, iovlen);
+		rc = kcapi_aead_stream_op(handle, outiov, 1);
+		if (rc < 0)
+			return rc;
+
+		ret += rc;
+
+		iniov++;
+		outiov++;
+	}
+
+	return ret;
 }
 
 DSO_PUBLIC
@@ -349,23 +372,21 @@ int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 			       const uint8_t *iv, int access)
 {
 	int32_t ret = 0;
-	uint32_t i;
 
 	handle->cipher.iv = iv;
 
-	if (handle->aio.disable) {
-		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
-					      access, ALG_OP_DECRYPT);
+	ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
+				      access, ALG_OP_DECRYPT);
 
-		if (ret == -EOPNOTSUPP)
-			return _kcapi_aead_decrypt_aio_fallback(handle, iniov,
-								outiov,	iovlen,
-								iv);
+	if (ret == -EOPNOTSUPP)
+		return _kcapi_aead_decrypt_aio_fallback(handle, iniov,
+							outiov,	iovlen, iv);
 
-		return ret;
-	}
+	return ret;
 
+#if 0
 	/*
+	 * For kernels older than 4.9:
 	 * The kernel is only able to handle one complete individual
 	 * AEAD cipher operation at a time.
 	 *
@@ -391,6 +412,7 @@ int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 	}
 
 	return ret;
+#endif
 }
 
 DSO_PUBLIC

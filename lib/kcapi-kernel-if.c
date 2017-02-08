@@ -1013,7 +1013,7 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 		 * We complain about kernels without AIO support, but allow
 		 * the allocation nonetheless as we have synchronous fallbacks
 		 * for all AIO implementations. This allows the use of
-		 * libkcaip AIO API even though the kernel does not support it.
+		 * libkcapi AIO API even though the kernel does not support it.
 		 * This allows compatibility for applications.
 		 */
 		if (errsv && errsv != EOPNOTSUPP)
