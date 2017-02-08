@@ -50,7 +50,7 @@ extern "C"
 #define KCAPI_MINVERSION 13   /* API compatible, ABI may change, functional
 			       * enhancements only, consumer can be left
 			       * unchanged if enhancements are not considered */
-#define KCAPI_PATCHLEVEL 0.6  /* API / ABI compatible, no functional changes, no
+#define KCAPI_PATCHLEVEL 0.7  /* API / ABI compatible, no functional changes, no
 			       * enhancements, bug fixes only. Versions with
 			       * a decimal point are pre-releases. */
 
