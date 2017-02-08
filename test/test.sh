@@ -1239,15 +1239,15 @@ aeadfunc 10 -v
 aeadfunc 10 X X -g
 aeadfunc 10 -s X -g
 aeadfunc 10 -v X -g
-asymfunc 4
-asymfunc 4 -s
-asymfunc 4 -v
-asymfunc 11
-asymfunc 11 -s
-asymfunc 11 -v
-asymfunc 11 X X -g
-asymfunc 11 -s X -g
-asymfunc 11 -v X -g
+#asymfunc 4
+#asymfunc 4 -s
+#asymfunc 4 -v
+#asymfunc 11
+#asymfunc 11 -s
+#asymfunc 11 -v
+#asymfunc 11 X X -g
+#asymfunc 11 -s X -g
+#asymfunc 11 -v X -g
 
 symfunc 1 X -m
 symfunc 1 -s -m
@@ -1264,15 +1264,15 @@ aeadfunc 10 -v -m
 aeadfunc 10 -s -m -g
 aeadfunc 10 X -m -g
 aeadfunc 10 -v -m -g
-asymfunc 4 X -m
-asymfunc 4 -s -m
-asymfunc 4 -v -m
-asymfunc 11 X -m
-asymfunc 11 -s -m
-asymfunc 11 -v -m
-asymfunc 11 X -m -g
-asymfunc 11 -s -m -g
-asymfunc 11 -v -m -g
+#asymfunc 4 X -m
+#asymfunc 4 -s -m
+#asymfunc 4 -v -m
+#asymfunc 11 X -m
+#asymfunc 11 -s -m
+#asymfunc 11 -v -m
+#asymfunc 11 X -m -g
+#asymfunc 11 -s -m -g
+#asymfunc 11 -v -m -g
 
 auxtest
 multipletest_sym 1		# sync, no splice, one shot sendmsg
@@ -1290,15 +1290,15 @@ multipletest_aead 10 -v	-g	# async AIO fallback, splice
 multipletest_hash 3		# sync, no splice, one shot sendmsg
 multipletest_hash 3 -s		# sync, no splice, stream sendmsg
 multipletest_hash 3 -v		# sync, splice
-multipletest_asym 4		# sync, no splice, one shot sendmsg
-multipletest_asym 4 -s		# sync, no splice, stream sendmsg
-multipletest_asym 4 -v		# sync, splice
-multipletest_asym 11		# async, no splice, one shot sendmsg
-multipletest_asym 11 -s		# async, no splice, stream sendmsg
-multipletest_asym 11 -v		# async, splice
-multipletest_asym 11 X -g	# async, AIO fallback, no splice, one shot sendmsg
-multipletest_asym 11 -s -g	# async, AIO fallback, no splice, stream sendmsg
-multipletest_asym 11 -v	-g	# async, AIO fallback, splice
+#multipletest_asym 4		# sync, no splice, one shot sendmsg
+#multipletest_asym 4 -s		# sync, no splice, stream sendmsg
+#multipletest_asym 4 -v		# sync, splice
+#multipletest_asym 11		# async, no splice, one shot sendmsg
+#multipletest_asym 11 -s		# async, no splice, stream sendmsg
+#multipletest_asym 11 -v		# async, splice
+#multipletest_asym 11 X -g	# async, AIO fallback, no splice, one shot sendmsg
+#multipletest_asym 11 -s -g	# async, AIO fallback, no splice, stream sendmsg
+#multipletest_asym 11 -v	-g	# async, AIO fallback, splice
 
 kdftest
 kdftest -m
