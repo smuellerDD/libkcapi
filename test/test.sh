@@ -624,10 +624,15 @@ symfunc()
 	impl=$1
 	stream=$2
 	aligned=$3
+	aiofallback=$4
 
 	if [ x"$stream" = x"X" ]
 	then
 		stream=""
+	fi
+	if [ x"$aligned" = x"X" ]
+	then
+		aligned=""
 	fi
 
 
@@ -648,9 +653,9 @@ symfunc()
 		fi
 		if [ "$SYM_enc" = 1  ]
 		then
-			cmd="$KCAPI -x $impl $stream $aligned -e -c $SYM_name $iv -k $SYM_key -p $SYM_msg"
+			cmd="$KCAPI $aiofallback -x $impl $stream $aligned -e -c $SYM_name $iv -k $SYM_key -p $SYM_msg"
 		else
-			cmd="$KCAPI -x $impl $stream $aligned -c $SYM_name $iv -k $SYM_key -q $SYM_msg"
+			cmd="$KCAPI $aiofallback -x $impl $stream $aligned -c $SYM_name $iv -k $SYM_key -q $SYM_msg"
 		fi
 		result=$($cmd 2>/dev/null)
 
@@ -660,6 +665,10 @@ symfunc()
 		if [ $impl -eq 9 ]
 		then
 			impl_type="asynchronous"
+		fi
+		if [ -n "$aiofallback" ]
+		then
+			impl_type="$impl_type (AIO fallback)"
 		fi
 		if [ x"$stream" = x"-s" ]
 		then
@@ -691,10 +700,15 @@ asymfunc()
 	impl=$1
 	stream=$2
 	aligned=$3
+	aiofallback=$4
 
 	if [ x"$stream" = x"X" ]
 	then
 		stream=""
+	fi
+	if [ x"$aligned" = x"X" ]
+	then
+		aligned=""
 	fi
 
 	ASYMEXEC="1 2 3 4 5"
@@ -719,7 +733,7 @@ asymfunc()
 
 		enc="-o $ASYM_enc"
 
-		cmd="$KCAPI -x $impl $stream $aligned $enc -c $ASYM_name $keyopt -p $ASYM_msg"
+		cmd="$KCAPI $aioaligned -x $impl $stream $aligned $enc -c $ASYM_name $keyopt -p $ASYM_msg"
 		result=$($cmd 2>/dev/null)
 
 		impl_type="synchronous"
@@ -728,6 +742,10 @@ asymfunc()
 		if [ $impl -eq 11 ]
 		then
 			impl_type="asynchronous"
+		fi
+		if [ -n "$aiofallback" ]
+		then
+			impl_type="$impl_type (AIO fallback)"
 		fi
 		if [ x"$stream" = x"-s" ]
 		then
@@ -772,10 +790,15 @@ aeadfunc()
 	impl=$1
 	stream=$2
 	aligned=$3
+	aiofallback=$4
 
 	if [ x"$stream" = x"X" ]
 	then
 		stream=""
+	fi
+	if [ x"$aligned" = x"X" ]
+	then
+		aligned=""
 	fi
 
 	AEADEXEC="1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17"
@@ -807,14 +830,14 @@ aeadfunc()
 		expected=""
 		if [ "$AEAD_enc" = 1  ]
 		then
-			result=$($KCAPI -x $impl $stream $aligned -e -c $AEAD_name $iv -k $AEAD_key -a "$AEAD_assoc" -p "$AEAD_msg" -l $AEAD_taglen 2>/dev/null)
-			cmd="$KCAPI -x $impl $stream $aligned -e -c \"$AEAD_name\" $iv -k $AEAD_key -a \"$AEAD_assoc\" -p \"$AEAD_msg\" -l $AEAD_taglen"
+			result=$($KCAPI $aiofallback -x $impl $stream $aligned -e -c $AEAD_name $iv -k $AEAD_key -a "$AEAD_assoc" -p "$AEAD_msg" -l $AEAD_taglen 2>/dev/null)
+			cmd="$KCAPI $aiofallback -x $impl $stream $aligned -e -c \"$AEAD_name\" $iv -k $AEAD_key -a \"$AEAD_assoc\" -p \"$AEAD_msg\" -l $AEAD_taglen"
 			expected1="${AEAD_exp}${AEAD_tag}"
 			#expected1="${AEAD_assoc}${AEAD_exp}${AEAD_tag}"
 			#expected2="invalid"
 		else
-			result=$($KCAPI -x $impl $stream $aligned -c $AEAD_name $iv -k $AEAD_key -a "$AEAD_assoc" -t "$AEAD_tag" -q "$AEAD_msg" 2>/dev/null)
-			cmd="$KCAPI -x $impl $stream $aligned -c \"$AEAD_name\" $iv -k $AEAD_key -a \"$AEAD_assoc\" -t \"$AEAD_tag\" -q
+			result=$($KCAPI $aiofallback -x $impl $stream $aligned -c $AEAD_name $iv -k $AEAD_key -a "$AEAD_assoc" -t "$AEAD_tag" -q "$AEAD_msg" 2>/dev/null)
+			cmd="$KCAPI $aiofallback -x $impl $stream $aligned -c \"$AEAD_name\" $iv -k $AEAD_key -a \"$AEAD_assoc\" -t \"$AEAD_tag\" -q
 			\"$AEAD_msg\""
 			expected1="${AEAD_exp}"
 			#expected1="${AEAD_assoc}${AEAD_exp}"
@@ -828,6 +851,10 @@ aeadfunc()
 		if [ $impl -eq 10 ]
 		then
 			impl_type="asynchronous"
+		fi
+		if [ -n "$aiofallback" ]
+		then
+			impl_type="$impl_type (AIO fallback)"
 		fi
 		if [ x"$stream" = x"-s" ]
 		then
@@ -987,6 +1014,12 @@ pbkdftest()
 multipletest_sym() {
 	symimpl=$1
 	stream=$2
+	aiofallback=$3
+
+	if [ x"$stream" = x"X" ]
+	then
+		stream=""
+	fi
 
 	sout="one shot"
 	impl_type="synchronous"
@@ -1002,8 +1035,12 @@ multipletest_sym() {
 	then
 		impl_type="asynchronous"
 	fi
+	if [ -n "$aiofallback" ]
+	then
+		impl_type="$impl_type (AIO fallback)"
+	fi
 
-	cmd="$KCAPI $stream -d 2 -x $symimpl -e -c cbc(aes) -k 8d7dd9b0170ce0b5f2f8e1aa768e01e91da8bfc67fd486d081b28254c99eb423 -i 7fbc02ebf5b93322329df9bfccb635af -p 48981da18e4bb9ef7e2e3162d16b1910"
+	cmd="$KCAPI $stream -d 2 -x $symimpl $aiofallback -e -c cbc(aes) -k 8d7dd9b0170ce0b5f2f8e1aa768e01e91da8bfc67fd486d081b28254c99eb423 -i 7fbc02ebf5b93322329df9bfccb635af -p 48981da18e4bb9ef7e2e3162d16b1910"
 	result=$($cmd 2>/dev/null)
 	if [ $symimpl -eq 9 ]
 	then
@@ -1033,6 +1070,12 @@ multipletest_sym() {
 multipletest_aead() {
 	impl=$1
 	stream=$2
+	aiofallback=$3
+
+	if [ x"$stream" = x"X" ]
+	then
+		stream=""
+	fi
 
 	sout="one shot"
 	impl_type="synchronous"
@@ -1052,8 +1095,12 @@ multipletest_aead() {
 			return
 		fi
 	fi
+	if [ -n "$aiofallback" ]
+	then
+		impl_type="$impl_type (AIO fallback)"
+	fi
 
-	cmd="$KCAPI $stream -d 4 -x $impl -c ccm(aes) -q 4edb58e8d5eb6bc711c43a6f3693daebde2e5524f1b55297abb29f003236e43d -t a7877c99 -n 674742abd0f5ba -k 2861fd0253705d7875c95ba8a53171b4 -a fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d"
+	cmd="$KCAPI $stream -d 4 -x $impl $aiofallback -c ccm(aes) -q 4edb58e8d5eb6bc711c43a6f3693daebde2e5524f1b55297abb29f003236e43d -t a7877c99 -n 674742abd0f5ba -k 2861fd0253705d7875c95ba8a53171b4 -a fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d"
 	result=$($cmd 2>/dev/null)
 	# there is no block chaining effect here, because GCM/CCM initialize the
 	# counter part for each encryption operation to 1
@@ -1122,6 +1169,12 @@ multipletest_hash() {
 multipletest_asym() {
 	impl=$1
 	stream=$2
+	aiofallback=$3
+
+	if [ x"$stream" = x"X" ]
+	then
+		stream=""
+	fi
 
 	sout="one shot"
 	impl_type="synchronous"
@@ -1137,8 +1190,12 @@ multipletest_asym() {
 	then
 		impl_type="asynchronous"
 	fi
+	if [ -n "$aiofallback" ]
+	then
+		impl_type="$impl_type (AIO fallback)"
+	fi
 
-	cmd="$KCAPI -d 10 -x $impl -o 3 -c pkcs1pad(rsa-generic,sha256) -r 3082020802820100965f0f7526036bf956960324250b5cfd383631e17a447c9997b654ae38b11c730bd4c70f7434ab8d440267d7b08c743394ae2bd1160d3dba07190cee213f841a182a4d36a2e14d3551882c0f9a3ff12ddb048f88f1ff8c7e43db8f902c83683f72bd2fe62fc3de611dc78329618c0fb029ad1d5d573eb6c95f115eb7ce598274b98edad641e42c7da6751e7ebaac45e33cac14490300ae2cefb788a7a69312304f190f6fed53a8b7deefc96056c85237efa2d2a94baf85358d21c14f82692e04774980b798a89a1d419a25ac2602a5e990bfce0bc975c7dbc6f3aab5463d56725d839ff05f0fff6eef5b6549f129534e45ecc752509ea7cf4814a155e39348ff0282010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e16f83 -p 3db2f89b6acd0b0eb0df5d18818145d87241b774da4e20aa97bf412a94c4e0c5ef923657a81c4ae4669970060c494d21f7cef5de40e755d85e54377f6e2ada35275b7c8ec184a585fe2ee665d96f6e086f738b49ce1eb381d96e6817d80347f29df50aaeebc4a48c67cd28d37c312d2cc80b9469cb402e28bfea5387bab6311bb214955992f3063cd9687e1a9f3ff4426209b9e1eb47bafa364a9f71ee0c0d8affc945d708497303a2164e8f93dec94dd7303b43828721c0786d1bc4004486ed0de53b075b8f82e2ba007f516659ab129e0fcf616a9066d3de391fd7c93ac5136075c0ebb9b936e76c6014b27c7fc963eafca11d6ec9b050d211fd18a661db3a"
+	cmd="$KCAPI -d 10 -x $impl $aiofallback -o 3 -c pkcs1pad(rsa-generic,sha256) -r 3082020802820100965f0f7526036bf956960324250b5cfd383631e17a447c9997b654ae38b11c730bd4c70f7434ab8d440267d7b08c743394ae2bd1160d3dba07190cee213f841a182a4d36a2e14d3551882c0f9a3ff12ddb048f88f1ff8c7e43db8f902c83683f72bd2fe62fc3de611dc78329618c0fb029ad1d5d573eb6c95f115eb7ce598274b98edad641e42c7da6751e7ebaac45e33cac14490300ae2cefb788a7a69312304f190f6fed53a8b7deefc96056c85237efa2d2a94baf85358d21c14f82692e04774980b798a89a1d419a25ac2602a5e990bfce0bc975c7dbc6f3aab5463d56725d839ff05f0fff6eef5b6549f129534e45ecc752509ea7cf4814a155e39348ff0282010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e16f83 -p 3db2f89b6acd0b0eb0df5d18818145d87241b774da4e20aa97bf412a94c4e0c5ef923657a81c4ae4669970060c494d21f7cef5de40e755d85e54377f6e2ada35275b7c8ec184a585fe2ee665d96f6e086f738b49ce1eb381d96e6817d80347f29df50aaeebc4a48c67cd28d37c312d2cc80b9469cb402e28bfea5387bab6311bb214955992f3063cd9687e1a9f3ff4426209b9e1eb47bafa364a9f71ee0c0d8affc945d708497303a2164e8f93dec94dd7303b43828721c0786d1bc4004486ed0de53b075b8f82e2ba007f516659ab129e0fcf616a9066d3de391fd7c93ac5136075c0ebb9b936e76c6014b27c7fc963eafca11d6ec9b050d211fd18a661db3a"
 	result=$($cmd 2>/dev/null)
 	expected="d780ec569fe689a0f7778eab625bd0ccb13d7e3f63e19083c739ddcbd4b1a825
 d780ec569fe689a0f7778eab625bd0ccb13d7e3f63e19083c739ddcbd4b1a825
@@ -1170,51 +1227,66 @@ symfunc 1 -v
 symfunc 9
 symfunc 9 -s
 symfunc 9 -v
+symfunc 9 X X -g
+symfunc 9 -s X -g
+symfunc 9 -v X -g
 aeadfunc 2
-aeadfunc 10
 aeadfunc 2 -s
-aeadfunc 10 -s
 aeadfunc 2 -v
+aeadfunc 10
+aeadfunc 10 -s
 aeadfunc 10 -v
+aeadfunc 10 X X -g
+aeadfunc 10 -s X -g
+aeadfunc 10 -v X -g
 asymfunc 4
 asymfunc 4 -s
 asymfunc 4 -v
 asymfunc 11
 asymfunc 11 -s
 asymfunc 11 -v
+asymfunc 11 X X -g
+asymfunc 11 -s X -g
+asymfunc 11 -v X -g
 
 symfunc 1 X -m
 symfunc 1 -s -m
 symfunc 1 -v -m
-symfunc 9 X -m
-symfunc 9 -s -m
-symfunc 9 -v -m
+symfunc 9 X -m -g
+symfunc 9 -s -m -g
+symfunc 9 -v -m -g
 aeadfunc 2 X -m
-aeadfunc 10 X -m
 aeadfunc 2 -s -m
-aeadfunc 10 -s -m
 aeadfunc 2 -v -m
+aeadfunc 10 -s -m
+aeadfunc 10 X -m
 aeadfunc 10 -v -m
+aeadfunc 10 -s -m -g
+aeadfunc 10 X -m -g
+aeadfunc 10 -v -m -g
 asymfunc 4 X -m
 asymfunc 4 -s -m
 asymfunc 4 -v -m
 asymfunc 11 X -m
 asymfunc 11 -s -m
 asymfunc 11 -v -m
+asymfunc 11 X -m -g
+asymfunc 11 -s -m -g
+asymfunc 11 -v -m -g
 
 auxtest
 multipletest_sym 1		# sync, no splice, one shot sendmsg
-multipletest_sym 9		# async, no splice, one shot sendmsg
 multipletest_sym 1 -s		# sync, no splice, stream sendmsg
-multipletest_sym 9 -s		# async, no splice, stream sendmsg
 multipletest_sym 1 -v		# sync, splice
-multipletest_sym 9 -v		# async splice
+multipletest_sym 9 X -g		# async, AIO fallback, no splice, one shot sendmsg
+multipletest_sym 9 -s -g	# async, AIO fallback, no splice, stream sendmsg
+multipletest_sym 9 -v -g	# async, AIO fallback, splice
 multipletest_aead 2		# sync, no splice, one shot sendmsg
-multipletest_aead 10		# async, no splice, one shot sendmsg
 multipletest_aead 2 -s		# sync, no splice, stream sendmsg
-multipletest_aead 10 -s		# async, no splice, stream sendmsg
 multipletest_aead 2 -v		# sync, splice
-multipletest_aead 10 -v		# async splice
+multipletest_aead 10 X -g	# async, AIO fallback, no splice, one shot sendmsg
+multipletest_aead 10 -s	-g	# async, AIO fallback, no splice, stream sendmsg
+multipletest_aead 10 -v	-g	# async AIO fallback, splice
 multipletest_hash 3		# sync, no splice, one shot sendmsg
 multipletest_hash 3 -s		# sync, no splice, stream sendmsg
 multipletest_hash 3 -v		# sync, splice
@@ -1224,6 +1296,9 @@ multipletest_asym 4 -v		# sync, splice
 multipletest_asym 11		# async, no splice, one shot sendmsg
 multipletest_asym 11 -s		# async, no splice, stream sendmsg
 multipletest_asym 11 -v		# async, splice
+multipletest_asym 11 X -g	# async, AIO fallback, no splice, one shot sendmsg
+multipletest_asym 11 -s -g	# async, AIO fallback, no splice, stream sendmsg
+multipletest_asym 11 -v	-g	# async, AIO fallback, splice
 
 kdftest
 kdftest -m

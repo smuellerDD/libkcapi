@@ -428,6 +428,8 @@ static void usage(void)
 	fprintf(stderr, "\t-d --execloops\tNumber of execution loops\n");
 	fprintf(stderr, "\t-v --vmsplice\tUse vmsplice for AEAD oneshot\n");
 	fprintf(stderr, "\t-b --outlen\tLength of the data to be generated\n");
+	fprintf(stderr, "\t-f --timing\tStart timing measurements for execution duration\n");
+	fprintf(stderr, "\t-g --aiofallback\tInvoke AIO fallback\n");
 }
 
 enum type {
@@ -647,7 +649,7 @@ out:
 }
 
 static int cavs_sym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
-			int splice)
+			int splice, int aiofallback)
 {
 	struct kcapi_handle *handle = NULL;
 	int ret = -ENOMEM;
@@ -702,7 +704,8 @@ static int cavs_sym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	}
 
 	ret = -EINVAL;
-	if (kcapi_cipher_init(&handle, cavs_test->cipher, KCAPI_INIT_AIO)) {
+	if (kcapi_cipher_init(&handle, cavs_test->cipher,
+			      aiofallback ? 0 : KCAPI_INIT_AIO)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
 		return -EINVAL;
 	}
@@ -944,7 +947,7 @@ out:
 }
 
 static int cavs_aead_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
-			 int splice, int printaad)
+			 int splice, int printaad, int aiofallback)
 {
 	struct kcapi_handle *handle = NULL;
 	uint8_t *outbuf = NULL;
@@ -984,7 +987,8 @@ static int cavs_aead_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	}
 
 	ret = -EINVAL;
-	if (kcapi_aead_init(&handle, cavs_test->cipher, KCAPI_INIT_AIO)) {
+	if (kcapi_aead_init(&handle, cavs_test->cipher,
+			    aiofallback ? 0 :KCAPI_INIT_AIO)) {
 		printf("Allocation of cipher failed\n");
 		goto out;
 	}
@@ -1718,7 +1722,7 @@ out:
 }
 
 static int cavs_asym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
-			 int splice)
+			 int splice, int aiofallback)
 {
 	struct kcapi_handle *handle = NULL;
 	struct iovec *iniov_p, *outiov_p, *iniov = NULL, *outiov = NULL;
@@ -1757,7 +1761,8 @@ static int cavs_asym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	if (!outiov)
 		goto out;
 
-	if (kcapi_akcipher_init(&handle, cavs_test->cipher, KCAPI_INIT_AIO)) {
+	if (kcapi_akcipher_init(&handle, cavs_test->cipher,
+				aiofallback ? 0 :KCAPI_INIT_AIO)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
 		goto out;
 	}
@@ -2211,6 +2216,7 @@ int main(int argc, char *argv[])
 	int rc = 1;
 	int stream = 0;
 	int large = 0;
+	int aiofallback = 0;
 	uint32_t loops = 1;
 	int splice = KCAPI_ACCESS_SENDMSG;
 	struct kcapi_cavs cavs_test;
@@ -2245,9 +2251,10 @@ int main(int argc, char *argv[])
 			{"operation", 0, 0, 'o'},
 			{"outlen", 0, 0, 'b'},
 			{"timing", 0, 0, 'f'},
+			{"aiofallback", 0, 0, 'g'},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "ec:p:q:i:mn:k:a:l:t:x:zsyd:vo:r:b:f", opts, &opt_index);
+		c = getopt_long(argc, argv, "ec:p:q:i:mn:k:a:l:t:x:zsyd:vo:r:b:fg", opts, &opt_index);
 		if (-1 == c)
 			break;
 		switch (c)
@@ -2379,6 +2386,9 @@ int main(int argc, char *argv[])
 			case 'f':
 				cavs_test.timing = 1;
 				break;
+			case 'g':
+				aiofallback = 1;
+				break;
 
 			default:
 				usage();
@@ -2394,14 +2404,14 @@ int main(int argc, char *argv[])
 		else
 			rc = cavs_sym(&cavs_test, loops, splice);
 	} else if (SYM_AIO == cavs_test.type)
-		rc = cavs_sym_aio(&cavs_test, loops, splice);
+		rc = cavs_sym_aio(&cavs_test, loops, splice, aiofallback);
 	else if (AEAD == cavs_test.type) {
 		if (stream)
 			rc = cavs_aead_stream(&cavs_test, loops, 0);
 		else
 			rc = cavs_aead(&cavs_test, loops, splice, 0);
 	} else if (AEAD_AIO == cavs_test.type)
-		rc = cavs_aead_aio(&cavs_test, loops, splice, 0);
+		rc = cavs_aead_aio(&cavs_test, loops, splice, 0, aiofallback);
 	else if (HASH == cavs_test.type) {
 		if (stream)
 			rc = cavs_hash_stream(&cavs_test, loops);
@@ -2413,7 +2423,7 @@ int main(int argc, char *argv[])
 		else
 			rc = cavs_asym(&cavs_test, loops, splice);
 	} else if (ASYM_AIO == cavs_test.type) {
-		rc = cavs_asym_aio(&cavs_test, loops, splice);
+		rc = cavs_asym_aio(&cavs_test, loops, splice, aiofallback);
 	} else if (KDF_CTR == cavs_test.type ||
 		   KDF_FB == cavs_test.type ||
 		   KDF_DPI == cavs_test.type) {
