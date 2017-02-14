@@ -1220,6 +1220,7 @@ int32_t kcapi_rng_generate(struct kcapi_handle *handle,
  */
 
 enum kcapi_verbosity {
+	LOG_NONE,
 	LOG_ERR,
 	LOG_WARN,
 	LOG_VERBOSE,
