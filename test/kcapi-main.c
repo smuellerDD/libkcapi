@@ -51,8 +51,49 @@
 #include <sys/user.h>
 #include <time.h>
 #include <sys/utsname.h>
+#include <linux/random.h>
+#include <sys/syscall.h>
+#include <limits.h>
 
 #include "kcapi.h"
+
+enum type {
+	SYM = 1,
+	AEAD,
+	HASH,
+	ASYM,
+	KDF_CTR,
+	KDF_FB,
+	KDF_DPI,
+	PBKDF,
+	SYM_AIO,
+	AEAD_AIO,
+	ASYM_AIO,
+};
+
+struct kcapi_cavs {
+#define CIPHERMAXNAME 63
+	char cipher[CIPHERMAXNAME];
+	int aligned;
+	int timing;
+	int enc;
+	int type;
+	uint8_t *pt;
+	uint32_t ptlen;
+	uint8_t *ct;
+	uint32_t ctlen;
+	uint8_t *iv;
+	uint32_t ivlen;
+	uint8_t *key;
+	uint32_t keylen;
+	uint8_t *pubkey;
+	uint32_t pubkeylen;
+	uint8_t *assoc;
+	uint32_t assoclen;
+	uint8_t *tag;
+	uint32_t taglen;
+	uint32_t outlen;
+};
 
 static char hex_char_map_l[] = { '0', '1', '2', '3', '4', '5', '6', '7',
 				 '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
@@ -201,53 +242,212 @@ static inline uint64_t _time_delta(struct timespec *start, struct timespec *end)
 	return diff;
 }
 
-static int aux_stress_init_error(const char *name, int type)
+static int getrandom(uint8_t *buf, uint32_t buflen, unsigned int flags)
 {
-	struct kcapi_handle *handle;
-	int ret = 0;
+	int ret;
 
-	if (type == 0)
-		ret = kcapi_cipher_init(&handle, name, 0);
-	else if (type == 1)
-		ret = kcapi_aead_init(&handle, name, 0);
-	else if (type == 2)
-		ret = kcapi_md_init(&handle, name, 0);
-	else
-		ret = kcapi_rng_init(&handle, name, 0);
+	if (buflen > INT_MAX)
+		return 1;
 
-	if (ret) {
-		printf("PASS: Allocation of nonsense string \"%s\" failed\n",
-		       name);
+	do {
+		ret = syscall(__NR_getrandom, buf, buflen, flags);
+		if (0 < ret) {
+			buflen -= ret;
+			buf += ret;
+		}
+	} while ((0 < ret || EINTR == errno || ERESTART == errno)
+		 && buflen > 0);
+
+	if (buflen == 0)
 		return 0;
-	}
-	printf("FAIL Allocation of nonsense string \"%s\" passed\n", name);
-
-	if (type == 0)
-		kcapi_cipher_destroy(handle);
-	else if (type == 1)
-		kcapi_aead_destroy(handle);
-	else if (type == 2)
-		kcapi_md_destroy(handle);
-	else
-		kcapi_rng_destroy(handle);
 
 	return 1;
 }
 
-static int aux_stress(void)
+static int fuzz_init_test(unsigned int size)
+{
+	struct kcapi_handle *handle;
+	int ret = 0;
+	uint8_t *name = NULL;
+
+	kcapi_set_verbosity(LOG_NONE);
+
+	if (size) {
+		name = calloc(1, size + 1);
+
+		if (!name) {
+			printf("Allocation of %u bytes failed", size);
+			return 1;
+		}
+	}
+
+	if (getrandom(name, size, 0)) {
+		printf("getrandom call failed\n");
+		return 1;
+	}
+
+	ret = kcapi_cipher_init(&handle, (char *)name, 0);
+	if (!ret) {
+		fprintf(stdout, "kcapi_cipher_init: ");
+		kcapi_cipher_destroy(handle);
+		goto fail;
+	}
+	ret = kcapi_aead_init(&handle, (char *)name, 0);
+	if (!ret) {
+		fprintf(stdout, "kcapi_aead_init: ");
+		kcapi_cipher_destroy(handle);
+		goto fail;
+	}
+	ret = kcapi_md_init(&handle, (char *)name, 0);
+	if (!ret) {
+		fprintf(stdout, "kcapi_md_init: ");
+		kcapi_cipher_destroy(handle);
+		goto fail;
+	}
+	ret = kcapi_rng_init(&handle, (char *)name, 0);
+	if (!ret) {
+		fprintf(stdout, "kcapi_rng_init: ");
+		kcapi_cipher_destroy(handle);
+		goto fail;
+	}
+
+	free(name);
+	return 0;
+
+fail:
+	fprintf(stdout, "allocation success of nonsense string ");
+	if (name)
+		bin2print(name, size);
+	else
+		fprintf(stdout, "NULL\n");
+	free(name);
+	return 1;
+}
+
+static int fuzz_init(void)
 {
 	int ret = 0;
 	int i = 0;
 
-	for (i = 0; i < 4; i++) {
-		if (aux_stress_init_error("(((((((((((((()))))))))))))))", i))
-			ret++;
-		if (aux_stress_init_error("bla", i))
-			ret++;
-		if (aux_stress_init_error(NULL, i))
-			ret++;
-		if (aux_stress_init_error("\x10\x13\x30\x11\x12\x13\x01\x02", i))
-			ret++;
+	for (i = 0; i < 128; i++)
+		ret += fuzz_init_test(i);
+
+	return ret;
+}
+
+#define FUZZ_NOKEY	(1<<0UL)
+#define FUZZ_NOOUT	(1<<1UL)
+#define FUZZ_LESSOUT	(1<<2UL)
+#define FUZZ_NOIV	(1<<3UL)
+#define FUZZ_NOIN	(1<<4UL)
+
+static int fuzz_cipher(struct kcapi_cavs *cavs_test, unsigned long flags,
+		       int enc, int splice)
+{
+	struct kcapi_handle *handle = NULL;
+	uint8_t indata[4096];
+	uint8_t outdata[4096];
+	unsigned int i;
+	int ret = 0;
+
+	if (kcapi_cipher_init(&handle, cavs_test->cipher, 0)) {
+		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
+		goto out;
+	}
+
+	/* Set key */
+	if (!(flags & FUZZ_NOKEY)) {
+		uint8_t key[512];
+
+		for (i = 0; i < sizeof(key); i++) {
+			if (getrandom(key, i, 0)) {
+				printf("getrandom call failed\n");
+				return 1;
+			}
+			kcapi_cipher_setkey(handle, key, i);
+		}
+		if (kcapi_cipher_setkey(handle, key, 16)) {
+			printf("Symmetric cipher setkey failed\n");
+			goto out;
+		}
+	}
+
+	for (i = 0; i < sizeof(indata); i++) {
+		unsigned int outlen = sizeof(outdata);
+		uint8_t *out = outdata;
+		uint8_t *iv = indata;
+		uint8_t *in = indata;
+
+		if (getrandom(indata, i, 0)) {
+			printf("getrandom call failed\n");
+			return 1;
+		}
+
+		if (flags & FUZZ_LESSOUT)
+			outlen = i - 1;
+
+		if (flags & FUZZ_NOOUT)
+			out = NULL;
+
+		if (flags & FUZZ_NOIV)
+			iv = NULL;
+
+		if (flags & FUZZ_NOIN)
+			in = NULL;
+
+		if (enc)
+			kcapi_cipher_encrypt(handle, in, i, iv,
+					     out, outlen, splice);
+		else
+			kcapi_cipher_decrypt(handle, in, i, iv,
+					     out, outlen, splice);
+	}
+
+	ret = 0;
+
+out:
+	kcapi_cipher_destroy(handle);
+	return ret;
+}
+
+static int fuzz_tests(struct kcapi_cavs *cavs_test, uint32_t loops)
+{
+	int ret = 0;
+	uint32_t i;
+
+	kcapi_set_verbosity(LOG_NONE);
+
+	for (i = 0; i < loops; i++) {
+		if (!cavs_test->type)
+			ret += fuzz_init();
+		else if (SYM == cavs_test->type) {
+			ret += fuzz_cipher(cavs_test, 0, 0, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_cipher(cavs_test, 0, 1, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_cipher(cavs_test, FUZZ_NOKEY, 0, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_cipher(cavs_test, FUZZ_NOKEY, 1, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_cipher(cavs_test, FUZZ_LESSOUT, 0, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_cipher(cavs_test, FUZZ_LESSOUT, 1, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_cipher(cavs_test, FUZZ_NOOUT, 0, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_cipher(cavs_test, FUZZ_NOOUT, 1, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_cipher(cavs_test, FUZZ_NOIV, 0, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_cipher(cavs_test, FUZZ_NOIV, 1, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_cipher(cavs_test, FUZZ_NOIN, 0, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_cipher(cavs_test, FUZZ_NOIN, 1, KCAPI_ACCESS_VMSPLICE);
+
+
+			ret += fuzz_cipher(cavs_test, 0, 0, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_cipher(cavs_test, 0, 1, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_cipher(cavs_test, FUZZ_NOKEY, 0, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_cipher(cavs_test, FUZZ_NOKEY, 1, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_cipher(cavs_test, FUZZ_LESSOUT, 0, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_cipher(cavs_test, FUZZ_LESSOUT, 1, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_cipher(cavs_test, FUZZ_NOOUT, 0, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_cipher(cavs_test, FUZZ_NOOUT, 1, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_cipher(cavs_test, FUZZ_NOIV, 0, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_cipher(cavs_test, FUZZ_NOIV, 1, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_cipher(cavs_test, FUZZ_NOIN, 0, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_cipher(cavs_test, FUZZ_NOIN, 1, KCAPI_ACCESS_SENDMSG);
+		}
 	}
 
 	return ret;
@@ -373,8 +573,6 @@ static int auxiliary_tests(void)
 		ret++;
 	}
 
-	ret += aux_stress();
-
 	return ret;
 }
 
@@ -431,44 +629,6 @@ static void usage(void)
 	fprintf(stderr, "\t-f --timing\tStart timing measurements for execution duration\n");
 	fprintf(stderr, "\t-g --aiofallback\tInvoke AIO fallback\n");
 }
-
-enum type {
-	SYM = 1,
-	AEAD,
-	HASH,
-	ASYM,
-	KDF_CTR,
-	KDF_FB,
-	KDF_DPI,
-	PBKDF,
-	SYM_AIO,
-	AEAD_AIO,
-	ASYM_AIO,
-};
-
-struct kcapi_cavs {
-#define CIPHERMAXNAME 63
-	char cipher[CIPHERMAXNAME];
-	int aligned;
-	int timing;
-	int enc;
-	int type;
-	uint8_t *pt;
-	uint32_t ptlen;
-	uint8_t *ct;
-	uint32_t ctlen;
-	uint8_t *iv;
-	uint32_t ivlen;
-	uint8_t *key;
-	uint32_t keylen;
-	uint8_t *pubkey;
-	uint32_t pubkeylen;
-	uint8_t *assoc;
-	uint32_t assoclen;
-	uint8_t *tag;
-	uint32_t taglen;
-	uint32_t outlen;
-};
 
 /*
  * Encryption command line:
@@ -2217,6 +2377,7 @@ int main(int argc, char *argv[])
 	int stream = 0;
 	int large = 0;
 	int aiofallback = 0;
+	int fuzztests = 0;
 	uint32_t loops = 1;
 	int splice = KCAPI_ACCESS_SENDMSG;
 	struct kcapi_cavs cavs_test;
@@ -2252,9 +2413,10 @@ int main(int argc, char *argv[])
 			{"outlen", 0, 0, 'b'},
 			{"timing", 0, 0, 'f'},
 			{"aiofallback", 0, 0, 'g'},
+			{"fuzztest", 0, 0, 'h'},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "ec:p:q:i:mn:k:a:l:t:x:zsyd:vo:r:b:fg", opts, &opt_index);
+		c = getopt_long(argc, argv, "ec:p:q:i:mn:k:a:l:t:x:zsyd:vo:r:b:fgh", opts, &opt_index);
 		if (-1 == c)
 			break;
 		switch (c)
@@ -2389,11 +2551,19 @@ int main(int argc, char *argv[])
 			case 'g':
 				aiofallback = 1;
 				break;
+			case 'h':
+				fuzztests = 1;
+				break;
 
 			default:
 				usage();
 				goto out;
 		}
+	}
+
+	if (fuzztests) {
+		rc = fuzz_tests(&cavs_test, loops);
+		goto out;
 	}
 
 	if (large) {
