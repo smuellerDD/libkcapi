@@ -50,12 +50,10 @@ int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 	uint32_t bs = handle->info.blocksize;
 
 	/* require properly sized output data size */
-	if (outlen < ((inlen + bs - 1) / bs * bs)) {
-		kcapi_dolog(LOG_ERR,
+	if (outlen < ((inlen + bs - 1) / bs * bs))
+		kcapi_dolog(LOG_WARN,
 			    "Symmetric Encryption: Ciphertext buffer (%lu) is not plaintext buffer (%lu) rounded up to multiple of block size %u",
 			    (unsigned long) outlen, (unsigned long)inlen, bs);
-		return -EINVAL;
-	}
 
 	handle->cipher.iv = iv;
 	return _kcapi_cipher_crypt_chunk(handle, in, inlen, out, outlen, access,
@@ -107,19 +105,15 @@ int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 			     uint8_t *out, uint32_t outlen, int access)
 {
 	/* require properly sized output data size */
-	if (inlen % handle->info.blocksize) {
-		kcapi_dolog(LOG_ERR,
+	if (inlen % handle->info.blocksize)
+		kcapi_dolog(LOG_WARN,
 			    "Symmetric Decryption: Ciphertext buffer is not multiple of block size %u",
 			    handle->info.blocksize);
-		return -EINVAL;
-	}
 
-	if (outlen < inlen) {
-		kcapi_dolog(LOG_ERR,
+	if (outlen < inlen)
+		kcapi_dolog(LOG_WARN,
 			    "Symmetric Decryption: Plaintext buffer (%lu) is smaller as ciphertext buffer (%lu)",
 			    (unsigned long)outlen, (unsigned long)inlen);
-		return -EINVAL;
-	}
 
 	handle->cipher.iv = iv;
 	return _kcapi_cipher_crypt_chunk(handle, in, inlen, out, outlen, access,
