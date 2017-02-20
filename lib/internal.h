@@ -42,18 +42,6 @@ extern "C"
 {
 #endif
 
-#define KCAPI_MAJVERSION 0    /* API / ABI incompatible changes, functional
-			       * changes that require consumer to be updated
-			       * (as long as this number is zero, the API is
-			       * not considered stable and can change without
-			       * a bump of the major version) */
-#define KCAPI_MINVERSION 13   /* API compatible, ABI may change, functional
-			       * enhancements only, consumer can be left
-			       * unchanged if enhancements are not considered */
-#define KCAPI_PATCHLEVEL 0.7  /* API / ABI compatible, no functional changes, no
-			       * enhancements, bug fixes only. Versions with
-			       * a decimal point are pre-releases. */
-
 /* remove once in if_alg.h */
 #ifndef ALG_SET_AEAD_ASSOCLEN
 #define ALG_SET_AEAD_ASSOCLEN		4

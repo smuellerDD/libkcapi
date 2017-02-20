@@ -30,8 +30,6 @@ test/ -- functional verification code
 
 speed-test/ -- performance tests
 
-The code in each directory is intended to be compiled independently.
-
 Applications
 ============
 
@@ -71,39 +69,50 @@ Patchlevel changes are API / ABI compatible. No functional changes, no
 enhancements are made. This release is a bug fixe release only. The
 consumer can be left unchanged and does not need to be recompiled.
 
+Build instructions
+==================
+The build system is based on `autotools`. First of all, you have to run the
+following command that will generate the `Makefile` and the `configure` script:
+```
+$ autoreconf -i
+```
+The `configure` script supports the following options:
+* `--prefix=$PREFIX`: install the library and the applications to
+  `$PREFIX`
+* `--with-kcapi-test`: compile and install the `kcapi` test program
+* `--with-kcapi-speed`: compile and install `kcapi-speed` test program
+* `--with-apps`: compile and install the applications
 
-Make Targets
-============
+For instance, to compile the library with the `kcapi` test program and to
+install them in `/usr/`:
+```
+$ ./configure --prefix=/usr/ --with-kcapi-test
+```
 
-The following make targets are applicable:
+Then, run `make` to compile and `make install` to install in the folder
+specified by the `--prefix` option.
 
-* make              # compile library
+The Makefile compiles libkcapi as a shared library and as a static libary.
 
-* make install      # install library into $PREFIX
+Build documentation
+-------------------
+`xmlto` is required to build the man pages and the documentation in doc/html.
+`db2pdf` and `db2ps` are required to build the documentation in PDF or in PS format.
 
-* make scan         # use CLANG static code analyzer
+Use the following targets to generate the documentation in the appropriate format:
+* `make man`
+* `make pdf`
+* `make ps`
+* `make html`
 
-* make cppcheck     # use cppcheck static code analyzer
+To install the man pages run: `make install-man`.
 
-* make man          # compile man pages in doc/man
-
-* make maninstall   # install man pages into $PREFIX
-
-* make pdf          # generate documentation in PDF
-
-* make ps           # generate documentation in PS
-
-* make html         # generate documentation as HTML in doc/html
-
-
-Compilation
-===========
-
-The Makefile compiles libkcapi as a shared library.
-
-The "install" Makefile target installs libkcapi under /usr/local/lib or
-/usr/local/lib64. The header file is installed to /usr/local/include.
-
+Static Code analyzer
+--------------------
+If `clang` or `cppcheck` are installed, you can use the following targets to
+run them on the source code:
+* `make scan`
+* `make cppcheck`
 
 Test cases
 ==========
