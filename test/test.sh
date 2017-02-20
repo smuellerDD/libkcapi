@@ -36,11 +36,7 @@
 #
 #
 export PATH=$PATH:.
-KCAPI="kcapi"
-if [ -n "$1" ]
-then
-	KCAPI="${KCAPI}${1}"
-fi
+KCAPI="../bin/kcapi"
 if [ ! -e $KCAPI ]
 then
 	echo "Binary $KCAPI not present"
