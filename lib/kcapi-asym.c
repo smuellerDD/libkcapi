@@ -230,7 +230,7 @@ _kcapi_akcipher_encrypt_aio_fallback(struct kcapi_handle *handle,
 		int32_t rc = kcapi_akcipher_stream_update_last(handle, iniov,
 							       1);
 		if (rc < 0)
-			return ret;
+			return rc;
 
 		rc = kcapi_akcipher_stream_op(handle, outiov, 1);
 		if (rc < 0)
@@ -252,13 +252,10 @@ int32_t kcapi_akcipher_encrypt_aio(struct kcapi_handle *handle,
 {
 	int32_t ret;
 
-	if (handle->aio.disable) {
-		ret = _kcapi_akcipher_crypt_aio(handle, iniov, outiov, iovlen,
-						access, ALG_OP_ENCRYPT);
-
-		if (ret != -EOPNOTSUPP)
-			return ret;
-	}
+	ret = _kcapi_akcipher_crypt_aio(handle, iniov, outiov, iovlen,
+					access, ALG_OP_ENCRYPT);
+	if (ret != -EOPNOTSUPP)
+		return ret;
 
 	/* The kernel's AIO interface is broken. */
 	return _kcapi_akcipher_encrypt_aio_fallback(handle, iniov, outiov,
@@ -283,7 +280,7 @@ _kcapi_akcipher_decrypt_aio_fallback(struct kcapi_handle *handle,
 		int32_t rc = kcapi_akcipher_stream_update_last(handle, iniov,
 							       1);
 		if (rc < 0)
-			return ret;
+			return rc;
 
 		rc = kcapi_akcipher_stream_op(handle, outiov, 1);
 		if (rc < 0)
@@ -305,13 +302,10 @@ int32_t kcapi_akcipher_decrypt_aio(struct kcapi_handle *handle,
 {
 	int32_t ret;
 
-	if (handle->aio.disable) {
-		ret = _kcapi_akcipher_crypt_aio(handle, iniov, outiov, iovlen,
-						access, ALG_OP_DECRYPT);
-
-		if (ret != -EOPNOTSUPP)
-			return ret;
-	}
+	ret = _kcapi_akcipher_crypt_aio(handle, iniov, outiov, iovlen,
+					access, ALG_OP_DECRYPT);
+	if (ret != -EOPNOTSUPP)
+		return ret;
 
 	/* The kernel's AIO interface is broken. */
 	return _kcapi_akcipher_decrypt_aio_fallback(handle, iniov, outiov,
@@ -336,7 +330,7 @@ _kcapi_akcipher_sign_aio_fallback(struct kcapi_handle *handle,
 		int32_t rc = kcapi_akcipher_stream_update_last(handle, iniov,
 							       1);
 		if (rc < 0)
-			return ret;
+			return rc;
 
 		rc = kcapi_akcipher_stream_op(handle, outiov, 1);
 		if (rc < 0)
@@ -358,13 +352,10 @@ int32_t kcapi_akcipher_sign_aio(struct kcapi_handle *handle,
 {
 	int32_t ret;
 
-	if (handle->aio.disable) {
-		ret = _kcapi_akcipher_crypt_aio(handle, iniov, outiov, iovlen,
-						access, ALG_OP_SIGN);
-
-		if (ret != -EOPNOTSUPP)
-			return ret;
-	}
+	ret = _kcapi_akcipher_crypt_aio(handle, iniov, outiov, iovlen,
+					access, ALG_OP_SIGN);
+	if (ret != -EOPNOTSUPP)
+		return ret;
 
 	/* The kernel's AIO interface is broken. */
 	return _kcapi_akcipher_sign_aio_fallback(handle, iniov, outiov, iovlen);
@@ -388,7 +379,7 @@ _kcapi_akcipher_verify_aio_fallback(struct kcapi_handle *handle,
 		int32_t rc = kcapi_akcipher_stream_update_last(handle, iniov,
 							       1);
 		if (rc < 0)
-			return ret;
+			return rc;
 
 		rc = kcapi_akcipher_stream_op(handle, outiov, 1);
 		if (rc < 0)
@@ -410,13 +401,10 @@ int32_t kcapi_akcipher_verify_aio(struct kcapi_handle *handle,
 {
 	int32_t ret;
 
-	if (handle->aio.disable) {
-		ret = _kcapi_akcipher_crypt_aio(handle, iniov, outiov, iovlen,
-						access, ALG_OP_VERIFY);
-
-		if (ret != -EOPNOTSUPP)
-			return ret;
-	}
+	ret = _kcapi_akcipher_crypt_aio(handle, iniov, outiov, iovlen,
+					access, ALG_OP_VERIFY);
+	if (ret != -EOPNOTSUPP)
+		return ret;
 
 	/* The kernel's AIO interface is broken. */
 	return _kcapi_akcipher_verify_aio_fallback(handle, iniov, outiov,
