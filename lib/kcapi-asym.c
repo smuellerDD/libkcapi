@@ -123,8 +123,7 @@ DSO_PUBLIC
 int32_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
 				     struct iovec *iov, uint32_t iovlen)
 {
-	/* TODO: vmsplice only works with ALG_MAX_PAGES - 1 -- no clue why */
-	if (handle->processed_sg < ALG_MAX_PAGES)
+	if (handle->processed_sg < handle->flags.alg_max_pages)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen,
 						  SPLICE_F_MORE);
 	else
@@ -135,8 +134,7 @@ DSO_PUBLIC
 int32_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
 				          struct iovec *iov, uint32_t iovlen)
 {
-	/* TODO: vmsplice only works with ALG_MAX_PAGES - 1 -- no clue why */
-	if (handle->processed_sg < ALG_MAX_PAGES)
+	if (handle->processed_sg < handle->flags.alg_max_pages)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
 	else
 		return _kcapi_common_send_data(handle, iov, iovlen, 0);

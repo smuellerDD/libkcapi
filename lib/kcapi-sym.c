@@ -182,7 +182,7 @@ DSO_PUBLIC
 int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
 				   struct iovec *iov, uint32_t iovlen)
 {
-	if (handle->processed_sg <= ALG_MAX_PAGES)
+	if (handle->processed_sg <= handle->flags.alg_max_pages)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen,
 						  SPLICE_F_MORE);
 	else

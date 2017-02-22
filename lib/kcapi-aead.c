@@ -216,13 +216,6 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 {
 	int32_t ret = 0;
 
-	if (inlen > (uint32_t)(sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES)) {
-		kcapi_dolog(LOG_ERR,
-			    "AEAD Encryption: Plaintext buffer (%u) is larger than maximum chunk size (%lu)",
-			    inlen, sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES);
-		return -EMSGSIZE;
-	}
-
 	handle->cipher.iv = iv;
 	ret = _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
 				  ALG_OP_ENCRYPT);
@@ -321,14 +314,6 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 			   const uint8_t *iv,
 			   uint8_t *out, uint32_t outlen, int access)
 {
-	/* require properly sized output data size */
-	if (inlen > (uint32_t)(sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES)) {
-		kcapi_dolog(LOG_ERR,
-			    "AEAD Decryption: Ciphertext buffer (%u) is larger than maximum chunk size (%lu)",
-			    inlen, sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES);
-		return -EMSGSIZE;
-	}
-
 	handle->cipher.iv = iv;
 	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
 				   ALG_OP_DECRYPT);
@@ -439,7 +424,7 @@ DSO_PUBLIC
 int32_t kcapi_aead_stream_update(struct kcapi_handle *handle,
 				 struct iovec *iov, uint32_t iovlen)
 {
-	if (handle->processed_sg <= ALG_MAX_PAGES)
+	if (handle->processed_sg <= handle->flags.alg_max_pages)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen,
 						  SPLICE_F_MORE);
 	else
@@ -450,7 +435,7 @@ DSO_PUBLIC
 int32_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
 				      struct iovec *iov, uint32_t iovlen)
 {
-	if (handle->processed_sg <= ALG_MAX_PAGES)
+	if (handle->processed_sg <= handle->flags.alg_max_pages)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
 	else
 		return _kcapi_common_send_data(handle, iov, iovlen, 0);

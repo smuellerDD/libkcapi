@@ -937,6 +937,10 @@ static void _kcapi_handle_flags(struct kcapi_handle *handle)
 {
 	/* new memory structure for AF_ALG AEAD interface */
 	handle->flags.newtag = _kcapi_kernver_ge(handle, 4, 9, 0);
+
+	/* older interfaces only processed 16 pages in a row */
+	handle->flags.alg_max_pages = _kcapi_kernver_ge(handle, 4, 10, 0) ?
+				      UINT_MAX : ALG_MAX_PAGES;
 }
 
 int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,

@@ -172,6 +172,9 @@ struct kcapi_flags {
 	 * if it is required as input or output.
 	 */
 	unsigned int newtag:1;
+
+	/* AF_ALG interfaces changed to process more pages concurrently. */
+	uint32_t alg_max_pages;
 };
 
 struct kcapi_sys {
