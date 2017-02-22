@@ -620,6 +620,7 @@ static void usage(void)
 	fprintf(stderr, "\t\t8 for PBKDF\n");
 	fprintf(stderr, "\t\t9 for AIO symmetric cipher algorithm\n");
 	fprintf(stderr, "\t\t10 for AIO AEAD cipher algorithm\n");
+	fprintf(stderr, "\t\t10 for AIO asymmetric cipher algorithm\n");
 	fprintf(stderr, "\t-z --aux\tAuxiliary tests of the API\n");
 	fprintf(stderr, "\t-s --stream\tUse the stream API\n");
 	fprintf(stderr, "\t-y --largeinput\tTest long AD with AEAD cipher\n");
@@ -628,6 +629,7 @@ static void usage(void)
 	fprintf(stderr, "\t-b --outlen\tLength of the data to be generated\n");
 	fprintf(stderr, "\t-f --timing\tStart timing measurements for execution duration\n");
 	fprintf(stderr, "\t-g --aiofallback\tInvoke AIO fallback\n");
+	fprintf(stderr, "\t-h --fuzztest\tInvoke fuzzing tests\n");
 }
 
 /*
