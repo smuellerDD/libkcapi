@@ -151,7 +151,7 @@ int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
 	}
 
 	kcapi_memset_secure(Ai, 0, h);
-	return err;
+	return 0;
 
 err:
 	kcapi_memset_secure(dst_orig, 0, dlen);
@@ -285,6 +285,120 @@ int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
 
 err:
 	kcapi_memset_secure(dst_orig, 0, dlen);
+	return err;
+}
+
+/*
+ * RFC 5869 KDF
+ */
+int32_t kcapi_hkdf(const char *hashname,
+		   const uint8_t *ikm, uint32_t ikmlen,
+		   const uint8_t *salt, uint32_t saltlen,
+		   const uint8_t *info, uint32_t infolen,
+		   uint8_t *dst, uint32_t dlen)
+{
+#define HKDF_MAXHASH 64
+	uint32_t h;
+	const uint8_t null_salt[HKDF_MAXHASH] = { 0 };
+	uint8_t prk_tmp[HKDF_MAXHASH];
+	uint8_t *prev = NULL;
+	int32_t err = 0;
+	uint8_t *dst_orig = dst;
+	uint8_t ctr = 0x01;
+	struct kcapi_handle *handle = NULL;
+
+	if (!ikm || !ikmlen)
+		return -EINVAL;
+
+	err = kcapi_md_init(&handle, hashname, 0);
+	if (err)
+		return err;
+
+	h = kcapi_md_digestsize(handle);
+
+	if (!h) {
+		err = -EFAULT;
+		goto err;
+	}
+
+	if (h > HKDF_MAXHASH) {
+		kcapi_dolog(LOG_ERR, "Null salt size too small for hash\n");
+		err = -EFAULT;
+		goto err;
+	}
+
+	if (dlen > h * 255) {
+		err = -EINVAL;
+		goto err;
+	}
+
+	/* Extract phase */
+	if (salt)
+		err = kcapi_md_setkey(handle, salt, saltlen);
+	else
+		err = kcapi_md_setkey(handle, null_salt, h);
+
+	if (err)
+		goto err;
+	err = kcapi_md_digest(handle, ikm, ikmlen, prk_tmp, h);
+	if (err < 0)
+		goto err;
+	kcapi_md_destroy(handle);
+	handle = NULL;
+
+	/* Expand phase */
+	err = kcapi_md_init(&handle, hashname, 0);
+	if (err)
+		return err;
+
+	err = kcapi_md_setkey(handle, prk_tmp, h);
+	if (err)
+		goto err;
+
+	/* T(1) and following */
+	while (dlen) {
+		if (prev) {
+			err = kcapi_md_update(handle, prev, h);
+			if (err)
+				goto err;
+		}
+
+		if (info) {
+			err = kcapi_md_update(handle, info, infolen);
+			if (err)
+				goto err;
+		}
+
+		err = kcapi_md_update(handle, &ctr, 1);
+		if (err)
+			goto err;
+
+		if (dlen < h) {
+			err = kcapi_md_final(handle, prk_tmp, h);
+			if (err < 0)
+				goto err;
+			memcpy(dst, prk_tmp, dlen);
+			dlen = 0;
+		} else {
+			err = kcapi_md_final(handle, dst, h);
+			if (err < 0)
+				goto err;
+
+			prev = dst;
+			dst += h;
+			dlen -= h;
+			ctr++;
+		}
+	}
+
+	err = 0;
+	goto out;
+
+err:
+	kcapi_memset_secure(dst_orig, 0, dlen);
+out:
+	kcapi_memset_secure(prk_tmp, 0, h);
+	kcapi_md_destroy(handle);
 	return err;
 }
 

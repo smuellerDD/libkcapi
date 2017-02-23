@@ -80,9 +80,10 @@ LIBKCAPI_0.13.0 {
 	kcapi_aead_getdata_output;
 } LIBKCAPI_0.12.0;
 
-LIBKCAPI_0.13.0.7 {
+LIBKCAPI_0.13.0.8 {
 	kcapi_akcipher_encrypt_aio;
 	kcapi_akcipher_decrypt_aio;
 	kcapi_akcipher_sign_aio;
 	kcapi_akcipher_verify_aio;
+	kcapi_hkdf;
 } LIBKCAPI_0.13.0;

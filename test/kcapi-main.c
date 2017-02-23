@@ -69,6 +69,7 @@ enum type {
 	SYM_AIO,
 	AEAD_AIO,
 	ASYM_AIO,
+	KDF_HKDF,
 };
 
 struct kcapi_cavs {
@@ -2246,10 +2247,12 @@ static int cavs_kdf_common(struct kcapi_cavs *cavs_test, uint32_t loops)
 			ret = kcapi_kdf_fb(handle, cavs_test->pt,
 					   cavs_test->ptlen,
 					   outbuf, cavs_test->outlen);
-		else
+		else if (cavs_test->type == KDF_DPI)
 			ret = kcapi_kdf_dpi(handle, cavs_test->pt,
 					    cavs_test->ptlen,
 					    outbuf, cavs_test->outlen);
+		else
+			ret = -EOPNOTSUPP;
 		if (0 > ret) {
 			printf("KDF generation failed\n");
 			goto out;
@@ -2270,6 +2273,62 @@ out:
 	return ret;
 }
 
+/*
+ * RFC5869
+ * ./kcapi -x 12 -c "hmac(sha256)" -k 0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b -i 000102030405060708090a0b0c -p f0f1f2f3f4f5f6f7f8f9 -b 42
+ * 3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865
+ */
+static int cavs_hkdf(struct kcapi_cavs *cavs_test, uint32_t loops)
+{
+	uint8_t *outbuf = NULL;
+	char *mdhex = NULL;
+	uint32_t mdhexlen = cavs_test->outlen * 2 + 1;
+	int ret = 1;
+
+	if (!loops) {
+		printf("PBKDF suggested iteration count: %u\n",
+		       kcapi_pbkdf_iteration_count(cavs_test->cipher, 0));
+		return 0;
+	}
+
+	if (cavs_test->aligned) {
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE),
+				   cavs_test->outlen))
+			return -ENOMEM;
+		memset(outbuf, 0, cavs_test->outlen);
+	} else {
+		outbuf = calloc(1, cavs_test->outlen);
+		if (!outbuf)
+			return -ENOMEM;
+	}
+	mdhex = calloc(1, mdhexlen);
+	if (!mdhex) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	ret = kcapi_hkdf(cavs_test->cipher,
+			 cavs_test->key, cavs_test->keylen,
+			 cavs_test->iv, cavs_test->ivlen,
+			 cavs_test->pt, cavs_test->ptlen,
+			 outbuf, cavs_test->outlen);
+	if (0 > ret) {
+		printf("KDF generation failed\n");
+		goto out;
+	}
+	bin2hex(outbuf, cavs_test->outlen, mdhex, mdhexlen, 0);
+	printf("%s\n", mdhex);
+
+	ret = 0;
+
+out:
+	if (outbuf)
+		free(outbuf);
+	if (mdhex)
+		free(mdhex);
+
+	return ret;
+}
 /*
  * Test vectors taken from RFC6070
  *
@@ -2600,6 +2659,8 @@ int main(int argc, char *argv[])
 		   KDF_FB == cavs_test.type ||
 		   KDF_DPI == cavs_test.type) {
 		rc = cavs_kdf_common(&cavs_test, loops);
+	} else if (KDF_HKDF == cavs_test.type) {
+		rc = cavs_hkdf(&cavs_test, loops);
 	} else if (PBKDF == cavs_test.type) {
 		rc = cavs_pbkdf(&cavs_test, loops);
 	} else

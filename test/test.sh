@@ -508,6 +508,53 @@ PBKDF_exp_13="d197b1b33db0143e018b12f3d1d1479e6cdebdcc97c5c0f87f6902e072f457b514
 ###########################################################################
 ###########################################################################
 
+#RFC 5869 Appendix A vectors
+HKDF_name_1="hmac(sha256)"
+HKDF_ikm_1="0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"
+HKDF_salt_1="000102030405060708090a0b0c"
+HKDF_info_1="f0f1f2f3f4f5f6f7f8f9"
+HKDF_exp_1="3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"
+
+HKDF_name_2="hmac(sha256)"
+HKDF_ikm_2="000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f"
+HKDF_salt_2="606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf"
+HKDF_info_2="b0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
+HKDF_exp_2="b11e398dc80327a1c8e7f78c596a49344f012eda2d4efad8a050cc4c19afa97c59045a99cac7827271cb41c65e590e09da3275600c2f09b8367793a9aca3db71cc30c58179ec3e87c14c01d5c1f3434f1d87"
+
+HKDF_name_3="hmac(sha256)"
+HKDF_ikm_3="0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"
+HKDF_salt_3=""
+HKDF_info_3=""
+HKDF_exp_3="8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8"
+
+HKDF_name_4="hmac(sha1)"
+HKDF_ikm_4="0b0b0b0b0b0b0b0b0b0b0b"
+HKDF_salt_4="000102030405060708090a0b0c"
+HKDF_info_4="f0f1f2f3f4f5f6f7f8f9"
+HKDF_exp_4="085a01ea1b10f36933068b56efa5ad81a4f14b822f5b091568a9cdd4f155fda2c22e422478d305f3f896"
+
+HKDF_name_5="hmac(sha1)"
+HKDF_ikm_5="000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f"
+HKDF_salt_5="606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf"
+HKDF_info_5="b0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
+HKDF_exp_5="0bd770a74d1160f7c9f12cd5912a06ebff6adcae899d92191fe4305673ba2ffe8fa3f1a4e5ad79f3f334b3b202b2173c486ea37ce3d397ed034c7f9dfeb15c5e927336d0441f4c4300e2cff0d0900b52d3b4"
+
+HKDF_name_6="hmac(sha1)"
+HKDF_ikm_6="0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"
+HKDF_salt_6=""
+HKDF_info_6=""
+HKDF_exp_6="0ac1af7002b3d761d1e55298da9d0506b9ae52057220a306e07b6b87e8df21d0ea00033de03984d34918"
+
+HKDF_name_7="hmac(sha1)"
+HKDF_ikm_7="0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c"
+HKDF_salt_7=""
+HKDF_info_7=""
+HKDF_exp_7="2c91117204d745f3500d636a62f64f0ab3bae548aa53d423b0d1f27ebba6f5e5673a081d70cce7acfc48"
+
+###########################################################################
+###########################################################################
+###########################################################################
+
 failures=0
 
 # check whether a given kernel version is present
@@ -1007,6 +1054,43 @@ pbkdftest()
 	done
 }
 
+hkdftest()
+{
+	aligned=$1
+
+	HKDFEXEC="1 2 3 4 5 6 7"
+	for i in $HKDFEXEC
+	do
+		eval HKDF_name=\$HKDF_name_$i
+		eval HKDF_salt=\$HKDF_salt_$i
+		eval HKDF_ikm=\$HKDF_ikm_$i
+		eval HKDF_info=\$HKDF_info_$i
+		eval HKDF_exp=\$HKDF_exp_$i
+
+		explen=$(echo -n $HKDF_exp | wc -c)
+		let explen=(explen/2)
+
+		result=$($KCAPI $aligned -x 12 -c $HKDF_name -k $HKDF_ikm -i "$HKDF_salt" -p "$HKDF_info" -b $explen)
+
+		aout="non-aligned"
+		if [ x"$aligned" = x"-m" ]
+		then
+			aout="aligned"
+		fi
+
+		if [ x"$result" = x"$HKDF_exp" ]
+		then
+			echo_pass "HKDF $aout test $i"
+		else
+			echo_fail "HKDF $aout test $i"
+			echo "($KCAPI $aligned -x 8 -c $HKDF_name -k $HKDF_salt -p \"$HKDF_pw\" -d $HKDF_count -b $explen)"
+			echo " Exp $HKDF_exp"
+			echo " Got $result"
+			let failures=($failures+1)
+		fi
+	done
+}
+
 multipletest_sym() {
 	symimpl=$1
 	stream=$2
@@ -1300,5 +1384,7 @@ kdftest
 kdftest -m
 pbkdftest
 pbkdftest -m
+hkdftest
+hkdftest -m
 
 exit $failures
