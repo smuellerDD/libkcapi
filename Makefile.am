@@ -2,7 +2,7 @@ ACLOCAL_AMFLAGS = -I m4
 AUTOMAKE_OPTIONS = subdir-objects
 lib_LTLIBRARIES = libkcapi.la
 
-COMMON_CPPFLAGS = -Wextra -Wall -pedantic -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fwrapv --param ssp-buffer-size=4 -O2
+COMMON_CPPFLAGS = -Wextra -Wall -pedantic -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fwrapv --param ssp-buffer-size=4 -O2 -Werror
 COMMON_LDFLAGS =  -Wl,-z,relro,-z,now
 
 libkcapi_la_CPPFLAGS = $(COMMON_CPPFLAGS) -fPIC -std=gnu99 -fvisibility=hidden
