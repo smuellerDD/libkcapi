@@ -341,7 +341,10 @@ static int fuzz_init(void)
 #define FUZZ_LESSOUT	(1<<2UL)
 #define FUZZ_NOIV	(1<<3UL)
 #define FUZZ_NOIN	(1<<4UL)
+#define FUZZ_NOAAD	(1<<5UL)
+#define FUZZ_NOTAG	(1<<6UL)
 
+/* kcapi -h -x 1 -c "cbc(aes)" -d 10000 */
 static int fuzz_cipher(struct kcapi_cavs *cavs_test, unsigned long flags,
 		       int enc, int splice)
 {
@@ -411,6 +414,89 @@ out:
 	return ret;
 }
 
+/* 
+ * kcapi -h -x 2 -c "authenc(hmac(sha1),cbc(aes))" -d 2
+ * kcapi -h -x 2 -c "gcm(aes)" -d 100
+ */
+static int fuzz_aead(struct kcapi_cavs *cavs_test, unsigned long flags,
+		     int enc, int splice)
+{
+	struct kcapi_handle *handle = NULL;
+	uint8_t indata[4096];
+	uint8_t outdata[4096];
+	unsigned int i;
+	int ret = 0;
+
+	if (kcapi_aead_init(&handle, cavs_test->cipher, 0)) {
+		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
+		goto out;
+	}
+
+	/* Set key */
+	if (!(flags & FUZZ_NOKEY)) {
+		uint8_t key[512];
+
+		for (i = 0; i < sizeof(key); i++) {
+			if (getrandom(key, i, 0)) {
+				printf("getrandom call failed\n");
+				return 1;
+			}
+			kcapi_aead_setkey(handle, key, i);
+		}
+		if (kcapi_aead_setkey(handle, key, 16)) {
+			printf("AEAD setkey failed\n");
+			goto out;
+		}
+	}
+
+	for (i = 0; i < sizeof(indata); i++) {
+		unsigned int outlen = sizeof(outdata);
+		uint8_t *out = outdata;
+		uint8_t *iv = indata;
+		uint8_t *in = indata;
+
+		if (getrandom(indata, i, 0)) {
+			printf("getrandom call failed\n");
+			return 1;
+		}
+
+		if (flags & FUZZ_LESSOUT)
+			outlen = i - 1;
+
+		if (flags & FUZZ_NOOUT)
+			out = NULL;
+
+		if (flags & FUZZ_NOIV)
+			iv = NULL;
+
+		if (flags & FUZZ_NOIN)
+			in = NULL;
+
+		if (flags & FUZZ_NOAAD)
+			kcapi_aead_setassoclen(handle, 0);
+		else
+			kcapi_aead_setassoclen(handle, i);
+
+		if (flags & FUZZ_NOTAG)
+			kcapi_aead_settaglen(handle, 0);
+		else
+			kcapi_aead_settaglen(handle, i);
+
+		if (enc)
+			kcapi_aead_encrypt(handle, in, i, iv,
+					   out, outlen, splice);
+		else
+			kcapi_aead_decrypt(handle, in, i, iv,
+					   out, outlen, splice);
+	}
+
+	ret = 0;
+
+out:
+	kcapi_aead_destroy(handle);
+	return ret;
+}
+
 static int fuzz_tests(struct kcapi_cavs *cavs_test, uint32_t loops)
 {
 	int ret = 0;
@@ -435,7 +521,6 @@ static int fuzz_tests(struct kcapi_cavs *cavs_test, uint32_t loops)
 			ret += fuzz_cipher(cavs_test, FUZZ_NOIN, 0, KCAPI_ACCESS_VMSPLICE);
 			ret += fuzz_cipher(cavs_test, FUZZ_NOIN, 1, KCAPI_ACCESS_VMSPLICE);
 
-
 			ret += fuzz_cipher(cavs_test, 0, 0, KCAPI_ACCESS_SENDMSG);
 			ret += fuzz_cipher(cavs_test, 0, 1, KCAPI_ACCESS_SENDMSG);
 			ret += fuzz_cipher(cavs_test, FUZZ_NOKEY, 0, KCAPI_ACCESS_SENDMSG);
@@ -448,6 +533,40 @@ static int fuzz_tests(struct kcapi_cavs *cavs_test, uint32_t loops)
 			ret += fuzz_cipher(cavs_test, FUZZ_NOIV, 1, KCAPI_ACCESS_SENDMSG);
 			ret += fuzz_cipher(cavs_test, FUZZ_NOIN, 0, KCAPI_ACCESS_SENDMSG);
 			ret += fuzz_cipher(cavs_test, FUZZ_NOIN, 1, KCAPI_ACCESS_SENDMSG);
+		} else if (AEAD == cavs_test->type) {
+			ret += fuzz_aead(cavs_test, 0, 0, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_aead(cavs_test, 0, 1, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_aead(cavs_test, FUZZ_NOKEY, 0, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_aead(cavs_test, FUZZ_NOKEY, 1, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_aead(cavs_test, FUZZ_LESSOUT, 0, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_aead(cavs_test, FUZZ_LESSOUT, 1, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_aead(cavs_test, FUZZ_NOOUT, 0, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_aead(cavs_test, FUZZ_NOOUT, 1, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_aead(cavs_test, FUZZ_NOIV, 0, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_aead(cavs_test, FUZZ_NOIV, 1, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_aead(cavs_test, FUZZ_NOIN, 0, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_aead(cavs_test, FUZZ_NOIN, 1, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_aead(cavs_test, FUZZ_NOAAD, 0, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_aead(cavs_test, FUZZ_NOAAD, 1, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_aead(cavs_test, FUZZ_NOTAG, 0, KCAPI_ACCESS_VMSPLICE);
+			ret += fuzz_aead(cavs_test, FUZZ_NOTAG, 1, KCAPI_ACCESS_VMSPLICE);
+
+			ret += fuzz_aead(cavs_test, 0, 0, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_aead(cavs_test, 0, 1, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_aead(cavs_test, FUZZ_NOKEY, 0, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_aead(cavs_test, FUZZ_NOKEY, 1, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_aead(cavs_test, FUZZ_LESSOUT, 0, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_aead(cavs_test, FUZZ_LESSOUT, 1, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_aead(cavs_test, FUZZ_NOOUT, 0, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_aead(cavs_test, FUZZ_NOOUT, 1, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_aead(cavs_test, FUZZ_NOIV, 0, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_aead(cavs_test, FUZZ_NOIV, 1, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_aead(cavs_test, FUZZ_NOIN, 0, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_aead(cavs_test, FUZZ_NOIN, 1, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_aead(cavs_test, FUZZ_NOAAD, 0, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_aead(cavs_test, FUZZ_NOAAD, 1, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_aead(cavs_test, FUZZ_NOTAG, 0, KCAPI_ACCESS_SENDMSG);
+			ret += fuzz_aead(cavs_test, FUZZ_NOTAG, 1, KCAPI_ACCESS_SENDMSG);
 		}
 	}
 
