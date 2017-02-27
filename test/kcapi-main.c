@@ -1080,7 +1080,7 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 	ret = -EINVAL;
 	if (kcapi_aead_init(&handle, cavs_test->cipher, 0)) {
 		printf("Allocation of cipher failed\n");
-		goto out;
+		return -EFAULT;
 	}
 
 	/* Setting the tag length */
