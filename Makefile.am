@@ -5,20 +5,49 @@ lib_LTLIBRARIES = libkcapi.la
 COMMON_CPPFLAGS = -Wextra -Wall -pedantic -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fwrapv --param ssp-buffer-size=4 -O2 -Werror
 COMMON_LDFLAGS =  -Wl,-z,relro,-z,now
 
-libkcapi_la_CPPFLAGS = $(COMMON_CPPFLAGS) -fPIC -std=gnu99 -fvisibility=hidden
-libkcapi_la_LDFLAGS = $(COMMON_LDFLAGS) -Wl,--version-script,lib/version.lds -release $(VERSION)
-
 libkcapi_la_SOURCES = lib/cryptouser.h \
 		      lib/internal.h \
 		      lib/kcapi.h \
-		      lib/kcapi-aead.c \
-		      lib/kcapi-asym.c \
-		      lib/kcapi-kdf.c \
 		      lib/kcapi-kernel-if.c \
-		      lib/kcapi-md.c \
-		      lib/kcapi-rng.c \
-		      lib/kcapi-sym.c \
 		      lib/kcapi-utils.c
+
+if DISABLE_LIB_ASYM
+libkcapi_la_SOURCES +=
+else
+libkcapi_la_SOURCES += lib/kcapi-asym.c
+endif
+
+if DISABLE_LIB_SYM
+libkcapi_la_SOURCES +=
+else
+libkcapi_la_SOURCES += lib/kcapi-sym.c
+endif
+
+if DISABLE_LIB_MD
+libkcapi_la_SOURCES +=
+else
+libkcapi_la_SOURCES += lib/kcapi-md.c
+if DISABLE_LIB_KDF
+libkcapi_la_SOURCES +=
+else
+libkcapi_la_SOURCES += lib/kcapi-kdf.c
+endif
+endif
+
+if DISABLE_LIB_AEAD
+libkcapi_la_SOURCES +=
+else
+libkcapi_la_SOURCES += lib/kcapi-aead.c
+endif
+
+if DISABLE_LIB_RNG
+libkcapi_la_SOURCES +=
+else
+libkcapi_la_SOURCES += lib/kcapi-rng.c
+endif
+
+libkcapi_la_CPPFLAGS = $(COMMON_CPPFLAGS) -fPIC -std=gnu99 -fvisibility=hidden
+libkcapi_la_LDFLAGS = $(COMMON_LDFLAGS) -Wl,--version-script,lib/version.lds -release $(VERSION)
 
 SCAN_FILES = $(libkcapi_la_SOURCES)
 

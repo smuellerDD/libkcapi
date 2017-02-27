@@ -61,4 +61,22 @@ AM_CONDITIONAL([ENABLE_KCAPI_SPEED], [test "x$with_kcapi_speed_test" = "xyes"])
 AC_ARG_WITH([apps], [AS_HELP_STRING([--with-apps], [Compile all applications])], [with_kcapi_hasher=yes])
 AM_CONDITIONAL([ENABLE_KCAPI_HASHER], [test "x$with_kcapi_hasher" = "xyes"])
 
+AC_ARG_WITH([lib-kdf], [AS_HELP_STRING([--without-lib-kdf], [Disable KDF support in library to make it smaller])], [without_lib_kdf=yes])
+AM_CONDITIONAL([DISABLE_LIB_KDF], [test "x$without_lib_kdf" = "xyes"])
+
+AC_ARG_WITH([lib-asym], [AS_HELP_STRING([--without-lib-asym], [Disable asymmetric cipher support in library to make it smaller])], [without_lib_asym=yes])
+AM_CONDITIONAL([DISABLE_LIB_ASYM], [test "x$without_lib_asym" = "xyes"])
+
+AC_ARG_WITH([lib-sym], [AS_HELP_STRING([--without-lib-sym], [Disable symmetric cipher support in library to make it smaller])], [without_lib_sym=yes])
+AM_CONDITIONAL([DISABLE_LIB_SYM], [test "x$without_lib_sym" = "xyes"])
+
+AC_ARG_WITH([lib-md], [AS_HELP_STRING([--without-lib-md], [Disable message digest support in library to make it smaller])], [without_lib_md=yes])
+AM_CONDITIONAL([DISABLE_LIB_MD], [test "x$without_lib_md" = "xyes"])
+
+AC_ARG_WITH([lib-aead], [AS_HELP_STRING([--without-lib-aead], [Disable AEAD cipher support in library to make it smaller])], [without_lib_aead=yes])
+AM_CONDITIONAL([DISABLE_LIB_AEAD], [test "x$without_lib_aead" = "xyes"])
+
+AC_ARG_WITH([lib-rng], [AS_HELP_STRING([--without-lib-rng], [Disable random number generator support in library to make it smaller])], [without_lib_rng=yes])
+AM_CONDITIONAL([DISABLE_LIB_RNG], [test "x$without_lib_rng" = "xyes"])
+
 AC_OUTPUT
