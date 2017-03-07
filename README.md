@@ -124,10 +124,46 @@ of the kernel crypto API.
 The test cases are documented in test/README.
 
 
-Kernel Patches
-==============
+Integration of libkcapi into other projects
+===========================================
 
-With the current cryptodev-2.6 tree from Herbert Xu, all patches are integrated.
+The libkcapi library does not have any dependencies except to the C-library
+(and the kernel, naturally). This allows developers to integrate the
+library into their project either as a shared library or natively by simply
+copying the required C and header files into the target project and compile
+them along.
+
+When compiling them as part of a project, no special compile time flags are
+needed as the library is written in clean C. Though, the project author should
+consider the COMMON_CPPFLAGS and COMMON_LDFLAGS in Makefile.am as they
+collectively provide additional security checks offered by the compiler or
+the underlying platform.
+
+To integrate the library source code directly into projects, the following
+files must always be copied into the target project irrespective of the cipher
+operations the project wants to use:
+
+* kcapi-kernel-if.c (this provides the basic kernel interface logic)
+
+* all header files
+
+Now, a project may selectively copy the following files as required for the
+respective project. The listed files do not have mutual dependencies unless
+explicitly noted:
+
+* kcapi-aead.c (AEAD cipher support providing kcapi_aead_* functions)
+
+* kcapi-asym.c (asymmetric cipher support providing all kcapi_akcipher_* functions)
+
+* kcapi-md.c (message digest and keyed message digest support providing all kcapi_md_* functions)
+
+* kcapi-rng.c (random number generator support providing all kcapi_rng_* functions)
+
+* kcapi-sym.c (symmetric cipher support providing all kcapi_cipher_* functions)
+
+* kcapi-kdf.c (depending on the presence of kcapi-md.c -- providing the KDF, HKDF and PBKDF implementations with the functions of kcapi_*kdf_*)
+
+* kcapi-utils.c (small helper functions providing the remainder of the functions, including verioning APIs)
 
 
 Author
