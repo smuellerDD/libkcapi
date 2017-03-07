@@ -52,31 +52,31 @@ AM_COND_IF([HAVE_MKTEMP], [], [AC_MSG_WARN([mktemp not installed])])
 
 AC_CHECK_API_VERSION
 
-AC_ARG_ENABLE([kcapi-test], [AS_HELP_STRING([--enable-kcapi-test], [Compile kcapi test program])], [with_kcapi_test=yes])
+AC_ARG_ENABLE([kcapi-test], [AS_HELP_STRING([--enable-kcapi-test], [Compile kcapi test program])], [with_kcapi_test=$enableval])
 AM_CONDITIONAL([ENABLE_KCAPI_TEST], [test "x$with_kcapi_test" = "xyes"])
 
-AC_ARG_ENABLE([kcapi-speed], [AS_HELP_STRING([--enable-kcapi-speed], [Compile kcapi-speed test program])], [with_kcapi_speed_test=yes])
+AC_ARG_ENABLE([kcapi-speed], [AS_HELP_STRING([--enable-kcapi-speed], [Compile kcapi-speed test program])], [with_kcapi_speed_test=$enableval])
 AM_CONDITIONAL([ENABLE_KCAPI_SPEED], [test "x$with_kcapi_speed_test" = "xyes"])
 
-AC_ARG_ENABLE([apps], [AS_HELP_STRING([--enable-apps], [Compile all applications])], [with_kcapi_hasher=yes])
+AC_ARG_ENABLE([apps], [AS_HELP_STRING([--enable-apps], [Compile all applications])], [with_kcapi_hasher=$enableval])
 AM_CONDITIONAL([ENABLE_KCAPI_HASHER], [test "x$with_kcapi_hasher" = "xyes"])
 
-AC_ARG_ENABLE([lib-kdf], [AS_HELP_STRING([--disable-lib-kdf], [Disable KDF support in library to make it smaller])], [without_lib_kdf=yes])
-AM_CONDITIONAL([DISABLE_LIB_KDF], [test "x$without_lib_kdf" = "xyes"])
+AC_ARG_ENABLE([lib-kdf], [AS_HELP_STRING([--disable-lib-kdf], [Disable KDF support in library to make it smaller])], [with_lib_kdf=$enableval])
+AM_CONDITIONAL([DISABLE_LIB_KDF], [test "x$with_lib_kdf" = "xno"])
 
-AC_ARG_ENABLE([lib-asym], [AS_HELP_STRING([--disable-lib-asym], [Disable asymmetric cipher support in library to make it smaller])], [without_lib_asym=yes])
-AM_CONDITIONAL([DISABLE_LIB_ASYM], [test "x$without_lib_asym" = "xyes"])
+AC_ARG_ENABLE([lib-asym], [AS_HELP_STRING([--disable-lib-asym], [Disable asymmetric cipher support in library to make it smaller])], [with_lib_asym=$enableval])
+AM_CONDITIONAL([DISABLE_LIB_ASYM], [test "x$with_lib_asym" = "xno"])
 
-AC_ARG_ENABLE([lib-sym], [AS_HELP_STRING([--disable-lib-sym], [Disable symmetric cipher support in library to make it smaller])], [without_lib_sym=yes])
-AM_CONDITIONAL([DISABLE_LIB_SYM], [test "x$without_lib_sym" = "xyes"])
+AC_ARG_ENABLE([lib-sym], [AS_HELP_STRING([--disable-lib-sym], [Disable symmetric cipher support in library to make it smaller])], [with_lib_sym=$enableval])
+AM_CONDITIONAL([DISABLE_LIB_SYM], [test "x$with_lib_sym" = "xno"])
 
-AC_ARG_ENABLE([lib-md], [AS_HELP_STRING([--disable-lib-md], [Disable message digest support in library to make it smaller])], [without_lib_md=yes])
-AM_CONDITIONAL([DISABLE_LIB_MD], [test "x$without_lib_md" = "xyes"])
+AC_ARG_ENABLE([lib-md], [AS_HELP_STRING([--disable-lib-md], [Disable message digest support in library to make it smaller])], [with_lib_md=$enableval])
+AM_CONDITIONAL([DISABLE_LIB_MD], [test "x$with_lib_md" = "xno"])
 
-AC_ARG_ENABLE([lib-aead], [AS_HELP_STRING([--disable-lib-aead], [Disable AEAD cipher support in library to make it smaller])], [without_lib_aead=yes])
-AM_CONDITIONAL([DISABLE_LIB_AEAD], [test "x$without_lib_aead" = "xyes"])
+AC_ARG_ENABLE([lib-aead], [AS_HELP_STRING([--disable-lib-aead], [Disable AEAD cipher support in library to make it smaller])], [with_lib_aead=$enableval])
+AM_CONDITIONAL([DISABLE_LIB_AEAD], [test "x$with_lib_aead" = "xno"])
 
-AC_ARG_ENABLE([lib-rng], [AS_HELP_STRING([--disable-lib-rng], [Disable random number generator support in library to make it smaller])], [without_lib_rng=yes])
-AM_CONDITIONAL([DISABLE_LIB_RNG], [test "x$without_lib_rng" = "xyes"])
+AC_ARG_ENABLE([lib-rng], [AS_HELP_STRING([--disable-lib-rng], [Disable random number generator support in library to make it smaller])], [with_lib_rng=$enableval])
+AM_CONDITIONAL([DISABLE_LIB_RNG], [test "x$with_lib_rng" = "xno"])
 
 AC_OUTPUT
