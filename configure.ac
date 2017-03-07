@@ -55,7 +55,7 @@ AC_CHECK_API_VERSION
 AC_ARG_ENABLE([kcapi-test], [AS_HELP_STRING([--enable-kcapi-test], [Compile kcapi test program])], [with_kcapi_test=yes])
 AM_CONDITIONAL([ENABLE_KCAPI_TEST], [test "x$with_kcapi_test" = "xyes"])
 
-AC_ARG_ENABLE([kcapi-speed], [AS_HELP_STRING([--enable-kcapi-speed-test], [Compile kcapi-speed test program])], [with_kcapi_speed_test=yes])
+AC_ARG_ENABLE([kcapi-speed], [AS_HELP_STRING([--enable-kcapi-speed], [Compile kcapi-speed test program])], [with_kcapi_speed_test=yes])
 AM_CONDITIONAL([ENABLE_KCAPI_SPEED], [test "x$with_kcapi_speed_test" = "xyes"])
 
 AC_ARG_ENABLE([apps], [AS_HELP_STRING([--enable-apps], [Compile all applications])], [with_kcapi_hasher=yes])
