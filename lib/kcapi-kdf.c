@@ -86,6 +86,7 @@ static inline void kcapi_kdf_cpu_to_be32(uint32_t val, uint8_t *buf)
 	*a = be_bswap32(val);
 }
 
+DSO_PUBLIC
 int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
 		      const uint8_t *src, uint32_t slen,
 		      uint8_t *dst, uint32_t dlen)
@@ -159,6 +160,7 @@ err:
 	return err;
 }
 
+DSO_PUBLIC
 int32_t kcapi_kdf_fb(struct kcapi_handle *handle,
 		     const uint8_t *src, uint32_t slen,
 		     uint8_t *dst, uint32_t dlen)
@@ -233,6 +235,7 @@ err:
 	return err;
 }
 
+DSO_PUBLIC
 int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
 		      const uint8_t *src, uint32_t slen,
 		      uint8_t *dst, uint32_t dlen)
@@ -291,6 +294,7 @@ err:
 /*
  * RFC 5869 KDF
  */
+DSO_PUBLIC
 int32_t kcapi_hkdf(const char *hashname,
 		   const uint8_t *ikm, uint32_t ikmlen,
 		   const uint8_t *salt, uint32_t saltlen,
@@ -412,6 +416,7 @@ static inline uint64_t kcapi_get_time(void)
 	return 0;
 }
 
+DSO_PUBLIC
 uint32_t kcapi_pbkdf_iteration_count(const char *hashname, uint64_t timeshresh)
 {
 #define LOW_ITERATION_COUNT	(UINT32_C(1<<16))
@@ -523,6 +528,7 @@ static inline void kcapi_xor_64(uint8_t *dst, const uint8_t *src, uint32_t size)
 		kcapi_xor_32(dst, src, size);
 }
 
+DSO_PUBLIC
 int32_t kcapi_pbkdf(const char *hashname,
 		    const uint8_t *pw, uint32_t pwlen,
 		    const uint8_t *salt, uint32_t saltlen,
