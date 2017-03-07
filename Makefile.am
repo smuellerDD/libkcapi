@@ -2,7 +2,7 @@ ACLOCAL_AMFLAGS = -I m4
 AUTOMAKE_OPTIONS = subdir-objects
 lib_LTLIBRARIES = libkcapi.la
 
-COMMON_CPPFLAGS = -Wextra -Wall -pedantic -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fwrapv --param ssp-buffer-size=4 -O2 -Werror
+COMMON_CPPFLAGS = -Wextra -Wall -pedantic -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fwrapv --param ssp-buffer-size=4 -O2 -Werror -std=gnu99
 COMMON_LDFLAGS =  -Wl,-z,relro,-z,now
 
 libkcapi_la_SOURCES = lib/cryptouser.h \
@@ -46,7 +46,7 @@ else
 libkcapi_la_SOURCES += lib/kcapi-rng.c
 endif
 
-libkcapi_la_CPPFLAGS = $(COMMON_CPPFLAGS) -fPIC -std=gnu99 -fvisibility=hidden
+libkcapi_la_CPPFLAGS = $(COMMON_CPPFLAGS) -fPIC -fvisibility=hidden
 libkcapi_la_LDFLAGS = $(COMMON_LDFLAGS) -Wl,--version-script,lib/version.lds -release $(VERSION)
 
 SCAN_FILES = $(libkcapi_la_SOURCES)
