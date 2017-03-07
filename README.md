@@ -163,7 +163,7 @@ explicitly noted:
 
 * kcapi-kdf.c (depending on the presence of kcapi-md.c -- providing the KDF, HKDF and PBKDF implementations with the functions of kcapi_*kdf_*)
 
-* kcapi-utils.c (small helper functions providing the remainder of the functions, including verioning APIs)
+* kcapi-utils.c (small helper functions providing, including versioning APIs)
 
 
 Author
