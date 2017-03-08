@@ -51,6 +51,7 @@ AM_COND_IF([HAVE_DB2PS], [], [AC_MSG_WARN([db2ps not installed])])
 AM_COND_IF([HAVE_MKTEMP], [], [AC_MSG_WARN([mktemp not installed])])
 
 AC_CHECK_FUNCS(getrandom)
+AC_CHECK_FUNCS(secure_getenv)
 
 AC_CHECK_API_VERSION
 
