@@ -52,6 +52,9 @@
 #include <time.h>
 #include <sys/utsname.h>
 #include <linux/random.h>
+#ifdef HAVE_GETRANDOM
+#include <sys/random.h>
+#endif
 #include <sys/syscall.h>
 #include <limits.h>
 
@@ -243,7 +246,7 @@ static inline uint64_t _time_delta(struct timespec *start, struct timespec *end)
 	return diff;
 }
 
-static int getrandom(uint8_t *buf, uint32_t buflen, unsigned int flags)
+static int get_random(uint8_t *buf, uint32_t buflen, unsigned int flags)
 {
 	int ret;
 
@@ -251,7 +254,17 @@ static int getrandom(uint8_t *buf, uint32_t buflen, unsigned int flags)
 		return 1;
 
 	do {
+#ifdef HAVE_GETRANDOM
+		ret = getrandom(buf, buflen, flags);
+#else
+# ifdef __NR_getrandom
 		ret = syscall(__NR_getrandom, buf, buflen, flags);
+# else
+		printf("getrandom not available on this platform\n");
+		(void)flags; /* avoid unused arg warning */
+		return 1;
+# endif
+#endif
 		if (0 < ret) {
 			buflen -= ret;
 			buf += ret;
@@ -282,8 +295,8 @@ static int fuzz_init_test(unsigned int size)
 		}
 	}
 
-	if (getrandom(name, size, 0)) {
-		printf("getrandom call failed\n");
+	if (get_random(name, size, 0)) {
+		printf("get_random call failed\n");
 		return 1;
 	}
 
@@ -364,8 +377,8 @@ static int fuzz_cipher(struct kcapi_cavs *cavs_test, unsigned long flags,
 		uint8_t key[512];
 
 		for (i = 0; i < sizeof(key); i++) {
-			if (getrandom(key, i, 0)) {
-				printf("getrandom call failed\n");
+			if (get_random(key, i, 0)) {
+				printf("get_random call failed\n");
 				return 1;
 			}
 			kcapi_cipher_setkey(handle, key, i);
@@ -382,8 +395,8 @@ static int fuzz_cipher(struct kcapi_cavs *cavs_test, unsigned long flags,
 		uint8_t *iv = indata;
 		uint8_t *in = indata;
 
-		if (getrandom(indata, i, 0)) {
-			printf("getrandom call failed\n");
+		if (get_random(indata, i, 0)) {
+			printf("get_random call failed\n");
 			return 1;
 		}
 
@@ -437,8 +450,8 @@ static int fuzz_aead(struct kcapi_cavs *cavs_test, unsigned long flags,
 		uint8_t key[512];
 
 		for (i = 0; i < sizeof(key); i++) {
-			if (getrandom(key, i, 0)) {
-				printf("getrandom call failed\n");
+			if (get_random(key, i, 0)) {
+				printf("get_random call failed\n");
 				return 1;
 			}
 			kcapi_aead_setkey(handle, key, i);
@@ -455,8 +468,8 @@ static int fuzz_aead(struct kcapi_cavs *cavs_test, unsigned long flags,
 		uint8_t *iv = indata;
 		uint8_t *in = indata;
 
-		if (getrandom(indata, i, 0)) {
-			printf("getrandom call failed\n");
+		if (get_random(indata, i, 0)) {
+			printf("get_random call failed\n");
 			return 1;
 		}
 
