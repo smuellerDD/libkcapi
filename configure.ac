@@ -55,6 +55,16 @@ AM_COND_IF([HAVE_MKTEMP], [], [AC_MSG_WARN([mktemp not installed])])
 AC_CHECK_FUNCS(getrandom)
 AC_CHECK_FUNCS(secure_getenv)
 
+my_cflags="$CFLAGS"
+CFLAGS="-Werror -fstack-protector-strong"
+AC_MSG_CHECKING([whether CC supports -fstack-protector-strong])
+AC_LINK_IFELSE([AC_LANG_PROGRAM([])],
+	[AC_MSG_RESULT([yes])]
+	AM_CFLAGS=-fstack-protector-strong,
+	[AC_MSG_RESULT([no])])
+CFLAGS="$my_cflags"
+AC_SUBST([AM_CFLAGS])
+
 AC_CHECK_API_VERSION
 
 AC_ARG_ENABLE([kcapi-test], [AS_HELP_STRING([--enable-kcapi-test], [Compile kcapi test program])], [with_kcapi_test=$enableval])
