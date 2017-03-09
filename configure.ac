@@ -31,6 +31,8 @@ AC_CHECK_PROG([XMLTO], [xmlto], [yes])
 AC_CHECK_PROG([DB2PDF], [db2pdf], [yes])
 AC_CHECK_PROG([DB2PS], [db2ps], [yes])
 AC_CHECK_PROG([MKTEMP], [mktemp], [yes])
+
+AC_SEARCH_LIBS(clock_gettime,rt)
 AC_PROG_MKDIR_P
 AC_PROG_SED
 AC_PROG_INSTALL
