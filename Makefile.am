@@ -132,6 +132,7 @@ lib/doc/bin/docproc:
 	cp $< $(TEMPFILE)
 	$(SED) -i "s/@@LIBVERSION@@/$(VERSION)/" $(TEMPFILE)
 	SRCTREE=lib/ ./lib/doc/bin/docproc doc $(TEMPFILE) > $@
+	rm $(TEMPFILE)
 
 if HAVE_DB2PDF
 pdf: lib/doc/libkcapi.xml
