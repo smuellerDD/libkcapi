@@ -37,8 +37,9 @@
 #ifndef CRYPTOPERF_H
 #define CRYPTOPERF_H
 
-#include <stdint.h>
 #define _GNU_SOURCE
+
+#include <stdint.h>
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
