@@ -122,12 +122,11 @@ cppcheck:
 	cppcheck --enable=performance,warning,portability $(SCAN_FILES)
 endif
 
-noinst_PROGRAMS = lib/doc/bin/docproc
-
-lib_doc_bin_docproc_SOURCES = lib/doc/bin/docproc.c
-
 if HAVE_MKTEMP
 TEMPFILE := $(shell mktemp)
+
+lib/doc/bin/docproc:
+	$(MAKE) -C lib/doc
 
 %.xml: %.tmpl lib/doc/bin/docproc
 	cp $< $(TEMPFILE)
@@ -161,3 +160,6 @@ clean-local:
 	rm -rf lib/doc/man/
 	rm -rf lib/doc/html/
 	rm -rf bin/
+
+SUBDIRS = lib/doc
+
