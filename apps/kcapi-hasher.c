@@ -470,10 +470,11 @@ static int fipscheck_self(char *hash,
 
 #ifdef HAVE_SECURE_GETENV
 	if (secure_getenv("KCAPI_HASHER_FORCE_FIPS")) {
-		fipsflag[0] = 1;
-	} else
+#else
+	if (getenv("KCAPI_HASHER_FORCE_FIPS")) {
 #endif
-	{
+		fipsflag[0] = 1;
+	} else {
 		FILE *fipsfile = NULL;
 
 		fipsfile = fopen("/proc/sys/crypto/fips_enabled", "r");
