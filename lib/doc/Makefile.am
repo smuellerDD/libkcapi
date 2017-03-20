@@ -4,6 +4,7 @@ AUTOMAKE_OPTIONS = subdir-objects
 CFLAGS = $(CFLAGS_FOR_BUILD)
 LDFLAGS =$(LDFLAGS_FOR_BUILD)
 CC = $(CC_FOR_BUILD)
+bin_docproc_CFLAGS = $(CFLAGS)
 
 noinst_PROGRAMS = bin/docproc
 
