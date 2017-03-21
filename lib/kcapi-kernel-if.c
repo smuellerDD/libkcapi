@@ -234,7 +234,7 @@ int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 	/* kernel processes input data with max size of one page */
 	handle->processed_sg += ((inlen + sysconf(_SC_PAGESIZE) - 1) /
 				 sysconf(_SC_PAGESIZE));
-	if (handle->processed_sg > ALG_MAX_PAGES || !inlen)
+	if (handle->processed_sg > handle->flags.alg_max_pages || !inlen)
 		return _kcapi_common_send_data(handle, iov, iovlen,
 					       (flags & SPLICE_F_MORE) ?
 					        MSG_MORE : 0);
@@ -287,7 +287,7 @@ int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 		iov.iov_base = (void*)(uintptr_t)(in + processed);
 		iov.iov_len = inlen;
 
-		if ((handle->processed_sg++) > ALG_MAX_PAGES) {
+		if ((handle->processed_sg++) > handle->flags.alg_max_pages) {
 			ret = _kcapi_common_send_data(handle, &iov, 1, sflags);
 		} else {
 			ret = vmsplice(handle->pipes[1], &iov, 1,
