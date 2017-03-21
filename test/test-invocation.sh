@@ -3,7 +3,7 @@
 # default invocation
 CWD=$(pwd)
 cd ..
-./configure --with-kcapi-test
+./configure --enable-kcapi-test
 make
 if [ $? -ne 0 ]
 then
@@ -23,7 +23,7 @@ make distclean
 # if we are on 64 bit system, test 32 bit alternative mode
 if $(uname -m | grep -q "x86_64")
 then
-	LDFLAGS=-m32 CFLAGS=-m32 ./configure --with-kcapi-test
+	LDFLAGS=-m32 CFLAGS=-m32 ./configure --enable-kcapi-test
 	make
 	if [ $? -ne 0 ]
 	then
