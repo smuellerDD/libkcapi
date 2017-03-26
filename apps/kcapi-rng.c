@@ -38,6 +38,7 @@
 
 struct kcapi_handle *rng = NULL;
 unsigned int Verbosity = 0;
+char *rng_name = NULL;
 
 static int read_complete(int fd, uint8_t *buf, uint32_t buflen)
 {
@@ -113,9 +114,12 @@ static void usage(void)
 	fprintf(stderr, "Reported numeric version number %u\n\n", ver);
 	fprintf(stderr, "Usage:\n");
 	fprintf(stderr, "\t-b --bytes <BYTES>\tNumber of bytes to generate (required option)\n");
-	fprintf(stderr, "\t-h --help\tThis help information\n");
-	fprintf(stderr, "\t   --version\tPrint version\n");
-	fprintf(stderr, "\t-v --verbose\tVerbose logging, multiple options increase verbosity\n");
+	fprintf(stderr, "\t-n --name <RNGNAME>\tDRNG name as advertised in /proc/crypto\n");
+	fprintf(stderr, "\t\t\t\t(stdrng is default)\n");
+	fprintf(stderr, "\t-h --help\t\tThis help information\n");
+	fprintf(stderr, "\t   --version\t\tPrint version\n");
+	fprintf(stderr, "\t-v --verbose\t\tVerbose logging, multiple options increase\n");
+	fprintf(stderr, "\t\t\t\tverbosity\n");
 	fprintf(stderr, "\nData provided at stdin is used to seed the DRNG\n");
 
 	exit(1);
@@ -134,9 +138,10 @@ static unsigned long parse_opts(int argc, char *argv[])
 			{"help",	no_argument,		0, 'h'},
 			{"version",	no_argument,		0, 0},
 			{"bytes",	required_argument,	0, 'b'},
+			{"name",	required_argument,	0, 'r'},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "vhb:", opts, &opt_index);
+		c = getopt_long(argc, argv, "vhb:n:", opts, &opt_index);
 		if (-1 == c)
 			break;
 		switch (c) {
@@ -161,6 +166,9 @@ static unsigned long parse_opts(int argc, char *argv[])
 					return -EINVAL;
 				}
 				break;
+			case 4:
+				rng_name = optarg;
+				break;
 			default:
 				usage();
 			}
@@ -177,6 +185,9 @@ static unsigned long parse_opts(int argc, char *argv[])
 				usage();
 				return -EINVAL;
 			}
+			break;
+		case 'n':
+			rng_name = optarg;
 			break;
 		default:
 			usage();
@@ -197,7 +208,10 @@ int main(int argc, char *argv[])
 
 	kcapi_set_verbosity(Verbosity);
 
-	ret = kcapi_rng_init(&rng, "stdrng", 0);
+	if (rng_name)
+		ret = kcapi_rng_init(&rng, rng_name, 0);
+	else
+		ret = kcapi_rng_init(&rng, "stdrng", 0);
 	if (ret)
 		return ret;
 
