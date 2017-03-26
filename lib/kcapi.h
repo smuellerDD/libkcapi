@@ -1155,7 +1155,7 @@ uint32_t kcapi_md_blocksize(struct kcapi_handle *handle);
  * @handle: [out] cipher handle filled during the call
  * @ciphername: [in] kernel crypto API cipher name as specified in
  *	/proc/crypto
- * @flags: [in] flags specifying the type of cipher handle
+ * @flags: [in] flags specifying the type of cipher handle (unused for RNG)
  *
  * This function provides the initialization of a random number generator handle
  * and establishes the connection to the kernel.
