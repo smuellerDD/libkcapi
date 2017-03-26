@@ -24,7 +24,7 @@ Directory Structure
 lib/ -- directory holding the library
 
 apps/ -- directory holding the applications discussed below; these
-	 applications hard link the library code in.
+	 applications link the library code in.
 
 test/ -- functional verification code
 
