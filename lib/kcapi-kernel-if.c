@@ -856,19 +856,19 @@ static int _kcapi_aio_init(struct kcapi_handle *handle, const char *type)
 	int err;
 
 	if (!strncmp("aead", type, 4)) {
-		if (!_kcapi_kernver_ge(handle, 4, 10, 0)) {
+		if (!_kcapi_kernver_ge(handle, 4, 11, 0)) {
 			kcapi_dolog(LOG_VERBOSE, "AIO support for AEAD cipher not present on current kernel\n");
 			err = EOPNOTSUPP;
 			goto err;
 		}
 	} else if (!strncmp("skcipher", type, 8)) {
-		if (!_kcapi_kernver_ge(handle, 4, 10, 0)) {
+		if (!_kcapi_kernver_ge(handle, 4, 11, 0)) {
 			kcapi_dolog(LOG_VERBOSE, "AIO support for symmetric ciphers not present on current kernel\n");
 			err = EOPNOTSUPP;
 			goto err;
 		}
 	} else if (!strncmp("akcipher", type, 8)) {
-		if (!_kcapi_kernver_ge(handle, 4, 10, 0)) {
+		if (!_kcapi_kernver_ge(handle, 4, 11, 0)) {
 			kcapi_dolog(LOG_VERBOSE, "AIO support for asymmetric ciphers not present on current kernel\n");
 			err = EOPNOTSUPP;
 			goto err;
@@ -939,7 +939,7 @@ static void _kcapi_handle_flags(struct kcapi_handle *handle)
 	handle->flags.newtag = _kcapi_kernver_ge(handle, 4, 9, 0);
 
 	/* older interfaces only processed 16 pages in a row */
-	handle->flags.alg_max_pages = _kcapi_kernver_ge(handle, 4, 10, 0) ?
+	handle->flags.alg_max_pages = _kcapi_kernver_ge(handle, 4, 11, 0) ?
 				      UINT_MAX : ALG_MAX_PAGES;
 }
 
