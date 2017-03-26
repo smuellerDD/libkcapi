@@ -204,6 +204,7 @@ int main(int argc, char *argv[])
 {
 	int ret;
 	uint8_t buf[64];
+	uint32_t seedsize = 0;
 	unsigned long outlen = parse_opts(argc, argv);
 
 	kcapi_set_verbosity(Verbosity);
@@ -215,14 +216,24 @@ int main(int argc, char *argv[])
 	if (ret)
 		return ret;
 
-	ret = get_random(buf, sizeof(buf));
+	seedsize = kcapi_rng_seedsize(rng);
+	if (seedsize < sizeof(buf))
+		seedsize = sizeof(buf);
+	while (seedsize) {
+		uint32_t todo = (seedsize > sizeof(buf)) ? sizeof(buf) :
+							   seedsize;
+
+		ret = get_random(buf, todo);
 		if (ret)
 			goto out;
 
-		ret = kcapi_rng_seed(rng, buf, sizeof(buf));
-		kcapi_memset_secure(buf, 0, sizeof(buf));
+		ret = kcapi_rng_seed(rng, buf, todo);
 		if (ret)
 			goto out;
+
+		seedsize -= todo;
+	}
+	kcapi_memset_secure(buf, 0, sizeof(buf));
 
 	ret = isatty(0);
 	if (!isatty(0) && (errno == EINVAL || errno == ENOTTY)) {
@@ -250,6 +261,8 @@ int main(int argc, char *argv[])
 
 		outlen -= todo;
 	}
+
+	ret = 0;
 
 out:
 	if (rng)
