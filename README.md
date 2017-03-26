@@ -85,9 +85,13 @@ $ autoreconf -i
 The `configure` script supports the following options:
 * `--prefix=$PREFIX`: install the library and the applications to
   `$PREFIX`
-* `--with-kcapi-test`: compile and install the `kcapi` test program
-* `--with-kcapi-speed`: compile and install `kcapi-speed` test program
-* `--with-apps`: compile and install the applications
+* `--enable-kcapi-test`: compile and install the `kcapi` test program
+* `--enable-kcapi-speed`: compile and install `kcapi-speed` test program
+* `--enable-kcapi-hasher`: compile and install the drop-in replacement
+  applications
+* `--enable-kcapi-rngapp`: compile and install the kcapi-rng application
+* The various `--disable-lib-*` options allows the disabling of different
+  library functions to allow minimizing the binary.
 
 For instance, to compile the library with the `kcapi` test program and to
 install them in `/usr/`:
