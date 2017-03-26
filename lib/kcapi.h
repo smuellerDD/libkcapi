@@ -1214,6 +1214,16 @@ int32_t kcapi_rng_generate(struct kcapi_handle *handle,
 			   uint8_t *buffer, uint32_t len);
 
 /**
+ * kcapi_rng_seedsize() - return required seed size of DRNG
+ *
+ * @handle: [in] cipher handle
+ *
+ * @return > 0 specifying the block size;
+ *	   0 on error
+ */
+uint32_t kcapi_rng_seedsize(struct kcapi_handle *handle);
+
+/**
  * DOC: Common API
  *
  * The following API calls are common to all cipher types.

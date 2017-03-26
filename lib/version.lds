@@ -86,4 +86,5 @@ LIBKCAPI_0.13.0.8 {
 	kcapi_akcipher_sign_aio;
 	kcapi_akcipher_verify_aio;
 	kcapi_hkdf;
+	kcapi_rng_seedsize;
 } LIBKCAPI_0.13.0;

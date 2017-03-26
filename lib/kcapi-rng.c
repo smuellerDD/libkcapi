@@ -38,6 +38,7 @@ DSO_PUBLIC
 int kcapi_rng_seed(struct kcapi_handle *handle, uint8_t *seed,
 		   uint32_t seedlen)
 {
+	kcapi_dolog(LOG_VERBOSE, "Seed DRNG with %u bytes of seed", seedlen);
 	return _kcapi_common_setkey(handle, seed, seedlen);
 }
 
@@ -63,4 +64,10 @@ int32_t kcapi_rng_generate(struct kcapi_handle *handle,
 	}
 
 	return out;
+}
+
+DSO_PUBLIC
+uint32_t kcapi_rng_seedsize(struct kcapi_handle *handle)
+{
+	return handle->info.rng_seedsize;
 }
