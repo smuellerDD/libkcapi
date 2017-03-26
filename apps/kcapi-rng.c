@@ -235,7 +235,6 @@ int main(int argc, char *argv[])
 	}
 	kcapi_memset_secure(buf, 0, sizeof(buf));
 
-	ret = isatty(0);
 	if (!isatty(0) && (errno == EINVAL || errno == ENOTTY)) {
 		while (fgets((char *)buf, sizeof(buf), stdin)) {
 			ret = kcapi_rng_seed(rng, buf, sizeof(buf));
