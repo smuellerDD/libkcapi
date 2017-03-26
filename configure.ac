@@ -74,8 +74,11 @@ AM_CONDITIONAL([ENABLE_KCAPI_TEST], [test "x$with_kcapi_test" = "xyes"])
 AC_ARG_ENABLE([kcapi-speed], [AS_HELP_STRING([--enable-kcapi-speed], [Compile kcapi-speed test program])], [with_kcapi_speed_test=$enableval])
 AM_CONDITIONAL([ENABLE_KCAPI_SPEED], [test "x$with_kcapi_speed_test" = "xyes"])
 
-AC_ARG_ENABLE([apps], [AS_HELP_STRING([--enable-apps], [Compile all applications])], [with_kcapi_hasher=$enableval])
+AC_ARG_ENABLE([kcapi-hasher], [AS_HELP_STRING([--enable-kcapi-hasher], [Compile hasher application])], [with_kcapi_hasher=$enableval])
 AM_CONDITIONAL([ENABLE_KCAPI_HASHER], [test "x$with_kcapi_hasher" = "xyes"])
+
+AC_ARG_ENABLE([kcapi-rngapp], [AS_HELP_STRING([--enable-kcapi-rngapp], [Compile rng read application])], [with_kcapi_rngapp=$enableval])
+AM_CONDITIONAL([ENABLE_KCAPI_RNGAPP], [test "x$with_kcapi_rngapp" = "xyes"])
 
 AC_ARG_ENABLE([lib-kdf], [AS_HELP_STRING([--disable-lib-kdf], [Disable KDF support in library to make it smaller])], [with_lib_kdf=$enableval])
 AM_CONDITIONAL([DISABLE_LIB_KDF], [test "x$with_lib_kdf" = "xno"])

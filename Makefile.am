@@ -102,6 +102,17 @@ install-exec-hook:
 	($(foreach link, $(kcapi_hasher_links), $(LN_S) -f kcapi_hasher $(link);)))
 endif
 
+if ENABLE_KCAPI_RNGAPP
+bin_PROGRAMS += bin/kcapi-rng
+
+bin_kcapi_rng_CPPFLAGS = $(COMMON_CPPFLAGS) -pie -fPIE -Ilib/
+bin_kcapi_rng_LDFLAGS = $(COMMON_LDFLAGS)
+bin_kcapi_rng_LDADD = libkcapi.la
+bin_kcapi_rng_SOURCES = apps/kcapi-rng.c
+
+SCAN_FILES += $(kcapi_rng_SOURCES)
+endif
+
 if HAVE_CLANG
 analyze_srcs = $(filter %.c, $(SCAN_FILES))
 analyze_plists = $(analyze_srcs:%.c=%.plist)
