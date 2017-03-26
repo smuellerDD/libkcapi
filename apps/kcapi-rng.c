@@ -36,6 +36,11 @@
 
 #include <kcapi.h>
 
+/* For efficiency reasons, this should be identical to algif_rng.c:MAXSIZE. */
+#define KCAPI_RNG_BUFSIZE  128
+/* Minimum seed is 256 bits. */
+#define KCAPI_RNG_MINSEEDSIZE 32
+
 struct kcapi_handle *rng = NULL;
 unsigned int Verbosity = 0;
 char *rng_name = NULL;
@@ -203,7 +208,8 @@ static unsigned long parse_opts(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
 	int ret;
-	uint8_t buf[64];
+	uint8_t buf[KCAPI_RNG_BUFSIZE];
+	uint8_t *seedbuf = buf;
 	uint32_t seedsize = 0;
 	unsigned long outlen = parse_opts(argc, argv);
 
@@ -217,48 +223,50 @@ int main(int argc, char *argv[])
 		return ret;
 
 	seedsize = kcapi_rng_seedsize(rng);
-	if (seedsize < sizeof(buf))
-		seedsize = sizeof(buf);
-	while (seedsize) {
-		uint32_t todo = (seedsize > sizeof(buf)) ? sizeof(buf) :
-							   seedsize;
+	if (seedsize < KCAPI_RNG_MINSEEDSIZE)
+		seedsize = KCAPI_RNG_MINSEEDSIZE;
 
-		ret = get_random(buf, todo);
-		if (ret)
+	/* Only allocate a new buffer if our buffer is insufficiently large. */
+	if (seedsize > KCAPI_RNG_BUFSIZE) {
+		seedbuf = calloc(1, seedsize);
+		if (!seedbuf) {
+			ret = -ENOMEM;
 			goto out;
-
-		ret = kcapi_rng_seed(rng, buf, todo);
-		if (ret)
-			goto out;
-
-		seedsize -= todo;
+		}
 	}
-	kcapi_memset_secure(buf, 0, sizeof(buf));
+
+	ret = get_random(seedbuf, seedsize);
+	if (ret)
+		goto out;
+
+	ret = kcapi_rng_seed(rng, seedbuf, seedsize);
+	if (ret)
+		goto out;
 
 	if (!isatty(0) && (errno == EINVAL || errno == ENOTTY)) {
-		while (fgets((char *)buf, sizeof(buf), stdin)) {
-			ret = kcapi_rng_seed(rng, buf, sizeof(buf));
+		while (fgets((char *)seedbuf, seedsize, stdin)) {
+			ret = kcapi_rng_seed(rng, seedbuf, seedsize);
 			if (ret)
-				goto out;
+				fprintf(stderr, "User-provided seed of %lu bytes not accepted by DRNG\n", sizeof(buf));
 		}
-		kcapi_memset_secure(buf, 0, sizeof(buf));
 	}
 
 	while (outlen) {
-		uint32_t todo = (outlen < sizeof(buf)) ? outlen : sizeof(buf);
+		uint32_t todo = (outlen < KCAPI_RNG_BUFSIZE) ?
+					outlen : KCAPI_RNG_BUFSIZE;
 
 		ret = kcapi_rng_generate(rng, buf, todo);
 		if (ret < 0)
 			goto out;
 
-		if ((uint32_t)ret != todo) {
+		if ((uint32_t)ret == 0) {
 			ret = -EFAULT;
 			goto out;
 		}
 
-		fwrite(&buf, todo, 1, stdout);
+		fwrite(&buf, ret, 1, stdout);
 
-		outlen -= todo;
+		outlen -= ret;
 	}
 
 	ret = 0;
@@ -267,6 +275,12 @@ out:
 	if (rng)
 		kcapi_rng_destroy(rng);
 	kcapi_memset_secure(buf, 0, sizeof(buf));
+
+	/* Free seedbuf if it was allocated. */
+	if (seedbuf && (seedbuf != buf)) {
+		kcapi_memset_secure(seedbuf, 0, seedsize);
+		free(seedbuf);
+	}
 
 	return ret;
 }
