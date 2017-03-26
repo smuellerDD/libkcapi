@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
 	ret = isatty(0);
 	if (!isatty(0) && (errno == EINVAL || errno == ENOTTY)) {
 		while (fgets((char *)buf, sizeof(buf), stdin)) {
-			ret = get_random(buf, sizeof(buf));
+			ret = kcapi_rng_seed(rng, buf, sizeof(buf));
 			if (ret)
 				goto out;
 		}
