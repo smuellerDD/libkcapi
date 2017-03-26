@@ -46,6 +46,12 @@ available in all Linux distributions:
 The output as well as the command line options are modeled according to the
 commands found in the coreutils package.
 
+In addition, the following tool is available:
+
+* kcapi-rng: This tool allows obtaining random numbers from the kernel
+  crypto API RNGs. It shall allow users a similar operation as a
+  `cat /dev/hwrand` call.
+
 These applications do not depend on any user space library other than the
 C-lib.
 
