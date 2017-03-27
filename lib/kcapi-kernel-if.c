@@ -964,6 +964,7 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 	handle->tfmfd = -1;
 	handle->pipes[0] = -1;
 	handle->pipes[1] = -1;
+	handle->aio.efd = -1;
 
 	errsv = _kcapi_get_kernver(handle);
 	if (errsv)
