@@ -248,7 +248,7 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 	}
 
 out:
-	if (memblock)
+	if (memblock && memblock != MAP_FAILED)
 		munmap(memblock, sb.st_size);
 	if (fd >= 0)
 		close(fd);
