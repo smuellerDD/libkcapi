@@ -106,7 +106,10 @@ void kcapi_cipher_destroy(struct kcapi_handle *handle);
  * After the caller provided the key, the caller may securely destroy the key
  * as it is now maintained by the kernel.
  *
- * @return 0 upon success;
+ * @return 0 upon success (in case of an akcipher handle, a positive integer
+ *	   is returned that denominates the maximum output size of the
+ *	   cryptographic operation -- this value must be used as the size
+ *	   of the output buffer for one cryptographic operation);
  *	   a negative errno-style error code if an error occurred
  */
 int kcapi_cipher_setkey(struct kcapi_handle *handle,

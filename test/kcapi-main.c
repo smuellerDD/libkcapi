@@ -1920,22 +1920,12 @@ static int cavs_asym(struct kcapi_cavs *cavs_test, uint32_t loops,
 {
 	struct kcapi_handle *handle = NULL;
 	uint8_t *outbuf = NULL;
-	uint32_t outbuflen = 8192;
+	int maxsize = 0;
 	int ret = -EINVAL;
 	uint32_t i = 0;
 
 	if (!cavs_test->ptlen)
 		return -EINVAL;
-
-	if (cavs_test->aligned) {
-		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), outbuflen))
-			goto out;
-		memset(outbuf, 0, outbuflen);
-	} else {
-		outbuf = calloc(1, outbuflen);
-		if (!outbuf)
-			goto out;
-	}
 
 	if (kcapi_akcipher_init(&handle, cavs_test->cipher, 0)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
@@ -1944,19 +1934,38 @@ static int cavs_asym(struct kcapi_cavs *cavs_test, uint32_t loops,
 
 	/* Set key */
 	if (cavs_test->keylen && cavs_test->key) {
-		if (kcapi_akcipher_setkey(handle, cavs_test->key,
-					  cavs_test->keylen)) {
+		maxsize = kcapi_akcipher_setkey(handle, cavs_test->key,
+						cavs_test->keylen);
+		if (maxsize <= 0) {
 			printf("Asymmetric cipher set pivate key failed\n");
 			goto out;
 		}
 	}
 	if (cavs_test->pubkeylen && cavs_test->pubkey) {
-		if (kcapi_akcipher_setpubkey(handle, cavs_test->pubkey,
-					     cavs_test->pubkeylen)) {
+		maxsize = kcapi_akcipher_setpubkey(handle, cavs_test->pubkey,
+						   cavs_test->pubkeylen);
+		if (maxsize <= 0) {
 			printf("Asymmetric cipher set public key failed\n");
 			goto out;
 		}
 	}
+
+	if (!maxsize) {
+		printf("Zero output buffer size!\n");
+		goto out;
+	}
+
+	if (cavs_test->aligned) {
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE),
+				   maxsize))
+			goto out;
+		memset(outbuf, 0, maxsize);
+	} else {
+		outbuf = calloc(1, maxsize);
+		if (!outbuf)
+			goto out;
+	}
+
 
 	for (i = 0; i < loops; i++) {
 		int errsv = 0;
@@ -1964,23 +1973,19 @@ static int cavs_asym(struct kcapi_cavs *cavs_test, uint32_t loops,
 		if (cavs_test->enc == 0) {
 			ret = kcapi_akcipher_encrypt(handle,
 					cavs_test->pt, cavs_test->ptlen,
-					outbuf, outbuflen,
-					splice);
+					outbuf, maxsize, splice);
 		} else if (cavs_test->enc == 1) {
 			ret = kcapi_akcipher_decrypt(handle,
 					cavs_test->pt, cavs_test->ptlen,
-					outbuf, outbuflen,
-					splice);
+					outbuf, maxsize, splice);
 		} else if (cavs_test->enc == 2) {
 			ret = kcapi_akcipher_sign(handle,
 					cavs_test->pt, cavs_test->ptlen,
-					outbuf, outbuflen,
-					splice);
+					outbuf, maxsize, splice);
 		} else if (cavs_test->enc == 3) {
 			ret = kcapi_akcipher_verify(handle,
 					cavs_test->pt, cavs_test->ptlen,
-					outbuf, outbuflen,
-					splice);
+					outbuf, maxsize, splice);
 		} else
 			ret = -EINVAL;
 
@@ -2001,7 +2006,7 @@ static int cavs_asym(struct kcapi_cavs *cavs_test, uint32_t loops,
 				ret = -ENOMEM;
 				goto out;
 			}
-			bin2hex(outbuf, outbuflen, outhex, ret * 2 + 1, 0);
+			bin2hex(outbuf, maxsize, outhex, ret * 2 + 1, 0);
 			printf("%s\n", outhex);
 			free(outhex);
 		}
@@ -2023,7 +2028,7 @@ static int cavs_asym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	struct iovec *iniov_p, *outiov_p, *iniov = NULL, *outiov = NULL;
 	uint8_t *outbuf = NULL;
 	uint8_t *inbuf = NULL;
-	uint32_t outbuflen = 512;
+	int maxsize = 0;
 	int ret = -ENOMEM;
 	struct timespec begin, end;
 	unsigned int i;
@@ -2031,24 +2036,6 @@ static int cavs_asym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	if (!cavs_test->ptlen)
 		return -EINVAL;
 
-	if (cavs_test->aligned) {
-		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE),
-		    outbuflen * loops))
-			goto out;
-		memset(outbuf, 0, outbuflen * loops);
-		if (posix_memalign((void *)&inbuf, sysconf(_SC_PAGESIZE),
-		    cavs_test->ptlen * loops))
-			goto out;
-		memset(outbuf, 0, cavs_test->ptlen * loops);
-	} else {
-		outbuf = calloc(loops, outbuflen);
-		if (!outbuf)
-			goto out;
-		inbuf = calloc(loops, cavs_test->ptlen);
-		if (!inbuf)
-			goto out;
-	}
-	
 	iniov = calloc(loops, sizeof(struct iovec));
 	if (!iniov)
 		goto out;
@@ -2064,20 +2051,45 @@ static int cavs_asym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 
 	/* Set key */
 	if (cavs_test->keylen && cavs_test->key) {
-		if (kcapi_akcipher_setkey(handle, cavs_test->key,
-					  cavs_test->keylen)) {
+		maxsize = kcapi_akcipher_setkey(handle, cavs_test->key,
+						cavs_test->keylen);
+		if (maxsize <= 0) {
 			printf("Asymmetric cipher set pivate key failed\n");
 			goto out;
 		}
 	}
 	if (cavs_test->pubkeylen && cavs_test->pubkey) {
-		if (kcapi_akcipher_setpubkey(handle, cavs_test->pubkey,
-					     cavs_test->pubkeylen)) {
+		maxsize = kcapi_akcipher_setpubkey(handle, cavs_test->pubkey,
+						   cavs_test->pubkeylen);
+		if (maxsize <= 0) {
 			printf("Asymmetric cipher set public key failed\n");
 			goto out;
 		}
 	}
 
+	if (!maxsize) {
+		printf("Zero output buffer size!\n");
+		goto out;
+	}
+
+	if (cavs_test->aligned) {
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE),
+		    maxsize * loops))
+			goto out;
+		memset(outbuf, 0, maxsize * loops);
+		if (posix_memalign((void *)&inbuf, sysconf(_SC_PAGESIZE),
+		    cavs_test->ptlen * loops))
+			goto out;
+		memset(outbuf, 0, cavs_test->ptlen * loops);
+	} else {
+		outbuf = calloc(loops, maxsize);
+		if (!outbuf)
+			goto out;
+		inbuf = calloc(loops, cavs_test->ptlen);
+		if (!inbuf)
+			goto out;
+	}
+	
 	iniov_p = iniov;
 	outiov_p = outiov;
 	for (i = 0; i < loops; i++) {
@@ -2086,8 +2098,8 @@ static int cavs_asym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 		iniov_p->iov_base = inbuf + (i * cavs_test->ptlen);
 		iniov_p->iov_len = cavs_test->ptlen;
 		iniov_p++;
-		outiov_p->iov_base = outbuf + (i * outbuflen);
-		outiov_p->iov_len = outbuflen;
+		outiov_p->iov_base = outbuf + (i * maxsize);
+		outiov_p->iov_len = maxsize;
 		outiov_p++;
 	}
 
@@ -2119,7 +2131,7 @@ static int cavs_asym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	} else {
 		for (i = 0; i < loops; i++) {
 			/* ret returns the total number of returned bytes */
-			bin2print(outbuf + (i * outbuflen), ret / loops);
+			bin2print(outbuf + (i * maxsize), ret / loops);
 			printf("\n");
 		}
 	}
@@ -2147,9 +2159,9 @@ static int cavs_asym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 {
 	struct kcapi_handle *handle = NULL;
 #define NUMIOVECS 16
-#define OUTBUFBLOCKSIZE 125
+#define OUTBUFBLOCKSIZE 5
 	uint8_t *outbuf = NULL;
-	uint32_t outbuflen = 1024 * NUMIOVECS;
+	int maxsize = 0;
 	uint8_t *inbuf = NULL;
 	uint32_t inbuflen = 1024 * NUMIOVECS;
 	uint32_t index = 0;
@@ -2163,22 +2175,6 @@ static int cavs_asym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 	if (!cavs_test->ptlen)
 		return -EINVAL;
 
-	if (cavs_test->aligned) {
-		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), outbuflen))
-			goto out;
-		memset(outbuf, 0, outbuflen);
-		if (posix_memalign((void *)&inbuf, sysconf(_SC_PAGESIZE), inbuflen))
-			goto out;
-		memset(inbuf, 0, inbuflen);
-	} else {
-		outbuf = calloc(1, outbuflen);
-		if (!outbuf)
-			goto out;
-		inbuf = calloc(1, inbuflen);
-		if (!inbuf)
-			goto out;
-	}
-
 	ret = -EINVAL;
 	if (kcapi_akcipher_init(&handle, cavs_test->cipher, 0)) {
 		printf("Allocation of cipher failed\n");
@@ -2187,18 +2183,41 @@ static int cavs_asym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 
 	/* Set key */
 	if (cavs_test->keylen && cavs_test->key) {
-		if (kcapi_akcipher_setkey(handle, cavs_test->key,
-					  cavs_test->keylen)) {
+		maxsize = kcapi_akcipher_setkey(handle, cavs_test->key,
+						cavs_test->keylen);
+		if (maxsize <= 0) {
 			printf("Asymmetric cipher set pivate key failed\n");
 			goto out;
 		}
 	}
 	if (cavs_test->pubkeylen && cavs_test->pubkey) {
-		if (kcapi_akcipher_setpubkey(handle, cavs_test->pubkey,
-					     cavs_test->pubkeylen)) {
+		maxsize = kcapi_akcipher_setpubkey(handle, cavs_test->pubkey,
+						   cavs_test->pubkeylen);
+		if (maxsize <= 0) {
 			printf("Asymmetric cipher set public key failed\n");
 			goto out;
 		}
+	}
+
+	if (!maxsize) {
+		printf("Zero output buffer size!\n");
+		goto out;
+	}
+
+	if (cavs_test->aligned) {
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), maxsize * NUMIOVECS))
+			goto out;
+		memset(outbuf, 0, maxsize);
+		if (posix_memalign((void *)&inbuf, sysconf(_SC_PAGESIZE), inbuflen))
+			goto out;
+		memset(inbuf, 0, inbuflen);
+	} else {
+		outbuf = calloc(1, maxsize * NUMIOVECS);
+		if (!outbuf)
+			goto out;
+		inbuf = calloc(1, inbuflen);
+		if (!inbuf)
+			goto out;
 	}
 
 	if (cavs_test->enc == 0)
@@ -2245,13 +2264,13 @@ static int cavs_asym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 	}
 
 	for (i = 0; i < NUMIOVECS; i++) {
-		uint8_t *outbuf_working = outbuf + (i * 1024);
+		uint8_t *outbuf_working = outbuf + (i * maxsize);
 		/* use some bytes in each iovec for output */
 		uint32_t outsize = OUTBUFBLOCKSIZE;
 
 		/* last iovec gets rest */
 		if (i == (NUMIOVECS - 1))
-			outsize = outbuflen - (i * outsize);
+			outsize = (maxsize) - (i * outsize);
 
 		outiov[i].iov_base = outbuf_working;
 		outiov[i].iov_len = outsize;
@@ -2296,7 +2315,12 @@ static int cavs_asym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 
 				if ((ret - (j * outsize)) < outsize)
 					outsize = ret - (j * outsize);
-				bin2hex(outbuf + (j * 1024), outsize,
+
+				/* last IOVEC has remaineder */
+				if (j == (NUMIOVECS - 1))
+					outsize = ret - processed;
+
+				bin2hex(outbuf + (j * maxsize), outsize,
 					outhex + (2 * j * OUTBUFBLOCKSIZE),
 					ret * 2 + 1 - (processed * 2), 0);
 				processed += outsize;
