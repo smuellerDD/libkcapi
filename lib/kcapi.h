@@ -49,8 +49,19 @@ extern "C"
  * Flags for initializing a cipher handle
  * 
  * @KCAPI_INIT_AIO Handle uses AIO kernel interface if available
+ * @KCAPI_INIT_MULTIACCEPT Handle can be used with kernel-generated and
+ *			   retained private key. The value data may be used
+ *			   to define the maximum number of concurrent
+ *			   accept operations (e.g. used for parallel DH key gen/
+ *			   shared secret gen operations).
+ *
+ * The bits above KCAPI_VALUE_SHIFT are used as value data
  */
-#define KCAPI_INIT_AIO	0x1
+#define KCAPI_INIT_AIO			(1<<0)
+#define KCAPI_INIT_MULTIACCEPT		(1<<1)
+#define KCAPI_VALUE_SHIFT		16
+#define KCAPI_OPTION_MASK		(((1<<KCAPI_VALUE_SHIFT)UL) - 1)
+#define KCAPI_VALUE_MASK		(-1 &~ KCAPI_OPTION_MASK)
 
 /*
  * Opaque cipher handle
@@ -1822,6 +1833,16 @@ int32_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
  */
 int32_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
 			         struct iovec *iov, uint32_t iovlen);
+
+/**
+ * DOC: Key-Agreement Protocol Primitives
+ *
+ * API function calls used to invoke Diffie-Hellmand or EC-Diffie-Hellman
+ * operations.
+ */
+/* Curves IDs */
+#define ECC_CURVE_NIST_P192     0x0001
+#define ECC_CURVE_NIST_P256     0x0002
 
 /**
  * DOC: Key Derivation Functions
