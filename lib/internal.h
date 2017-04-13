@@ -52,12 +52,26 @@ extern "C"
 #ifndef ALG_SET_PUBKEY
 #define ALG_SET_PUBKEY			6
 #endif
+#ifndef ALG_SET_DH_PARAMETERS
+#define ALG_SET_DH_PARAMETERS		7
+#endif
+#ifndef ALG_SET_ECDH_CURVE
+#define ALG_SET_ECDH_CURVE		8
+#endif
+
 
 #ifndef ALG_OP_SIGN
 #define ALG_OP_SIGN			2
 #endif
 #ifndef ALG_OP_VERIFY
 #define ALG_OP_VERIFY			3
+#endif
+
+#ifndef ALG_OP_KEYGEN
+#define ALG_OP_KEYGEN			4
+#endif
+#ifndef ALG_OP_SSGEN
+#define ALG_OP_SSGEN			5
 #endif
 
 /* remove once in socket.h */
@@ -195,6 +209,7 @@ struct kcapi_sys {
 struct kcapi_handle {
 	int tfmfd;
 	int pipes[2];
+	int opfd;
 	uint32_t processed_sg;
 	struct kcapi_sys sysinfo;
 	struct kcapi_cipher_data cipher;
@@ -202,8 +217,6 @@ struct kcapi_handle {
 	struct kcapi_cipher_info info;
 	struct kcapi_aio aio;
 	struct kcapi_flags flags;
-	uint32_t num_opfd;
-	int opfd[1];
 };
 
 /************************************************************
@@ -220,9 +233,7 @@ inline int32_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen,
 				       uint32_t enc, uint32_t flags)
 {
-	int fdptr = 0;
-
-	return _kcapi_common_send_meta_fd(handle, &fdptr, iov, iovlen, enc,
+	return _kcapi_common_send_meta_fd(handle, NULL, iov, iovlen, enc,
 					  flags);
 }
 
@@ -233,10 +244,7 @@ inline int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 				   struct iovec *iov, unsigned long iovlen,
 				   uint32_t flags)
 {
-	int fdptr = 0;
-
-	return _kcapi_common_vmsplice_iov_fd(handle, &fdptr, iov, iovlen,
-					     flags);
+	return _kcapi_common_vmsplice_iov_fd(handle, NULL, iov, iovlen, flags);
 }
 
 int32_t _kcapi_common_send_data_fd(struct kcapi_handle *handle, int *fdprt,
@@ -246,9 +254,7 @@ inline int32_t _kcapi_common_send_data(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen,
 				       uint32_t flags)
 {
-	int fdptr = 0;
-
-	return _kcapi_common_send_data_fd(handle, &fdptr, iov, iovlen, flags);
+	return _kcapi_common_send_data_fd(handle, NULL, iov, iovlen, flags);
 }
 
 int32_t _kcapi_common_recv_data_fd(struct kcapi_handle *handle, int *fdptr,
@@ -256,9 +262,7 @@ int32_t _kcapi_common_recv_data_fd(struct kcapi_handle *handle, int *fdptr,
 inline int32_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen)
 {
-	int fdptr = 0;
-
-	return _kcapi_common_recv_data_fd(handle, &fdptr, iov, iovlen);
+	return _kcapi_common_recv_data_fd(handle, NULL, iov, iovlen);
 }
 
 int32_t _kcapi_common_read_data_fd(struct kcapi_handle *handle, int *fdptr,
@@ -266,9 +270,7 @@ int32_t _kcapi_common_read_data_fd(struct kcapi_handle *handle, int *fdptr,
 inline int32_t _kcapi_common_read_data(struct kcapi_handle *handle,
 				       uint8_t *out, uint32_t outlen)
 {
-	int fdptr = 0;
-
-	return _kcapi_common_read_data_fd(handle, &fdptr, out, outlen);
+	return _kcapi_common_read_data_fd(handle, NULL, out, outlen);
 }
 
 int _kcapi_common_accept(struct kcapi_handle *handle, int *fdptr);
@@ -281,9 +283,7 @@ inline int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 					    const uint8_t *in, uint32_t inlen,
 					    uint32_t flags)
 {
-	int fdptr = 0;
-
-	return _kcapi_common_vmsplice_chunk_fd(handle, &fdptr, in, inlen,
+	return _kcapi_common_vmsplice_chunk_fd(handle, NULL, in, inlen,
 					       flags);
 }
 
@@ -312,9 +312,7 @@ int32_t _kcapi_aio_read_iov_fd(struct kcapi_handle *handle, int *fdptr,
 inline int32_t _kcapi_aio_read_iov(struct kcapi_handle *handle,
 				   struct iovec *iov, uint32_t iovlen)
 {
-	int fdptr = 0;
-
-	return _kcapi_aio_read_iov_fd(handle, &fdptr, iov, iovlen);
+	return _kcapi_aio_read_iov_fd(handle, NULL, iov, iovlen);
 }
 
 int32_t _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,

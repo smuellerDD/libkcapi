@@ -160,14 +160,13 @@ _kcapi_akcipher_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 	int32_t ret;
 	int32_t rc;
 	uint32_t tosend = iovlen;
-	int fdptr = 0;
 
 	if (handle->aio.disable) {
 		kcapi_dolog(LOG_WARN, "AIO support disabled\n");
 		return -EOPNOTSUPP;
 	}
 
-	ret = _kcapi_common_accept(handle, &fdptr);
+	ret = _kcapi_common_accept(handle, NULL);
 	if (ret)
 		return ret;
 

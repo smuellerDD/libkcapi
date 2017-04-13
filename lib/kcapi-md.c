@@ -45,17 +45,16 @@ static inline int32_t _kcapi_md_update(struct kcapi_handle *handle,
 				       const uint8_t *buffer, uint32_t len)
 {
 	int32_t ret = 0;
-	int fdptr = 0;
 
 	if (len > INT_MAX)
 		return -EMSGSIZE;
 
 	/* zero buffer length cannot be handled via splice */
 	if (len < (1<<15)) {
-		ret = _kcapi_common_accept(handle, &fdptr);
+		ret = _kcapi_common_accept(handle, NULL);
 		if (ret)
 			return ret;
-		ret = send(handle->opfd[fdptr], buffer, len, MSG_MORE);
+		ret = send(handle->opfd, buffer, len, MSG_MORE);
 	} else {
 		ret = _kcapi_common_vmsplice_chunk(handle, buffer, len,
 						   SPLICE_F_MORE);

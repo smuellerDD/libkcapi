@@ -89,61 +89,34 @@ void kcapi_dolog(int severity, const char *fmt, ...)
  * Internal logic
  ************************************************************/
 
-int _kcapi_common_close(struct kcapi_handle *handle, int fdptr)
-{
-	if (fdptr < 0 || (uint32_t)fdptr >= handle->num_opfd)
-		return -EINVAL;
-
-	close(handle->opfd[fdptr]);
-	handle->opfd[fdptr] = -1;
-
-	return 0;
-}
-
 int _kcapi_common_accept(struct kcapi_handle *handle, int *fdptr)
 {
-	/* NULL fdptr not allowed. */
-	if (!fdptr)
-		return -EINVAL;
+	int fd;
 
-	/* Find the right opfd array ptr. */
-	if (*fdptr >= 0) {
-		/* Caller provided an opfd array ptr */
-
-		if ((uint32_t)*fdptr >= handle->num_opfd)
-			return -EINVAL;
-
-		/* fdptr is valid pointer into array of opfds */
-		if (handle->opfd[*fdptr] != -1)
+	if (!fdptr) {
+		if (handle->opfd != -1)
 			return 0;
-	} else {
-		/* Caller asked us to find a free slot in opfd array. */
-		uint32_t i;
 
-		for (i = 0; i < handle->num_opfd; i++) {
-			if (handle->opfd[i] == -1) {
-				/* prevent the need for locking */
-				handle->opfd[i] = -2;
-				/* inform caller about fdptr */
-				*fdptr = i;
-			}
+		handle->opfd = accept(handle->tfmfd, NULL, 0);
+		if (handle->opfd == -1) {
+			int errsv = 0;
+
+			errsv = errno;
+			kcapi_dolog(LOG_ERR, "AF_ALG: accept failed");
+			return -errsv;
 		}
-
-		/* No free slot in array of fds found */
-		if (*fdptr < 0)
-			return -EBADFD;
+		kcapi_dolog(LOG_DEBUG, "AF_ALG: accept syscall successful");
 	}
 
-	handle->opfd[*fdptr] = accept(handle->tfmfd, NULL, 0);
-	if (handle->opfd[*fdptr] == -1) {
+	fd = accept(handle->tfmfd, NULL, 0);
+	if (fd == -1) {
 		int errsv = 0;
 
 		errsv = errno;
 		kcapi_dolog(LOG_ERR, "AF_ALG: accept failed");
 		return -errsv;
 	}
-	kcapi_dolog(LOG_DEBUG, "AF_ALG: accept syscall successful (opfd array index: %d)",
-		    *fdptr);
+	kcapi_dolog(LOG_DEBUG, "AF_ALG: accept syscall successful");
 
 	return 0;
 }
@@ -222,7 +195,10 @@ int32_t _kcapi_common_send_meta_fd(struct kcapi_handle *handle, int *fdptr,
 		*assoclen = handle->aead.assoclen;
 	}
 
-	ret = sendmsg(handle->opfd[*fdptr], &msg, flags);
+	if (fdptr)
+		ret = sendmsg(*fdptr, &msg, flags);
+	else
+		ret = sendmsg(handle->opfd, &msg, flags);
 	errsv = errno;
 	kcapi_dolog(LOG_DEBUG, "AF_ALG: sendmsg syscall returned %d (errno: %d)",
 		    ret, errsv);
@@ -252,7 +228,10 @@ int32_t _kcapi_common_send_data_fd(struct kcapi_handle *handle, int *fdptr,
 	msg.msg_iov = iov;
 	msg.msg_iovlen = iovlen;
 
-	ret = sendmsg(handle->opfd[*fdptr], &msg, flags);
+	if (fdptr)
+		ret = sendmsg(*fdptr, &msg, flags);
+	else
+		ret = sendmsg(handle->opfd, &msg, flags);
 	errsv = errno;
 	kcapi_dolog(LOG_DEBUG, "AF_ALG: sendmsg syscall returned %d (errno: %d)",
 		    ret, errsv);
@@ -295,8 +274,12 @@ int32_t _kcapi_common_vmsplice_iov_fd(struct kcapi_handle *handle, int *fdptr,
 			(long)ret, (unsigned long)inlen);
 		return -EFAULT;
 	}
-	ret = splice(handle->pipes[0], NULL, handle->opfd[*fdptr], NULL, ret,
-		     flags);
+
+	if (fdptr)
+		ret = splice(handle->pipes[0], NULL, *fdptr, NULL, ret, flags);
+	else
+		ret = splice(handle->pipes[0], NULL, handle->opfd, NULL, ret,
+			     flags);
 	errsv = errno;
 	kcapi_dolog(LOG_DEBUG, "AF_ALG: splice syscall returned %d (errno: %d)",
 		    ret, errsv);
@@ -338,8 +321,12 @@ int32_t _kcapi_common_vmsplice_chunk_fd(struct kcapi_handle *handle, int *fdptr,
 				    ret, errno);
 			if (0 > ret)
 				return ret;
-			ret = splice(handle->pipes[0], NULL,
-				     handle->opfd[*fdptr], NULL, ret, flags);
+			if (fdptr)
+				ret = splice(handle->pipes[0], NULL, *fdptr,
+					     NULL, ret, flags);
+			else
+				ret = splice(handle->pipes[0], NULL,
+					     handle->opfd, NULL, ret, flags);
 			kcapi_dolog(LOG_DEBUG, "AF_ALG: splice syscall returned %d (errno: %d)",
 				    ret, errno);
 		}
@@ -482,7 +469,10 @@ int32_t _kcapi_aio_read_iov_fd(struct kcapi_handle *handle, int *fdptr,
 		}
 
 		memset(cb, 0, sizeof(*cb));
-		cb->aio_fildes = handle->opfd[*fdptr];
+		if (fdptr)
+			cb->aio_fildes = *fdptr;
+		else
+			cb->aio_fildes = handle->opfd;
 		cb->aio_lio_opcode = IOCB_CMD_PREAD;
 		cb->aio_buf = (unsigned long)iov->iov_base;
 		cb->aio_offset = 0;
@@ -527,7 +517,10 @@ int32_t _kcapi_common_recv_data_fd(struct kcapi_handle *handle, int *fdptr,
 	msg.msg_iov = iov;
 	msg.msg_iovlen = iovlen;
 
-	ret = recvmsg(handle->opfd[*fdptr], &msg, 0);
+	if (fdptr)
+		ret = recvmsg(*fdptr, &msg, 0);
+	else
+		ret = recvmsg(handle->opfd, &msg, 0);
 	errsv = errno;
 	kcapi_dolog(LOG_DEBUG, "AF_ALG: recvmsg syscall returned %d (errno: %d)",
 		    ret, errsv);
@@ -570,7 +563,10 @@ int32_t _kcapi_common_read_data_fd(struct kcapi_handle *handle, int *fdptr,
 	if (ret)
 		return ret;
 
-	ret = read(handle->opfd[*fdptr], out, outlen);
+	if (fdptr)
+		ret = read(*fdptr, out, outlen);
+	else
+		ret = read(handle->opfd, out, outlen);
 	errsv = errno;
 	kcapi_dolog(LOG_DEBUG, "AF_ALG: read syscall returned %d (errno: %d)",
 		    ret, errsv);
@@ -832,16 +828,12 @@ static inline void _kcapi_aio_destroy(struct kcapi_handle *handle)
 
 void _kcapi_handle_destroy(struct kcapi_handle *handle)
 {
-	uint32_t i;
-
 	if (!handle)
 		return;
 	if (handle->tfmfd != -1)
 		close(handle->tfmfd);
-	for (i = 0; i < handle->num_opfd; i++) {
-		if (handle->opfd[i] != -1 && handle->opfd[i] != -2)
-			close(handle->opfd[i]);
-	}
+	if (handle->opfd != -1)
+		close(handle->opfd);
 	if (handle->pipes[0] != -1)
 		close(handle->pipes[0]);
 	if (handle->pipes[1] != -1)
@@ -998,7 +990,6 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 {
 	struct sockaddr_alg sa;
 	struct kcapi_handle *handle;
-	uint32_t max_opfds = 1, i;
 	int ret;
 	int errsv = 0;
 	char versionbuffer[50];
@@ -1007,23 +998,11 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 	kcapi_dolog(LOG_VERBOSE, "%s - initializing cipher operation with kernel",
 		    versionbuffer);
 
-	if (flags & KCAPI_INIT_MULTIACCEPT) {
-		uint32_t max_parallel = flags>>KCAPI_VALUE_SHIFT;
-
-		if (!max_parallel)
-			max_parallel = 16;
-
-		max_opfds = max_parallel;
-	}
-
-	handle = calloc(1, sizeof(struct kcapi_handle) +
-			((max_opfds - 1) * sizeof(int)));
+	handle = calloc(1, sizeof(struct kcapi_handle));
 	if (!handle)
 		return -ENOMEM;
 
-	handle->num_opfd = max_opfds;
-	for (i = 0; i < handle->num_opfd; i++)
-		(handle->opfd[i]) = -1;
+	handle->opfd = -1;
 	handle->tfmfd = -1;
 	handle->pipes[0] = -1;
 	handle->pipes[1] = -1;
@@ -1182,19 +1161,14 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 				struct iovec *iniov, struct iovec *outiov,
 				uint32_t iovlen, int access, int enc)
 {
-	int32_t ret;
+	int32_t ret = 0;
 	int32_t rc;
 	uint32_t tosend = iovlen;
-	int fdptr = 0;
 
 	if (handle->aio.disable) {
 		kcapi_dolog(LOG_WARN, "AIO support disabled\n");
 		return -EOPNOTSUPP;
 	}
-
-	ret = _kcapi_common_accept(handle, &fdptr);
-	if (ret)
-		return ret;
 
 	handle->aio.completed_reads = 0;
 
