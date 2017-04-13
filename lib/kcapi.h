@@ -49,27 +49,8 @@ extern "C"
  * Flags for initializing a cipher handle
  * 
  * @KCAPI_INIT_AIO Handle uses AIO kernel interface if available
- * @KCAPI_INIT_MULTIACCEPT Handle can be used with multiple accept operations.
- *			   Currently, using this option will allocate the
- *			   required amount of memory for the handling. Yet,
- *			   no libkcapi mechanism makes use of it.
- * @KCAPI_VALUE_SHIFT The flags field is used as a bit array below the
- *		      KCAPI_VALUE_SHIFT bit. Above that bit, the value is
- *		      treated as an integer that is an option value to a flag.
- *		      E.g. if an option value of, say, 11 shall be provided
- *		      to the option KCAPI_INIT_MULTIACCEPT, the flags field
- *		      should be created as:
- *		      flags = KCAPI_INIT_MULTIACCEPT |
- *		              (11 << KCAPI_VALUE_SHIFT);
- *
- * The bits above KCAPI_VALUE_SHIFT are used as value data
  */
 #define KCAPI_INIT_AIO			(1<<0)
-#define KCAPI_INIT_MULTIACCEPT		(1<<1)
-#define KCAPI_VALUE_SHIFT		16
-
-#define KCAPI_OPTION_MASK		(((1<<KCAPI_VALUE_SHIFT)UL) - 1)
-#define KCAPI_VALUE_MASK		(-1 &~ KCAPI_OPTION_MASK)
 
 /*
  * Opaque cipher handle
