@@ -96,7 +96,7 @@ The `configure` script supports the following options:
 For instance, to compile the library with the `kcapi` test program and to
 install them in `/usr/`:
 ```
-$ ./configure --prefix=/usr/ --with-kcapi-test
+$ ./configure --prefix=/usr/ --enable-kcapi-test
 ```
 
 Then, run `make` to compile and `make install` to install in the folder
