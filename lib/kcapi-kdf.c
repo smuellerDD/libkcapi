@@ -555,7 +555,13 @@ int32_t kcapi_pbkdf(const char *hashname,
 	if (h > sizeof(u)) {
 		kcapi_dolog(LOG_ERR, "Programming error in file %s at line %u\n",
 			    __FILE__, __LINE__);
-		return -EFAULT;
+		err = -EFAULT;
+		goto err;
+	}
+
+	if (!h) {
+		err = -EFAULT;
+		goto err;
 	}
 
 	err = kcapi_md_setkey(handle, pw, pwlen);
