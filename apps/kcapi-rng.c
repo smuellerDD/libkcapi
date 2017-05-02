@@ -248,7 +248,7 @@ int main(int argc, char *argv[])
 			ret = kcapi_rng_seed(rng, seedbuf, seedsize);
 			if (ret)
 				fprintf(stderr, "User-provided seed of %lu bytes not accepted by DRNG (error: %d)\n",
-					sizeof(buf), ret);
+					(unsigned long)sizeof(buf), ret);
 		}
 	}
 
