@@ -57,6 +57,8 @@
 #endif
 #include <sys/syscall.h>
 #include <limits.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "kcapi.h"
 
@@ -763,6 +765,7 @@ static void usage(void)
 	fprintf(stderr, "\t-f --timing\tStart timing measurements for execution duration\n");
 	fprintf(stderr, "\t-g --aiofallback\tInvoke AIO fallback\n");
 	fprintf(stderr, "\t-h --fuzztest\tInvoke fuzzing tests\n");
+	fprintf(stderr, "\t-j --multithreaded\tMultithreaded test\n");
 }
 
 /*
@@ -856,7 +859,31 @@ out:
 	return ret;
 }
 
-static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
+static void mt_sym_writer(struct kcapi_handle *handle, struct iovec *iov,
+			  int forking)
+{
+	int ret;
+
+	if (forking) {
+		pid_t pid;
+
+		pid = fork();
+		if (!pid)
+			return;
+
+		sleep(1);
+	}
+
+	ret = kcapi_cipher_stream_update(handle, iov, 1);
+	if (0 > ret)
+		printf("Sending of data failed\n");
+
+	if (forking)
+		_exit(0);
+}
+
+static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
+			   int forking)
 {
 	struct kcapi_handle *handle = NULL;
 	int ret = -ENOMEM;
@@ -865,6 +892,7 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 	struct iovec outiov;
 	struct iovec iov;
 	uint32_t i = 0;
+	int wstatus;
 
 	if (cavs_test->enc) {
 		if (!cavs_test->ptlen)
@@ -911,7 +939,7 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 		goto out;
 	}
 
-	for(i = 0; i < loops; i++) {
+	for (i = 0; i < loops; i++) {
 		if (cavs_test->enc) {
 			iov.iov_base = cavs_test->pt;
 			iov.iov_len = cavs_test->ptlen;
@@ -919,11 +947,9 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 			iov.iov_base = cavs_test->ct;
 			iov.iov_len = cavs_test->ctlen;
 		}
-		ret = kcapi_cipher_stream_update(handle, &iov, 1);
-		if (0 > ret) {
-			printf("Sending of data failed\n");
-			goto out;
-		}
+
+		mt_sym_writer(handle, &iov, forking);
+
 		ret = kcapi_cipher_stream_op(handle, &outiov, 1);
 		if (0 > ret) {
 			printf("Finalization and cipher operation failed\n");
@@ -933,6 +959,9 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 		bin2print(outbuf, outbuflen);
 		printf("\n");
 	}
+
+	if (forking)
+		wait(&wstatus);
 
 	ret = 0;
 out:
@@ -2592,6 +2621,7 @@ int main(int argc, char *argv[])
 	int ret = 1;
 	int rc = 1;
 	int stream = 0;
+	int multithreaded = 0;
 	int large = 0;
 	int aiofallback = 0;
 	int fuzztests = 0;
@@ -2631,9 +2661,10 @@ int main(int argc, char *argv[])
 			{"timing", 0, 0, 'f'},
 			{"aiofallback", 0, 0, 'g'},
 			{"fuzztest", 0, 0, 'h'},
+			{"multithreaded", 0, 0, 'j'},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "ec:p:q:i:mn:k:a:l:t:x:zsyd:vo:r:b:fgh", opts, &opt_index);
+		c = getopt_long(argc, argv, "ec:p:q:i:mn:k:a:l:t:x:zsyd:vo:r:b:fghj", opts, &opt_index);
 		if (-1 == c)
 			break;
 		switch (c)
@@ -2750,6 +2781,9 @@ int main(int argc, char *argv[])
 			case 's':
 				stream = 1;
 				break;
+			case 'j':
+				multithreaded = 1;
+				break;
 			case 'y':
 				large = 1;
 				break;
@@ -2787,7 +2821,7 @@ int main(int argc, char *argv[])
 		rc = cavs_aead_large(stream, loops, splice);
 	} else if (SYM == cavs_test.type) {
 		if (stream)
-			rc = cavs_sym_stream(&cavs_test, loops);
+			rc = cavs_sym_stream(&cavs_test, loops, multithreaded);
 		else
 			rc = cavs_sym(&cavs_test, loops, splice);
 	} else if (SYM_AIO == cavs_test.type)

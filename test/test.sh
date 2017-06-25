@@ -729,6 +729,15 @@ symfunc()
 		then
 			aout="aligned"
 		fi
+		if [ x"$stream" = x"-j" ]
+		then
+			sout="multithreaded"
+			stream="-s -j"
+		fi
+		if [ x"$stream" = x"-s -j" ]
+		then
+			sout="multithreaded"
+		fi
 		if [ x"$result" = x"$SYM_exp" ]
 		then
 			echo_pass "Symmetric $impl_type $sout $aout test $i"
@@ -1308,6 +1317,7 @@ hashfunc -s
 symfunc 1
 symfunc 1 -s
 symfunc 1 -v
+symfunc 1 -j
 symfunc 9
 symfunc 9 -s
 symfunc 9 -v
