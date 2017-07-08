@@ -253,10 +253,11 @@ my %highlights = %highlights_man;
 my $blankline = $blankline_man;
 my $modulename = "Kernel API";
 my $function_only = 0;
+my $build_date = $ENV{SOURCE_DATE_EPOCH} || time;
 my $man_date = ('January', 'February', 'March', 'April', 'May', 'June',
 		'July', 'August', 'September', 'October',
-		'November', 'December')[(localtime)[4]] .
-  " " . ((localtime)[5]+1900);
+		'November', 'December')[(gmtime($build_date))[4]] .
+  " " . ((gmtime($build_date))[5]+1900);
 my $show_not_found = 0;
 
 # Essentially these are globals.
