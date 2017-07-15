@@ -371,7 +371,7 @@ static int fuzz_cipher(struct kcapi_cavs *cavs_test, unsigned long flags,
 
 	if (kcapi_cipher_init(&handle, cavs_test->cipher, 0)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
-		goto out;
+		return -EFAULT;
 	}
 
 	/* Set key */
@@ -444,7 +444,7 @@ static int fuzz_aead(struct kcapi_cavs *cavs_test, unsigned long flags,
 
 	if (kcapi_aead_init(&handle, cavs_test->cipher, 0)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
-		goto out;
+		return -EFAULT;
 	}
 
 	/* Set key */
@@ -1096,7 +1096,7 @@ out:
 static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 		     int splice, int printaad)
 {
-	struct kcapi_handle *handle;
+	struct kcapi_handle *handle = NULL;
 	uint8_t *outbuf = NULL;
 	uint32_t outbuflen = 0;
 	uint8_t *inbuf = NULL;
@@ -1498,7 +1498,7 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 	ret = -EINVAL;
 	if (kcapi_aead_init(&handle, cavs_test->cipher, 0)) {
 		printf("Allocation of cipher failed\n");
-		goto out;
+		return -EFAULT;
 	}
 
 	/* Setting the tag length */
@@ -1829,7 +1829,7 @@ out:
  */
 static int cavs_hash(struct kcapi_cavs *cavs_test, uint32_t loops)
 {
-	struct kcapi_handle *handle;
+	struct kcapi_handle *handle = NULL;
 #define MAXMD 64
 	uint8_t md[MAXMD];
 #define MAXMDHEX (MAXMD * 2 + 1)
@@ -1876,7 +1876,7 @@ static int cavs_hash(struct kcapi_cavs *cavs_test, uint32_t loops)
 
 static int cavs_hash_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
 {
-	struct kcapi_handle *handle;
+	struct kcapi_handle *handle = NULL;
 #define MAXMD 64
 	uint8_t md[MAXMD];
 #define MAXMDHEX (MAXMD * 2 + 1)
@@ -1958,7 +1958,7 @@ static int cavs_asym(struct kcapi_cavs *cavs_test, uint32_t loops,
 
 	if (kcapi_akcipher_init(&handle, cavs_test->cipher, 0)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
-		goto out;
+		return -EFAULT;
 	}
 
 	/* Set key */
@@ -2195,7 +2195,7 @@ static int cavs_asym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 	uint32_t inbuflen = 1024 * NUMIOVECS;
 	uint32_t index = 0;
 	uint32_t numiovecs = 0;
-	int ret = -ENOMEM;
+	int ret = -EINVAL;
 	struct iovec iniov[NUMIOVECS];
 	struct iovec outiov[NUMIOVECS];
 	uint32_t i = 0;
@@ -2204,10 +2204,9 @@ static int cavs_asym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 	if (!cavs_test->ptlen)
 		return -EINVAL;
 
-	ret = -EINVAL;
 	if (kcapi_akcipher_init(&handle, cavs_test->cipher, 0)) {
 		printf("Allocation of cipher failed\n");
-		goto out;
+		return -EFAULT;
 	}
 
 	/* Set key */
