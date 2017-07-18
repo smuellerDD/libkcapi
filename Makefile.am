@@ -99,7 +99,8 @@ kcapi_hasher_links = sha1sum sha224sum sha256sum sha384sum sha512sum \
 
 install-exec-hook:
 	(cd $(DESTDIR)$(bindir) && \
-	($(foreach link, $(kcapi_hasher_links), $(LN_S) -f kcapi_hasher $(link);)))
+	($(foreach link, $(kcapi_hasher_links), ln -f kcapi-hasher $(link);)) && \
+	($(foreach link, $(kcapi_hasher_links), openssl sha256 -hmac orboDeJITITejsirpADONivirpUkvarP $(link) > .$(link).hmac;)))
 endif
 
 if ENABLE_KCAPI_RNGAPP
