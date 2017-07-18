@@ -389,10 +389,9 @@ int32_t _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
 }
 
 /* read data from successfully processed cipher operations */
-static int _kcapi_aio_poll_data(struct kcapi_handle *handle, suseconds_t wait)
+static int _kcapi_aio_poll_data(struct kcapi_handle *handle, struct timeval *tv)
 {
 	struct timespec timeout;
-	struct timeval tv;
 	fd_set rfds;
 	u_int64_t eval = 0;
 	int ret;
@@ -400,10 +399,8 @@ static int _kcapi_aio_poll_data(struct kcapi_handle *handle, suseconds_t wait)
 
 	FD_ZERO(&rfds);
 	FD_SET(efd, &rfds);
-	tv.tv_sec = 0;
-	tv.tv_usec = wait;
 
-	ret = select(efd + 1, &rfds, NULL, NULL, &tv);
+	ret = select(efd + 1, &rfds, NULL, NULL, tv);
 	if (ret == -1) {
 		kcapi_dolog(LOG_ERR, "Select Error: %d\n", errno);
 		return -errno;
@@ -463,7 +460,11 @@ int32_t _kcapi_aio_read_iov_fd(struct kcapi_handle *handle, int *fdptr,
 
 	for (i = 0; i < iovlen; i++) {
 		while (cb->aio_fildes) {
-			ret = _kcapi_aio_poll_data(handle, 10);
+			struct timeval tv;
+
+			tv.tv_sec = 0;
+			tv.tv_usec = 10;
+			ret = _kcapi_aio_poll_data(handle, &tv);
 			if (ret < 0)
 				return ret;
 		}
@@ -495,7 +496,7 @@ int32_t _kcapi_aio_read_iov_fd(struct kcapi_handle *handle, int *fdptr,
 		}
 	}
 
-	return _kcapi_aio_poll_data(handle, 1);
+	return _kcapi_aio_poll_data(handle, NULL);
 }
 
 int32_t _kcapi_common_recv_data_fd(struct kcapi_handle *handle, int *fdptr,
