@@ -106,6 +106,8 @@ int _kcapi_common_accept(struct kcapi_handle *handle, int *fdptr)
 			return -errsv;
 		}
 		kcapi_dolog(LOG_DEBUG, "AF_ALG: accept syscall successful");
+
+		return 0;
 	}
 
 	fd = accept(handle->tfmfd, NULL, 0);
@@ -117,6 +119,8 @@ int _kcapi_common_accept(struct kcapi_handle *handle, int *fdptr)
 		return -errsv;
 	}
 	kcapi_dolog(LOG_DEBUG, "AF_ALG: accept syscall successful");
+
+	*fdptr = fd;
 
 	return 0;
 }
