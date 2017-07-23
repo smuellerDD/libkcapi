@@ -93,22 +93,8 @@ int _kcapi_common_accept(struct kcapi_handle *handle, int *fdptr)
 {
 	int fd;
 
-	if (!fdptr) {
-		if (handle->opfd != -1)
-			return 0;
-
-		handle->opfd = accept(handle->tfmfd, NULL, 0);
-		if (handle->opfd == -1) {
-			int errsv = 0;
-
-			errsv = errno;
-			kcapi_dolog(LOG_ERR, "AF_ALG: accept failed");
-			return -errsv;
-		}
-		kcapi_dolog(LOG_DEBUG, "AF_ALG: accept syscall successful");
-
+	if (*fdptr != -1)
 		return 0;
-	}
 
 	fd = accept(handle->tfmfd, NULL, 0);
 	if (fd == -1) {
@@ -199,10 +185,7 @@ int32_t _kcapi_common_send_meta_fd(struct kcapi_handle *handle, int *fdptr,
 		*assoclen = handle->aead.assoclen;
 	}
 
-	if (fdptr)
-		ret = sendmsg(*fdptr, &msg, flags);
-	else
-		ret = sendmsg(handle->opfd, &msg, flags);
+	ret = sendmsg(*fdptr, &msg, flags);
 	errsv = errno;
 	kcapi_dolog(LOG_DEBUG, "AF_ALG: sendmsg syscall returned %d (errno: %d)",
 		    ret, errsv);
@@ -232,10 +215,7 @@ int32_t _kcapi_common_send_data_fd(struct kcapi_handle *handle, int *fdptr,
 	msg.msg_iov = iov;
 	msg.msg_iovlen = iovlen;
 
-	if (fdptr)
-		ret = sendmsg(*fdptr, &msg, flags);
-	else
-		ret = sendmsg(handle->opfd, &msg, flags);
+	ret = sendmsg(*fdptr, &msg, flags);
 	errsv = errno;
 	kcapi_dolog(LOG_DEBUG, "AF_ALG: sendmsg syscall returned %d (errno: %d)",
 		    ret, errsv);
@@ -279,11 +259,7 @@ int32_t _kcapi_common_vmsplice_iov_fd(struct kcapi_handle *handle, int *fdptr,
 		return -EFAULT;
 	}
 
-	if (fdptr)
-		ret = splice(handle->pipes[0], NULL, *fdptr, NULL, ret, flags);
-	else
-		ret = splice(handle->pipes[0], NULL, handle->opfd, NULL, ret,
-			     flags);
+	ret = splice(handle->pipes[0], NULL, *fdptr, NULL, ret, flags);
 	errsv = errno;
 	kcapi_dolog(LOG_DEBUG, "AF_ALG: splice syscall returned %d (errno: %d)",
 		    ret, errsv);
@@ -325,12 +301,8 @@ int32_t _kcapi_common_vmsplice_chunk_fd(struct kcapi_handle *handle, int *fdptr,
 				    ret, errno);
 			if (0 > ret)
 				return ret;
-			if (fdptr)
-				ret = splice(handle->pipes[0], NULL, *fdptr,
-					     NULL, ret, flags);
-			else
-				ret = splice(handle->pipes[0], NULL,
-					     handle->opfd, NULL, ret, flags);
+			ret = splice(handle->pipes[0], NULL, *fdptr, NULL, ret,
+				     flags);
 			kcapi_dolog(LOG_DEBUG, "AF_ALG: splice syscall returned %d (errno: %d)",
 				    ret, errno);
 		}
@@ -474,10 +446,7 @@ int32_t _kcapi_aio_read_iov_fd(struct kcapi_handle *handle, int *fdptr,
 		}
 
 		memset(cb, 0, sizeof(*cb));
-		if (fdptr)
-			cb->aio_fildes = *fdptr;
-		else
-			cb->aio_fildes = handle->opfd;
+		cb->aio_fildes = *fdptr;
 		cb->aio_lio_opcode = IOCB_CMD_PREAD;
 		cb->aio_buf = (unsigned long)iov->iov_base;
 		cb->aio_offset = 0;
@@ -522,10 +491,7 @@ int32_t _kcapi_common_recv_data_fd(struct kcapi_handle *handle, int *fdptr,
 	msg.msg_iov = iov;
 	msg.msg_iovlen = iovlen;
 
-	if (fdptr)
-		ret = recvmsg(*fdptr, &msg, 0);
-	else
-		ret = recvmsg(handle->opfd, &msg, 0);
+	ret = recvmsg(*fdptr, &msg, 0);
 	errsv = errno;
 	kcapi_dolog(LOG_DEBUG, "AF_ALG: recvmsg syscall returned %d (errno: %d)",
 		    ret, errsv);
@@ -568,10 +534,7 @@ int32_t _kcapi_common_read_data_fd(struct kcapi_handle *handle, int *fdptr,
 	if (ret)
 		return ret;
 
-	if (fdptr)
-		ret = read(*fdptr, out, outlen);
-	else
-		ret = read(handle->opfd, out, outlen);
+	ret = read(*fdptr, out, outlen);
 	errsv = errno;
 	kcapi_dolog(LOG_DEBUG, "AF_ALG: read syscall returned %d (errno: %d)",
 		    ret, errsv);

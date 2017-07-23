@@ -166,7 +166,7 @@ _kcapi_akcipher_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 		return -EOPNOTSUPP;
 	}
 
-	ret = _kcapi_common_accept(handle, NULL);
+	ret = _kcapi_common_accept(handle, &handle->opfd);
 	if (ret)
 		return ret;
 

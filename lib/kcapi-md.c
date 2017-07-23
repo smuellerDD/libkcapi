@@ -51,7 +51,7 @@ static inline int32_t _kcapi_md_update(struct kcapi_handle *handle,
 
 	/* zero buffer length cannot be handled via splice */
 	if (len < (1<<15)) {
-		ret = _kcapi_common_accept(handle, NULL);
+		ret = _kcapi_common_accept(handle, &handle->opfd);
 		if (ret)
 			return ret;
 		ret = send(handle->opfd, buffer, len, MSG_MORE);
