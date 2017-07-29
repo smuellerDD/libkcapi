@@ -866,19 +866,19 @@ static int _kcapi_aio_init(struct kcapi_handle *handle, const char *type)
 	int err;
 
 	if (!strncmp("aead", type, 4)) {
-		if (!_kcapi_kernver_ge(handle, 4, 11, 0)) {
+		if (!_kcapi_kernver_ge(handle, 4, 13, 0)) {
 			kcapi_dolog(LOG_VERBOSE, "AIO support for AEAD cipher not present on current kernel\n");
 			err = EOPNOTSUPP;
 			goto err;
 		}
 	} else if (!strncmp("skcipher", type, 8)) {
-		if (!_kcapi_kernver_ge(handle, 4, 11, 0)) {
+		if (!_kcapi_kernver_ge(handle, 4, 13, 0)) {
 			kcapi_dolog(LOG_VERBOSE, "AIO support for symmetric ciphers not present on current kernel\n");
 			err = EOPNOTSUPP;
 			goto err;
 		}
 	} else if (!strncmp("akcipher", type, 8)) {
-		if (!_kcapi_kernver_ge(handle, 4, 11, 0)) {
+		if (!_kcapi_kernver_ge(handle, 4, 99, 0)) {
 			kcapi_dolog(LOG_VERBOSE, "AIO support for asymmetric ciphers not present on current kernel\n");
 			err = EOPNOTSUPP;
 			goto err;
