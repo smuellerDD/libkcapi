@@ -1312,7 +1312,7 @@ d780ec569fe689a0f7778eab625bd0ccb13d7e3f63e19083c739ddcbd4b1a825"
 	fi
 }
 
-
+# Test required for test with multiple IOVECs on i686
 check_memory() {
 	if [ $(cat /proc/sys/net/core/optmem_max) -lt 20480 ];
 	then
