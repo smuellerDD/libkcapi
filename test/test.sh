@@ -1312,6 +1312,19 @@ d780ec569fe689a0f7778eab625bd0ccb13d7e3f63e19083c739ddcbd4b1a825"
 	fi
 }
 
+
+check_memory() {
+	if [ $(cat /proc/sys/net/core/optmem_max) -lt 20480 ];
+	then
+		echo "Socket memory size too small for test, set to 20480"
+		echo "echo 20480 > /proc/sys/net/core/optmem_max"
+
+		exit 1
+	fi
+}
+
+check_memory
+
 hashfunc
 hashfunc -s
 symfunc 1
