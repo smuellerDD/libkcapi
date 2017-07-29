@@ -847,6 +847,7 @@ aeadfunc()
 	stream=$2
 	aligned=$3
 	aiofallback=$4
+	printaad=$5
 
 	if [ x"$stream" = x"X" ]
 	then
@@ -855,6 +856,10 @@ aeadfunc()
 	if [ x"$aligned" = x"X" ]
 	then
 		aligned=""
+	fi
+	if [ x"$aiofallback" = x"X" ]
+	then
+		aiofallback=""
 	fi
 
 	AEADEXEC="1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17"
@@ -886,14 +891,14 @@ aeadfunc()
 		expected=""
 		if [ "$AEAD_enc" = 1  ]
 		then
-			result=$($KCAPI $aiofallback -x $impl $stream $aligned -e -c $AEAD_name $iv -k $AEAD_key -a "$AEAD_assoc" -p "$AEAD_msg" -l $AEAD_taglen 2>/dev/null)
-			cmd="$KCAPI $aiofallback -x $impl $stream $aligned -e -c \"$AEAD_name\" $iv -k $AEAD_key -a \"$AEAD_assoc\" -p \"$AEAD_msg\" -l $AEAD_taglen"
+			result=$($KCAPI $printaad $aiofallback -x $impl $stream $aligned -e -c $AEAD_name $iv -k $AEAD_key -a "$AEAD_assoc" -p "$AEAD_msg" -l $AEAD_taglen 2>/dev/null)
+			cmd="$KCAPI $printaad $aiofallback -x $impl $stream $aligned -e -c \"$AEAD_name\" $iv -k $AEAD_key -a \"$AEAD_assoc\" -p \"$AEAD_msg\" -l $AEAD_taglen"
 			expected1="${AEAD_exp}${AEAD_tag}"
 			#expected1="${AEAD_assoc}${AEAD_exp}${AEAD_tag}"
 			#expected2="invalid"
 		else
-			result=$($KCAPI $aiofallback -x $impl $stream $aligned -c $AEAD_name $iv -k $AEAD_key -a "$AEAD_assoc" -t "$AEAD_tag" -q "$AEAD_msg" 2>/dev/null)
-			cmd="$KCAPI $aiofallback -x $impl $stream $aligned -c \"$AEAD_name\" $iv -k $AEAD_key -a \"$AEAD_assoc\" -t \"$AEAD_tag\" -q
+			result=$($KCAPI $printaad $aiofallback -x $impl $stream $aligned -c $AEAD_name $iv -k $AEAD_key -a "$AEAD_assoc" -t "$AEAD_tag" -q "$AEAD_msg" 2>/dev/null)
+			cmd="$KCAPI $printaad $aiofallback -x $impl $stream $aligned -c \"$AEAD_name\" $iv -k $AEAD_key -a \"$AEAD_assoc\" -t \"$AEAD_tag\" -q
 			\"$AEAD_msg\""
 			expected1="${AEAD_exp}"
 			#expected1="${AEAD_assoc}${AEAD_exp}"
@@ -912,6 +917,14 @@ aeadfunc()
 		then
 			impl_type="$impl_type (AIO fallback)"
 		fi
+		if [ x"$printaad" != x"" ]
+		then
+			impl_type="$impl_type (AAD copy)"
+			if [ x"$expected1" != x"EBADMSG" ]
+			then
+				expected1="${AEAD_assoc}${expected1}"
+			fi
+		fi
 		if [ x"$stream" = x"-s" ]
 		then
 			sout="stream"
@@ -927,15 +940,21 @@ aeadfunc()
 
 		if [ x"$result" = x"$expected1" ]
 		then
-			echo_pass "AEAD $impl_type $sout $aout test $i"
+			echo_pass "AEAD ${impl_type} ${sout} ${aout} test $i"
 		else
-			echo_fail "AEAD $impl_type $sout $aout test $i"
+			echo_fail "AEAD ${impl_type} ${sout} ${aout} test $i"
 			echo "($cmd)"
-			echo " Exp $expected"
+			echo " Exp $expected1"
 			echo " Got $result"
 			failures=$(($failures+1))
 		fi
 	done
+
+	# Do not test long message AAD
+	if [ x"$printaad" != x"" ]
+	then
+		return
+	fi
 
 	# AEAD long test only supported for aligned data
 	if [ x"$aligned" != x"-m" ]
@@ -1114,6 +1133,11 @@ multipletest_sym() {
 		stream=""
 	fi
 
+	if [ x"$aiofallback" = x"X" ]
+	then
+		aiofallback=""
+	fi
+
 	sout="one shot"
 	impl_type="synchronous"
 	if [ x"$stream" = x"-s" ]
@@ -1164,6 +1188,7 @@ multipletest_aead() {
 	impl=$1
 	stream=$2
 	aiofallback=$3
+	printaad=$4
 
 	if [ x"$stream" = x"X" ]
 	then
@@ -1192,20 +1217,30 @@ multipletest_aead() {
 	then
 		impl_type="$impl_type (AIO fallback)"
 	fi
+	if [ x"$printaad" != x"" ]
+	then
+		impl_type="$impl_type (AAD copy)"
+	fi
 
-	cmd="$KCAPI $stream -d 4 -x $impl $aiofallback -c ccm(aes) -q 4edb58e8d5eb6bc711c43a6f3693daebde2e5524f1b55297abb29f003236e43d -t a7877c99 -n 674742abd0f5ba -k 2861fd0253705d7875c95ba8a53171b4 -a fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d"
+	if [ x"$printaad" != x"" ]
+	then
+		printaad_expected="fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d"
+	fi
+
+	cmd="$KCAPI $stream -d 4 -x $impl $aiofallback $printaad -c ccm(aes) -q 4edb58e8d5eb6bc711c43a6f3693daebde2e5524f1b55297abb29f003236e43d -t a7877c99 -n 674742abd0f5ba -k 2861fd0253705d7875c95ba8a53171b4 -a fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d"
 	result=$($cmd 2>/dev/null)
 	# there is no block chaining effect here, because GCM/CCM initialize the
 	# counter part for each encryption operation to 1
 	if [ $impl -eq 10 ]
 	then
-		expected="8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d7238dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d7238dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d7238dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723"
+		expected="${printaad_expected}8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723${printaad_expected}8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723${printaad_expected}8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723${printaad_expected}8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723"
 	else
-		expected="8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
-8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
-8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
-8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723"
+		expected="${printaad_expected}8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
+${printaad_expected}8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
+${printaad_expected}8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723
+${printaad_expected}8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723"
 	fi
+
 	if [ x"$expected" = x"$result" ]
 	then
 		echo_pass "AEAD $impl_type $sout multiple test"
@@ -1383,6 +1418,35 @@ if $(check_min_kernelver 4 1); then
 	multipletest_aead 10 -v	-g	# async AIO fallback, splice
 else
 	echo_deact "All AEAD tests deactivated"
+fi
+
+if $(check_min_kernelver 4 13); then
+	aeadfunc 2 X X X -u
+	aeadfunc 2 -s X X -u
+	aeadfunc 2 -v X X -u
+	aeadfunc 10 X X X -u
+	aeadfunc 10 -s X X -u
+	aeadfunc 10 -v X X -u
+	aeadfunc 10 X X -g -u
+	aeadfunc 10 -s X -g -u
+	aeadfunc 10 -v X -g -u
+	aeadfunc 2 X -m X -u
+	aeadfunc 2 -s -m X -u
+	aeadfunc 2 -v -m X -u
+	aeadfunc 10 -s -m X -u
+	aeadfunc 10 X -m X -u
+	aeadfunc 10 -v -m X -u
+	aeadfunc 10 -s -m -g -u
+	aeadfunc 10 X -m -g -u
+	aeadfunc 10 -v -m -g -u
+	multipletest_aead 2 X X -u	# sync, no splice, one shot sendmsg
+	multipletest_aead 2 -s X -u	# sync, no splice, stream sendmsg
+	multipletest_aead 2 -v X -u	# sync, splice
+	multipletest_aead 10 X -g -u	# async, AIO fallback, no splice, one shot sendmsg
+	multipletest_aead 10 -s	-g -u	# async, AIO fallback, no splice, stream sendmsg
+	multipletest_aead 10 -v	-g -u	# async AIO fallback, splice
+else
+	echo_deact "AEAD tests of copied AAD deactivated"
 fi
 
 if $(check_min_kernelver 4 99); then

@@ -766,6 +766,7 @@ static void usage(void)
 	fprintf(stderr, "\t-g --aiofallback\tInvoke AIO fallback\n");
 	fprintf(stderr, "\t-h --fuzztest\tInvoke fuzzing tests\n");
 	fprintf(stderr, "\t-j --multithreaded\tMultithreaded test\n");
+	fprintf(stderr, "\t-u --printaad\tPrint the AAD data after cipher op (AEAD only)\n");
 }
 
 /*
@@ -2621,6 +2622,7 @@ int main(int argc, char *argv[])
 	int rc = 1;
 	int stream = 0;
 	int multithreaded = 0;
+	int printaad = 0;
 	int large = 0;
 	int aiofallback = 0;
 	int fuzztests = 0;
@@ -2661,9 +2663,10 @@ int main(int argc, char *argv[])
 			{"aiofallback", 0, 0, 'g'},
 			{"fuzztest", 0, 0, 'h'},
 			{"multithreaded", 0, 0, 'j'},
+			{"printaad", 0, 0, 'u'},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "ec:p:q:i:mn:k:a:l:t:x:zsyd:vo:r:b:fghj", opts, &opt_index);
+		c = getopt_long(argc, argv, "ec:p:q:i:mn:k:a:l:t:x:zsyd:vo:r:b:fghju", opts, &opt_index);
 		if (-1 == c)
 			break;
 		switch (c)
@@ -2804,6 +2807,9 @@ int main(int argc, char *argv[])
 			case 'h':
 				fuzztests = 1;
 				break;
+			case 'u':
+				printaad = 1;
+				break;
 
 			default:
 				usage();
@@ -2827,11 +2833,12 @@ int main(int argc, char *argv[])
 		rc = cavs_sym_aio(&cavs_test, loops, splice, aiofallback);
 	else if (AEAD == cavs_test.type) {
 		if (stream)
-			rc = cavs_aead_stream(&cavs_test, loops, 0);
+			rc = cavs_aead_stream(&cavs_test, loops, printaad);
 		else
-			rc = cavs_aead(&cavs_test, loops, splice, 0);
+			rc = cavs_aead(&cavs_test, loops, splice, printaad);
 	} else if (AEAD_AIO == cavs_test.type)
-		rc = cavs_aead_aio(&cavs_test, loops, splice, 0, aiofallback);
+		rc = cavs_aead_aio(&cavs_test, loops, splice, printaad,
+				   aiofallback);
 	else if (HASH == cavs_test.type) {
 		if (stream)
 			rc = cavs_hash_stream(&cavs_test, loops);
