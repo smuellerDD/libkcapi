@@ -1,3 +1,30 @@
+Changes 0.14.0
+ * AIO: fix tracking of completed IOCBs
+ * speed-test: fix AEAD handling
+ * speed-test: fix time calculation
+ * compiler now warns a user of deprecated API calls
+ * AIO: handle kernel errors for algif_skcipher gracefully
+ * AIO: using multiple IOCB if algif_aead interface supports it
+ * ASYM: add PKCS1 tests
+ * AIO: add ASYM AIO support
+ * AIO: fix AEAD AIO fallback
+ * AIO: add AIO fallback testing
+ * replace enforcement of symmetric cipher limits with a log message only
+   (the underlying kernel implementations should catch any errors)
+ * add fuzzing tests
+ * use autotools build system as provided by Georges Savoundararadj with
+   additional considerations from Marcin Nowakowski (thanks a lot)
+ * ALG_MAX_PAGES restriction is gone with current AF_ALG interface
+ * add HKDF (RFC5869)
+ * add apps/kcapi-rng
+ * add support for multiple accepts where the caller maintains the opfd
+ * fix memleak in error case in PBKDF
+ * add multithreaded symmetric cipher tests
+ * enable full AIO support for kernels 4.13 and higher (fallback AIO
+   implementation using synchronous support for earlier kernels) -- this
+   is due to the broken AIO support for earlier kernels
+ * Add tests for the AAD copy operation to be supported for kernel 4.13
+
 Changes 0.13.0
  * change kcapi_aead_encrypt_aio, kcapi_aead_decrypt_aio,
    kcapi_cipher_encrypt_aio and kcapi_cipher_decrypt_aio to require the
