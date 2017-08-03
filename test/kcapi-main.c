@@ -286,7 +286,7 @@ static int fuzz_init_test(unsigned int size)
 	int ret = 0;
 	uint8_t *name = NULL;
 
-	kcapi_set_verbosity(LOG_NONE);
+	kcapi_set_verbosity(KCAPI_LOG_NONE);
 
 	if (size) {
 		name = calloc(1, size + 1);
@@ -517,7 +517,7 @@ static int fuzz_tests(struct kcapi_cavs *cavs_test, uint32_t loops)
 	int ret = 0;
 	uint32_t i;
 
-	kcapi_set_verbosity(LOG_NONE);
+	kcapi_set_verbosity(KCAPI_LOG_NONE);
 
 	for (i = 0; i < loops; i++) {
 		if (!cavs_test->type)
