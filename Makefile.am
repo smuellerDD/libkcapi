@@ -172,6 +172,7 @@ clean-local:
 	rm -f lib/doc/*.ps
 	rm -rf lib/doc/man/
 	rm -rf lib/doc/html/
+	rm -rf doc/
 	rm -rf bin/
 
 SUBDIRS = lib/doc
