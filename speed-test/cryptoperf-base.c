@@ -172,7 +172,7 @@ char *cp_print_status(struct cp_test *test, int raw)
 			(unsigned long)(processed_bytes/totaltime),
 			(unsigned long)ops);
 	} else {
-		#define VALLEN 10
+		#define VALLEN 23
 		char byteseconds[VALLEN + 1];
 
 		memset(byteseconds, 0, sizeof(byteseconds));
