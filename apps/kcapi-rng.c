@@ -45,6 +45,7 @@ struct kcapi_handle *rng = NULL;
 unsigned int Verbosity = 0;
 char *rng_name = NULL;
 
+#ifndef HAVE_GETRANDOM
 static int read_complete(int fd, uint8_t *buf, uint32_t buflen)
 {
 	ssize_t ret;
@@ -76,6 +77,7 @@ static int read_random(uint8_t *buf, uint32_t buflen)
 	close(fd);
 	return ret;
 }
+#endif
 
 static int get_random(uint8_t *buf, uint32_t buflen)
 {
