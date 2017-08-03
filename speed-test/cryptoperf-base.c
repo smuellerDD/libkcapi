@@ -178,7 +178,7 @@ char *cp_print_status(struct cp_test *test, int raw)
 		memset(byteseconds, 0, sizeof(byteseconds));
 		cp_bytes2string((processed_bytes / totaltime), byteseconds,
 				(VALLEN + 1));
-		snprintf(str, 120, "%-37s|%s|%8lu bytes|%*s/s|%lu ops/s",
+		snprintf(str, 120, "%-26s|%s|%8lu bytes|%*s/s|%lu ops/s",
 			test->testname,
 			test->enc ? "e" : "d",
 			(unsigned long)test->results.chunksize,
