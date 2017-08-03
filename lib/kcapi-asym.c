@@ -145,7 +145,7 @@ int32_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
 			         struct iovec *iov, uint32_t iovlen)
 {
 	if (!iov || !iovlen) {
-		kcapi_dolog(LOG_ERR,
+		kcapi_dolog(KCAPI_LOG_ERR,
 			    "Asymmetric operation: No buffer for output data provided");
 		return -EINVAL;
 	}
@@ -162,7 +162,7 @@ _kcapi_akcipher_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 	uint32_t tosend = iovlen;
 
 	if (handle->aio.disable) {
-		kcapi_dolog(LOG_WARN, "AIO support disabled\n");
+		kcapi_dolog(KCAPI_LOG_WARN, "AIO support disabled\n");
 		return -EOPNOTSUPP;
 	}
 

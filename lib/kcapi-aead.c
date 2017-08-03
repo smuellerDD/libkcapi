@@ -66,11 +66,11 @@ void kcapi_aead_getdata(struct kcapi_handle *handle,
 			uint8_t **data, uint32_t *datalen,
 			uint8_t **tag, uint32_t *taglen)
 {
-	kcapi_dolog(LOG_VERBOSE,
+	kcapi_dolog(KCAPI_LOG_VERBOSE,
 		    "Usage of deprecated API kcapi_aead_getdata");
 
 	if (encdatalen <  handle->aead.taglen + handle->aead.assoclen) {
-		kcapi_dolog(LOG_ERR, "Result of encryption operation (%lu) is smaller than tag and AAD length (%lu)",
+		kcapi_dolog(KCAPI_LOG_ERR, "Result of encryption operation (%lu) is smaller than tag and AAD length (%lu)",
 			    (unsigned long)encdatalen,
 			    (unsigned long)handle->aead.taglen +
 			    (unsigned long)handle->aead.assoclen);
@@ -102,7 +102,7 @@ void kcapi_aead_getdata_input(struct kcapi_handle *handle,
 	uint32_t l_aadlen, l_datalen, l_taglen;
 
 	if (encdatalen < handle->aead.assoclen) {
-		kcapi_dolog(LOG_DEBUG, "AAD data not found");
+		kcapi_dolog(KCAPI_LOG_DEBUG, "AAD data not found");
 		l_aad = NULL;
 		l_aadlen = 0;
 	} else {
@@ -114,7 +114,8 @@ void kcapi_aead_getdata_input(struct kcapi_handle *handle,
 	l_taglen = (enc && handle->flags.newtag) ? 0 : handle->aead.taglen;
 	/* databuffer is all between AAD buffer (if present) and tag */
 	if (encdatalen < l_taglen) {
-		kcapi_dolog(LOG_DEBUG, "Cipher result data not found");
+		kcapi_dolog(KCAPI_LOG_DEBUG,
+			    "Cipher result data not found");
 		l_data = NULL;
 		l_datalen = 0;
 	} else {
@@ -155,7 +156,7 @@ void kcapi_aead_getdata_output(struct kcapi_handle *handle,
 	uint32_t l_aadlen, l_datalen, l_taglen;
 
 	if (encdatalen < handle->aead.assoclen) {
-		kcapi_dolog(LOG_ERR, "AAD data not found");
+		kcapi_dolog(KCAPI_LOG_ERR, "AAD data not found");
 		l_aad = NULL;
 		l_aadlen = 0;
 	} else {
@@ -171,7 +172,8 @@ void kcapi_aead_getdata_output(struct kcapi_handle *handle,
 		l_taglen = handle->aead.taglen;
 	/* databuffer is all between AAD buffer (if present) and tag */
 	if (encdatalen < l_taglen) {
-		kcapi_dolog(LOG_DEBUG, "Cipher result data not found");
+		kcapi_dolog(KCAPI_LOG_DEBUG,
+			    "Cipher result data not found");
 		l_data = NULL;
 		l_datalen = 0;
 	} else {
@@ -185,7 +187,8 @@ void kcapi_aead_getdata_output(struct kcapi_handle *handle,
 			l_tag = encdata + l_aadlen + l_datalen;
 			l_taglen = handle->aead.taglen;
 		} else {
-			kcapi_dolog(LOG_DEBUG, "Tag data not found");
+			kcapi_dolog(KCAPI_LOG_DEBUG,
+				    "Tag data not found");
 			l_tag = NULL;
 			l_taglen = 0;
 		}
@@ -446,7 +449,7 @@ int32_t kcapi_aead_stream_op(struct kcapi_handle *handle,
 			     struct iovec *iov, uint32_t iovlen)
 {
 	if (!iov) {
-		kcapi_dolog(LOG_ERR,
+		kcapi_dolog(KCAPI_LOG_ERR,
 			    "AEAD operation: No buffer for output data provided");
 		return -EINVAL;
 	}
@@ -478,7 +481,7 @@ uint32_t kcapi_aead_outbuflen(struct kcapi_handle *handle,
 {
 	int bs = handle->info.blocksize;
 
-	kcapi_dolog(LOG_VERBOSE,
+	kcapi_dolog(KCAPI_LOG_VERBOSE,
 		    "Usage of deprecated API kcapi_aead_outbuflen");
 	return ((inlen + bs - 1) / bs * bs + taglen + assoclen);
 }

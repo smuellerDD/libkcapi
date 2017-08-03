@@ -1233,11 +1233,11 @@ uint32_t kcapi_rng_seedsize(struct kcapi_handle *handle);
  */
 
 enum kcapi_verbosity {
-	LOG_NONE,
-	LOG_ERR,
-	LOG_WARN,
-	LOG_VERBOSE,
-	LOG_DEBUG,
+	KCAPI_LOG_NONE,
+	KCAPI_LOG_ERR,
+	KCAPI_LOG_WARN,
+	KCAPI_LOG_VERBOSE,
+	KCAPI_LOG_DEBUG,
 };
 
 /**

@@ -326,7 +326,8 @@ int32_t kcapi_hkdf(const char *hashname,
 	}
 
 	if (h > HKDF_MAXHASH) {
-		kcapi_dolog(LOG_ERR, "Null salt size too small for hash\n");
+		kcapi_dolog(KCAPI_LOG_ERR,
+			    "Null salt size too small for hash\n");
 		err = -EFAULT;
 		goto err;
 	}
@@ -553,7 +554,8 @@ int32_t kcapi_pbkdf(const char *hashname,
 
 	h = kcapi_md_digestsize(handle);
 	if (h > sizeof(u)) {
-		kcapi_dolog(LOG_ERR, "Programming error in file %s at line %u\n",
+		kcapi_dolog(KCAPI_LOG_ERR,
+			    "Programming error in file %s at line %u\n",
 			    __FILE__, __LINE__);
 		err = -EFAULT;
 		goto err;

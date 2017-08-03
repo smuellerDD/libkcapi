@@ -78,7 +78,7 @@ static int32_t _kcapi_md_final(struct kcapi_handle *handle,
 	struct iovec iov;
 
 	if (!buffer || !len) {
-		kcapi_dolog(LOG_ERR,
+		kcapi_dolog(KCAPI_LOG_ERR,
 			    "Message digest: output buffer too small (seen %lu - required %u)",
 			    (unsigned long)len,	handle->info.hash_digestsize);
 		return -EINVAL;

@@ -51,7 +51,7 @@ int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 
 	/* require properly sized output data size */
 	if (outlen < ((inlen + bs - 1) / bs * bs))
-		kcapi_dolog(LOG_WARN,
+		kcapi_dolog(KCAPI_LOG_WARN,
 			    "Symmetric Encryption: Ciphertext buffer (%lu) is not plaintext buffer (%lu) rounded up to multiple of block size %u",
 			    (unsigned long) outlen, (unsigned long)inlen, bs);
 
@@ -106,12 +106,12 @@ int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 {
 	/* require properly sized output data size */
 	if (inlen % handle->info.blocksize)
-		kcapi_dolog(LOG_WARN,
+		kcapi_dolog(KCAPI_LOG_WARN,
 			    "Symmetric Decryption: Ciphertext buffer is not multiple of block size %u",
 			    handle->info.blocksize);
 
 	if (outlen < inlen)
-		kcapi_dolog(LOG_WARN,
+		kcapi_dolog(KCAPI_LOG_WARN,
 			    "Symmetric Decryption: Plaintext buffer (%lu) is smaller as ciphertext buffer (%lu)",
 			    (unsigned long)outlen, (unsigned long)inlen);
 
@@ -194,7 +194,7 @@ int32_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
 			       struct iovec *iov, uint32_t iovlen)
 {
 	if (!iov || !iovlen) {
-		kcapi_dolog(LOG_ERR,
+		kcapi_dolog(KCAPI_LOG_ERR,
 			    "Symmetric operation: No buffer for output data provided");
 		return -EINVAL;
 	}
