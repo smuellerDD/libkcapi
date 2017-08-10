@@ -47,6 +47,13 @@ then
 	exit 1
 fi
 PLATFORM=$(file $KCAPI | cut -d" " -f 3)
+if [ x"$PLATFORM" = x"shell" ]
+then
+	if [ -f ../bin/.libs/kcapi ]
+	then
+		PLATFORM=$(file ../bin/.libs/kcapi | cut -d" " -f 3)
+	fi
+fi
 
 HASH_name_1="cmac(des3_ede)"
 HASH_key_1="7a9bcde63b52f8ae1aa8672668c731986773519b3d51dad9"
@@ -990,7 +997,7 @@ aeadfunc()
 
 auxtest()
 {
-	$KCAPI -z
+	$KCAPI -z > /dev/null
 	if [ $? -ne 0 ]
 	then
 		echo_fail "Auxiliary test failure detected"
