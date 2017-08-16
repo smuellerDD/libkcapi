@@ -1,0 +1,231 @@
+.\" Copyright (c) 2017 by Stephan Mueller (smueller@chronox.de)
+.\"
+.\" Permission is granted to make and distribute verbatim copies of this
+.\" manual provided the copyright notice and this permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted to copy and distribute modified versions of this
+.\" manual under the conditions for verbatim copying, provided that the
+.\" entire resulting derived work is distributed under the terms of a
+.\" permission notice identical to this one.
+.\"
+.\" Formatted or processed versions of this manual, if unaccompanied by
+.\" the source, must acknowledge the copyright and authors of this work.
+.\" License.
+.TH KCAPI-ENC 1  2017-08-14
+.SH NAME
+kcapi-enc \- Kernel Crypto API Symmetric Cipher Crypto Helper
+.SH SYNOPSIS
+.B kcapi-enc
+[\fI\,OPTION\/\fR]
+.SH DESCRIPTION
+The
+.I kcapi-enc
+application provides tool to use the symmetric ciphers of the Linux
+kernel crypto API from the command line.
+.PP
+The input data can be provided either via STDIN or via a file
+that is referenced with a command line option. Similarly, the output
+data can either be sent to a file referenced with a command line option
+or to STDOUT.
+.PP
+The majority of symmetric ciphers are block ciphers requiring the
+input data to be multiples of the block size.
+.IR kcapi-enc
+automatically adds padding when using block ciphers and input data
+whose size is not a multiple of the cipher's block size during
+encryption. An automated unpadding during decryption is only applied
+when the input and output data is provided as files. If either
+the input data is provided via STDIN or the output data is obtained
+via STDOUT, the unpadding is not applied.
+.PP
+The used padding schema is consistent with OpenSSL's
+.IR enc
+application. Data encrypted with OpenSSL's
+.IR enc
+tool can be decrypted with
+.IR kcapi-enc
+and vice versa.
+.PP
+The symmetric key used for the cryptographic operation can either be
+provided via a file descriptor or via a password. When using a file
+descriptor, the provided data is taken directly as the symmetric key.
+As the Linux kernel crypto API does not allow specifying the used
+key size with the cipher algorithm name (e.g. AES-128 or AES-256
+cannot be specified, but only AES), the size of the provided key
+defines which cipher operation is used. When providing a password,
+the
+.IR kcapi-enc
+application derives a 256 bit key from the password using PBKDF2.
+PBKDF2 with HMAC-SHA256 transforms the password into a key.
+The PBKDF2 operation requires two additional input values: a salt and
+an iteration count. Both can be provided via the command line. If
+the iteration count is not specified,
+.IR kcapi-enc
+determines the iteration count internally by counting how many
+iterations are necessary to surpass 100ms operation time. The determined
+number is provided via STDERR and must be re-used when decrypting
+the data. If the salt is not provided via command line,
+.IR kcapi-enc
+generates a 256 bit salt and sends its hexadecimal
+representation to STDERR. This salt must be used during decryption
+to ensure the PBKDF2 operation generates the correct symmetric key.
+.LP
+The following options are supported when invoking
+.IR kcapi-enc :
+.TP
+\fB-c\fR, \fB\-\-cipher \fI\,NAME\/\fR
+The
+.IR NAME
+argument specifies the symmetric cipher to be used. The allowed
+ciphers are defined by the Linux kernel. Currently registered
+ciphers can be reviewed at
+.IR /proc/crypto .
+The content of this file, however, can change when new ciphers
+are registered. The
+.IR NAME
+argument is given directly to the Linux kernel crypto API.
+.TP
+\fB\-e\fR, \fB\-\-encrypt\fR
+Perform an encryption operation on the input data. This is the
+default behavior which implies that this option can be skipped.
+The input data is automatically padded if the the data size is
+not a multiple of the block size of the chosen cipher.
+.TP
+\fB\-d\fR, \fB\-\-decrypt\fR
+Perform a decryption operation on the input data. Automated
+unpadding is performed only when the input and output data
+is provided via files referenced with the command line options.
+.TP
+\fB\-i\fR, \fB\-\-infile \fI\,FILE\/\fR
+Use the file referenced with
+.IR FILE
+as the input data. If this option is not provided,
+.IR kcapi-enc
+expects the input data via STDIN.
+.TP
+\fB\-o\fR, \fB\-\-outfile \fI\,FILE\/\fR
+Use the file referenced with
+.IR FILE
+as the destination for the output of the cryptographic
+operation. If this option is not provided,
+.IR kcapi-enc
+will provide the output via STDOUT.
+.TP
+\fB\-\-iv \fI\,IV\/\fR
+Use the
+.IR IV
+data as initialization vector for the cryptographic operation.
+That
+.IR IV
+value is expected to be a hexadecimal notation and must match
+the block size of the chosen cipher. When the CTR block chaining
+mode is used, the
+.IR IV
+value is the start value of the counter. When using the CCM
+cipher, the
+.IR IV
+value can either be the initialization vector or the nonce as defined
+in SP800-38C Appendix A.2.
+.TP
+\fB\-\-aad \fI\,AAD\/\fR
+For AEAD ciphers like CCM, GCM or the authenc ciphers of the Linux
+kernel crypto API, the additional authentication data can be provided
+with the
+.IR AAD
+parameter. The data is expected in hexadecimal format.
+.TP
+\fB\-\-tag \fI\,TAG\/\fR
+The AEAD tag value required for the decryption operation is
+provided with the
+.IR TAG
+parameter. This parameter is expected in hexadecimal format.
+.TP
+\fB\-\-taglen \fI\,LENGTH\/\fR
+During encryption operation of AEAD ciphers, the tag is generated. It
+is permissible to generate differently sized tags where the parameter
+.IR LENGTH
+specifies the size of the tag value to be generated in bytes.
+.TP
+\fB\-\-salt \fI\,SALT\/\fR
+When performing the PBKDF2 operation to obtain the symmetric key
+from the password, the
+.IR SALT
+value is used as one input parameter. To ensure the same symmetric
+key is generated from a given password, the same salt value must
+be used. This implies that during decryption, the same salt
+used during the encryption operation must be referenced.
+.IR kcapi-enc
+is unable to determine whether the symmetric key derived from the password is
+the correct one to decrypt the data, because any symmetric key
+will always successfully decrypt data. Yet, the resulting data
+may be different from what is expected.
+.TP
+\fB\-p\fR, \fB\-\-passwd \fI\,PASSWORD\/\fR
+The
+.IR PASSWORD
+parameter provides the password from which the symmetric key
+is derived used to encrypt or decrypt the data.
+.BI WARNING
+The password provided with the command line can be seen from
+other applications or users when inspecting the
+.IR /proc
+file system! Thus, a password SHOULD NOT be used via the
+command line and the
+.IR passwdfd
+option should be used instead.
+.TP
+\fB\-\-passwdfd \fI\,FD\/\fR
+Instead of providing the password via command line, it can be
+injected into
+.IR kcapi-enc
+using a file descriptor. The file descriptor number the
+password will be send through can be provided with the
+.IR FD
+option.
+.TP
+\fB\-\-keyfd \fI\,FD\/\fR
+To provide a symmetric key that is directly used for the
+cryptographic operation, the file descriptor referenced with
+.IR FD
+must be used. Using a file descriptor is intentionally the only
+way to provide a symmetric key to
+.IR kcapi-enc .
+.TP
+\fB\-\-nounpad\fR
+During decryption and when the input data is provided via a file
+as well as the output is written to a file,
+.IR kcapi-enc
+automatically tries to detect a padding and removes the padding
+data. If this automated unpadding is not desired, the
+.IR nounpad
+option will prevent the unpadding.
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Enable a verbose operation of
+.IR kcapi-enc .
+Using this option multiple times increases the verbosity.
+.TP
+\fB\-q\fR, \fB\-\-quiet\fR
+Prevent the generation of any log output. Note, some log output
+would be needed for proper operation like the display of the
+number of PBKDF2 iterations or the internally generated PBKDF2 salt.
+During quiet operation, none of this information is displayed.
+Note, both information can also be supplied via the command line
+so that
+.IR kcapi-enc
+does not need to generate this information.
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Display the help text.
+.TP
+\fB\-\-version\fR
+Display the version number of the
+.IR kcapi-enc
+application.
+.PP
+.SH NOTES
+The AEAD cipher support is currently untested.
+.PP
+.SH SEE ALSO
+\fBkcapi-dgst\fR(1)
