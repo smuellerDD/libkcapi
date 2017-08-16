@@ -81,6 +81,9 @@ AM_CONDITIONAL([ENABLE_KCAPI_HASHER], [test "x$with_kcapi_hasher" = "xyes"])
 AC_ARG_ENABLE([kcapi-rngapp], [AS_HELP_STRING([--enable-kcapi-rngapp], [Compile rng read application])], [with_kcapi_rngapp=$enableval])
 AM_CONDITIONAL([ENABLE_KCAPI_RNGAPP], [test "x$with_kcapi_rngapp" = "xyes"])
 
+AC_ARG_ENABLE([kcapi-encapp], [AS_HELP_STRING([--enable-kcapi-encapp], [Compile enc application])], [with_kcapi_encapp=$enableval])
+AM_CONDITIONAL([ENABLE_KCAPI_ENCAPP], [test "x$with_kcapi_encapp" = "xyes"])
+
 AC_ARG_ENABLE([lib-kdf], [AS_HELP_STRING([--disable-lib-kdf], [Disable KDF support in library to make it smaller])], [with_lib_kdf=$enableval])
 AM_CONDITIONAL([DISABLE_LIB_KDF], [test "x$with_lib_kdf" = "xno"])
 

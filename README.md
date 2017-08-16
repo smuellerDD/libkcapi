@@ -90,6 +90,7 @@ The `configure` script supports the following options:
 * `--enable-kcapi-hasher`: compile and install the drop-in replacement
   applications
 * `--enable-kcapi-rngapp`: compile and install the kcapi-rng application
+* `--enable-kcapi-encapp`: compile and install the kcapi-enc application
 * The various `--disable-lib-*` options allows the disabling of different
   library functions to allow minimizing the binary.
 

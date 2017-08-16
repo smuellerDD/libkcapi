@@ -114,6 +114,17 @@ bin_kcapi_rng_SOURCES = apps/kcapi-rng.c
 SCAN_FILES += $(kcapi_rng_SOURCES)
 endif
 
+if ENABLE_KCAPI_ENCAPP
+bin_PROGRAMS += bin/kcapi-enc
+
+bin_kcapi_enc_CPPFLAGS = $(COMMON_CPPFLAGS) -pie -fPIE -Ilib/
+bin_kcapi_enc_LDFLAGS = $(COMMON_LDFLAGS)
+bin_kcapi_enc_LDADD = libkcapi.la
+bin_kcapi_enc_SOURCES = apps/kcapi-enc.c apps/app-internal.c
+
+SCAN_FILES += $(kcapi_enc_SOURCES)
+endif
+
 if HAVE_CLANG
 analyze_srcs = $(filter %.c, $(SCAN_FILES))
 analyze_plists = $(analyze_srcs:%.c=%.plist)
