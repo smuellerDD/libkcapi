@@ -331,6 +331,11 @@ int32_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
  * rule is not obeyed, the thread invoking kcapi_cipher_stream_update()
  * will be put to sleep until another thread invokes kcapi_cipher_stream_op().
  *
+ * WARNING: The memory referenced by @iov is not accessed by the kernel
+ * during this call. The memory is first accessed when kcapi_cipher_stream_op()
+ * is called. Thus, you MUST make sure that the referenced memory is still
+ * present at the time kcapi_cipher_stream_op() is called.
+ *
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
@@ -843,6 +848,11 @@ int32_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
  * sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES at one time. Longer input data cannot
  * be handled by the kernel.
  *
+ * WARNING: The memory referenced by @iov is not accessed by the kernel
+ * during this call. The memory is first accessed when kcapi_cipher_stream_op()
+ * is called. Thus, you MUST make sure that the referenced memory is still
+ * present at the time kcapi_cipher_stream_op() is called.
+ *
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
@@ -863,6 +873,11 @@ int32_t kcapi_aead_stream_update(struct kcapi_handle *handle,
  * This call is identical to the kcapi_aead_stream_update() call with the
  * exception that it marks the last data buffer before the cipher operation
  * is triggered. Typically, the tag value is provided with this call.
+ *
+ * WARNING: The memory referenced by @iov is not accessed by the kernel
+ * during this call. The memory is first accessed when kcapi_cipher_stream_op()
+ * is called. Thus, you MUST make sure that the referenced memory is still
+ * present at the time kcapi_cipher_stream_op() is called.
  *
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
@@ -1767,6 +1782,11 @@ int32_t kcapi_akcipher_stream_init_vfy(struct kcapi_handle *handle,
  * where one thread sends data to be processed and one thread picks up data
  * processed by the cipher operation.
  *
+ * WARNING: The memory referenced by @iov is not accessed by the kernel
+ * during this call. The memory is first accessed when kcapi_cipher_stream_op()
+ * is called. Thus, you MUST make sure that the referenced memory is still
+ * present at the time kcapi_cipher_stream_op() is called.
+ *
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
@@ -1790,6 +1810,11 @@ int32_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
  * This call must be used if all data is delivered to the kernel and
  * kcapi_akcipher_stream_op() will be invoked as a next step. This call
  * notifies the kernel that no further data is to be expected.
+ *
+ * WARNING: The memory referenced by @iov is not accessed by the kernel
+ * during this call. The memory is first accessed when kcapi_cipher_stream_op()
+ * is called. Thus, you MUST make sure that the referenced memory is still
+ * present at the time kcapi_cipher_stream_op() is called.
  *
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
