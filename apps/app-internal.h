@@ -39,8 +39,11 @@ void dolog(enum kcapi_verbosity severity, const char *fmt, ...);
 void dolog_bin(enum kcapi_verbosity severity,
 	       const uint8_t *bin, uint32_t binlen, const char *explanation);
 void set_verbosity(enum kcapi_verbosity level);
+void hex2bin(const char *hex, uint32_t hexlen, uint8_t *bin, uint32_t binlen);
 int hex2bin_alloc(const char *hex, uint32_t hexlen,
 		  uint8_t **bin, uint32_t *binlen);
+void bin2print(const uint8_t *bin, uint32_t binlen,
+	       const char *filename, FILE *outfile);
 
 #ifdef __cplusplus
 }

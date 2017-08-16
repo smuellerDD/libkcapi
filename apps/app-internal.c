@@ -59,6 +59,25 @@ static void bin2hex(const uint8_t *bin, uint32_t binlen,
 	}
 }
 
+void bin2print(const uint8_t *bin, uint32_t binlen,
+	       const char *filename, FILE *outfile)
+{
+	char *hex;
+	uint32_t hexlen = binlen * 2 + 1;
+
+	hex = calloc(1, hexlen);
+	if (!hex)
+		return;
+	bin2hex(bin, binlen, hex, hexlen - 1 , 0);
+	/* fipshmac does not want the file name :-( */
+	if (outfile != stdout) {
+		fprintf(outfile, "%s\n", hex);
+	} else {
+		fprintf(outfile, "%s  %s\n", hex, filename);
+	}
+	free(hex);
+}
+
 void dolog(enum kcapi_verbosity severity, const char *fmt, ...)
 {
 	va_list args;
@@ -133,8 +152,7 @@ static int bin_char(char hex)
  * @binlen length of already allocated bin buffer (should be at least
  *	   half of hexlen -- if not, only a fraction of hexlen is converted)
  */
-static void hex2bin(const char *hex, uint32_t hexlen,
-		    uint8_t *bin, uint32_t binlen)
+void hex2bin(const char *hex, uint32_t hexlen, uint8_t *bin, uint32_t binlen)
 {
 	uint32_t i;
 	uint32_t chars = (binlen > (hexlen / 2)) ? (hexlen / 2) : binlen;
