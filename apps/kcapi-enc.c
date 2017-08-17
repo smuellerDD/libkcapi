@@ -46,8 +46,8 @@ struct opt_data {
 	uint32_t taglen;
 	const char *passwd;
 	const char *salt;
-	pid_t password_fd;
-	pid_t key_fd;
+	int password_fd;
+	int key_fd;
 	uint32_t pbkdf_iterations;
 	uint32_t decrypt;
 	uint32_t nounpad;
@@ -320,6 +320,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		}
 	}
 
+	/* Access input data */
 	if (opts->infile) {
 		infd = open(opts->infile, O_RDONLY | O_CLOEXEC);
 		if (infd < 0) {
@@ -333,6 +334,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 	} else
 		infd = STDIN_FD;
 
+	/* Access output data */
 	if (opts->outfile) {
 		outfd = open(opts->outfile, O_RDWR | O_CLOEXEC | O_CREAT,
 			     S_IRWXU | S_IRWXG | S_IRWXO);
@@ -349,6 +351,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 	} else
 		outfd = STDOUT_FD;
 
+	/* Initialize cipher operation */
 	if (opts->decrypt)
 		ret = opts->func_stream_init_dec(handle, ivbuf, NULL, 0);
 	else
@@ -356,6 +359,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 	if (ret)
 		goto out;
 
+	/* Send AAD in case we have it */
 	if (aadbuf) {
 		iniov.iov_base = aadbuf;
 		iniov.iov_len = opts->aadlen;
