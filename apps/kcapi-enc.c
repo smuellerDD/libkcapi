@@ -428,7 +428,13 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 
 			padbyte = *(inmem + insb.st_size - 1);
 
-			if ((uint32_t)padbyte < opts->func_blocksize(handle)) {
+			/*
+			 * Warn if trailing bytes look like padding although
+			 * we will not apply padding.
+			 */
+			if (!opts->decrypt &&
+			    !(insb.st_size % opts->func_blocksize(handle)) &&
+			    (uint32_t)padbyte < opts->func_blocksize(handle)) {
 				uint32_t i;
 				uint32_t padded = 1;
 
@@ -442,7 +448,8 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 				}
 
 				if (padded &&
-				    (insb.st_size == (i + (uint32_t)padbyte))) {
+				    (insb.st_size ==
+				     (i + (uint32_t)padbyte) + 1)) {
 					dolog(KCAPI_LOG_WARN,
 					      "Input file's trailing bytes will be treated as padding during decryption unless you turn off padding handling with --nounpad\n");
 				}
