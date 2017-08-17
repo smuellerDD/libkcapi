@@ -798,7 +798,7 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 					      "Passwd FD value too big");
 					usage();
 				}
-				opts->password_fd = (pid_t)val;
+				opts->password_fd = (int)val;
 				break;
 			case 12:
 				val = strtoul(optarg, NULL, 10);
@@ -816,7 +816,7 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 					      "Passwd FD value too big");
 					usage();
 				}
-				opts->key_fd = (pid_t)val;
+				opts->key_fd = (int)val;
 				break;
 			case 14:
 				opts->nounpad = 1;
