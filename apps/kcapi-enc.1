@@ -84,7 +84,13 @@ ciphers can be reviewed at
 The content of this file, however, can change when new ciphers
 are registered. The
 .IR NAME
-argument is given directly to the Linux kernel crypto API.
+argument is given directly to the Linux kernel crypto API. The
+chosen cipher must be either of type
+.IR skcipher
+or of type
+.IR aead
+as marked in
+.IR /proc/crypto .
 .TP
 \fB\-e\fR, \fB\-\-encrypt\fR
 Perform an encryption operation on the input data. This is the
