@@ -1,6 +1,6 @@
 #!/bin/bash
 
-COMPILE_OPTS="--enable-kcapi-test --enable-kcapi-encapp --enable-kcapi-hasher"
+COMPILE_OPTS="--enable-kcapi-test --enable-kcapi-encapp --enable-kcapi-hasher --enable-kcapi-dgstapp"
 
 exec_test()
 {
