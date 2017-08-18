@@ -1,0 +1,87 @@
+.\" Copyright (c) 2017 by Stephan Mueller (smueller@chronox.de)
+.\"
+.\" Permission is granted to make and distribute verbatim copies of this
+.\" manual provided the copyright notice and this permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted to copy and distribute modified versions of this
+.\" manual under the conditions for verbatim copying, provided that the
+.\" entire resulting derived work is distributed under the terms of a
+.\" permission notice identical to this one.
+.\"
+.\" Formatted or processed versions of this manual, if unaccompanied by
+.\" the source, must acknowledge the copyright and authors of this work.
+.\" License.
+.TH KCAPI-RNG 1  2017-08-14
+.SH NAME
+kcapi-rng \- Kernel Crypto API Random Number Gatherer
+.SH SYNOPSIS
+.B kcapi-rng
+[\fI\,OPTION\/\fR]
+.SH DESCRIPTION
+The
+.I kcapi-rng
+application provides tool to obtain random numbers from the Linux
+kernel crypto API via the command line. The tool is similar to reading
+.IR /dev/hwrand
+with the difference that the used random number generators are fully
+deterministic - i.e. they are DRNGs.
+.PP
+Any potential seed data can be provided via STDIN. Some of the DRNGs
+require seeding as they do not seed themselves. The
+.IR kcapi-rng
+tool ensures that the DRNGs are seeded by pulling the seed data from
+the
+.IR getrandom
+system call (or
+.IR /dev/urandom
+if
+.IR getrandom
+is not available). The amount of seed data is defined by the DRNG itself
+and can be reviewed by assessing
+.IR /proc/crypto .
+The seed provided via STDIN will be added to the internally-generated seed.
+The generated random numbers are written to STDOUT.
+.LP
+The following options are supported when invoking
+.IR kcapi-rng :
+.TP
+\fB-b\fR, \fB\-\-bytes \fI\,BYTES\/\fR
+Generate
+.IR BYTES
+number of random bytes.
+\fB-n\fR, \fB\-\-name \fI\,NAME\/\fR
+The
+.IR NAME
+argument specifies the random number generator implementation
+to be used. The allowed random number generators are defined by the Linux
+kernel. Currently registered ciphers can be reviewed at
+.IR /proc/crypto .
+The content of this file, however, can change when new ciphers
+are registered. The
+.IR NAME
+argument is given directly to the Linux kernel crypto API. The
+chosen cipher must be of type
+.IR rng
+as marked in
+.IR /proc/crypto .
+.TP
+\fB\-\-hex\fR
+The generated random numbers are print out in hexadecimal notation instead
+of as binary string.
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Enable a verbose operation of
+.IR kcapi-rng .
+Using this option multiple times increases the verbosity.
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Display the help text.
+.TP
+\fB\-\-version\fR
+Display the version number of the
+.IR kcapi-rng
+application.
+.PP
+.SH SEE ALSO
+\fBkcapi-enc\fR(1) \fBkcapi-dgst\fR(1)

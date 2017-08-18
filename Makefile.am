@@ -109,7 +109,7 @@ bin_PROGRAMS += bin/kcapi-rng
 bin_kcapi_rng_CPPFLAGS = $(COMMON_CPPFLAGS) -pie -fPIE -Ilib/
 bin_kcapi_rng_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_rng_LDADD = libkcapi.la
-bin_kcapi_rng_SOURCES = apps/kcapi-rng.c
+bin_kcapi_rng_SOURCES = apps/kcapi-rng.c apps/app-internal.c
 
 SCAN_FILES += $(kcapi_rng_SOURCES)
 endif

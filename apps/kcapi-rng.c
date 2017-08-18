@@ -38,6 +38,8 @@
 
 #include <kcapi.h>
 
+#include "app-internal.h"
+
 /* For efficiency reasons, this should be identical to algif_rng.c:MAXSIZE. */
 #define KCAPI_RNG_BUFSIZE  128
 /* Minimum seed is 256 bits. */
@@ -46,6 +48,7 @@
 static struct kcapi_handle *rng = NULL;
 static unsigned int Verbosity = 0;
 static char *rng_name = NULL;
+uint32_t hexout = 0;
 
 #if !defined(HAVE_GETRANDOM) && !defined(__NR_getrandom)
 static int random_fd = -1;
@@ -116,6 +119,8 @@ static void usage(void)
 	fprintf(stderr, "\t-b --bytes <BYTES>\tNumber of bytes to generate (required option)\n");
 	fprintf(stderr, "\t-n --name <RNGNAME>\tDRNG name as advertised in /proc/crypto\n");
 	fprintf(stderr, "\t\t\t\t(stdrng is default)\n");
+	fprintf(stderr, "\t --hex\t\t\tThe random number is returned in hexadecimal\n");
+	fprintf(stderr, "\t\t\t\tnotation\n");
 	fprintf(stderr, "\t-h --help\t\tThis help information\n");
 	fprintf(stderr, "\t   --version\t\tPrint version\n");
 	fprintf(stderr, "\t-v --verbose\t\tVerbose logging, multiple options increase\n");
@@ -139,6 +144,7 @@ static unsigned long parse_opts(int argc, char *argv[])
 			{"version",	no_argument,		0, 0},
 			{"bytes",	required_argument,	0, 'b'},
 			{"name",	required_argument,	0, 'r'},
+			{"hex",		no_argument,		0, 0},
 			{0, 0, 0, 0}
 		};
 		c = getopt_long(argc, argv, "vhb:n:", opts, &opt_index);
@@ -168,6 +174,9 @@ static unsigned long parse_opts(int argc, char *argv[])
 				break;
 			case 4:
 				rng_name = optarg;
+				break;
+			case 5:
+				hexout = 1;
 				break;
 			default:
 				usage();
@@ -260,7 +269,14 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 
-		fwrite(&buf, ret, 1, stdout);
+		if (hexout) {
+			char hexbuf[2 * KCAPI_RNG_BUFSIZE];
+
+			bin2hex(buf, ret, hexbuf, sizeof(hexbuf), 0);
+			fwrite(hexbuf, 2 * ret, 1, stdout);
+		} else {
+			fwrite(buf, ret, 1, stdout);
+		}
 
 		outlen -= ret;
 	}
