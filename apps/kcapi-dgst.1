@@ -57,7 +57,7 @@ The following options are supported when invoking
 \fB-c\fR, \fB\-\-cipher \fI\,NAME\/\fR
 The
 .IR NAME
-argument specifies the symmetric cipher to be used. The allowed
+argument specifies the digest cipher to be used. The allowed
 ciphers are defined by the Linux kernel. Currently registered
 ciphers can be reviewed at
 .IR /proc/crypto .
@@ -126,6 +126,10 @@ must be used. Using a file descriptor is intentionally the only
 way to provide a key to
 .IR kcapi-dgst .
 .TP
+\fB\-\-hex\fR
+The generated message digest is print out in hexadecimal notation instead
+of as binary string.
+.TP
 \fB\-v\fR, \fB\-\-verbose\fR
 Enable a verbose operation of
 .IR kcapi-dgst .
@@ -150,4 +154,4 @@ Display the version number of the
 application.
 .PP
 .SH SEE ALSO
-\fBkcapi-enc\fR(1)
+\fBkcapi-enc\fR(1) \fBkcapi-rng\fR(1)
