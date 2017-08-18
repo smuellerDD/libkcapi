@@ -22,6 +22,13 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <limits.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 #include "app-internal.h"
 
@@ -47,8 +54,8 @@ static uint8_t hex_char(unsigned int bin, int u)
  *	   twice binlen -- if not, only a fraction of binlen is converted)
  * @u [in] case of hex characters (0=>lower case, 1=>upper case)
  */
-static void bin2hex(const uint8_t *bin, uint32_t binlen,
-		    char *hex, uint32_t hexlen, int u)
+void bin2hex(const uint8_t *bin, uint32_t binlen,
+	     char *hex, uint32_t hexlen, int u)
 {
 	uint32_t i = 0;
 	uint32_t chars = (binlen > (hexlen / 2)) ? (hexlen / 2) : binlen;
@@ -73,7 +80,10 @@ void bin2print(const uint8_t *bin, uint32_t binlen,
 	if (outfile != stdout) {
 		fprintf(outfile, "%s\n", hex);
 	} else {
-		fprintf(outfile, "%s  %s\n", hex, filename);
+		if (filename)
+			fprintf(outfile, "%s  %s\n", hex, filename);
+		else
+			fprintf(outfile, "%s\n", hex);
 	}
 	free(hex);
 }
@@ -203,5 +213,43 @@ int hex2bin_alloc(const char *hex, uint32_t hexlen,
 	hex2bin(hex, hexlen, out, outlen);
 	*bin = out;
 	*binlen = outlen;
+	return 0;
+}
+
+int read_complete(int fd, uint8_t *buf, uint32_t buflen)
+{
+	ssize_t ret;
+	int rc = 0;
+
+	if (buflen > INT_MAX)
+		return -EINVAL;
+
+	do {
+		ret = read(fd, buf, buflen);
+		if (0 < ret) {
+			buflen -= ret;
+			buf += ret;
+		}
+		rc += ret;
+		if (ret)
+			break;
+	} while ((0 < ret || EINTR == errno || ERESTART == errno)
+		 && buflen > 0);
+
+	return rc;
+}
+
+int check_filetype(int fd, struct stat *sb, const char *filename)
+{
+	fstat(fd, sb);
+
+	/* Do not return an error in case we cannot validate the data. */
+	if ((sb->st_mode & S_IFMT) != S_IFREG &&
+	    (sb->st_mode & S_IFMT) != S_IFLNK) {
+		dolog(KCAPI_LOG_ERR,
+		      "%s is no regular file or symlink", filename);
+		return -EINVAL;
+	}
+
 	return 0;
 }

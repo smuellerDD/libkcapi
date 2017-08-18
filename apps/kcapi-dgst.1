@@ -1,0 +1,153 @@
+.\" Copyright (c) 2017 by Stephan Mueller (smueller@chronox.de)
+.\"
+.\" Permission is granted to make and distribute verbatim copies of this
+.\" manual provided the copyright notice and this permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted to copy and distribute modified versions of this
+.\" manual under the conditions for verbatim copying, provided that the
+.\" entire resulting derived work is distributed under the terms of a
+.\" permission notice identical to this one.
+.\"
+.\" Formatted or processed versions of this manual, if unaccompanied by
+.\" the source, must acknowledge the copyright and authors of this work.
+.\" License.
+.TH KCAPI-DGST 1  2017-08-14
+.SH NAME
+kcapi-dgst \- Kernel Crypto API Message Digest Crypto Helper
+.SH SYNOPSIS
+.B kcapi-dgst
+[\fI\,OPTION\/\fR]
+.SH DESCRIPTION
+The
+.I kcapi-dgst
+application provides tool to use the message digest as well as
+keyed message digest ciphers of the Linux kernel crypto API from
+the command line.
+.PP
+The input data can be provided either via STDIN or via a file
+that is referenced with a command line option. Similarly, the output
+data can either be sent to a file referenced with a command line option
+or to STDOUT.
+.PP
+The key used for the keyed message digest operation can either be
+provided via a file descriptor or via a password. When using a file
+descriptor, the provided data is taken directly as the keyed message
+digest key. When providing a password, the
+.IR kcapi-dgst
+application derives a 256 bit key from the password using PBKDF2.
+PBKDF2 with HMAC-SHA256 transforms the password into a key.
+The PBKDF2 operation requires two additional input values: a salt and
+an iteration count. Both can be provided via the command line. If
+the iteration count is not specified,
+.IR kcapi-dgst
+determines the iteration count internally by counting how many
+iterations are necessary to surpass 100ms operation time. The determined
+number is provided via STDERR and must be re-used when verifying the
+keyed message digest created from the data. If the salt is not
+provided via command line,
+.IR kcapi-dgst
+generates a 256 bit salt and sends its hexadecimal
+representation to STDERR. This salt must be used during decryption
+to ensure the PBKDF2 operation generates the correct key.
+.LP
+The following options are supported when invoking
+.IR kcapi-dgst :
+.TP
+\fB-c\fR, \fB\-\-cipher \fI\,NAME\/\fR
+The
+.IR NAME
+argument specifies the symmetric cipher to be used. The allowed
+ciphers are defined by the Linux kernel. Currently registered
+ciphers can be reviewed at
+.IR /proc/crypto .
+The content of this file, however, can change when new ciphers
+are registered. The
+.IR NAME
+argument is given directly to the Linux kernel crypto API. The
+chosen cipher must be either of type
+.IR ahash
+or of type
+.IR shash
+as marked in
+.IR /proc/crypto .
+.TP
+\fB\-i\fR, \fB\-\-infile \fI\,FILE\/\fR
+Use the file referenced with
+.IR FILE
+as the input data. If this option is not provided,
+.IR kcapi-dgst
+expects the input data via STDIN.
+.TP
+\fB\-o\fR, \fB\-\-outfile \fI\,FILE\/\fR
+Use the file referenced with
+.IR FILE
+as the destination for the output of the cryptographic
+operation. If this option is not provided,
+.IR kcapi-dgst
+will provide the output via STDOUT.
+.TP
+\fB\-\-salt \fI\,SALT\/\fR
+When performing the PBKDF2 operation to obtain the key for the keyed
+message digest from the password, the
+.IR SALT
+value is used as one input parameter. To ensure the same
+key is generated from a given password, the same salt value must
+be used.
+.TP
+\fB\-p\fR, \fB\-\-passwd \fI\,PASSWORD\/\fR
+The
+.IR PASSWORD
+parameter provides the password from which the keyed message digest key
+is derived.
+.BI WARNING
+The password provided with the command line can be seen from
+other applications or users when inspecting the
+.IR /proc
+file system! Thus, a password SHOULD NOT be used via the
+command line and the
+.IR passwdfd
+option should be used instead.
+.TP
+\fB\-\-passwdfd \fI\,FD\/\fR
+Instead of providing the password via command line, it can be
+injected into
+.IR kcapi-dgst
+using a file descriptor. The file descriptor number the
+password will be send through can be provided with the
+.IR FD
+option.
+.TP
+\fB\-\-keyfd \fI\,FD\/\fR
+To provide a keyed message digest key that is directly used for the
+message digest operation, the file descriptor referenced with
+.IR FD
+must be used. Using a file descriptor is intentionally the only
+way to provide a key to
+.IR kcapi-dgst .
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Enable a verbose operation of
+.IR kcapi-dgst .
+Using this option multiple times increases the verbosity.
+.TP
+\fB\-q\fR, \fB\-\-quiet\fR
+Prevent the generation of any log output. Note, some log output
+would be needed for proper operation like the display of the
+number of PBKDF2 iterations or the internally generated PBKDF2 salt.
+During quiet operation, none of this information is displayed.
+Note, both information can also be supplied via the command line
+so that
+.IR kcapi-dgst
+does not need to generate this information.
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Display the help text.
+.TP
+\fB\-\-version\fR
+Display the version number of the
+.IR kcapi-dgst
+application.
+.PP
+.SH SEE ALSO
+\fBkcapi-enc\fR(1)

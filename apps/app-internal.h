@@ -42,8 +42,12 @@ void set_verbosity(enum kcapi_verbosity level);
 void hex2bin(const char *hex, uint32_t hexlen, uint8_t *bin, uint32_t binlen);
 int hex2bin_alloc(const char *hex, uint32_t hexlen,
 		  uint8_t **bin, uint32_t *binlen);
+void bin2hex(const uint8_t *bin, uint32_t binlen,
+	     char *hex, uint32_t hexlen, int u);
 void bin2print(const uint8_t *bin, uint32_t binlen,
 	       const char *filename, FILE *outfile);
+int read_complete(int fd, uint8_t *buf, uint32_t buflen);
+int check_filetype(int fd, struct stat *sb, const char *filename);
 
 #ifdef __cplusplus
 }

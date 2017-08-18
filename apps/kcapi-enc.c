@@ -70,21 +70,6 @@ struct opt_data {
 	uint32_t (*func_blocksize)(struct kcapi_handle *handle);
 };
 
-static int check_filetype(int fd, struct stat *sb, const char *filename)
-{
-	fstat(fd, sb);
-
-	/* Do not return an error in case we cannot validate the data. */
-	if ((sb->st_mode & S_IFMT) != S_IFREG &&
-	    (sb->st_mode & S_IFMT) != S_IFLNK) {
-		dolog(KCAPI_LOG_ERR,
-		      "%s is no regular file or symlink", filename);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
 static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
 		       int outfd, uint32_t outsize, uint32_t offset,
 		       uint32_t unpad)
@@ -518,29 +503,6 @@ out:
 		close(outfd);
 
 	return (ret < 0) ? ret : generated_bytes;
-}
-
-static int read_complete(int fd, uint8_t *buf, uint32_t buflen)
-{
-	ssize_t ret;
-	int rc = 0;
-
-	if (buflen > INT_MAX)
-		return -EINVAL;
-
-	do {
-		ret = read(fd, buf, buflen);
-		if (0 < ret) {
-			buflen -= ret;
-			buf += ret;
-		}
-		rc += ret;
-		if (ret)
-			break;
-	} while ((0 < ret || EINTR == errno || ERESTART == errno)
-		 && buflen > 0);
-
-	return rc;
 }
 
 static int set_key(struct kcapi_handle *handle, struct opt_data *opts)

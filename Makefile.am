@@ -125,6 +125,17 @@ bin_kcapi_enc_SOURCES = apps/kcapi-enc.c apps/app-internal.c
 SCAN_FILES += $(kcapi_enc_SOURCES)
 endif
 
+if ENABLE_KCAPI_DGSTAPP
+bin_PROGRAMS += bin/kcapi-dgst
+
+bin_kcapi_dgst_CPPFLAGS = $(COMMON_CPPFLAGS) -pie -fPIE -Ilib/
+bin_kcapi_dgst_LDFLAGS = $(COMMON_LDFLAGS)
+bin_kcapi_dgst_LDADD = libkcapi.la
+bin_kcapi_dgst_SOURCES = apps/kcapi-dgst.c apps/app-internal.c
+
+SCAN_FILES += $(kcapi_dgst_SOURCES)
+endif
+
 if HAVE_CLANG
 analyze_srcs = $(filter %.c, $(SCAN_FILES))
 analyze_plists = $(analyze_srcs:%.c=%.plist)
