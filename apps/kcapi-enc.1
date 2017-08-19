@@ -57,7 +57,7 @@ defines which cipher operation is used. When providing a password,
 the
 .IR kcapi-enc
 application derives a 256 bit key from the password using PBKDF2.
-PBKDF2 with HMAC-SHA256 transforms the password into a key.
+PBKDF2 with HMAC-SHA256 as default transforms the password into a key.
 The PBKDF2 operation requires two additional input values: a salt and
 an iteration count. Both can be provided via the command line. If
 the iteration count is not specified,
@@ -189,6 +189,25 @@ using a file descriptor. The file descriptor number the
 password will be send through can be provided with the
 .IR FD
 option.
+.TP
+\fB\-\-pbkdfiter \fI\,NUM\/\fR
+Perform
+.IR NUM
+iterations of the PBKDF2 operation to derive the symmetric key.
+If this option is not supplied,
+.IR kcapi-enc
+determines a number of iterations that is large enough to surpass
+100ms operational time for the PBKDF2 function. The determined
+iteration number is logged and must be reused if the same
+symmetric key is to be generated from the same password.
+.TP
+\fB\-\-pbkdfmac \fI\,MAC\/\fR
+Use the keyed message digest referenced with
+.IR MAC
+for the PBKDF2 operation. If this option is not supplied, the default
+of
+.IR hmac(sha256)
+is used.
 .TP
 \fB\-\-keyfd \fI\,FD\/\fR
 To provide a symmetric key that is directly used for the

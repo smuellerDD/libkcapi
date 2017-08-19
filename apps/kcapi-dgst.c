@@ -350,6 +350,7 @@ static void usage(void)
 	fprintf(stderr, "\t\t\t\tPBKDF2\n");
 	fprintf(stderr, "\t --passwdfd <FD>\tPassword file descriptor providing password\n");
 	fprintf(stderr, "\t --pbkdfiter <NUM>\tNumber of PBKDF2 iterations\n");
+	fprintf(stderr, "\t --pbkdfmac <MAC>\tMac for PBKDF2 (default: hmac(sha256))\n");
 	fprintf(stderr, "\t --keyfd <FD>\t\tKey file descriptor providing password\n");
 	fprintf(stderr, "\t --hex\t\t\tDigest is returned in hexadecimal notation\n");
 	fprintf(stderr, "\t-h --help\t\tThis help information\n");
@@ -384,6 +385,7 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 			{"passwd",	required_argument,	0, 'p'},
 			{"passwdfd",	required_argument,	0, 0},
 			{"pbkdfiter",	required_argument,	0, 0},
+			{"pbkdfmac",	required_argument,	0, 0},
 			{"keyfd",	required_argument,	0, 0},
 			{"hex",		no_argument,		0, 0},
 
@@ -434,6 +436,9 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 				opts->pbkdf_iterations = val;
 				break;
 			case 7:
+				opts->pbkdf_hash = optarg;
+				break;
+			case 8:
 				val = strtoul(optarg, NULL, 10);
 				if (val == UINT_MAX) {
 					dolog(KCAPI_LOG_ERR,
@@ -442,20 +447,20 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 				}
 				opts->key_fd = (int)val;
 				break;
-			case 8:
+			case 9:
 				opts->hexout = 1;
 				break;
 
-			case 9:
+			case 10:
 				verbosity++;
 				break;
-			case 10:
+			case 11:
 				verbosity = KCAPI_LOG_NONE;
 				break;
-			case 11:
+			case 12:
 				usage();
 				break;
-			case 12:
+			case 13:
 				memset(version, 0, sizeof(version));
 				kcapi_versionstring(version, sizeof(version));
 				fprintf(stderr, "Version %s\n", version);
@@ -510,6 +515,10 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 	if (opts->passwd)
 		dolog(KCAPI_LOG_WARN,
 		      "Password on command line is visible in process listing and /proc! Use --passwd_fd command line option!");
+
+	if (!opts->pbkdf_hash)
+		opts->pbkdf_hash = "hmac(sha256)";
+	dolog(KCAPI_LOG_DEBUG, "Using PBKDF2 mac of %s\n", opts->pbkdf_hash);
 }
 
 int main(int argc, char *argv[])
@@ -519,7 +528,7 @@ int main(int argc, char *argv[])
 	int ret;
 
 	parse_opts(argc, argv, &opts);
-	opts.pbkdf_hash = "hmac(sha256)";
+
 
 	ret = kcapi_md_init(&handle, opts.ciphername, 0);
 	if (ret)
