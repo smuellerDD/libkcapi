@@ -227,22 +227,36 @@ int main(int argc, char *argv[])
 		return ret;
 
 	seedsize = kcapi_rng_seedsize(rng);
-	if (seedsize < KCAPI_RNG_MINSEEDSIZE)
-		seedsize = KCAPI_RNG_MINSEEDSIZE;
+	if (seedsize) {
+		/*
+		 * Only reseed, if there is a seedsize defined. For example,
+		 * the DRBG has a seedsize of 0 because it seeds itself from
+		 * known good noise sources.
+		 */
+		if (seedsize < KCAPI_RNG_MINSEEDSIZE)
+			seedsize = KCAPI_RNG_MINSEEDSIZE;
 
-	/* Only allocate a new buffer if our buffer is insufficiently large. */
-	if (seedsize > KCAPI_RNG_BUFSIZE) {
-		seedbuf = calloc(1, seedsize);
-		if (!seedbuf) {
-			ret = -ENOMEM;
-			goto out;
+		/*
+		 * Only allocate a new buffer if our buffer is
+		 * insufficiently large.
+		 */
+		if (seedsize > KCAPI_RNG_BUFSIZE) {
+			seedbuf = calloc(1, seedsize);
+			if (!seedbuf) {
+				ret = -ENOMEM;
+				goto out;
+			}
 		}
+
+		ret = get_random(seedbuf, seedsize);
+		if (ret)
+			goto out;
 	}
 
-	ret = get_random(seedbuf, seedsize);
-	if (ret)
-		goto out;
-
+	/*
+	 * Invoke seeding even if seedsize is 0 -- this also triggers any
+	 * internal seeding operation like in the DRBG.
+	 */
 	ret = kcapi_rng_seed(rng, seedbuf, seedsize);
 	if (ret)
 		goto out;
