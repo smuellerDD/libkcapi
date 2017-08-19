@@ -103,6 +103,7 @@ test_stdin_stdout()
 	fi
 
 	$APP -c "sha256" --hex < $ORIGPT > $GENDGST
+	echo >> $GENDGST
 	openssl dgst -sha256 $ORIGPT  | awk 'BEGIN {FS="= "} {print $2}' > $GENDGST.openssl
 	diff_file $GENDGST $GENDGST.openssl "STDIN / STDOUT test (hash)"
 
@@ -111,6 +112,7 @@ test_stdin_stdout()
 	eval opensslkey=\$OPENSSLKEY${keysize}
 
 	exec 10<$keyfile; $APP --keyfd 10 -c "hmac(sha256)" --hex < $ORIGPT  > $GENDGST
+	echo >> $GENDGST
 	openssl dgst -sha256 -hmac $opensslkey $ORIGPT  | awk 'BEGIN {FS="= "} {print $2}' > $GENDGST.openssl
 	diff_file $GENDGST $GENDGST.openssl "STDIN / STDOUT test (keyed MD $keysize bits)"
 
@@ -161,6 +163,7 @@ test_filein_stdout()
 	fi
 
 	$APP -c "sha256" --hex -i $ORIGPT > $GENDGST
+	echo >> $GENDGST
 	openssl dgst -sha256 $ORIGPT  | awk 'BEGIN {FS="= "} {print $2}' > $GENDGST.openssl
 	diff_file $GENDGST $GENDGST.openssl "FILEIN / STDOUT test (hash)"
 
@@ -169,6 +172,7 @@ test_filein_stdout()
 	eval opensslkey=\$OPENSSLKEY${keysize}
 
 	exec 10<$keyfile; $APP --keyfd 10 -c "hmac(sha256)" --hex -i $ORIGPT > $GENDGST
+	echo >> $GENDGST
 	openssl dgst -sha256 -hmac $opensslkey $ORIGPT  | awk 'BEGIN {FS="= "} {print $2}' > $GENDGST.openssl
 	diff_file $GENDGST $GENDGST.openssl "FILEIN / STDOUT test (keyed MD $keysize bits)"
 

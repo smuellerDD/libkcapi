@@ -155,7 +155,7 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 				ret = 0;
 
 		} else {
-			bin2print(md, ret, filename, outfile);
+			bin2print(md, ret, filename, outfile, 1);
 			ret = 0;
 		}
 	} else {

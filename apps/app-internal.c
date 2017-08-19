@@ -33,6 +33,7 @@
 #include "app-internal.h"
 
 static unsigned int verbosity = KCAPI_LOG_NONE;
+char appname[16];
 
 static uint8_t hex_char(unsigned int bin, int u)
 {
@@ -67,7 +68,7 @@ void bin2hex(const uint8_t *bin, uint32_t binlen,
 }
 
 void bin2print(const uint8_t *bin, uint32_t binlen,
-	       const char *filename, FILE *outfile)
+	       const char *filename, FILE *outfile, uint32_t lfcr)
 {
 	char *hex;
 	uint32_t hexlen = binlen * 2 + 1;
@@ -78,12 +79,22 @@ void bin2print(const uint8_t *bin, uint32_t binlen,
 	bin2hex(bin, binlen, hex, hexlen - 1 , 0);
 	/* fipshmac does not want the file name :-( */
 	if (outfile != stdout) {
-		fprintf(outfile, "%s\n", hex);
-	} else {
-		if (filename)
-			fprintf(outfile, "%s  %s\n", hex, filename);
-		else
+		if (lfcr)
 			fprintf(outfile, "%s\n", hex);
+		else
+			fprintf(outfile, "%s", hex);
+	} else {
+		if (filename) {
+			if (lfcr)
+				fprintf(outfile, "%s  %s\n", hex, filename);
+			else
+				fprintf(outfile, "%s  %s", hex, filename);
+		} else {
+			if (lfcr)
+				fprintf(outfile, "%s\n", hex);
+			else
+				fprintf(outfile, "%s", hex);
+		}
 	}
 	free(hex);
 }
@@ -120,7 +131,7 @@ void dolog(enum kcapi_verbosity severity, const char *fmt, ...)
 	default:
 		snprintf(sev, sizeof(sev), "Unknown");
 	}
-	fprintf(stderr, "kcapi-enc - %s: %s\n", sev, msg);
+	fprintf(stderr, "%s - %s: %s\n", appname, sev, msg);
 }
 
 void dolog_bin(enum kcapi_verbosity severity,
@@ -137,8 +148,10 @@ void dolog_bin(enum kcapi_verbosity severity,
 	free(hex);
 }
 
-void set_verbosity(enum kcapi_verbosity level)
+void set_verbosity(const char *name, enum kcapi_verbosity level)
 {
+	strncpy(appname, name, sizeof(appname) - 1);
+	appname[sizeof(appname) - 1] = '\0';
 	kcapi_set_verbosity(level);
 	verbosity = level;
 }

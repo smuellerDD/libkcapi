@@ -138,7 +138,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 
 		if (opts->hexout) {
 			bin2print(tmpbuf, kcapi_md_digestsize(handle), NULL,
-				  stdout);
+				  stdout, 0);
 		} else {
 			if (fwrite(tmpbuf, sizeof(char), outlen,
 				   stdout) != outlen) {
@@ -502,7 +502,7 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 		}
 	}
 
-	set_verbosity(verbosity);
+	set_verbosity("kcapi-dgst", verbosity);
 
 	if (!opts->ciphername) {
 		dolog(KCAPI_LOG_ERR, "Provide cipher name");
@@ -518,7 +518,7 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 
 	if (!opts->pbkdf_hash)
 		opts->pbkdf_hash = "hmac(sha256)";
-	dolog(KCAPI_LOG_DEBUG, "Using PBKDF2 mac of %s\n", opts->pbkdf_hash);
+	dolog(KCAPI_LOG_DEBUG, "Using PBKDF2 mac of %s", opts->pbkdf_hash);
 }
 
 int main(int argc, char *argv[])

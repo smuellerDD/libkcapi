@@ -46,7 +46,7 @@
 #define KCAPI_RNG_MINSEEDSIZE 32
 
 static struct kcapi_handle *rng = NULL;
-static unsigned int Verbosity = 0;
+static unsigned int Verbosity = KCAPI_LOG_WARN;
 static char *rng_name = NULL;
 uint32_t hexout = 0;
 
@@ -140,6 +140,7 @@ static unsigned long parse_opts(int argc, char *argv[])
 		int opt_index = 0;
 		static struct option opts[] = {
 			{"verbose",	no_argument,		0, 'v'},
+			{"quiet",	no_argument,		0, 'q'},
 			{"help",	no_argument,		0, 'h'},
 			{"version",	no_argument,		0, 0},
 			{"bytes",	required_argument,	0, 'b'},
@@ -147,7 +148,7 @@ static unsigned long parse_opts(int argc, char *argv[])
 			{"hex",		no_argument,		0, 0},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "vhb:n:", opts, &opt_index);
+		c = getopt_long(argc, argv, "vqhb:n:", opts, &opt_index);
 		if (-1 == c)
 			break;
 		switch (c) {
@@ -157,25 +158,28 @@ static unsigned long parse_opts(int argc, char *argv[])
 				Verbosity++;
 				break;
 			case 1:
-				usage();
+				Verbosity = KCAPI_LOG_NONE;
 				break;
 			case 2:
+				usage();
+				break;
+			case 3:
 				memset(version, 0, sizeof(version));
 				kcapi_versionstring(version, sizeof(version));
 				fprintf(stderr, "Version %s\n", version);
 				exit(0);
 				break;
-			case 3:
+			case 4:
 				bytes = strtoul(optarg, NULL, 10);
 				if (bytes == ULONG_MAX) {
 					usage();
 					return -EINVAL;
 				}
 				break;
-			case 4:
+			case 5:
 				rng_name = optarg;
 				break;
-			case 5:
+			case 6:
 				hexout = 1;
 				break;
 			default:
@@ -184,6 +188,9 @@ static unsigned long parse_opts(int argc, char *argv[])
 			break;
 		case 'v':
 			Verbosity++;
+			break;
+		case 'q':
+			Verbosity = KCAPI_LOG_NONE;
 			break;
 		case 'h':
 			usage();
@@ -217,7 +224,7 @@ int main(int argc, char *argv[])
 	uint32_t seedsize = 0;
 	unsigned long outlen = parse_opts(argc, argv);
 
-	kcapi_set_verbosity(Verbosity);
+	set_verbosity("kcapi-rng", Verbosity);
 
 	if (rng_name)
 		ret = kcapi_rng_init(&rng, rng_name, 0);
