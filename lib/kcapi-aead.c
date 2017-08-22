@@ -273,12 +273,11 @@ int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 
 	ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
 				      access, ALG_OP_ENCRYPT);
+	if (ret != -EOPNOTSUPP)
+		return ret;
 
-	if (ret == -EOPNOTSUPP)
-		return _kcapi_aead_encrypt_aio_fallback(handle, iniov,
-							outiov,	iovlen, iv);
-
-	return ret;
+	return _kcapi_aead_encrypt_aio_fallback(handle, iniov, outiov, iovlen,
+						iv);
 
 #if 0
 	/*
@@ -366,11 +365,11 @@ int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 	ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
 				      access, ALG_OP_DECRYPT);
 
-	if (ret == -EOPNOTSUPP)
-		return _kcapi_aead_decrypt_aio_fallback(handle, iniov,
-							outiov,	iovlen, iv);
+	if (ret != -EOPNOTSUPP)
+		return ret;
 
-	return ret;
+	return _kcapi_aead_decrypt_aio_fallback(handle, iniov, outiov, iovlen,
+						iv);
 
 #if 0
 	/*

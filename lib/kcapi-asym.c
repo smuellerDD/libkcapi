@@ -257,7 +257,6 @@ int32_t kcapi_akcipher_encrypt_aio(struct kcapi_handle *handle,
 	if (ret != -EOPNOTSUPP)
 		return ret;
 
-	/* The kernel's AIO interface is broken. */
 	return _kcapi_akcipher_encrypt_aio_fallback(handle, iniov, outiov,
 						    iovlen);
 }
@@ -307,7 +306,6 @@ int32_t kcapi_akcipher_decrypt_aio(struct kcapi_handle *handle,
 	if (ret != -EOPNOTSUPP)
 		return ret;
 
-	/* The kernel's AIO interface is broken. */
 	return _kcapi_akcipher_decrypt_aio_fallback(handle, iniov, outiov,
 						    iovlen);
 }
@@ -357,7 +355,6 @@ int32_t kcapi_akcipher_sign_aio(struct kcapi_handle *handle,
 	if (ret != -EOPNOTSUPP)
 		return ret;
 
-	/* The kernel's AIO interface is broken. */
 	return _kcapi_akcipher_sign_aio_fallback(handle, iniov, outiov, iovlen);
 }
 
@@ -406,7 +403,6 @@ int32_t kcapi_akcipher_verify_aio(struct kcapi_handle *handle,
 	if (ret != -EOPNOTSUPP)
 		return ret;
 
-	/* The kernel's AIO interface is broken. */
 	return _kcapi_akcipher_verify_aio_fallback(handle, iniov, outiov,
 						   iovlen);
 }
