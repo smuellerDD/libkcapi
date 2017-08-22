@@ -54,7 +54,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 	struct stat insb, outsb;
 	uint8_t *inmem = NULL;
 	uint8_t *outmem = NULL;
-	uint8_t tmpbuf[TMPBUFLEN];
+	uint8_t tmpbuf[TMPBUFLEN] __aligned(KCAPI_APP_ALIGN);
 	uint32_t outlen = 0;
 
 	/*
@@ -204,7 +204,7 @@ out:
 
 static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 {
-	uint8_t passwdbuf[128];
+	uint8_t passwdbuf[128] __aligned(KCAPI_APP_ALIGN);
 	uint32_t passwdlen = 0;
 	uint8_t keybuf[32];
 	uint32_t keybuflen = 0;

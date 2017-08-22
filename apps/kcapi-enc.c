@@ -75,7 +75,7 @@ static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
 		       int outfd, uint32_t outsize, uint32_t offset,
 		       uint32_t unpad)
 {
-	uint8_t tmpbuf[TMPBUFLEN];
+	uint8_t tmpbuf[TMPBUFLEN] __aligned(KCAPI_APP_ALIGN);
 	uint8_t *outmem = NULL;
 	struct iovec outiov;
 	int ret = 0;
@@ -248,11 +248,11 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 	struct iovec iniov;
 	uint8_t *ivbuf = NULL;
 	uint32_t ivbuflen = 0;
-	char tmpbuf[TMPBUFLEN];
+	char tmpbuf[TMPBUFLEN] __aligned(KCAPI_APP_ALIGN);
 
 	uint8_t *aadbuf = NULL;
 	uint8_t *tagbuf = NULL;
-	uint8_t padbuf[32];
+	uint8_t padbuf[32] __aligned(KCAPI_APP_ALIGN);
 
 	/*
 	 * To avoid spurious padding, the buffer must be multiples of the
@@ -522,9 +522,9 @@ out:
 
 static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 {
-	uint8_t passwdbuf[128];
+	uint8_t passwdbuf[128] __aligned(KCAPI_APP_ALIGN);
 	uint32_t passwdlen = 0;
-	uint8_t keybuf[32];
+	uint8_t keybuf[32] __aligned(KCAPI_APP_ALIGN);
 	uint32_t keybuflen = 0;
 	int have_key = 0;
 	const uint8_t *passwdptr = NULL;

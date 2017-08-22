@@ -33,6 +33,9 @@ extern "C"
 #define STDOUT_FD 1
 #define TMPBUFLEN 4096
 
+#define KCAPI_APP_ALIGN 8
+#define __aligned(x)            __attribute__((aligned(x)))
+
 #define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
 
 void dolog(enum kcapi_verbosity severity, const char *fmt, ...);

@@ -219,7 +219,7 @@ static unsigned long parse_opts(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
 	int ret;
-	uint8_t buf[KCAPI_RNG_BUFSIZE];
+	uint8_t buf[KCAPI_RNG_BUFSIZE] __aligned(KCAPI_APP_ALIGN);
 	uint8_t *seedbuf = buf;
 	uint32_t seedsize = 0;
 	unsigned long outlen = parse_opts(argc, argv);
