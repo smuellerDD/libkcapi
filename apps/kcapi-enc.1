@@ -131,8 +131,10 @@ mode is used, the
 value is the start value of the counter. When using the CCM
 cipher, the
 .IR IV
-value can either be the initialization vector or the nonce as defined
-in SP800-38C Appendix A.2.
+must specify the initialization vector. If the CCM nonce should be
+specified instead, the option
+.IR --ccm-nonce
+must be used instead.
 .TP
 \fB\-\-aad \fI\,AAD\/\fR
 For AEAD ciphers like CCM, GCM or the authenc ciphers of the Linux
@@ -152,6 +154,14 @@ During encryption operation of AEAD ciphers, the tag is generated. It
 is permissible to generate differently sized tags where the parameter
 .IR LENGTH
 specifies the size of the tag value to be generated in bytes.
+.TP
+\fB\-\-ccm-nonce \fI\,NONCE\/\fR
+Use the
+.IR NONCE
+data as CCM nonce as defined in SP800-38C Appendix A.2. That
+.IR NONCE
+value is expected to be a hexadecimal notation and must match
+the constraints of SP800-38C Appendix A.2.
 .TP
 \fB\-\-salt \fI\,SALT\/\fR
 When performing the PBKDF2 operation to obtain the symmetric key

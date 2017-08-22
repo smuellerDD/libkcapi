@@ -40,6 +40,7 @@ struct opt_data {
 	const char *outfile;
 	const char *ciphername;
 	const char *iv;
+	const char *ccmnonce;
 	const char *aad;
 	uint32_t aadlen;
 	const char *tag;
@@ -262,6 +263,20 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 	if (opts->iv) {
 		ret = hex2bin_alloc(opts->iv, strlen(opts->iv),
 					&ivbuf, &ivbuflen);
+		if (ret)
+			goto out;
+	} else if (opts->ccmnonce) {
+		uint8_t *nonce;
+		uint32_t noncelen;
+
+		ret = hex2bin_alloc(opts->ccmnonce, strlen(opts->ccmnonce),
+				    &nonce, &noncelen);
+		if (ret)
+			goto out;
+
+		ret = kcapi_aead_ccm_nonce_to_iv(nonce, noncelen,
+						 &ivbuf, &ivbuflen);
+		free(nonce);
 		if (ret)
 			goto out;
 	}
@@ -652,6 +667,7 @@ static void usage(void)
 	fprintf(stderr, "\t--aad <AAD>\t\tAAD for AEAD cipher operation\n");
 	fprintf(stderr, "\t--tag <TAG>\t\tTag for AEAD decryption operation\n");
 	fprintf(stderr, "\t--taglen <BYTES>\tTag length to be generated AEAD encryption\n");
+	fprintf(stderr, "\t--ccm-nonce <NONCE>\tCCM nonce (instead of IV)\n");
 	fprintf(stderr, "\t\t\t\toperation\n");
 	fprintf(stderr, "\t-s --salt <SALT>\tSalt for PBKDF2\n");
 	fprintf(stderr, "\t-p --passwd <PWD>\tPassword the session key is derived from using\n");
@@ -695,6 +711,7 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 			{"aad",		required_argument,	0, 0},
 			{"tag",		required_argument,	0, 0},
 			{"taglen",	required_argument,	0, 0},
+			{"ccm-nonce",	required_argument,	0, 0},
 			{"salt",	required_argument,	0, 's'},
 			{"passwd",	required_argument,	0, 'p'},
 			{"passwdfd",	required_argument,	0, 0},
@@ -750,12 +767,15 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 				opts->taglen = val;
 				break;
 			case 9:
-				opts->salt = optarg;
+				opts->ccmnonce = optarg;
 				break;
 			case 10:
-				opts->passwd = optarg;
+				opts->salt = optarg;
 				break;
 			case 11:
+				opts->passwd = optarg;
+				break;
+			case 12:
 				val = strtoul(optarg, NULL, 10);
 				if (val == UINT_MAX) {
 					dolog(KCAPI_LOG_ERR,
@@ -764,7 +784,7 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 				}
 				opts->password_fd = (int)val;
 				break;
-			case 12:
+			case 13:
 				val = strtoul(optarg, NULL, 10);
 				if (val == UINT_MAX) {
 					dolog(KCAPI_LOG_ERR,
@@ -773,10 +793,10 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 				}
 				opts->pbkdf_iterations = val;
 				break;
-			case 13:
+			case 14:
 				opts->pbkdf_hash = optarg;
 				break;
-			case 14:
+			case 15:
 				val = strtoul(optarg, NULL, 10);
 				if (val == UINT_MAX) {
 					dolog(KCAPI_LOG_ERR,
@@ -785,20 +805,20 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 				}
 				opts->key_fd = (int)val;
 				break;
-			case 15:
+			case 16:
 				opts->nounpad = 1;
 				break;
 
-			case 16:
+			case 17:
 				verbosity++;
 				break;
-			case 17:
+			case 18:
 				verbosity = KCAPI_LOG_NONE;
 				break;
-			case 18:
+			case 19:
 				usage();
 				break;
-			case 19:
+			case 20:
 				memset(version, 0, sizeof(version));
 				kcapi_versionstring(version, sizeof(version));
 				fprintf(stderr, "Version %s\n", version);
@@ -868,6 +888,11 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 			dolog(KCAPI_LOG_ERR, "No tag length provided for AEAD encryption operation");
 			usage();
 		}
+	}
+
+	if (opts->iv && opts->ccmnonce) {
+		dolog(KCAPI_LOG_ERR, "IV and CCM nonce set\n");
+		usage();
 	}
 
 	if (opts->passwd)
