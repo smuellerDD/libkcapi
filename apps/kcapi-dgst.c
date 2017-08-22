@@ -183,6 +183,8 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		if (opts->hexout)
 			bin2hex(tmpbuf, kcapi_md_digestsize(handle),
 				(char *)outmem, outlen, 0);
+
+		dolog(KCAPI_LOG_VERBOSE, "Digest of %d bytes generated\n", ret);
 	}
 
 out:
@@ -290,7 +292,8 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 
 		/* reading of sizeof(keybuf) implies 256 bit key */
 		ret = kcapi_pbkdf(opts->pbkdf_hash, passwdptr, passwdlen,
-				  saltbuf, saltbuflen, opts->pbkdf_iterations, keybuf, sizeof(keybuf));
+				  saltbuf, saltbuflen, opts->pbkdf_iterations,
+				  keybuf, sizeof(keybuf));
 		free(saltbuf);
 		if (ret)
 			goto out;
@@ -319,7 +322,8 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 		goto out;
 	}
 
-	dolog_bin(KCAPI_LOG_DEBUG, keybuf, keybuflen, "data-encryption-key");
+	dolog_bin(KCAPI_LOG_DEBUG, keybuf, keybuflen,
+		  "keyed message digest key");
 
 	ret = kcapi_md_setkey(handle, keybuf, keybuflen);
 
