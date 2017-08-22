@@ -80,7 +80,7 @@ do
 	hash=${i%%sum}
 	hasher=./$i
 	[ ! -e "$hasher" ] && {
-		echo_fail "Hasher $hasher does not exist"
+		echo_deact "Hasher $hasher does not exist"
 		continue
 	}
 
@@ -122,7 +122,7 @@ done
 for i in $HMACHASHER
 do
 	[ ! -x "/bin/$i" ] && {
-		echo_fail "hmaccalc reference application /bin/$i missing"
+		echo_deact "hmaccalc reference application /bin/$i missing"
 		continue
 	}
 
