@@ -80,6 +80,8 @@ cd ..
 		--enable-kcapi-speed \
 		--enable-kcapi-hasher \
 		--enable-kcapi-rngapp \
+		--enable-kcapi-encapp \
+		--enable-kcapi-dgstapp \
 		--prefix=$INSTALLTARGET
 check_result $? "configure"
 

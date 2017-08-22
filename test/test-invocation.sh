@@ -25,6 +25,13 @@ exec_test()
 		exit $ret
 	fi
 
+	./hasher-test.sh
+	ret=$?
+	if [ $ret -ne 0 ]
+	then
+		exit $ret
+	fi
+
 	./compile-test.sh
 	ret=$?
 	if [ $ret -ne 0 ]
