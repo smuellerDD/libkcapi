@@ -261,10 +261,26 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 	BUILD_BUG_ON(TMPBUFLEN % 32);
 
 	if (opts->iv) {
+		uint8_t *newiv = NULL;
+		uint32_t newivlen;
+
 		ret = hex2bin_alloc(opts->iv, strlen(opts->iv),
 					&ivbuf, &ivbuflen);
 		if (ret)
 			goto out;
+
+		/* generate the padded IV */
+		if (ivbuflen != opts->func_blocksize(handle)) {
+			ret = kcapi_pad_iv(handle, ivbuf, ivbuflen,
+					   &newiv, &newivlen);
+			if (ret)
+				goto out;
+
+			free(ivbuf);
+			ivbuf = newiv;
+			ivbuflen = newivlen;
+		}
+
 	} else if (opts->ccmnonce) {
 		uint8_t *nonce;
 		uint32_t noncelen;
@@ -283,9 +299,6 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 
 	/* AEAD specific code */
 	if (opts->aad) {
-		uint8_t *newiv = NULL;
-		uint32_t newivlen;
-
 		ret = hex2bin_alloc(opts->aad, strlen(opts->aad),
 				    &aadbuf, &opts->aadlen);
 		if (ret)
@@ -304,19 +317,6 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			ret = kcapi_aead_settaglen(handle, opts->taglen);
 			if (ret)
 				goto out;
-		}
-
-
-		/* generate the right IV */
-		if (ivbuf && ivbuflen) {
-			ret = kcapi_pad_iv(handle, ivbuf, ivbuflen,
-					   &newiv, &newivlen);
-			if (ret)
-				goto out;
-
-			free(ivbuf);
-			ivbuf = newiv;
-			ivbuflen = newivlen;
 		}
 	}
 
