@@ -48,15 +48,15 @@ commands found in the coreutils package.
 
 In addition, the following tool is available:
 
-* kcapi-rng: This tool allows obtaining random numbers from the kernel
+* `kcapi-rng`: This tool allows obtaining random numbers from the kernel
   crypto API RNGs. It shall allow users a similar operation as a
   `cat /dev/hwrand` call.
 
-* kcapi-enc: This tool provides command line access to the symmetric ciphers
+* `kcapi-enc`: This tool provides command line access to the symmetric ciphers
   of the kernel crypto API. It is conceptually similar to the openssl enc
   tool.
 
-* kcapi-dgst: To generate message digests and keyed message digests using
+* `kcapi-dgst`: To generate message digests and keyed message digests using
   the kernel crypto API ciphers, this command line tool can be used. It is
   conceptually similar to openssl dgst.
 
