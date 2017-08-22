@@ -69,5 +69,7 @@ then
 	cd $CWD
 	exec_test
 	cd ..
-	make distclean
+	make distclean > /dev/null 2>&1
 fi
+
+exit 0

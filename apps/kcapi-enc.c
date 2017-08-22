@@ -452,7 +452,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 				}
 
 				if (padded &&
-				    (insb.st_size ==
+				    ((uint64_t)insb.st_size ==
 				     (i + (uint32_t)padbyte) + 1)) {
 					dolog(KCAPI_LOG_WARN,
 					      "Input file's trailing bytes will be treated as padding during decryption unless you turn off padding handling with --nounpad\n");
@@ -462,7 +462,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 
 		}
 
-		while (sent_data < insb.st_size) {
+		while (sent_data < (uint64_t)insb.st_size) {
 			uint32_t avail = insb.st_size - sent_data;
 			uint32_t todo = avail > maxdata ? maxdata : avail;
 

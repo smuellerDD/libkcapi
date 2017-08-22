@@ -150,7 +150,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 
 		dolog(KCAPI_LOG_VERBOSE, "Digest of %d bytes generated\n", ret);
 	} else {
-		if (outsb.st_size != outlen) {
+		if ((uint64_t)outsb.st_size != outlen) {
 			ret = ftruncate(outfd, outlen);
 			if (ret)
 				goto out;

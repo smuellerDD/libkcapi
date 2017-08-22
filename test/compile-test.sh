@@ -76,6 +76,7 @@ trap "rm -rf $INSTALLTARGET; exit" 0 1 2 3 15
 
 mkdir -p $INSTALLTARGET
 cd ..
+make distclean > /dev/null 2>&1
 ./configure	--enable-kcapi-test \
 		--enable-kcapi-speed \
 		--enable-kcapi-hasher \
