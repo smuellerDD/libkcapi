@@ -213,15 +213,16 @@ int hex2bin_alloc(const char *hex, uint32_t hexlen,
 {
 	uint8_t *out = NULL;
 	uint32_t outlen = 0;
+	int ret;
 
 	if (!hexlen)
 		return -EINVAL;
 
 	outlen = (hexlen + 1) / 2;
 
-	out = calloc(1, outlen);
-	if (!out)
-		return -errno;
+	ret = posix_memalign((void *)&out, 16, outlen);
+	if (ret)
+		return -ret;
 
 	hex2bin(hex, hexlen, out, outlen);
 	*bin = out;
