@@ -352,11 +352,11 @@ static void usage(void)
 	fprintf(stderr, "\t-s --salt <SALT>\tSalt for PBKDF2\n");
 	fprintf(stderr, "\t-p --passwd <PWD>\tPassword the session key is derived from using\n");
 	fprintf(stderr, "\t\t\t\tPBKDF2\n");
-	fprintf(stderr, "\t --passwdfd <FD>\tPassword file descriptor providing password\n");
-	fprintf(stderr, "\t --pbkdfiter <NUM>\tNumber of PBKDF2 iterations\n");
-	fprintf(stderr, "\t --pbkdfmac <MAC>\tMac for PBKDF2 (default: hmac(sha256))\n");
-	fprintf(stderr, "\t --keyfd <FD>\t\tKey file descriptor providing password\n");
-	fprintf(stderr, "\t --hex\t\t\tDigest is returned in hexadecimal notation\n");
+	fprintf(stderr, "\t   --passwdfd <FD>\tPassword file descriptor providing password\n");
+	fprintf(stderr, "\t   --pbkdfiter <NUM>\tNumber of PBKDF2 iterations\n");
+	fprintf(stderr, "\t   --pbkdfmac <MAC>\tMac for PBKDF2 (default: hmac(sha256))\n");
+	fprintf(stderr, "\t   --keyfd <FD>\t\tKey file descriptor providing password\n");
+	fprintf(stderr, "\t   --hex\t\tDigest is returned in hexadecimal notation\n");
 	fprintf(stderr, "\t-h --help\t\tThis help information\n");
 	fprintf(stderr, "\t   --version\t\tPrint version\n");
 	fprintf(stderr, "\t-v --verbose\t\tVerbose logging, multiple options increase\n");

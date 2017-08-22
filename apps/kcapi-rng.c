@@ -119,7 +119,7 @@ static void usage(void)
 	fprintf(stderr, "\t-b --bytes <BYTES>\tNumber of bytes to generate (required option)\n");
 	fprintf(stderr, "\t-n --name <RNGNAME>\tDRNG name as advertised in /proc/crypto\n");
 	fprintf(stderr, "\t\t\t\t(stdrng is default)\n");
-	fprintf(stderr, "\t --hex\t\t\tThe random number is returned in hexadecimal\n");
+	fprintf(stderr, "\t   --hex\t\tThe random number is returned in hexadecimal\n");
 	fprintf(stderr, "\t\t\t\tnotation\n");
 	fprintf(stderr, "\t-h --help\t\tThis help information\n");
 	fprintf(stderr, "\t   --version\t\tPrint version\n");
