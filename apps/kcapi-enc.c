@@ -33,7 +33,7 @@
 
 #include "app-internal.h"
 
-#define MAX_ALG_PAGES 16
+#define TAGBUFLEN 16
 
 struct opt_data {
 	const char *infile;
@@ -52,6 +52,7 @@ struct opt_data {
 	uint32_t pbkdf_iterations;
 	uint32_t decrypt;
 	uint32_t nounpad;
+	uint32_t removetag;
 	const char *pbkdf_hash;
 	int (*func_init)(struct kcapi_handle **handle, const char *ciphername,
 			 uint32_t flags);
@@ -90,21 +91,31 @@ static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
 
 	if (outfd == STDOUT_FD) {
 		while (outsize > 0) {
-			uint32_t len = outsize < TMPBUFLEN ?
+			uint32_t inlen = outsize < TMPBUFLEN ?
 					outsize : TMPBUFLEN;
+			uint32_t outlen = inlen;
 			uint8_t *tmpbufptr = tmpbuf;
 
 			outiov.iov_base = tmpbuf;
-			outiov.iov_len = len;
+			outiov.iov_len = inlen;
 			ret = opts->func_stream_op(handle, &outiov, 1);
 			if (ret < 0)
 				goto out;
 			generated_bytes += ret;
 
-			if ((len = fwrite(tmpbufptr, sizeof(char), len,
+			if (opts->removetag) {
+				outlen -= opts->taglen;
+				generated_bytes -= opts->taglen;
+
+				dolog(KCAPI_LOG_DEBUG,
+				      "remove %u bytes of unused but generated tag",
+				      opts->taglen);
+			}
+
+			if ((outlen = fwrite(tmpbufptr, sizeof(char), outlen,
 					  stdout)) != 0) {
-				outsize -= len;
-				tmpbufptr += len;
+				outsize -= inlen;
+				tmpbufptr += inlen;
 			} else {
 				dolog(KCAPI_LOG_ERR, "Write failed %d", -errno);
 				ret = -errno;
@@ -160,9 +171,9 @@ static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
 					dolog(KCAPI_LOG_DEBUG, "Unpad %d bytes",
 					      (uint32_t)padbyte);
 
-					ret = ftruncate(outfd,
-							off_outsize -
-							 (uint32_t)padbyte);
+					off_outsize -= (uint32_t)padbyte;
+
+					ret = ftruncate(outfd, off_outsize);
 					if (ret)
 						goto out;
 
@@ -171,6 +182,16 @@ static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
 			}
 		} else
 			dolog(KCAPI_LOG_VERBOSE, "Removal of padding disabled");
+
+		if (opts->removetag) {
+			ret = ftruncate(outfd, (off_outsize - opts->taglen));
+			if (ret)
+				goto out;
+			generated_bytes -= opts->taglen;
+			dolog(KCAPI_LOG_DEBUG,
+			      "remove %u bytes of unused but generated tag",
+			      opts->taglen);
+		}
 	}
 
 out:
@@ -185,11 +206,15 @@ static uint32_t outbufsize(struct kcapi_handle *handle, struct opt_data *opts,
 	uint32_t outsize;
 
 	if (opts->aad) {
-		if (opts->decrypt)
+		if (opts->decrypt) {
 			outsize = kcapi_aead_outbuflen_dec(handle, datalen,
 							   opts->aadlen,
 							   opts->taglen);
-		else
+
+			/* this is needed for kernels < 4.9 */
+			if (outsize == (datalen + opts->aadlen + opts->taglen))
+				opts->removetag = 1;
+		} else
 			outsize = kcapi_aead_outbuflen_enc(handle, datalen,
 							   opts->aadlen,
 							   opts->taglen);
@@ -203,6 +228,64 @@ static uint32_t outbufsize(struct kcapi_handle *handle, struct opt_data *opts,
 	      outsize);
 
 	return outsize;
+}
+
+/*
+ * This function is required to cover the kernel interface change between
+ * 4.8 and 4.9
+ */
+static uint32_t sendtag(struct kcapi_handle *handle, struct opt_data *opts,
+			uint8_t *tagbuf, uint8_t *tmptagbuf)
+{
+	uint32_t outsize;
+	struct iovec iniov;
+	int ret;
+
+	if (!opts->aad)
+		return 0;
+
+	if (tagbuf) {
+		iniov.iov_base = tagbuf;
+		iniov.iov_len = opts->taglen;
+
+		ret = opts->func_stream_update(handle, &iniov,
+						1);
+		if (ret < 0)
+			return ret;
+
+		dolog(KCAPI_LOG_DEBUG, "Sent %u bytes of tag", opts->taglen);
+
+		return 0;
+	}
+
+	if (opts->decrypt)
+		outsize = kcapi_aead_inbuflen_dec(handle, 0, opts->aadlen,
+						  opts->taglen);
+	else
+		outsize = kcapi_aead_inbuflen_enc(handle, 0, opts->aadlen,
+						  opts->taglen);
+
+	/* On newer kernels, tag is only needed for decryption. */
+	if (outsize != (opts->aadlen + opts->taglen))
+		return 0;
+
+	/* Send an empty buffer for a tag as required on older kernels. */
+	if (TAGBUFLEN < opts->taglen) {
+		dolog(KCAPI_LOG_ERR, "Tag size %u too large\n", opts->taglen);
+		return -EINVAL;
+	}
+
+	memset(tmptagbuf, 0, opts->taglen);
+
+	iniov.iov_base = tmptagbuf;
+	iniov.iov_len = opts->taglen;
+	ret = opts->func_stream_update(handle, &iniov, 1);
+	if (ret < 0)
+		return ret;
+
+	dolog(KCAPI_LOG_DEBUG, "Sent %u bytes of null tag", opts->taglen);
+
+	return 0;
 }
 
 static int add_padding(struct kcapi_handle *handle, struct opt_data *opts,
@@ -260,6 +343,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 	uint8_t *aadbuf = NULL;
 	uint8_t *tagbuf = NULL;
 	uint8_t padbuf[32] __aligned(KCAPI_APP_ALIGN);
+	uint8_t tagtmpbuf[TAGBUFLEN] __aligned(KCAPI_APP_ALIGN);
 
 	/*
 	 * To avoid spurious padding, the buffer must be multiples of the
@@ -325,7 +409,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 
 		if (opts->tag) {
 			ret = hex2bin_alloc(opts->tag, strlen(opts->tag),
-					&tagbuf, &opts->taglen);
+					    &tagbuf, &opts->taglen);
 			if (ret)
 				goto out;
 		}
@@ -404,18 +488,9 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			outsize = outbufsize(handle, opts, iniov.iov_len);
 
 			/* WARNING: with AEAD, only one loop is possible */
-			if (tagbuf) {
-				iniov.iov_base = tagbuf;
-				iniov.iov_len = opts->taglen;
-
-				ret = opts->func_stream_update(handle, &iniov,
-							       1);
-				if (ret < 0)
-					goto out;
-
-				dolog(KCAPI_LOG_DEBUG, "Sent %u bytes of tag",
-				      opts->taglen);
-			}
+			ret = sendtag(handle, opts, tagbuf, tagtmpbuf);
+			if (ret)
+				goto out;
 
 			if (outfd != STDOUT_FD) {
 				ret = ftruncate(outfd,
@@ -501,18 +576,9 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			outsize = outbufsize(handle, opts, iniov.iov_len);
 
 			/* WARNING: with AEAD, only one loop is possible */
-			if (tagbuf) {
-				iniov.iov_base = tagbuf;
-				iniov.iov_len = opts->taglen;
-
-				ret = opts->func_stream_update(handle, &iniov,
-							       1);
-				if (ret < 0)
-					goto out;
-
-				dolog(KCAPI_LOG_DEBUG, "Sent %u bytes of tag",
-				      opts->taglen);
-			}
+			ret = sendtag(handle, opts, tagbuf, tagtmpbuf);
+			if (ret)
+				goto out;
 
 			/* padding */
 			ret = add_padding(handle, opts, padbuf,

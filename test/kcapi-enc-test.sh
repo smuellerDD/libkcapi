@@ -22,6 +22,14 @@ CCM_TAG_FAIL="a7877c98"
 CCM_NONCE="674742abd0f5ba"
 CCM_EXP="8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723"
 
+#GCM Encrypt
+GCM_MSG="507937f393b2de0fa218d0a9713262f4"
+GCM_KEY="5aa3d01e7242d7a64f5fd4ad25505390"
+GCM_IV="94af90b40cc541173d201250"
+GCM_AAD="0f7479e28c53d120fcf57a525e0b36a0"
+GCM_TAGLEN="14"
+GCM_EXP="e80e074e70b089c160c6d3863e8d2b75ac767d2d44412252eed41a220f31"
+
 failures=0
 
 hex2bin()
@@ -110,6 +118,8 @@ init_setup()
 
 	hex2bin $CCM_MSG ${TSTPREFIX}ccm_msg
 	hex2bin $CCM_KEY ${TSTPREFIX}ccm_key
+	hex2bin $GCM_MSG ${TSTPREFIX}gcm_msg
+	hex2bin $GCM_KEY ${TSTPREFIX}gcm_key
 }
 
 gen_orig()
@@ -276,7 +286,7 @@ test_filein_fileout()
 	diff_file $ORIGPT $GENPT "FILEIN / FILEOUT test (password)"
 }
 
-test_ccm()
+test_ccm_dec()
 {
 	local aadlen=${#CCM_AAD}
 
@@ -303,8 +313,26 @@ test_ccm()
 	fi
 }
 
+test_gcm_enc()
+{
+	local aadlen=${#GCM_AAD}
+
+	aadlen=$(($aadlen/2))
+
+	exec 10<${TSTPREFIX}gcm_key; $APP --keyfd 10 -e -c "gcm(aes)" -i ${TSTPREFIX}gcm_msg -o ${TSTPREFIX}gcm_out --iv $GCM_IV --aad $GCM_AAD --taglen $GCM_TAGLEN
+	local hexret=$(bin2hex_noaad ${TSTPREFIX}gcm_out $aadlen)
+
+	if [ x"$hexret" != x"$GCM_EXP" ]
+	then
+		echo_fail "GCM output does not match expected output (received: $hexret -- expected $GCM_EXP)"
+	else
+		echo_pass "FILEIN / FILEOUT GCM encrypt"
+	fi
+}
+
 init_setup
-test_ccm
+test_gcm_enc
+test_ccm_dec
 
 for i in 1 15 16 29 32 257 512 1023 16385 65535 65536 65537 99999 100000 100001
 do
