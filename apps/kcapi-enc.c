@@ -81,6 +81,13 @@ static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
 	int ret = 0;
 	int generated_bytes = 0;
 
+	if (opts->aad) {
+		/* Tell kernel that we have sent all data */
+		ret = kcapi_aead_stream_update_last(handle, NULL, 0);
+		if (ret < 0)
+			goto out;
+	}
+
 	if (outfd == STDOUT_FD) {
 		while (outsize > 0) {
 			uint32_t len = outsize < TMPBUFLEN ?
@@ -279,6 +286,8 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			free(ivbuf);
 			ivbuf = newiv;
 			ivbuflen = newivlen;
+
+			dolog_bin(KCAPI_LOG_DEBUG, ivbuf, ivbuflen, "Padded IV");
 		}
 
 	} else if (opts->ccmnonce) {
@@ -295,6 +304,12 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		free(nonce);
 		if (ret)
 			goto out;
+
+		dolog(KCAPI_LOG_DEBUG,
+		      "CCM nonce (%u bytes) convereted to IV (%u bytes)",
+		      noncelen, ivbuflen);
+		dolog_bin(KCAPI_LOG_DEBUG, ivbuf, ivbuflen,
+			  "CCM nonce converted to IV");
 	}
 
 	/* AEAD specific code */
@@ -305,6 +320,8 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			return ret;
 
 		kcapi_aead_setassoclen(handle, opts->aadlen);
+		dolog(KCAPI_LOG_DEBUG, "Set AAD length to %u bytes",
+		      opts->aadlen);
 
 		if (opts->tag) {
 			ret = hex2bin_alloc(opts->tag, strlen(opts->tag),
@@ -317,6 +334,9 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			ret = kcapi_aead_settaglen(handle, opts->taglen);
 			if (ret)
 				goto out;
+
+			dolog(KCAPI_LOG_DEBUG, "Set tag length to %u bytes",
+			      opts->taglen);
 		}
 	}
 
@@ -367,6 +387,9 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		ret = opts->func_stream_update(handle, &iniov, 1);
 		if (ret < 0)
 			goto out;
+
+		dolog(KCAPI_LOG_DEBUG, "Sent %u bytes of AAD",
+		      opts->aadlen);
 	}
 
 	if (infd == STDIN_FD) {
@@ -378,6 +401,8 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			if (ret < 0)
 				goto out;
 
+			outsize = outbufsize(handle, opts, iniov.iov_len);
+
 			/* WARNING: with AEAD, only one loop is possible */
 			if (tagbuf) {
 				iniov.iov_base = tagbuf;
@@ -387,9 +412,10 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 							       1);
 				if (ret < 0)
 					goto out;
-			}
 
-			outsize = outbufsize(handle, opts, iniov.iov_len);
+				dolog(KCAPI_LOG_DEBUG, "Sent %u bytes of tag",
+				      opts->taglen);
+			}
 
 			if (outfd != STDOUT_FD) {
 				ret = ftruncate(outfd,
@@ -472,18 +498,21 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			if (ret < 0)
 				goto out;
 
+			outsize = outbufsize(handle, opts, iniov.iov_len);
+
 			/* WARNING: with AEAD, only one loop is possible */
 			if (tagbuf) {
 				iniov.iov_base = tagbuf;
 				iniov.iov_len = opts->taglen;
 
 				ret = opts->func_stream_update(handle, &iniov,
-								1);
+							       1);
 				if (ret < 0)
 					goto out;
-			}
 
-			outsize = outbufsize(handle, opts, iniov.iov_len);
+				dolog(KCAPI_LOG_DEBUG, "Sent %u bytes of tag",
+				      opts->taglen);
+			}
 
 			/* padding */
 			ret = add_padding(handle, opts, padbuf,
@@ -946,7 +975,13 @@ int main(int argc, char *argv[])
 		      ret, opts.decrypt ? "plain" : "cipher");
 		ret = 0;
 	} else {
-		dolog(KCAPI_LOG_ERR, "encryption failed with error %d", ret);
+		if (ret == -EBADMSG && opts.aad) {
+			dolog(KCAPI_LOG_ERR,
+			      "AEAD decryption failed due to integrity violation");
+		} else {
+			dolog(KCAPI_LOG_ERR, "%s failed with error %d",
+			      opts.decrypt ? "decryption" : "encryption", ret);
+		}
 	}
 
 out:

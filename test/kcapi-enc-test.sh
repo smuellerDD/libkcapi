@@ -12,7 +12,35 @@ GENPT="${TSTPREFIX}generated_pt"
 GENCT="${TSTPREFIX}generated_ct"
 
 IV="0123456789abcdef0123456789abcdef"
+
+#CCM Decrypt
+CCM_MSG="4edb58e8d5eb6bc711c43a6f3693daebde2e5524f1b55297abb29f003236e43d"
+CCM_KEY="2861fd0253705d7875c95ba8a53171b4"
+CCM_AAD="fb7bc304a3909e66e2e0c5ef952712dd884ce3e7324171369f2c5db1adc48c7d"
+CCM_TAG="a7877c99"
+CCM_TAG_FAIL="a7877c98"
+CCM_NONCE="674742abd0f5ba"
+CCM_EXP="8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723"
+
 failures=0
+
+hex2bin()
+{
+	local hex=$1
+	local dstfile=$2
+
+	echo -n $hex | perl -pe 's/([0-9a-f]{2})/chr hex $1/gie' > $dstfile
+}
+
+bin2hex_noaad()
+{
+	local origfile=$1
+	local aadlenskip=$2
+
+	local hex=$(od --endian=big -A n -v -t x2 -w512 -j$aadlenskip $origfile | sed 's/ //g')
+
+	echo $hex
+}
 
 # color -- emit ansi color codes
 color()
@@ -42,14 +70,24 @@ color()
 
 echo_pass()
 {
-	local bytes=$(stat -c %s $ORIGPT)
-	echo $(color "green")[PASSED - $bytes bytes]$(color off) $@
+	if [ -f $ORIGPT ]
+	then
+		local bytes=$(stat -c %s $ORIGPT)
+		echo $(color "green")[PASSED - $bytes bytes]$(color off) $@
+	else
+		echo $(color "green")[PASSED]$(color off) $@
+	fi
 }
 
 echo_fail()
 {
-	local bytes=$(stat -c %s $ORIGPT)
-	echo $(color "red")[FAILED - $bytes bytes]$(color off) $@
+	if [ -f $ORIGPT ]
+	then
+		local bytes=$(stat -c %s $ORIGPT)
+		echo $(color "red")[FAILED - $bytes bytes]$(color off) $@
+	else
+		echo $(color "red")[FAILED]$(color off) $@
+	fi
 	failures=$(($failures+1))
 }
 
@@ -69,6 +107,9 @@ init_setup()
 	# Hex key string: 303132333435363738396162636465663031323334353637383961626364650a
 	echo "0123456789abcdef0123456789abcde" > $KEYFILE_AES256
 	OPENSSLKEY256="303132333435363738396162636465663031323334353637383961626364650a"
+
+	hex2bin $CCM_MSG ${TSTPREFIX}ccm_msg
+	hex2bin $CCM_KEY ${TSTPREFIX}ccm_key
 }
 
 gen_orig()
@@ -235,7 +276,35 @@ test_filein_fileout()
 	diff_file $ORIGPT $GENPT "FILEIN / FILEOUT test (password)"
 }
 
+test_ccm()
+{
+	local aadlen=${#CCM_AAD}
+
+	aadlen=$(($aadlen/2))
+
+	exec 10<${TSTPREFIX}ccm_key; $APP --keyfd 10 -d -c "ccm(aes)" -i ${TSTPREFIX}ccm_msg -o ${TSTPREFIX}ccm_out --ccm-nonce $CCM_NONCE --aad $CCM_AAD --tag $CCM_TAG
+	local hexret=$(bin2hex_noaad ${TSTPREFIX}ccm_out $aadlen)
+
+	if [ x"$hexret" != x"$CCM_EXP" ]
+	then
+		echo_fail "CCM output does not match expected output (received: $hexret -- expected $CCM_EXP)"
+	else
+		echo_pass "FILEIN / FILEOUT CCM decrypt"
+	fi
+
+	exec 10<${TSTPREFIX}ccm_key; $APP --keyfd 10 -d -c "ccm(aes)" -i ${TSTPREFIX}ccm_msg -o ${TSTPREFIX}ccm_out --ccm-nonce $CCM_NONCE --aad $CCM_AAD --tag $CCM_TAG_FAIL -q
+
+	# 182 == -EBADMSG
+	if [ $? -eq 182 ]
+	then
+		echo_pass "FILEIN / FILEOUT CCM decrypt integrity violation"
+	else
+		echo_fail "CCM integrity violation not caught"
+	fi
+}
+
 init_setup
+test_ccm
 
 for i in 1 15 16 29 32 257 512 1023 16385 65535 65536 65537 99999 100000 100001
 do
