@@ -31,7 +31,8 @@ extern "C"
 
 #define STDIN_FD 0
 #define STDOUT_FD 1
-#define TMPBUFLEN 4096
+#define MAX_ALG_PAGES 16
+#define TMPBUFLEN (4096 * (MAX_ALG_PAGES - 1))
 
 #define KCAPI_APP_ALIGN 8
 #define __aligned(x)	__attribute__((aligned(x)))
