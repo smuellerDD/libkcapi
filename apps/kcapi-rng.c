@@ -48,7 +48,7 @@
 static struct kcapi_handle *rng = NULL;
 static unsigned int Verbosity = KCAPI_LOG_WARN;
 static char *rng_name = NULL;
-uint32_t hexout = 0;
+bool hexout = false;
 
 #if !defined(HAVE_GETRANDOM) && !defined(__NR_getrandom)
 static int random_fd = -1;
@@ -83,10 +83,16 @@ static int get_random(uint8_t *buf, uint32_t buflen)
 	do {
 #ifdef HAVE_GETRANDOM
 		ret = getrandom(buf, buflen, 0);
+		dolog(KCAPI_LOG_DEBUG,
+		      "Accessed getrandom system call for %u bytes", buflen);
 #elif defined __NR_getrandom
 		ret = syscall(__NR_getrandom, buf, buflen, 0);
+		dolog(KCAPI_LOG_DEBUG,
+		      "Accessed getrandom system call for %u bytes", buflen);
 #else
 		ret = read(random_fd, buf, buflen);
+		dolog(KCAPI_LOG_DEBUG,
+		      "Accessed /dev/urandom for %u bytes", buflen);
 #endif
 		if (0 < ret) {
 			buflen -= ret;
@@ -180,7 +186,7 @@ static unsigned long parse_opts(int argc, char *argv[])
 				rng_name = optarg;
 				break;
 			case 6:
-				hexout = 1;
+				hexout = true;
 				break;
 			default:
 				usage();
@@ -267,13 +273,20 @@ int main(int argc, char *argv[])
 	ret = kcapi_rng_seed(rng, seedbuf, seedsize);
 	if (ret)
 		goto out;
+	dolog(KCAPI_LOG_DEBUG, "Seeding the DRNG with %u bytes of data",
+	      seedsize);
 
 	if (!isatty(0) && (errno == EINVAL || errno == ENOTTY)) {
 		while (fgets((char *)seedbuf, seedsize, stdin)) {
 			ret = kcapi_rng_seed(rng, seedbuf, seedsize);
 			if (ret)
-				fprintf(stderr, "User-provided seed of %lu bytes not accepted by DRNG (error: %d)\n",
-					(unsigned long)sizeof(buf), ret);
+				dolog(KCAPI_LOG_WARN,
+				      "User-provided seed of %lu bytes not accepted by DRNG (error: %d)",
+				      (unsigned long)sizeof(buf), ret);
+			else
+				dolog(KCAPI_LOG_DEBUG,
+				      "User-provided seed of %u bytes",
+				      seedsize);
 		}
 	}
 

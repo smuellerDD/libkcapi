@@ -39,8 +39,8 @@ struct opt_data {
 	const char *ciphername;
 	const char *passwd;
 	const char *salt;
-	uint32_t keyed_md;
-	uint32_t hexout;
+	bool keyed_md;
+	bool hexout;
 	int password_fd;
 	int key_fd;
 	uint32_t pbkdf_iterations;
@@ -452,7 +452,7 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 				opts->key_fd = (int)val;
 				break;
 			case 9:
-				opts->hexout = 1;
+				opts->hexout = true;
 				break;
 
 			case 10:
@@ -514,7 +514,7 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 	}
 
 	if (opts->passwd || opts->password_fd != -1 || opts->key_fd != -1)
-		opts->keyed_md = 1;
+		opts->keyed_md = true;
 
 	if (opts->passwd)
 		dolog(KCAPI_LOG_WARN,
@@ -533,7 +533,6 @@ int main(int argc, char *argv[])
 
 	parse_opts(argc, argv, &opts);
 
-
 	ret = kcapi_md_init(&handle, opts.ciphername, 0);
 	if (ret)
 		return ret;
@@ -549,7 +548,8 @@ int main(int argc, char *argv[])
 		      ret, opts.keyed_md ? "keyed " : "");
 		ret = 0;
 	} else {
-		dolog(KCAPI_LOG_ERR, "message digest creation failed with error %d",
+		dolog(KCAPI_LOG_ERR,
+		      "message digest creation failed with error %d",
 		      ret);
 	}
 

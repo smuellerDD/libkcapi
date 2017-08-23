@@ -50,9 +50,9 @@ struct opt_data {
 	int password_fd;
 	int key_fd;
 	uint32_t pbkdf_iterations;
-	uint32_t decrypt;
-	uint32_t nounpad;
-	uint32_t removetag;
+	bool decrypt;
+	bool nounpad;
+	bool removetag;
 	const char *pbkdf_hash;
 	int (*func_init)(struct kcapi_handle **handle, const char *ciphername,
 			 uint32_t flags);
@@ -89,10 +89,16 @@ static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
 			goto out;
 	}
 
+	/* send generated data to stdout */
 	if (outfd == STDOUT_FD) {
+		/*
+		 * Generate output data in a tmp buffer and then dump it.
+		 */
 		while (outsize > 0) {
+			/* length of the input data */
 			uint32_t inlen = outsize < TMPBUFLEN ?
 					outsize : TMPBUFLEN;
+			/* length of the output data */
 			uint32_t outlen = inlen;
 			uint8_t *tmpbufptr = tmpbuf;
 
@@ -103,6 +109,11 @@ static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
 				goto out;
 			generated_bytes += ret;
 
+			/*
+			 * If we have to remove the tag, simply reduce
+			 * number of bytes to be written to stdout as the tag
+			 * is the trailing part of the memory.
+			 */
 			if (opts->removetag) {
 				outlen -= opts->taglen;
 				generated_bytes -= opts->taglen;
@@ -112,8 +123,9 @@ static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
 				      opts->taglen);
 			}
 
+			/* write the data */
 			if ((outlen = fwrite(tmpbufptr, sizeof(char), outlen,
-					  stdout)) != 0) {
+					     stdout)) != 0) {
 				outsize -= inlen;
 				tmpbufptr += inlen;
 			} else {
@@ -123,11 +135,18 @@ static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
 			}
 		}
 
+		/*
+		 * We cannot remove padding as we do not know when the last
+		 * block is processed.
+		 */
 		dolog(KCAPI_LOG_VERBOSE, "Removal of padding disabled");
+
+	/* Write to a file. */
 	} else {
 		uint8_t *off_ptr;
 		uint32_t off_outsize = outsize + offset;
 
+		/* Map the file into memory. */
 		outmem = mmap(NULL, off_outsize, PROT_WRITE, MAP_SHARED,
 			      outfd, 0);
 		if (outmem == MAP_FAILED) {
@@ -139,6 +158,7 @@ static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
 		outiov.iov_base = off_ptr;
 		outiov.iov_len = outsize;
 
+		/* Write the data. */
 		ret = opts->func_stream_op(handle, &outiov, 1);
 		if (ret < 0)
 			goto out;
@@ -183,6 +203,12 @@ static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
 		} else
 			dolog(KCAPI_LOG_VERBOSE, "Removal of padding disabled");
 
+		/*
+		 * Remove the trailing tag for older kernels by simply
+		 * truncating the output file to the generated data size minus
+		 * the tag value. As the tag is the trailing part of the data,
+		 * it will be cleared.
+		 */
 		if (opts->removetag) {
 			ret = ftruncate(outfd, (off_outsize - opts->taglen));
 			if (ret)
@@ -200,6 +226,10 @@ out:
 	return (ret < 0) ? ret : generated_bytes;
 }
 
+/**
+ * Get the output data size to be expected for the cipher operation given
+ * the input data size.
+ */
 static uint32_t outbufsize(struct kcapi_handle *handle, struct opt_data *opts,
 			   uint32_t datalen)
 {
@@ -211,9 +241,14 @@ static uint32_t outbufsize(struct kcapi_handle *handle, struct opt_data *opts,
 							   opts->aadlen,
 							   opts->taglen);
 
-			/* this is needed for kernels < 4.9 */
+			/*
+			 * This is needed for kernels < 4.9: see the libkcapi
+			 * documentation where the tag value is generated
+			 * during decryption. As we do not want a zero tag,
+			 * simply discard the tag during print out.
+			 */
 			if (outsize == (datalen + opts->aadlen + opts->taglen))
-				opts->removetag = 1;
+				opts->removetag = true;
 		} else
 			outsize = kcapi_aead_outbuflen_enc(handle, datalen,
 							   opts->aadlen,
@@ -231,8 +266,8 @@ static uint32_t outbufsize(struct kcapi_handle *handle, struct opt_data *opts,
 }
 
 /*
- * This function is required to cover the kernel interface change between
- * 4.8 and 4.9
+ * Send the tag value to the kernel for AEAD operations.
+ * This function also handles the interface change between kernels 4.8 and 4.9.
  */
 static uint32_t sendtag(struct kcapi_handle *handle, struct opt_data *opts,
 			uint8_t *tagbuf, uint8_t *tmptagbuf)
@@ -241,9 +276,11 @@ static uint32_t sendtag(struct kcapi_handle *handle, struct opt_data *opts,
 	struct iovec iniov;
 	int ret;
 
+	/* If no AEAD operation, return immediately. */
 	if (!opts->aad)
 		return 0;
 
+	/* If we have a tag value, simply send it. */
 	if (tagbuf) {
 		iniov.iov_base = tagbuf;
 		iniov.iov_len = opts->taglen;
@@ -258,6 +295,12 @@ static uint32_t sendtag(struct kcapi_handle *handle, struct opt_data *opts,
 		return 0;
 	}
 
+	/*
+	 * On kernels < 4.9, the outsize is always aadlen + data + taglen.
+	 *
+	 * For newer kernels, the outsize is aadlen + data + tag (encryption) or
+	 * aadlen + data (decryption).
+	 */
 	if (opts->decrypt)
 		outsize = kcapi_aead_inbuflen_dec(handle, 0, opts->aadlen,
 						  opts->taglen);
@@ -265,11 +308,15 @@ static uint32_t sendtag(struct kcapi_handle *handle, struct opt_data *opts,
 		outsize = kcapi_aead_inbuflen_enc(handle, 0, opts->aadlen,
 						  opts->taglen);
 
-	/* On newer kernels, tag is only needed for decryption. */
-	if (outsize != (opts->aadlen + opts->taglen))
+	if (outsize != (opts->aadlen + opts->taglen)) {
+		/* We have a newer kernel, do not do anything. */
 		return 0;
+	}
 
-	/* Send an empty buffer for a tag as required on older kernels. */
+	/*
+	 * Send an empty buffer for a tag as required on kernels < 4.9 as
+	 * documented for libkcapi.
+	 */
 	if (TAGBUFLEN < opts->taglen) {
 		dolog(KCAPI_LOG_ERR, "Tag size %u too large\n", opts->taglen);
 		return -EINVAL;
@@ -288,6 +335,10 @@ static uint32_t sendtag(struct kcapi_handle *handle, struct opt_data *opts,
 	return 0;
 }
 
+/**
+ * Add the padding data to ensure that for a cipher operation, the input
+ * data is multiples of the cipher's block size.
+ */
 static int add_padding(struct kcapi_handle *handle, struct opt_data *opts,
 		       uint8_t *padbuf, uint32_t outsize, uint32_t currblock)
 {
@@ -327,6 +378,11 @@ static int add_padding(struct kcapi_handle *handle, struct opt_data *opts,
 	return padsize;
 }
 
+/**
+ * Perform the requested cipher operation.
+ *
+ * The cipher handle must already have the key set.
+ */
 static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 {
 	int infd = -1, outfd = -1;
@@ -371,13 +427,15 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			ivbuf = newiv;
 			ivbuflen = newivlen;
 
-			dolog_bin(KCAPI_LOG_DEBUG, ivbuf, ivbuflen, "Padded IV");
+			dolog_bin(KCAPI_LOG_DEBUG, ivbuf, ivbuflen,
+				  "Padded IV");
 		}
 
 	} else if (opts->ccmnonce) {
 		uint8_t *nonce;
 		uint32_t noncelen;
 
+		/* Convert a CCM nonce into an IV. */
 		ret = hex2bin_alloc(opts->ccmnonce, strlen(opts->ccmnonce),
 				    &nonce, &noncelen);
 		if (ret)
@@ -403,6 +461,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		if (ret)
 			return ret;
 
+		/* Set AAD length. */
 		kcapi_aead_setassoclen(handle, opts->aadlen);
 		dolog(KCAPI_LOG_DEBUG, "Set AAD length to %u bytes",
 		      opts->aadlen);
@@ -414,6 +473,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 				goto out;
 		}
 
+		/* Set tag length. */
 		if (opts->taglen) {
 			ret = kcapi_aead_settaglen(handle, opts->taglen);
 			if (ret)
@@ -424,7 +484,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		}
 	}
 
-	/* Access input data */
+	/* Access input data. */
 	if (opts->infile) {
 		infd = open(opts->infile, O_RDONLY | O_CLOEXEC);
 		if (infd < 0) {
@@ -438,7 +498,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 	} else
 		infd = STDIN_FD;
 
-	/* Access output data */
+	/* Access output location */
 	if (opts->outfile) {
 		outfd = open(opts->outfile, O_RDWR | O_CLOEXEC | O_CREAT,
 			     S_IRWXU | S_IRWXG | S_IRWXO);
@@ -476,6 +536,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		      opts->aadlen);
 	}
 
+	/* Get data from stdin. */
 	if (infd == STDIN_FD) {
 		iniov.iov_base = tmpbuf;
 		while ((iniov.iov_len =
@@ -511,6 +572,8 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 				goto out;
 			generated_bytes += ret;
 		}
+
+	/* Get data from file. */
 	} else {
 		uint32_t maxdata = sysconf(_SC_PAGESIZE) * MAX_ALG_PAGES;
 		uint32_t sent_data = 0;
@@ -615,6 +678,10 @@ out:
 	return (ret < 0) ? ret : generated_bytes;
 }
 
+/**
+ * Set the key for a cipher operation. This function potentially derives
+ * the key from a given passphrase.
+ */
 static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 {
 	uint8_t passwdbuf[128] __aligned(KCAPI_APP_ALIGN);
@@ -643,12 +710,14 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 		passwdlen = ret;
 	}
 
+	/* Transform password into a key using PBKDF2. */
 	if (passwdptr && passwdlen) {
 		uint8_t *saltbuf = NULL;
 		uint32_t saltbuflen = 0;
 
 		dolog(KCAPI_LOG_DEBUG, "password %s", passwdptr);
 
+		/* Determine the number of PBKDF2 iterations. */
 		if (!opts->pbkdf_iterations) {
 			opts->pbkdf_iterations =
 			     kcapi_pbkdf_iteration_count(opts->pbkdf_hash, 0);
@@ -657,12 +726,14 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 			      opts->pbkdf_iterations);
 		}
 
+		/* Convert the salt hex representation into binary. */
 		if (opts->salt) {
 			ret = hex2bin_alloc(opts->salt, strlen(opts->salt),
 					    &saltbuf, &saltbuflen);
 			if (ret)
 				goto out;
 		} else {
+			/* No salt provided, generate a random number. */
 			struct kcapi_handle *rng;
 			uint32_t j = 0;
 
@@ -699,9 +770,13 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 				  "PBKDF2 salt used");
 		}
 
-		/* reading of sizeof(keybuf) implies 256 bit key */
+		/*
+		 * PBKDF2 operation: generate a key from password --
+		 * reading of sizeof(keybuf) implies 256 bit key.
+		*/
 		ret = kcapi_pbkdf(opts->pbkdf_hash, passwdptr, passwdlen,
-				  saltbuf, saltbuflen, opts->pbkdf_iterations, keybuf, sizeof(keybuf));
+				  saltbuf, saltbuflen, opts->pbkdf_iterations,
+				  keybuf, sizeof(keybuf));
 		free(saltbuf);
 		if (ret)
 			goto out;
@@ -732,6 +807,7 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 
 	dolog_bin(KCAPI_LOG_DEBUG, keybuf, keybuflen, "data-encryption-key");
 
+	/* Set the key for the key handle. */
 	ret = opts->func_setkey(handle, keybuf, keybuflen);
 
 out:
@@ -832,10 +908,10 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 				opts->ciphername = optarg;
 				break;
 			case 1:
-				opts->decrypt = 0;
+				opts->decrypt = false;
 				break;
 			case 2:
-				opts->decrypt = 1;
+				opts->decrypt = true;
 				break;
 			case 3:
 				opts->infile = optarg;
@@ -901,7 +977,7 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 				opts->key_fd = (int)val;
 				break;
 			case 16:
-				opts->nounpad = 1;
+				opts->nounpad = true;
 				break;
 
 			case 17:
@@ -928,10 +1004,10 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 			opts->ciphername = optarg;
 			break;
 		case 'e':
-			opts->decrypt = 0;
+			opts->decrypt = false;
 			break;
 		case 'd':
-			opts->decrypt = 1;
+			opts->decrypt = true;
 			break;
 		case 'i':
 			opts->infile = optarg;
@@ -945,7 +1021,6 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 		case 'p':
 			opts->passwd = optarg;
 			break;
-
 
 		case 'v':
 			verbosity++;
@@ -970,17 +1045,20 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 
 	if (!opts->passwd && opts->password_fd == -1 &&
 	    opts->key_fd == -1) {
-		dolog(KCAPI_LOG_ERR, "Provide at least a password, a password FD or key FD");
+		dolog(KCAPI_LOG_ERR,
+		      "Provide at least a password, a password FD or key FD");
 		usage();
 	}
 
 	if (opts->aad) {
 		if (opts->decrypt && !opts->tag) {
-			dolog(KCAPI_LOG_ERR, "No tag provided for AEAD decryption operation");
+			dolog(KCAPI_LOG_ERR,
+			      "No tag provided for AEAD decryption operation");
 			usage();
 		}
 		if (!opts->decrypt && !opts->taglen) {
-			dolog(KCAPI_LOG_ERR, "No tag length provided for AEAD encryption operation");
+			dolog(KCAPI_LOG_ERR,
+			      "No tag length provided for AEAD encryption operation");
 			usage();
 		}
 	}
@@ -991,7 +1069,8 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 	}
 
 	if (opts->passwd)
-		dolog(KCAPI_LOG_WARN, "Password on command line is visible in process listing and /proc! Use --passwd_fd command line option!");
+		dolog(KCAPI_LOG_WARN,
+		      "Password on command line is visible in process listing and /proc! Use --passwd_fd command line option!");
 
 	if (!opts->pbkdf_hash)
 		opts->pbkdf_hash = "hmac(sha256)";
@@ -1026,14 +1105,17 @@ int main(int argc, char *argv[])
 		opts.func_blocksize = kcapi_cipher_blocksize;
 	}
 
+	/* Initialize link to the kernel's AF_ALG interface. */
 	ret = opts.func_init(&handle, opts.ciphername, 0);
 	if (ret)
 		return ret;
 
+	/* Set the key from password or key-FD. */
 	ret = set_key(handle, &opts);
 	if (ret)
 		goto out;
 
+	/* Perform cipher operation. */
 	ret = cipher_op(handle, &opts);
 
 	if (ret > 0) {
