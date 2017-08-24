@@ -919,7 +919,8 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 	ret = -EINVAL;
 	if (kcapi_cipher_init(&handle, cavs_test->cipher, 0)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* Set key */
@@ -1032,7 +1033,8 @@ static int cavs_sym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	if (kcapi_cipher_init(&handle, cavs_test->cipher,
 			      aiofallback ? 0 : KCAPI_INIT_AIO)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* Set key */
@@ -1208,8 +1210,6 @@ static int cavs_aead(struct kcapi_cavs *cavs_test, uint32_t loops,
 		printf("Symmetric cipher setkey failed\n");
 		goto out;
 	}
-
-	ret = -EIO;
 
 	for (i = 0; i < loops; i++) {
 		memcpy(i_assoc, cavs_test->assoc, i_assoclen);
@@ -1410,8 +1410,6 @@ static int cavs_aead_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 		printf("Symmetric cipher setkey failed\n");
 		goto out;
 	}
-
-	ret = -EIO;
 
 	_get_time(&begin);
 	if (cavs_test->enc)

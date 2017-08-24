@@ -561,8 +561,11 @@ int main(int argc, char *argv[])
 		switch (c) {
 			case 'v':
 				version(hash);
-				return 0;
+				ret = 0;
+				goto out;
 			case 'c':
+				if (checkfile)
+					free(checkfile);
 				checkfile = strdup(optarg);
 				if (!checkfile) {
 					fprintf(stderr, "Error copying file name: %s\n",
@@ -581,6 +584,11 @@ int main(int argc, char *argv[])
 				ret = 0;
 				goto out;
 			case 'k':
+				if (hmackey) {
+					usage(hash);
+					ret = -EINVAL;
+					goto out;
+				}
 				if (hex2bin_alloc(optarg, strlen(optarg),
 						  &hmackey, &hmackeylen)) {
 					fprintf(stderr, "Cannot allocate memory for HMAC key\n");
@@ -590,6 +598,11 @@ int main(int argc, char *argv[])
 					goto out;
 				break;
 			case 'b':
+				if (hmackey) {
+					usage(hash);
+					ret = -EINVAL;
+					goto out;
+				}
 				hmackey = (uint8_t *)strdup(optarg);
 				if (!hmackey) {
 					fprintf(stderr, "Cannot allocate memory for HMAC key\n");
@@ -618,6 +631,8 @@ int main(int argc, char *argv[])
 		}
 
 		targetfile = argv[optind];
+		if (checkfile)
+			free(checkfile);
 		checkfile = get_hmac_file(targetfile);
 		if (!checkfile)
 			goto out;

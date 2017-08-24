@@ -127,7 +127,6 @@ static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
 			if ((outlen = fwrite(tmpbufptr, sizeof(char), outlen,
 					     stdout)) != 0) {
 				outsize -= inlen;
-				tmpbufptr += inlen;
 			} else {
 				dolog(KCAPI_LOG_ERR, "Write failed %d", -errno);
 				ret = -errno;

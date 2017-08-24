@@ -63,7 +63,7 @@ bin_kcapi_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_LDADD = libkcapi.la
 bin_kcapi_SOURCES = test/kcapi-main.c
 
-SCAN_FILES += $(kcapi_SOURCES)
+SCAN_FILES += $(bin_kcapi_SOURCES)
 endif
 
 if ENABLE_KCAPI_SPEED
@@ -80,7 +80,7 @@ bin_kcapi_speed_SOURCES = speed-test/cryptoperf.h \
 		      speed-test/cryptoperf-rng.c \
 		      speed-test/cryptoperf-skcipher.c
 
-SCAN_FILES += $(kcapi_speed_SOURCES)
+SCAN_FILES += $(bin_kcapi_speed_SOURCES)
 endif
 
 if ENABLE_KCAPI_HASHER
@@ -91,7 +91,7 @@ bin_kcapi_hasher_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_hasher_LDADD = libkcapi.la
 bin_kcapi_hasher_SOURCES = apps/kcapi-hasher.c apps/app-internal.c
 
-SCAN_FILES += $(kcapi_hasher_SOURCES)
+SCAN_FILES += $(bin_kcapi_hasher_SOURCES)
 
 kcapi_hasher_links = sha1sum sha224sum sha256sum sha384sum sha512sum \
 	             md5sum fipscheck fipshmac \
@@ -111,7 +111,7 @@ bin_kcapi_rng_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_rng_LDADD = libkcapi.la
 bin_kcapi_rng_SOURCES = apps/kcapi-rng.c apps/app-internal.c
 
-SCAN_FILES += $(kcapi_rng_SOURCES)
+SCAN_FILES += $(bin_kcapi_rng_SOURCES)
 endif
 
 if ENABLE_KCAPI_ENCAPP
@@ -122,7 +122,7 @@ bin_kcapi_enc_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_enc_LDADD = libkcapi.la
 bin_kcapi_enc_SOURCES = apps/kcapi-enc.c apps/app-internal.c
 
-SCAN_FILES += $(kcapi_enc_SOURCES)
+SCAN_FILES += $(bin_kcapi_enc_SOURCES)
 endif
 
 if ENABLE_KCAPI_DGSTAPP
@@ -133,7 +133,7 @@ bin_kcapi_dgst_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_dgst_LDADD = libkcapi.la
 bin_kcapi_dgst_SOURCES = apps/kcapi-dgst.c apps/app-internal.c
 
-SCAN_FILES += $(kcapi_dgst_SOURCES)
+SCAN_FILES += $(bin_kcapi_dgst_SOURCES)
 endif
 
 if HAVE_CLANG

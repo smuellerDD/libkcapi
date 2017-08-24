@@ -115,9 +115,9 @@ int32_t _kcapi_common_send_meta_fd(struct kcapi_handle *handle, int *fdptr,
 				   struct iovec *iov, uint32_t iovlen,
 				   uint32_t enc, uint32_t flags)
 {
-	int32_t ret = -EINVAL;
+	int32_t ret;
 	char *buffer = NULL;
-	int errsv = 0;
+	int errsv = EFAULT;
 
 	/* plaintext / ciphertext data */
 	struct cmsghdr *header = NULL;
@@ -157,6 +157,10 @@ int32_t _kcapi_common_send_meta_fd(struct kcapi_handle *handle, int *fdptr,
 
 	/* encrypt/decrypt operation */
 	header = CMSG_FIRSTHDR(&msg);
+	if (!header) {
+		errsv = EFAULT;
+		goto out;
+	}
 	header->cmsg_level = SOL_ALG;
 	header->cmsg_type = ALG_SET_OP;
 	header->cmsg_len = CMSG_LEN(sizeof(*type));
@@ -166,6 +170,10 @@ int32_t _kcapi_common_send_meta_fd(struct kcapi_handle *handle, int *fdptr,
 	/* set IV */
 	if (handle->cipher.iv) {
 		header = CMSG_NXTHDR(&msg, header);
+		if (!header) {
+			errsv = EFAULT;
+			goto out;
+		}
 		header->cmsg_level = SOL_ALG;
 		header->cmsg_type = ALG_SET_IV;
 		header->cmsg_len = iv_msg_size;
@@ -178,6 +186,10 @@ int32_t _kcapi_common_send_meta_fd(struct kcapi_handle *handle, int *fdptr,
 	if (handle->aead.assoclen) {
 		/* Set associated data length */
 		header = CMSG_NXTHDR(&msg, header);
+		if (!header) {
+			errsv = EFAULT;
+			goto out;
+		}
 		header->cmsg_level = SOL_ALG;
 		header->cmsg_type = ALG_SET_AEAD_ASSOCLEN;
 		header->cmsg_len = CMSG_LEN(sizeof(*assoclen));
@@ -187,9 +199,11 @@ int32_t _kcapi_common_send_meta_fd(struct kcapi_handle *handle, int *fdptr,
 
 	ret = sendmsg(*fdptr, &msg, flags);
 	errsv = errno;
-	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: sendmsg syscall returned %d (errno: %d)",
+	kcapi_dolog(KCAPI_LOG_DEBUG,
+		    "AF_ALG: sendmsg syscall returned %d (errno: %d)",
 		    ret, errsv);
 
+out:
 	kcapi_memset_secure(buffer, 0, bufferlen);
 	free(buffer);
 	return (ret >= 0) ? ret : -errsv;
@@ -570,7 +584,7 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 		struct nlmsghdr n;
 		struct crypto_user_alg cru;
 	} req;
-	struct crypto_user_alg *cru_res;
+	struct crypto_user_alg *cru_res = NULL;
 	int res_len = 0;
 	struct rtattr *tb[CRYPTOCFGA_MAX+1];
 	struct rtattr *rta;
@@ -691,6 +705,10 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	}
 
 	/* parse data */
+	if (!cru_res) {
+		errsv = EFAULT;
+		goto out;
+	}
 	rta = CR_RTA(cru_res);
 	memset(tb, 0, sizeof(struct rtattr *) * (CRYPTOCFGA_MAX + 1));
 	while (RTA_OK(rta, res_len)) {

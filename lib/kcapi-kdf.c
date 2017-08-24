@@ -311,7 +311,7 @@ int32_t kcapi_hkdf(const char *hashname,
 	uint8_t ctr = 0x01;
 	struct kcapi_handle *handle = NULL;
 
-	if (!ikm || !ikmlen)
+	if (!ikm || !ikmlen || !dst)
 		return -EINVAL;
 
 	err = kcapi_md_init(&handle, hashname, 0);
@@ -382,6 +382,12 @@ int32_t kcapi_hkdf(const char *hashname,
 			err = kcapi_md_final(handle, prk_tmp, h);
 			if (err < 0)
 				goto err;
+
+			/* Shut up Clang */
+			if (!dst) {
+				err = -EFAULT;
+				goto err;
+			}
 			memcpy(dst, prk_tmp, dlen);
 			dlen = 0;
 		} else {
