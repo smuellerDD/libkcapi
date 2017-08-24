@@ -42,18 +42,18 @@ struct opt_data {
 	const char *iv;
 	const char *ccmnonce;
 	const char *aad;
-	uint32_t aadlen;
 	const char *tag;
-	uint32_t taglen;
 	const char *passwd;
 	const char *salt;
+	const char *pbkdf_hash;
 	int password_fd;
 	int key_fd;
 	uint32_t pbkdf_iterations;
+	uint32_t taglen;
+	uint32_t aadlen;
 	bool decrypt;
 	bool nounpad;
 	bool removetag;
-	const char *pbkdf_hash;
 	int (*func_init)(struct kcapi_handle **handle, const char *ciphername,
 			 uint32_t flags);
 	void (*func_destroy)(struct kcapi_handle *handle);

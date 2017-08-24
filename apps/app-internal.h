@@ -39,7 +39,8 @@ extern "C"
 
 #define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
 
-typedef enum { false, true } bool;
+enum { false, true };
+typedef _Bool bool;
 
 void dolog(enum kcapi_verbosity severity, const char *fmt, ...);
 void dolog_bin(enum kcapi_verbosity severity,

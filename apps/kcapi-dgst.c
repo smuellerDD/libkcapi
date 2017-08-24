@@ -39,12 +39,12 @@ struct opt_data {
 	const char *ciphername;
 	const char *passwd;
 	const char *salt;
-	bool keyed_md;
-	bool hexout;
+	const char *pbkdf_hash;
 	int password_fd;
 	int key_fd;
 	uint32_t pbkdf_iterations;
-	const char *pbkdf_hash;
+	bool keyed_md;
+	bool hexout;
 };
 
 static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)

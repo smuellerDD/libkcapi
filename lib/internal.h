@@ -140,10 +140,10 @@ struct kcapi_cipher_data {
  */
 struct kcapi_aead_data {
 	uint32_t datalen;
-	uint8_t *data;
 	uint32_t assoclen;
-	uint8_t *assoc;
 	uint32_t taglen;
+	uint8_t *data;
+	uint8_t *assoc;
 	uint8_t *tag;
 };
 
