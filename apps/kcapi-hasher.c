@@ -69,6 +69,8 @@
 #include <getopt.h>
 #include <errno.h>
 #include <ctype.h>
+#include <dlfcn.h>
+#include <libgen.h>
 
 #include <kcapi.h>
 
@@ -385,6 +387,8 @@ static int fipscheck_self(char *hash,
 #define BUFSIZE 4096
 	char selfname[BUFSIZE];
 	int32_t selfnamesize = 0;
+	Dl_info info;
+	void *dl, *sym;
 
 #ifdef HAVE_SECURE_GETENV
 	if (secure_getenv("KCAPI_HASHER_FORCE_FIPS")) {
@@ -420,6 +424,7 @@ static int fipscheck_self(char *hash,
 		goto out;
 	}
 
+	/* Integrity check of our application. */
 	memset(selfname, 0, sizeof(selfname));
 	selfnamesize = readlink("/proc/self/exe", selfname, BUFSIZE);
 	if (selfnamesize >= BUFSIZE || selfnamesize < 0) {
@@ -428,7 +433,44 @@ static int fipscheck_self(char *hash,
 		goto out;
 	}
 
-	ret = -ENOMEM;
+	checkfile = get_hmac_file(selfname);
+	if (!checkfile) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	ret = process_checkfile(hash, checkfile, selfname, CHK_STATUS,
+				hmackey, hmackeylen);
+	if (ret)
+		goto out;
+
+	/* Integrity check of shared libkcapi.so file. */
+	memset(selfname, 0, sizeof(selfname));
+	snprintf(selfname, (sizeof(selfname) - 1), "libkcapi.so.%u",
+		 KCAPI_MAJVERSION);
+	dl = dlopen(selfname, RTLD_NODELETE|RTLD_NOLOAD|RTLD_LAZY);
+	if (dl == NULL) {
+		fprintf(stderr, "dlopen of file %s failed\n", selfname);
+		ret = -EFAULT;
+		goto out;
+	}
+
+	memset(selfname, 0, sizeof(selfname));
+	sym = dlsym(dl, "kcapi_md_init");
+	if (sym == NULL || !dladdr(sym, &info)) {
+		fprintf(stderr, "finding symbol kcapi_md_init failed\n");
+		ret = -EFAULT;
+		goto out;
+	}
+
+	strncpy(selfname, info.dli_fname, (sizeof(selfname) - 1));
+
+	dlclose(dl);
+
+	if (checkfile) {
+		ret = -ENOMEM;
+		free(checkfile);
+	}
 	checkfile = get_hmac_file(selfname);
 	if (!checkfile)
 		goto out;

@@ -87,7 +87,7 @@ if ENABLE_KCAPI_HASHER
 bin_PROGRAMS += bin/kcapi-hasher
 
 bin_kcapi_hasher_CPPFLAGS = $(COMMON_CPPFLAGS) -fPIC -Ilib/
-bin_kcapi_hasher_LDFLAGS = $(COMMON_LDFLAGS)
+bin_kcapi_hasher_LDFLAGS = $(COMMON_LDFLAGS) -ldl
 bin_kcapi_hasher_LDADD = libkcapi.la
 bin_kcapi_hasher_SOURCES = apps/kcapi-hasher.c apps/app-internal.c
 
