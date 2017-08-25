@@ -475,7 +475,7 @@ int main(int argc, char *argv[])
 		{"version", 0, 0, 'v'},
 		{"hkey", 1, 0, 'k'},
 		{"bkey", 1, 0, 'b'},
-		{"help", 1, 0, 'h'},
+		{"help", 0, 0, 'h'},
 		{0, 0, 0, 0}
 	};
 
@@ -559,8 +559,77 @@ int main(int argc, char *argv[])
 		if (-1 == c)
 			break;
 		switch (c) {
+			case 0:
+				switch (opt_index) {
+				case 0:
+					if (checkfile)
+						free(checkfile);
+					checkfile = strdup(optarg);
+					if (!checkfile) {
+						fprintf(stderr, "Error copying file name: %s\n",
+							strerror(errno));
+						goto out;
+					}
+					break;
+				case 1:
+					loglevel = CHK_QUIET;
+					break;
+				case 2:
+					loglevel = CHK_STATUS;
+					break;
+				case 3:
+					version(argv[0]);
+					ret = 0;
+					goto out;
+					break;
+				case 4:
+					if (hmackey &&
+					    hmackey != fipscheck_hmackey &&
+					    hmackey != hmaccalc_hmackey) {
+						kcapi_memset_secure(hmackey, 0,
+								    hmackeylen);
+						free(hmackey);
+						hmackey = NULL;
+					}
+					if (hex2bin_alloc(optarg,
+							  strlen(optarg),
+							  &hmackey,
+							  &hmackeylen)) {
+						fprintf(stderr, "Cannot allocate memory for HMAC key\n");
+						goto out;
+					}
+					if (get_hmac_cipherstring(hash,
+							HASHNAMESIZE))
+						goto out;
+					break;
+				case 5:
+					if (hmackey &&
+					    hmackey != fipscheck_hmackey &&
+					    hmackey != hmaccalc_hmackey) {
+						kcapi_memset_secure(hmackey, 0,
+								    hmackeylen);
+						free(hmackey);
+						hmackey = NULL;
+					}
+					hmackey = (uint8_t *)strdup(optarg);
+					if (!hmackey) {
+						fprintf(stderr, "Cannot allocate memory for HMAC key\n");
+						goto out;
+					}
+					hmackeylen = strlen(optarg);
+					if (get_hmac_cipherstring(hash,
+								HASHNAMESIZE))
+						goto out;
+					break;
+				case 6:
+					usage(argv[0]);
+					ret = 0;
+					goto out;
+				}
+				break;
+
 			case 'v':
-				version(hash);
+				version(argv[0]);
 				ret = 0;
 				goto out;
 			case 'c':
@@ -580,14 +649,16 @@ int main(int argc, char *argv[])
 				loglevel = CHK_STATUS;
 				break;
 			case 'h':
-				usage(hash);
+				usage(argv[0]);
 				ret = 0;
 				goto out;
 			case 'k':
-				if (hmackey) {
-					usage(hash);
-					ret = -EINVAL;
-					goto out;
+				if (hmackey && hmackey != fipscheck_hmackey &&
+				    hmackey != hmaccalc_hmackey) {
+					kcapi_memset_secure(hmackey, 0,
+							    hmackeylen);
+					free(hmackey);
+					hmackey = NULL;
 				}
 				if (hex2bin_alloc(optarg, strlen(optarg),
 						  &hmackey, &hmackeylen)) {
@@ -598,10 +669,12 @@ int main(int argc, char *argv[])
 					goto out;
 				break;
 			case 'b':
-				if (hmackey) {
-					usage(hash);
-					ret = -EINVAL;
-					goto out;
+				if (hmackey && hmackey != fipscheck_hmackey &&
+				    hmackey != hmaccalc_hmackey) {
+					kcapi_memset_secure(hmackey, 0,
+							    hmackeylen);
+					free(hmackey);
+					hmackey = NULL;
 				}
 				hmackey = (uint8_t *)strdup(optarg);
 				if (!hmackey) {
@@ -613,7 +686,7 @@ int main(int argc, char *argv[])
 					goto out;
 				break;
 			default:
-				usage(hash);
+				usage(argv[0]);
 				goto out;
 		}
 	}
