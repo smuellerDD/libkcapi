@@ -467,13 +467,12 @@ static int fipscheck_self(char *hash,
 
 	dlclose(dl);
 
-	if (checkfile) {
-		ret = -ENOMEM;
-		free(checkfile);
-	}
+	free(checkfile);
 	checkfile = get_hmac_file(selfname);
-	if (!checkfile)
+	if (!checkfile) {
+		ret = -ENOMEM;
 		goto out;
+	}
 
 	ret = process_checkfile(hash, checkfile, selfname, CHK_STATUS,
 				hmackey, hmackeylen);
