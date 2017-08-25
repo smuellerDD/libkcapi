@@ -77,29 +77,30 @@
 static uint8_t fipscheck_hmackey[] = "orboDeJITITejsirpADONivirpUkvarP";
 static uint8_t hmaccalc_hmackey[] = "FIPS-FTW-RHT2009";
 
-static void usage(char *hashname)
+static void usage(char *name)
 {
-	fprintf(stderr, "\n%ssum - calculation of hash sum (Using Linux Kernel Crypto API)\n", hashname);
+	fprintf(stderr, "\n%s - calculation of hash sum (Using Linux Kernel Crypto API)\n", basename(name));
 	fprintf(stderr, "\nUsage:\n");
-	fprintf(stderr, "\t%ssum [OPTION] ... [FILE] ...\n", hashname);
+	fprintf(stderr, "\t%s [OPTION] ... [FILE] ...\n", basename(name));
 	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "\t-c --check [FILE]\tVerify hash sums from file\n");
-	fprintf(stderr, "\t-q --quiet\t\tDo not print out verification result for every file\n");
+	fprintf(stderr, "\t-q --quiet\t\tDo not print out verification result for\n");
+	fprintf(stderr, "\t\t\t\tevery file\n");
 	fprintf(stderr, "\t-s --status\t\tResult of verification given with return code\n");
-	fprintf(stderr, "\t-k --hkey [HEX HMAC KEY]\tPerform HMAC verification with given key\n");
-	fprintf(stderr, "\t-b --bkey [HMAC KEY]\tPerform HMAC verification with given key\n");
+	fprintf(stderr, "\t-k --hkey [HEX KEY]\tPerform HMAC verification with given key\n");
+	fprintf(stderr, "\t-b --bkey [KEY]\t\tPerform HMAC verification with given key\n");
 	fprintf(stderr, "\t-h --help\t\tPrint this help text\n");
 	fprintf(stderr, "\t-v --version\t\tShow version\n");
 }
 
-static void version(char *hashname)
+static void version(char *name)
 {
 	char version[20];
 
 	memset(version, 0, 20);
 	kcapi_versionstring(version, 20);
 	
-	fprintf(stderr, "%ssum: %s\n", hashname, version);
+	fprintf(stderr, "%s: %s\n", basename(name), version);
 }
 
 static int hasher(struct kcapi_handle *handle, char *filename,
@@ -272,6 +273,7 @@ static int process_checkfile(char *hashname, char *checkfile, char *targetfile,
 	FILE *file = NULL;
 	int ret = 0;
 	struct kcapi_handle *handle;
+
 	/*
 	 * A file can have up to 4096 characters, so a complete line has at most
 	 * 4096 bytes (file name) + 128 bytes (SHA512 hex value) + 2 spaces +
