@@ -168,6 +168,9 @@ static const struct cp_skcipher_tests testcases[] = {
 	{ "AES(i586) CBC(G) 128", "cbc(aes-asm)", 16 },
 	{ "AES(i586) CBC(G) 192", "cbc(aes-asm)", 24 },
 	{ "AES(i586) CBC(G) 256", "cbc(aes-asm)", 32 },
+	{ "AES(MV-CESA) CBC(MV-CESA) 128", "mv-cbc-aes", 16 },
+	{ "AES(MV-CESA) CBC(MV-CESA) 192", "mv-cbc-aes", 24 },
+	{ "AES(MV-CESA) CBC(MV-CESA) 256", "mv-cbc-aes", 32 },
 
 	{ "AES(G) CTR(G) 128", "ctr(aes-generic)", 16 },
 	{ "AES(G) CTR(G) 192", "ctr(aes-generic)", 24 },
@@ -220,6 +223,15 @@ static const struct cp_skcipher_tests testcases[] = {
 	{ "AES(i586) ECB(G) 128", "ecb(aes-asm)", 16 },
 	{ "AES(i586) ECB(G) 192", "ecb(aes-asm)", 24 },
 	{ "AES(i586) ECB(G) 256", "ecb(aes-asm)", 32 },
+	{ "AES(MV-CESA) ECB(MV-CESA) 128", "mv-ecb-aes", 16 },
+	{ "AES(MV-CESA) ECB(MV-CESA) 192", "mv-ecb-aes", 24 },
+	{ "AES(MV-CESA) ECB(MV-CESA) 256", "mv-ecb-aes", 32 },
+
+	{ "DES(MV-CESA) CBC(MV-CESA) 56", "mv-cbc-des", 8 },
+	{ "DES(MV-CESA) ECB(MV-CESA) 56", "mv-ecb-des", 8 },
+
+	{ "DES3(MV-CESA) CBC(MV-CESA) EDE 168", "mv-cbc-des3-ede", 24 },
+	{ "DES3(MV-CESA) ECB(MV-CESA) EDE 168", "mv-ecb-des3-ede", 24 },
 
 	{ "Serpent(AVX) XTS(AVX) 128", "xts-serpent-avx", 32 },
 	{ "Serpent(AVX) XTS(AVX) 192", "xts-serpent-avx", 48 },
