@@ -150,7 +150,7 @@ static unsigned long parse_opts(int argc, char *argv[])
 			{"help",	no_argument,		0, 'h'},
 			{"version",	no_argument,		0, 0},
 			{"bytes",	required_argument,	0, 'b'},
-			{"name",	required_argument,	0, 'r'},
+			{"name",	required_argument,	0, 'n'},
 			{"hex",		no_argument,		0, 0},
 			{0, 0, 0, 0}
 		};
