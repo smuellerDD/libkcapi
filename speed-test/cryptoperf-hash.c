@@ -147,6 +147,8 @@ static const struct cp_hash_tests testcases[] = {
 	{ "SHA-256(AVX2)", "sha256-avx2", 0 },
 	{ "SHA-384(AVX2)", "sha384-avx2", 0 },
 	{ "SHA-512(AVX2)", "sha512-avx2", 0 },
+	{ "SHA-1(MV-CESA)", "mv-sha1", 0 },
+	{ "SHA-256(MV-CESA)", "mv-sha256", 0 },
 
 	{ "HMAC SHA-1(G)", "hmac(sha1-generic)", 1 },
 	{ "HMAC SHA-224(G)", "hmac(sha224-generic)", 1 },
@@ -168,9 +170,13 @@ static const struct cp_hash_tests testcases[] = {
 	{ "HMAC SHA-256(AVX2)", "hmac(sha256-avx2)", 1 },
 	{ "HMAC SHA-384(AVX2)", "hmac(sha384-avx2)", 1 },
 	{ "HMAC SHA-512(AVX2)", "hmac(sha512-avx2)", 1 },
+	{ "HMAC SHA-1(MV-CESA)", "mv-hmac-sha1", 1 },
+	{ "HMAC SHA-256(MV-CESA)", "mv-hmac-sha256", 1 },
 
 	{ "MD5(G)", "md5-generic", 0 },
+	{ "MD5(MV-CESA)", "mv-md5", 0 },
 	{ "HMAC MD5(G)", "hmac(md5-generic)", 1 },
+	{ "HMAC MD5(MV-CESA)", "mv-hmac-md5", 1 },
 };
 
 static struct cp_test cp_hash_testdef[(ARRAY_SIZE(testcases))];
