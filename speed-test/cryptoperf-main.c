@@ -84,8 +84,9 @@ static int exec_all_tests(struct test_array *tests, unsigned int exectime,
 	for (i = 0; i < tests->entries; i++) {
 		char *out = NULL;
 
+		/* Execute all tests and do not error out on errors */
 		if (cp_exec_test(&tests->array[i], exectime, len))
-			return -EFAULT;
+			continue;
 		out = cp_print_status(&tests->array[i], 0);
 		if (!out)
 			return -ENOMEM;
