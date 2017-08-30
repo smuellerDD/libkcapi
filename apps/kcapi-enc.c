@@ -72,157 +72,175 @@ struct opt_data {
 	uint32_t (*func_blocksize)(struct kcapi_handle *handle);
 };
 
-static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
-		       int outfd, uint32_t outsize, uint32_t offset,
-		       uint32_t unpad)
+static int return_data_stdout(struct kcapi_handle *handle,
+			      struct opt_data *opts, uint32_t outsize)
 {
-	uint8_t tmpbuf[TMPBUFLEN] __aligned(KCAPI_APP_ALIGN);
-	uint8_t *outmem = NULL;
 	struct iovec outiov;
+	uint8_t tmpbuf[TMPBUFLEN] __aligned(KCAPI_APP_ALIGN);
 	int ret = 0;
 	int generated_bytes = 0;
 
-	if (opts->aad) {
-		/* Tell kernel that we have sent all data */
-		ret = kcapi_aead_stream_update_last(handle, NULL, 0);
-		if (ret < 0)
-			goto out;
-	}
+	/*
+	 * Generate output data in a tmp buffer and then dump it.
+	 */
+	while (outsize > 0) {
+		/* length of the input data */
+		uint32_t inlen = outsize < TMPBUFLEN ? outsize : TMPBUFLEN;
+		/* length of the output data */
+		uint32_t outlen = inlen;
+		uint8_t *tmpbufptr = tmpbuf;
 
-	/* send generated data to stdout */
-	if (outfd == STDOUT_FD) {
-		/*
-		 * Generate output data in a tmp buffer and then dump it.
-		 */
-		while (outsize > 0) {
-			/* length of the input data */
-			uint32_t inlen = outsize < TMPBUFLEN ?
-					outsize : TMPBUFLEN;
-			/* length of the output data */
-			uint32_t outlen = inlen;
-			uint8_t *tmpbufptr = tmpbuf;
-
-			outiov.iov_base = tmpbuf;
-			outiov.iov_len = inlen;
-			ret = opts->func_stream_op(handle, &outiov, 1);
-			if (ret < 0)
-				goto out;
-			generated_bytes += ret;
-
-			/*
-			 * If we have to remove the tag, simply reduce
-			 * number of bytes to be written to stdout as the tag
-			 * is the trailing part of the memory.
-			 */
-			if (opts->removetag) {
-				outlen -= opts->taglen;
-				generated_bytes -= opts->taglen;
-
-				dolog(KCAPI_LOG_DEBUG,
-				      "remove %u bytes of unused but generated tag",
-				      opts->taglen);
-			}
-
-			/* write the data */
-			if ((outlen = fwrite(tmpbufptr, sizeof(char), outlen,
-					     stdout)) != 0) {
-				outsize -= inlen;
-			} else {
-				dolog(KCAPI_LOG_ERR, "Write failed %d", -errno);
-				ret = -errno;
-				goto out;
-			}
-		}
-
-		/*
-		 * We cannot remove padding as we do not know when the last
-		 * block is processed.
-		 */
-		dolog(KCAPI_LOG_VERBOSE, "Removal of padding disabled");
-
-	/* Write to a file. */
-	} else {
-		uint8_t *off_ptr;
-		uint32_t off_outsize = outsize + offset;
-
-		/* Map the file into memory. */
-		outmem = mmap(NULL, off_outsize, PROT_WRITE, MAP_SHARED,
-			      outfd, 0);
-		if (outmem == MAP_FAILED) {
-			dolog(KCAPI_LOG_ERR, "Use of mmap for outfd failed");
-			ret = -ENOMEM;
-			goto out;
-		}
-		off_ptr = outmem + offset;
-		outiov.iov_base = off_ptr;
-		outiov.iov_len = outsize;
-
-		/* Write the data. */
+		outiov.iov_base = tmpbuf;
+		outiov.iov_len = inlen;
 		ret = opts->func_stream_op(handle, &outiov, 1);
 		if (ret < 0)
 			goto out;
 		generated_bytes += ret;
 
-		/* Padding is only removed for decryption */
-		if (!opts->decrypt)
+		/*
+			* If we have to remove the tag, simply reduce
+			* number of bytes to be written to stdout as the tag
+			* is the trailing part of the memory.
+			*/
+		if (opts->removetag) {
+			outlen -= opts->taglen;
+			generated_bytes -= opts->taglen;
+
+			dolog(KCAPI_LOG_DEBUG,
+				"remove %u bytes of unused but generated tag",
+				opts->taglen);
+		}
+
+		/* write the data */
+		if ((outlen = fwrite(tmpbufptr, sizeof(char), outlen,
+				     stdout)) != 0) {
+			outsize -= inlen;
+		} else {
+			dolog(KCAPI_LOG_ERR, "Write failed %d", -errno);
+			ret = -errno;
 			goto out;
+		}
+	}
 
-		/* undo padding */
-		if (unpad && !opts->nounpad) {
-			uint8_t padbyte;
+	/*
+	 * We cannot remove padding as we do not know when the last
+	 * block is processed.
+	 */
+	dolog(KCAPI_LOG_VERBOSE, "Removal of padding disabled");
 
-			padbyte = *(off_ptr + generated_bytes - 1);
+out:
+	return (ret < 0) ? ret : generated_bytes;
+}
 
-			if ((uint32_t)padbyte < opts->func_blocksize(handle)) {
-				uint32_t i;
-				uint32_t padded = 1;
+static int return_data_fd(struct kcapi_handle *handle, struct opt_data *opts,
+			  int outfd, uint32_t outsize, uint32_t offset,
+			  uint32_t unpad)
+{
+	struct iovec outiov;
+	uint32_t off_outsize = outsize + offset;
+	uint8_t *outmem = NULL;
+	int ret = 0;
+	int generated_bytes = 0;
+	uint8_t *off_ptr;
 
-				for (i = generated_bytes - 2;
-				     i >= generated_bytes - (uint32_t)padbyte;
-				     i--) {
-					if (*(off_ptr + i) != padbyte) {
-						padded = 0;
-						break;
-					}
-				}
+	/* Map the file into memory. */
+	outmem = mmap(NULL, off_outsize, PROT_WRITE, MAP_SHARED,
+			outfd, 0);
+	if (outmem == MAP_FAILED) {
+		dolog(KCAPI_LOG_ERR, "Use of mmap for outfd failed");
+		return -ENOMEM;
+	}
 
-				if (padded) {
-					dolog(KCAPI_LOG_DEBUG, "Unpad %d bytes",
-					      (uint32_t)padbyte);
+	off_ptr = outmem + offset;
+	outiov.iov_base = off_ptr;
+	outiov.iov_len = outsize;
 
-					off_outsize -= (uint32_t)padbyte;
+	/* Write the data. */
+	ret = opts->func_stream_op(handle, &outiov, 1);
+	if (ret < 0)
+		goto out;
+	generated_bytes += ret;
 
-					ret = ftruncate(outfd, off_outsize);
-					if (ret)
-						goto out;
+	/* Padding is only removed for decryption */
+	if (!opts->decrypt)
+		goto out;
 
-					generated_bytes -= (uint32_t)padbyte;
+	/* undo padding */
+	if (unpad && !opts->nounpad) {
+		uint8_t padbyte;
+
+		padbyte = *(off_ptr + generated_bytes - 1);
+
+		if ((uint32_t)padbyte < opts->func_blocksize(handle)) {
+			uint32_t i;
+			uint32_t padded = 1;
+
+			for (i = generated_bytes - 2;
+			     i >= generated_bytes - (uint32_t)padbyte; i--) {
+				if (*(off_ptr + i) != padbyte) {
+					padded = 0;
+					break;
 				}
 			}
-		} else
-			dolog(KCAPI_LOG_VERBOSE, "Removal of padding disabled");
 
-		/*
-		 * Remove the trailing tag for older kernels by simply
-		 * truncating the output file to the generated data size minus
-		 * the tag value. As the tag is the trailing part of the data,
-		 * it will be cleared.
-		 */
-		if (opts->removetag) {
-			ret = ftruncate(outfd, (off_outsize - opts->taglen));
-			if (ret)
-				goto out;
-			generated_bytes -= opts->taglen;
-			dolog(KCAPI_LOG_DEBUG,
-			      "remove %u bytes of unused but generated tag",
-			      opts->taglen);
+			if (padded) {
+				dolog(KCAPI_LOG_DEBUG, "Unpad %d bytes",
+					(uint32_t)padbyte);
+
+				off_outsize -= (uint32_t)padbyte;
+
+				ret = ftruncate(outfd, off_outsize);
+				if (ret)
+					goto out;
+
+				generated_bytes -= (uint32_t)padbyte;
+			}
 		}
+	} else
+		dolog(KCAPI_LOG_VERBOSE, "Removal of padding disabled");
+
+	/*
+	 * Remove the trailing tag for older kernels by simply
+	 * truncating the output file to the generated data size minus
+	 * the tag value. As the tag is the trailing part of the data,
+	 * it will be cleared.
+	 */
+	if (opts->removetag) {
+		ret = ftruncate(outfd, (off_outsize - opts->taglen));
+		if (ret)
+			goto out;
+		generated_bytes -= opts->taglen;
+		dolog(KCAPI_LOG_DEBUG,
+			"remove %u bytes of unused but generated tag",
+			opts->taglen);
 	}
 
 out:
 	if (outmem && outmem != MAP_FAILED)
 		munmap(outmem, outsize);
 	return (ret < 0) ? ret : generated_bytes;
+}
+
+static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
+		       int outfd, uint32_t outsize, uint32_t offset,
+		       uint32_t unpad)
+{
+	if (opts->aad) {
+		/* Tell kernel that we have sent all data */
+		int ret = kcapi_aead_stream_update_last(handle, NULL, 0);
+
+		if (ret < 0)
+			return ret;
+	}
+
+	/* send generated data to stdout */
+	if (outfd == STDOUT_FD)
+		return return_data_stdout(handle, opts, outsize);
+
+	/* Write to a file. */
+	else
+		return return_data_fd(handle, opts, outfd, outsize, offset,
+				      unpad);
 }
 
 /**
