@@ -887,8 +887,8 @@ static int _kcapi_get_kernver(struct kcapi_handle *handle)
 }
 
 /* return true if kernel is greater or equal to given values, otherwise false */
-static int _kcapi_kernver_ge(struct kcapi_handle *handle, unsigned int maj,
-			     unsigned int minor, unsigned int patchlevel)
+static bool _kcapi_kernver_ge(struct kcapi_handle *handle, unsigned int maj,
+			      unsigned int minor, unsigned int patchlevel)
 {
 	if (maj < handle->sysinfo.kernel_maj)
 		return true;
