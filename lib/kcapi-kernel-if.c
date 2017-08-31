@@ -824,7 +824,7 @@ static int _kcapi_common_getinfo(struct kcapi_handle *handle,
 
 static inline void _kcapi_aio_destroy(struct kcapi_handle *handle)
 {
-	if (handle->aio.disable)
+	if (handle->aio.disable == true)
 		return;
 	if (handle->aio.efd != -1)
 		close(handle->aio.efd);
@@ -886,21 +886,21 @@ static int _kcapi_get_kernver(struct kcapi_handle *handle)
 	return 0;
 }
 
-/* return 1 if kernel is greater or equal to given values, otherwise 0 */
+/* return true if kernel is greater or equal to given values, otherwise false */
 static int _kcapi_kernver_ge(struct kcapi_handle *handle, unsigned int maj,
 			     unsigned int minor, unsigned int patchlevel)
 {
 	if (maj < handle->sysinfo.kernel_maj)
-		return 1;
+		return true;
 	if (maj == handle->sysinfo.kernel_maj) {
 		if (minor < handle->sysinfo.kernel_minor)
-			return 1;
+			return true;
 		if (minor == handle->sysinfo.kernel_minor) {
 			if (patchlevel <= handle->sysinfo.kernel_patchlevel)
-				return 1;
+				return true;
 		}
 	}
-	return 0;
+	return false;
 }
 
 static int _kcapi_aio_init(struct kcapi_handle *handle, const char *type)
@@ -968,12 +968,13 @@ static int _kcapi_aio_init(struct kcapi_handle *handle, const char *type)
 		goto err;
 	}
 
+	handle->aio.disable = false;
 	kcapi_dolog(KCAPI_LOG_VERBOSE, "asynchronous I/O initialized");
 
 	return 0;
 
 err:
-	handle->aio.disable = 1;
+	handle->aio.disable = true;
 	if (handle->aio.efd != -1)
 		close(handle->aio.efd);
 	handle->aio.efd = -1;
@@ -1078,7 +1079,7 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 			goto err;
 		ret = 0;
 	} else
-		handle->aio.disable = 1;
+		handle->aio.disable = true;
 
 	_kcapi_handle_flags(handle);
 
@@ -1178,7 +1179,7 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 	int32_t ret;
 	uint32_t tosend = iovlen;
 
-	if (handle->aio.disable) {
+	if (handle->aio.disable == true) {
 		kcapi_dolog(KCAPI_LOG_WARN, "AIO support disabled\n");
 		return -EOPNOTSUPP;
 	}

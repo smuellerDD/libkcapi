@@ -88,8 +88,12 @@ extern "C"
 #endif
 
 /************************************************************
- * Declarations for opague data structures
+ * Declarations for opaque data structures
  ************************************************************/
+
+/* Boolean variable */
+enum { false, true };
+typedef _Bool bool;
 
 /**
  * Information obtained for different ciphers during handle init time
@@ -172,7 +176,7 @@ struct kcapi_aead_data {
  * @cio: Active concurrent IOCBs
  */
 struct kcapi_aio {
-	unsigned int disable:1;
+	bool disable;
 	int efd;
 	aio_context_t aio_ctx;
 	uint32_t completed_reads;
@@ -185,7 +189,7 @@ struct kcapi_flags {
 	 * New AEAD interface introduced with 4.9.0 to only require a tag
 	 * if it is required as input or output.
 	 */
-	unsigned int newtag:1;
+	bool newtag;
 
 	/* AF_ALG interfaces changed to process more pages concurrently. */
 	uint32_t alg_max_pages;

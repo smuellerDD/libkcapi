@@ -161,7 +161,7 @@ _kcapi_akcipher_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 	int32_t rc;
 	uint32_t tosend = iovlen;
 
-	if (handle->aio.disable) {
+	if (handle->aio.disable == true) {
 		kcapi_dolog(KCAPI_LOG_WARN, "AIO support disabled\n");
 		return -EOPNOTSUPP;
 	}
