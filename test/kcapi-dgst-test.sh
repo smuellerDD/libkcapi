@@ -1,7 +1,10 @@
 #!/bin/bash
 
-APP="../bin/kcapi-dgst"
-TSTPREFIX="kcapi-dgst-testfiles."
+. libtest.sh
+
+APP="${APPDIR}/kcapi-dgst"
+find_platform $APP
+TSTPREFIX="${TMPDIR}/kcapi-dgst-testfiles."
 KEYFILE_128="${TSTPREFIX}128key"
 KEYFILE_256="${TSTPREFIX}256key"
 OPENSSLKEY128=""
@@ -11,50 +14,17 @@ ORIGPT="${TSTPREFIX}orig_pt"
 GENDGST="${TSTPREFIX}generated_dgst"
 
 SALT="0123456789abcdef0123456789abcdef"
-failures=0
 
-# color -- emit ansi color codes
-color()
-{
-	bg=0
-	echo -ne "\033[0m"
-	while [[ $# -gt 0 ]]; do
-		code=0
-		case $1 in
-			black) code=30 ;;
-			red) code=31 ;;
-			green) code=32 ;;
-			yellow) code=33 ;;
-			blue) code=34 ;;
-			magenta) code=35 ;;
-			cyan) code=36 ;;
-			white) code=37 ;;
-			background|bg) bg=10 ;;
-			foreground|fg) bg=0 ;;
-			reset|off|default) code=0 ;;
-			bold|bright) code=1 ;;
-		esac
-		[[ $code == 0 ]] || echo -ne "\033[$(printf "%02d" $((code+bg)))m"
-		shift
-	done
-}
-
-echo_pass()
+echo_pass_local()
 {
 	local bytes=$(stat -c %s $ORIGPT)
-	echo $(color "green")[PASSED - $bytes bytes]$(color off) $@
+	echo_pass "$bytes bytes: $@"
 }
 
-echo_fail()
+echo_fail_local()
 {
 	local bytes=$(stat -c %s $ORIGPT)
-	echo $(color "red")[FAILED - $bytes bytes]$(color off) $@
-	failures=$(($failures+1))
-}
-
-echo_deact()
-{
-	echo $(color "yellow")[DEACTIVATED]$(color off) $@
+	echo_fail "$bytes bytes: $@"
 }
 
 init_setup()
@@ -85,9 +55,9 @@ diff_file()
 
 	if [ x"$orighash" = x"$genhash" ]
 	then
-		echo_pass "$@"
+		echo_pass_local "$@"
 	else
-		echo_fail "$@: original file ($orighash) and generated file ($genhash)"
+		echo_fail_local "$@: original file ($orighash) and generated file ($genhash)"
 	fi
 
 }

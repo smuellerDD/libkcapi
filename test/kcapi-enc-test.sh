@@ -1,7 +1,10 @@
 #!/bin/bash
 
-APP="../bin/kcapi-enc"
-TSTPREFIX="kcapi-enc-testfiles."
+. libtest.sh
+
+APP="${APPDIR}/kcapi-enc"
+find_platform $APP
+TSTPREFIX="${TMPDIR}/kcapi-enc-testfiles."
 KEYFILE_AES128="${TSTPREFIX}aes128key"
 KEYFILE_AES256="${TSTPREFIX}aes256key"
 OPENSSLKEY128=""
@@ -50,58 +53,26 @@ bin2hex_noaad()
 	echo $hex
 }
 
-# color -- emit ansi color codes
-color()
-{
-	bg=0
-	echo -ne "\033[0m"
-	while [[ $# -gt 0 ]]; do
-		code=0
-		case $1 in
-			black) code=30 ;;
-			red) code=31 ;;
-			green) code=32 ;;
-			yellow) code=33 ;;
-			blue) code=34 ;;
-			magenta) code=35 ;;
-			cyan) code=36 ;;
-			white) code=37 ;;
-			background|bg) bg=10 ;;
-			foreground|fg) bg=0 ;;
-			reset|off|default) code=0 ;;
-			bold|bright) code=1 ;;
-		esac
-		[[ $code == 0 ]] || echo -ne "\033[$(printf "%02d" $((code+bg)))m"
-		shift
-	done
-}
-
-echo_pass()
+echo_pass_local()
 {
 	if [ -f $ORIGPT ]
 	then
 		local bytes=$(stat -c %s $ORIGPT)
-		echo $(color "green")[PASSED - $bytes bytes]$(color off) $@
+		echo_pass "$bytes bytes: $@"
 	else
-		echo $(color "green")[PASSED]$(color off) $@
+		echo_pass $@
 	fi
 }
 
-echo_fail()
+echo_fail_local()
 {
 	if [ -f $ORIGPT ]
 	then
 		local bytes=$(stat -c %s $ORIGPT)
-		echo $(color "red")[FAILED - $bytes bytes]$(color off) $@
+		echo_fail "$bytes bytes: $@"
 	else
-		echo $(color "red")[FAILED]$(color off) $@
+		echo_fail $@
 	fi
-	failures=$(($failures+1))
-}
-
-echo_deact()
-{
-	echo $(color "yellow")[DEACTIVATED]$(color off) $@
 }
 
 init_setup()
@@ -141,9 +112,9 @@ diff_file()
 
 	if [ x"$orighash" = x"$genhash" ]
 	then
-		echo_pass "$@"
+		echo_pass_local "$@"
 	else
-		echo_fail "$@: original file ($orighash) and generated file ($genhash)"
+		echo_fail_local "$@: original file ($orighash) and generated file ($genhash)"
 	fi
 
 }
@@ -165,19 +136,19 @@ test_stdin_stdout()
 	exec 10<$keyfile; $APP --keyfd 10 -e -c "ctr(aes)" --iv $IV < $ORIGPT  > $GENCT
 	exec 10<$keyfile; $APP --keyfd 10 -d -c "ctr(aes)" --iv $IV < $GENCT > $GENPT
 
-	diff_file $ORIGPT $GENPT "STDIN / STDOUT test ($keysize bits)"
+	diff_file $ORIGPT $GENPT "STDIN / STDOUT enc test ($keysize bits)"
 
 	eval opensslkey=\$OPENSSLKEY${keysize}
 	openssl enc -aes-$keysize-ctr -in $ORIGPT -out $GENCT.openssl -K $opensslkey -iv $IV
 	openssl enc -d -aes-$keysize-ctr -in $GENCT -out $GENPT.openssl -K $opensslkey -iv $IV
 
-	diff_file $GENCT $GENCT.openssl "STDIN / STDOUT test ($keysize bits) (openssl generated CT)"
-	diff_file $GENPT $GENPT.openssl "STDIN / STDOUT test ($keysize bits) (openssl generated PT)"
+	diff_file $GENCT $GENCT.openssl "STDIN / STDOUT enc test ($keysize bits) (openssl generated CT)"
+	diff_file $GENPT $GENPT.openssl "STDIN / STDOUT enc test ($keysize bits) (openssl generated PT)"
 
 	$APP -q --pbkdfiter 1000 -p "passwd" -s $IV -e -c "ctr(aes)" --iv $IV < $ORIGPT > $GENCT
 	$APP -q --pbkdfiter 1000 -p "passwd" -s $IV -d -c "ctr(aes)" --iv $IV < $GENCT > $GENPT
 
-	diff_file $ORIGPT $GENPT "STDIN / STDOUT test (password)"
+	diff_file $ORIGPT $GENPT "STDIN / STDOUT enc test (password)"
 }
 
 # Do not test CBC as padding is not removed
@@ -203,13 +174,13 @@ test_stdin_fileout()
 	openssl enc -aes-$keysize-ctr -in $ORIGPT -out $GENCT.openssl -K $opensslkey -iv $IV
 	openssl enc -d -aes-$keysize-ctr -in $GENCT -out $GENPT.openssl -K $opensslkey -iv $IV
 
-	diff_file $GENCT $GENCT.openssl "STDIN / FILEOUT test ($keysize bits) (openssl generated CT)"
-	diff_file $GENPT $GENPT.openssl "STDIN / FILEOUT test ($keysize bits) (openssl generated PT)"
+	diff_file $GENCT $GENCT.openssl "STDIN / FILEOUT enc test ($keysize bits) (openssl generated CT)"
+	diff_file $GENPT $GENPT.openssl "STDIN / FILEOUT enc test ($keysize bits) (openssl generated PT)"
 
 	$APP -q --pbkdfiter 1000 -p "passwd" -s $IV -e -c "ctr(aes)" --iv $IV -o $GENCT < $ORIGPT
 	$APP -q --pbkdfiter 1000 -p "passwd" -s $IV -d -c "ctr(aes)" --iv $IV -o $GENPT < $GENCT
 
-	diff_file $ORIGPT $GENPT "STDIN / FILEOUT test (password)"
+	diff_file $ORIGPT $GENPT "STDIN / FILEOUT enc test (password)"
 }
 
 # Do not test CBC as padding is not removed
@@ -229,19 +200,19 @@ test_filein_stdout()
 	exec 10<$keyfile; $APP --keyfd 10 -e -c "ctr(aes)" --iv $IV -i $ORIGPT > $GENCT
 	exec 10<$keyfile; $APP --keyfd 10 -d -c "ctr(aes)" --iv $IV -i $GENCT > $GENPT
 
-	diff_file $ORIGPT $GENPT "FILEIN / STDOUT test ($keysize bits)"
+	diff_file $ORIGPT $GENPT "FILEIN / STDOUT enc test ($keysize bits)"
 
 	eval opensslkey=\$OPENSSLKEY${keysize}
 	openssl enc -aes-$keysize-ctr -in $ORIGPT -out $GENCT.openssl -K $opensslkey -iv $IV
 	openssl enc -d -aes-$keysize-ctr -in $GENCT -out $GENPT.openssl -K $opensslkey -iv $IV
 
-	diff_file $GENCT $GENCT.openssl "FILEIN / STDOUT test ($keysize bits) (openssl generated CT)"
-	diff_file $GENPT $GENPT.openssl "FILEIN / STDOUT test ($keysize bits) (openssl generated PT)"
+	diff_file $GENCT $GENCT.openssl "FILEIN / STDOUT enc test ($keysize bits) (openssl generated CT)"
+	diff_file $GENPT $GENPT.openssl "FILEIN / STDOUT enc test ($keysize bits) (openssl generated PT)"
 
 	$APP -q --pbkdfiter 1000 -p "passwd" -s $IV -e -c "ctr(aes)" --iv $IV -i $ORIGPT > $GENCT
 	$APP -q --pbkdfiter 1000 -p "passwd" -s $IV -d -c "ctr(aes)" --iv $IV -i $GENCT > $GENPT
 
-	diff_file $ORIGPT $GENPT "FILEIN / STDOUT test (password)"
+	diff_file $ORIGPT $GENPT "FILEIN / STDOUT enc test (password)"
 }
 
 # Use cipher with padding requirement
@@ -262,7 +233,7 @@ test_filein_fileout()
 	exec 10<$keyfile; $APP --keyfd 10 -e -c "cbc(aes)" --iv $IV -i $ORIGPT -o $GENCT
 	exec 10<$keyfile; $APP --keyfd 10 -d -c "cbc(aes)" --iv $IV -i $GENCT -o $GENPT
 
-	diff_file $ORIGPT $GENPT "FILEIN / FILEOUT test ($keysize bits)"
+	diff_file $ORIGPT $GENPT "FILEIN / FILEOUT enc test ($keysize bits)"
 
 	# FIXME: error in openssl?
 	local ptsize=$(stat -c %s $ORIGPT)
@@ -277,13 +248,13 @@ test_filein_fileout()
 	openssl enc -aes-$keysize-cbc -in $ORIGPT -out $GENCT.openssl -K $opensslkey -iv $IV
 	openssl enc -d -aes-$keysize-cbc -in $GENCT -out $GENPT.openssl -K $opensslkey -iv $IV
 
-	diff_file $GENCT $GENCT.openssl "FILEIN / FILEOUT test ($keysize bits) (openssl generated CT)"
-	diff_file $GENPT $GENPT.openssl "FILEIN / FILEOUT test ($keysize bits) (openssl generated PT)"
+	diff_file $GENCT $GENCT.openssl "FILEIN / FILEOUT enc test ($keysize bits) (openssl generated CT)"
+	diff_file $GENPT $GENPT.openssl "FILEIN / FILEOUT enc test ($keysize bits) (openssl generated PT)"
 
 	$APP -q --pbkdfiter 1000 -p "passwd" -s "123" -e -c "cbc(aes)" --iv $IV -i $ORIGPT -o $GENCT
 	$APP -q --pbkdfiter 1000 -p "passwd" -s "123" -d -c "cbc(aes)" --iv $IV -i $GENCT -o $GENPT
 
-	diff_file $ORIGPT $GENPT "FILEIN / FILEOUT test (password)"
+	diff_file $ORIGPT $GENPT "FILEIN / FILEOUT enc test (password)"
 }
 
 test_ccm_dec()
@@ -297,9 +268,9 @@ test_ccm_dec()
 
 	if [ x"$hexret" != x"$CCM_EXP" ]
 	then
-		echo_fail "CCM output does not match expected output (received: $hexret -- expected $CCM_EXP)"
+		echo_fail_local "CCM output does not match expected output (received: $hexret -- expected $CCM_EXP)"
 	else
-		echo_pass "FILEIN / FILEOUT CCM decrypt"
+		echo_pass_local "FILEIN / FILEOUT CCM decrypt"
 	fi
 
 	exec 10<${TSTPREFIX}ccm_key; $APP --keyfd 10 -d -c "ccm(aes)" -i ${TSTPREFIX}ccm_msg -o ${TSTPREFIX}ccm_out --ccm-nonce $CCM_NONCE --aad $CCM_AAD --tag $CCM_TAG_FAIL -q
@@ -307,9 +278,9 @@ test_ccm_dec()
 	# 182 == -EBADMSG
 	if [ $? -eq 182 ]
 	then
-		echo_pass "FILEIN / FILEOUT CCM decrypt integrity violation"
+		echo_pass_local "FILEIN / FILEOUT CCM decrypt integrity violation"
 	else
-		echo_fail "CCM integrity violation not caught"
+		echo_fail_local "CCM integrity violation not caught"
 	fi
 }
 
@@ -324,9 +295,9 @@ test_gcm_enc()
 
 	if [ x"$hexret" != x"$GCM_EXP" ]
 	then
-		echo_fail "GCM output does not match expected output (received: $hexret -- expected $GCM_EXP)"
+		echo_fail_local "GCM output does not match expected output (received: $hexret -- expected $GCM_EXP)"
 	else
-		echo_pass "FILEIN / FILEOUT GCM encrypt"
+		echo_pass_local "FILEIN / FILEOUT GCM encrypt"
 	fi
 }
 

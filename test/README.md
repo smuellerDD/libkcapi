@@ -20,8 +20,22 @@ as listed in the following:
   that it behaves consistently with the sha*sum and sha*hmac
   applications.
 
+* `kcapi-enc-test-large.sh` invoking the kcapi-enc-test-large.c application:
+  That test verifies edge conditions of the algif_skcipher when large
+  data chunks are processed.
+
+* `virttest.sh`: Use the eudyptula-boot tool to test older kernel versions
+  with libkcapi. This test is only executed if ${HOME}/bin/eudyptula-boot
+  is present. If it is present, please check the virttest.sh script for
+  configuration of the kernel sources and directories. Example kernel
+  configurations that can be used for this kind of testing are found
+  in the directory `virttest-kernel-configs`.
+
 * `compile-test.sh`: This script enables all configure options and
   performs a full compilation and installation.
+
+* `libtest.sh`: This script is a library of functions used by the other
+  test scripts. It is not intended to be called directly.
 
 All tests are collectively invoked with the `test-invocation.sh` script.
 

@@ -1,44 +1,72 @@
 #!/bin/bash
 
+DIR=$(dirname $0)
+cd $DIR
+
 COMPILE_OPTS="--enable-kcapi-test --enable-kcapi-encapp --enable-kcapi-hasher --enable-kcapi-dgstapp --enable-kcapi-rngapp"
 
 exec_test()
 {
-	./test.sh
+	${DIR}/test.sh
 	ret=$?
 	if [ $ret -ne 0 ]
 	then
 		exit $ret
 	fi
 
-	./kcapi-enc-test.sh
+	${DIR}/kcapi-enc-test.sh
 	ret=$?
 	if [ $ret -ne 0 ]
 	then
 		exit $ret
 	fi
 
-	./kcapi-dgst-test.sh
+	${DIR}/kcapi-dgst-test.sh
 	ret=$?
 	if [ $ret -ne 0 ]
 	then
 		exit $ret
 	fi
 
-	./hasher-test.sh
+	${DIR}/hasher-test.sh
 	ret=$?
 	if [ $ret -ne 0 ]
 	then
 		exit $ret
 	fi
 
-	./compile-test.sh
-	ret=$?
-	if [ $ret -ne 0 ]
+#	${DIR}/kcapi-enc-test-large.sh
+#	ret=$?
+#	if [ $ret -ne 0 ]
+#	then
+#		exit $ret
+#	fi
+
+	# Only execute on bare metal
+	if ! dmesg | grep -i Hypervisor | grep -q -i detected
 	then
-		exit $ret
+		${DIR}/virttest.sh
+		ret=$?
+		if [ $ret -ne 0 ]
+		then
+			exit $ret
+		fi
+
+		${DIR}/compile-test.sh
+		ret=$?
+		if [ $ret -ne 0 ]
+		then
+			exit $ret
+		fi
 	fi
 }
+
+# Only execute tests without compilation on virtual environment
+if dmesg | grep -i Hypervisor | grep -q -i detected
+then
+	exec_test
+	exit 0
+fi
 
 # default invocation
 CWD=$(pwd)

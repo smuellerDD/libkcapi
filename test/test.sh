@@ -34,26 +34,10 @@
 #    PROGRAMS), EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE
 #    POSSIBILITY OF SUCH DAMAGES.
 #
-#
-export PATH=$PATH:.
-KCAPI="../bin/kcapi"
-if [ ! -f $KCAPI ]
-then
-	KCAPI=/bin/kcapi
-fi
-if [ ! -f $KCAPI ]
-then
-	echo "Binary $KCAPI not present"
-	exit 1
-fi
-PLATFORM=$(file $KCAPI | cut -d" " -f 3)
-if [ x"$PLATFORM" = x"shell" ]
-then
-	if [ -f ../bin/.libs/kcapi ]
-	then
-		PLATFORM=$(file ../bin/.libs/kcapi | cut -d" " -f 3)
-	fi
-fi
+. ./libtest.sh
+
+KCAPI="${APPDIR}/kcapi"
+find_platform $KCAPI
 
 HASH_name_1="cmac(des3_ede)"
 HASH_key_1="7a9bcde63b52f8ae1aa8672668c731986773519b3d51dad9"
@@ -566,8 +550,6 @@ HKDF_exp_7="2c91117204d745f3500d636a62f64f0ab3bae548aa53d423b0d1f27ebba6f5e5673a
 ###########################################################################
 ###########################################################################
 
-failures=0
-
 # check whether a given kernel version is present
 # returns true for yes, false for no
 check_min_kernelver() {
@@ -580,47 +562,6 @@ check_min_kernelver() {
 		fi
 	fi
 	return 1
-}
-
-# color -- emit ansi color codes
-color()
-{
-	bg=0
-	echo -ne "\033[0m"
-	while [[ $# -gt 0 ]]; do
-		code=0
-		case $1 in
-			black) code=30 ;;
-			red) code=31 ;;
-			green) code=32 ;;
-			yellow) code=33 ;;
-			blue) code=34 ;;
-			magenta) code=35 ;;
-			cyan) code=36 ;;
-			white) code=37 ;;
-			background|bg) bg=10 ;;
-			foreground|fg) bg=0 ;;
-			reset|off|default) code=0 ;;
-			bold|bright) code=1 ;;
-		esac
-		[[ $code == 0 ]] || echo -ne "\033[$(printf "%02d" $((code+bg)))m"
-		shift
-	done
-}
-
-echo_pass()
-{
-	echo $(color "green")[PASSED: $PLATFORM]$(color off) $@
-}
-
-echo_fail()
-{
-	echo $(color "red")[FAILED: $PLATFORM]$(color off) $@
-}
-
-echo_deact()
-{
-	echo $(color "yellow")[DEACTIVATED: $PLATFORM]$(color off) $@
 }
 
 hashfunc()
@@ -1427,7 +1368,7 @@ else
 	echo_deact "All AEAD tests deactivated"
 fi
 
-if $(check_min_kernelver 4 13); then
+if $(check_min_kernelver 4 14); then
 	aeadfunc 2 X X X -u
 	aeadfunc 2 -s X X -u
 	aeadfunc 2 -v X X -u

@@ -1,60 +1,17 @@
 #!/bin/bash
 
-DIR=".."
-SUMHASHER="md5sum sha1sum sha256sum sha384sum sha512sum"
-HMACHASHER="sha1hmac sha256hmac sha384hmac sha512hmac"
-CHKFILE="chk.$$"
-ANOTHER="test.$$"
+. libtest.sh
 
-HASHERBIN="../bin/.libs/kcapi-hasher"
-LIBRARYDIR="../.libs"
+HASHERBIN="${APPDIR}/kcapi-hasher"
+find_platform $HASHERBIN
 
-failures=0
-
-# color -- emit ansi color codes
-color()
-{
-	bg=0
-	echo -ne "\033[0m"
-	while [[ $# -gt 0 ]]; do
-		code=0
-		case $1 in
-			black) code=30 ;;
-			red) code=31 ;;
-			green) code=32 ;;
-			yellow) code=33 ;;
-			blue) code=34 ;;
-			magenta) code=35 ;;
-			cyan) code=36 ;;
-			white) code=37 ;;
-			background|bg) bg=10 ;;
-			foreground|fg) bg=0 ;;
-			reset|off|default) code=0 ;;
-			bold|bright) code=1 ;;
-		esac
-		[[ $code == 0 ]] || echo -ne "\033[$(printf "%02d" $((code+bg)))m"
-		shift
-	done
-}
-
-echo_pass()
-{
-	echo $(color "green")[PASSED]$(color off) $@
-}
-
-echo_fail()
-{
-	echo $(color "red")[FAILED]$(color off) $@
-	failures=$(($failures+1))
-}
-
-echo_deact()
-{
-	echo $(color "yellow")[DEACTIVATED]$(color off) $@
-}
+SUMHASHER="${TMPDIR}/md5sum ${TMPDIR}/sha1sum ${TMPDIR}/sha256sum ${TMPDIR}/sha384sum ${TMPDIR}/sha512sum"
+HMACHASHER="${TMPDIR}/sha1hmac ${TMPDIR}/sha256hmac ${TMPDIR}/sha384hmac ${TMPDIR}/sha512hmac"
+CHKFILE="${TMPDIR}/chk.$$"
+ANOTHER="${TMPDIR}/test.$$"
 
 touch $ANOTHER
-trap "rm -f $CHKFILE $ANOTHER $SUMHASHER $HMACHASHER" 0 1 2 3 15
+trap "rm -f $ANOTHER $CHKFILE $SUMHASHER $HMACHASHER" 0 1 2 3 15
 
 if [ ! -e $HASHERBIN ]
 then
@@ -62,23 +19,18 @@ then
 	exit 1
 fi
 
-if [ ! -d $LIBRARYDIR ]
-then
-	echo "Library dir missing"
-	exit 1
-fi
-
-export LD_LIBRARY_PATH=$LIBRARYDIR
-
+#although a hard link suffices, we need to copy it
 for i in $SUMHASHER $HMACHASHER
 do
-	ln $HASHERBIN $i
+	#ln $HASHERBIN $i
+	cp -f $HASHERBIN $i
 done
 
 for i in $SUMHASHER
 do
-	hash=${i%%sum}
-	hasher=./$i
+	hash=$(basename $i)
+	hash=${hash%%sum}
+	hasher=$i
 	[ ! -e "$hasher" ] && {
 		echo_deact "Hasher $hasher does not exist"
 		continue
@@ -121,13 +73,14 @@ done
 
 for i in $HMACHASHER
 do
-	[ ! -x "/bin/$i" ] && {
+	[ ! -x "/bin/$(basename $i)" ] && {
 		echo_deact "hmaccalc reference application /bin/$i missing"
 		continue
 	}
 
-	hash=${i%%hmac}
-	hasher=./$i
+	hash=$(basename $i)
+	hash=${hash%%hmac}
+	hasher=$i
 	[ ! -e "$hasher" ] && {
 		echo_fail "Hasher $hasher does not exist"
 		continue
