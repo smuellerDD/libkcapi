@@ -77,7 +77,7 @@ execvirt()
 	if [ ! -f .config ]
 	then
 		echo "No configured kernel found in $(pwd)"
-	testest-invocation.sht-invocation.sh	exit 1
+		exit 1
 	fi
 	if ! grep -q "CONFIG_9P_FS=y" .config
 	then
