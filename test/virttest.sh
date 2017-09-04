@@ -38,7 +38,7 @@ then
 	KERNEL_BASE="$(readlink ./kernel-sources)"
 else
 	echo_deact "Linux kernel sources directory not found - skipping eudyptula-boot tests"
-	exit 1
+	exit 0
 fi
 
 # TESTKERNELS specifies the kernel versions (i.e. Linux kernel
