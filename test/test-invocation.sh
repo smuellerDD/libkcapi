@@ -69,7 +69,10 @@ exec_test()
 		then
 			exit $ret
 		fi
+	fi
 
+	if ! mount | grep -q "9p2000"
+	then
 		${DIR}/compile-test.sh
 		ret=$?
 		if [ $ret -ne 0 ]
@@ -80,7 +83,7 @@ exec_test()
 }
 
 # Only execute tests without compilation on virtual environment
-if dmesg | grep -i Hypervisor | grep -q -i detected
+if mount | grep -q "9p2000"
 then
 	exec_test
 	exit 0
