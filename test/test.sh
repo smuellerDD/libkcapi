@@ -534,20 +534,6 @@ HKDF_exp_7="2c91117204d745f3500d636a62f64f0ab3bae548aa53d423b0d1f27ebba6f5e5673a
 ###########################################################################
 ###########################################################################
 
-# check whether a given kernel version is present
-# returns true for yes, false for no
-check_min_kernelver() {
-	major=$1
-	minor=$2
-
-	if [ $(uname -r | cut -d"." -f1) -ge $major ]; then
-		if [ $(uname -r | cut -d"." -f2) -ge $minor ]; then
-			return 0
-		fi
-	fi
-	return 1
-}
-
 hashfunc()
 {
 	stream=$1

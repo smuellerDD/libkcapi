@@ -83,6 +83,20 @@ find_platform()
 	PLATFORM=$(file $app | cut -d" " -f 3)
 }
 
+# check whether a given kernel version is present
+# returns true for yes, false for no
+check_min_kernelver() {
+	major=$1
+	minor=$2
+
+	if [ $(uname -r | cut -d"." -f1) -ge $major ]; then
+		if [ $(uname -r | cut -d"." -f2) -ge $minor ]; then
+			return 0
+		fi
+	fi
+	return 1
+}
+
 #####################################################################
 # Common variables
 #####################################################################
