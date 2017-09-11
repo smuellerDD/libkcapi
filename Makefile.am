@@ -184,7 +184,7 @@ man html: lib/doc/libkcapi.xml
 	xmlto $@ -m lib/doc/stylesheet.xsl --skip-validation -o lib/doc/$@/ $<
 
 install-man:
-	$(INSTALL) -m 0644 lib/doc/man/* -D -t $(mandir)/man3/
+	$(INSTALL) -m 0644 lib/doc/man/*.3 -D -t $(DESTDIR)$(mandir)/man3/
 endif
 endif
 
