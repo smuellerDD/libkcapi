@@ -87,6 +87,7 @@ fipshmac .libs/libkcapi.so.*
 %make_install
 rm -f %{buildroot}%{_libdir}/*.a
 rm -f %{buildroot}%{_libdir}/*.la
+rm -f %{buildroot}%{_bindir}/kcapi-hasher
 make install-man DESTDIR=%{buildroot}
 gzip %{buildroot}%{_mandir}/man3/*.3
 
@@ -107,6 +108,7 @@ gzip %{buildroot}%{_mandir}/man3/*.3
 
 %files utils
 %{_bindir}/kcapi*
+%doc %{_mandir}/man1/kcapi*.1*
 
 %files replacements
 %{_bindir}/sha*sum
