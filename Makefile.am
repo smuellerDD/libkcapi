@@ -11,6 +11,8 @@ libkcapi_la_SOURCES = lib/cryptouser.h \
 		      lib/kcapi-kernel-if.c \
 		      lib/kcapi-utils.c
 
+man_MANS =
+
 if DISABLE_LIB_ASYM
 libkcapi_la_SOURCES +=
 else
@@ -112,6 +114,7 @@ bin_kcapi_rng_LDADD = libkcapi.la
 bin_kcapi_rng_SOURCES = apps/kcapi-rng.c apps/app-internal.c
 
 SCAN_FILES += $(bin_kcapi_rng_SOURCES)
+man_MANS += apps/kcapi-rng.1
 endif
 
 if ENABLE_KCAPI_ENCAPP
@@ -123,6 +126,7 @@ bin_kcapi_enc_LDADD = libkcapi.la
 bin_kcapi_enc_SOURCES = apps/kcapi-enc.c apps/app-internal.c
 
 SCAN_FILES += $(bin_kcapi_enc_SOURCES)
+man_MANS += apps/kcapi-enc.1
 endif
 
 if ENABLE_KCAPI_DGSTAPP
@@ -134,6 +138,7 @@ bin_kcapi_dgst_LDADD = libkcapi.la
 bin_kcapi_dgst_SOURCES = apps/kcapi-dgst.c apps/app-internal.c
 
 SCAN_FILES += $(bin_kcapi_dgst_SOURCES)
+man_MANS += apps/kcapi-dgst.1
 endif
 
 if HAVE_CLANG
@@ -181,10 +186,12 @@ endif
 if HAVE_XMLTO
 man html: lib/doc/libkcapi.xml
 	$(MKDIR_P) lib/doc/$@
-	xmlto $@ -m lib/doc/stylesheet.xsl --skip-validation -o lib/doc/$@/ $<
+	xmlto $@ -m lib/doc/stylesheet.xsl --skip-validation -o lib/doc/$@/ $< 2>/dev/null
 
-install-man:
-	$(INSTALL) -m 0644 lib/doc/man/*.3 -D -t $(DESTDIR)$(mandir)/man3/
+devel_manpages = lib/doc/man/*.3
+man_MANS += $(devel_manpages)
+
+$(devel_manpages): man
 endif
 endif
 
