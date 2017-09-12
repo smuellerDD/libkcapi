@@ -20,7 +20,7 @@ License:        BSD or GPLv2
 Group:          Development/Libraries
 Requires:       %{name}%{?_isa} = %{version}-%{release}
 
-%package        utils
+%package        tools
 Summary:        Utility applications for the %{name} package
 License:        BSD or GPLv2
 Group:          System Environment/Libraries
@@ -35,7 +35,7 @@ Requires:       %{name}%{?_isa} = %{version}-%{release}
 %description    devel
 Header files for applications that use %{name}.
 
-%description    utils
+%description    tools
 Utility applications that are provided with %{name}. This includes
 tools to use message digests, symmetric ciphers and random number
 generators implemented in the Linux kernel from command line.
@@ -106,7 +106,7 @@ gzip %{buildroot}%{_mandir}/man3/*.3
 %{_includedir}/kcapi.h
 %{_libdir}/*.so
 
-%files utils
+%files tools
 %{_bindir}/kcapi*
 %doc %{_mandir}/man1/kcapi*.1*
 
