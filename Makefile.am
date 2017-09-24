@@ -66,6 +66,15 @@ bin_kcapi_LDADD = libkcapi.la
 bin_kcapi_SOURCES = test/kcapi-main.c
 
 SCAN_FILES += $(bin_kcapi_SOURCES)
+
+bin_PROGRAMS += bin/kcapi-enc-test-large
+
+bin_kcapi_enc_test_large_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-overlength-strings -pie -fPIE -g -Ilib/
+bin_kcapi_enc_test_large_LDFLAGS = $(COMMON_LDFLAGS)
+bin_kcapi_enc_test_large_LDADD = libkcapi.la
+bin_kcapi_enc_test_large_SOURCES = test/kcapi-enc-test-large.c
+
+SCAN_FILES += $(bin_kcapi_enc_test_large_SOURCES)
 endif
 
 if ENABLE_KCAPI_SPEED
