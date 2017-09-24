@@ -169,7 +169,7 @@ int32_t kcapi_kpp_ssgen_aio(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_kpp_keygen_retain(struct kcapi_handle *handle, int *fdptr,
+int32_t kcapi_kpp_keygen_retain(struct kcapi_handle *handle,
 				uint8_t *pubkey, uint32_t pubkeylen, int access)
 {
 	(void)access;
@@ -178,18 +178,13 @@ int32_t kcapi_kpp_keygen_retain(struct kcapi_handle *handle, int *fdptr,
 	if (pubkeylen > INT_MAX)
 		return -EMSGSIZE;
 
-	/* request the accept function to generate the fdptr */
-	*fdptr = -1;
-
 	/*
 	 * Caller has no privkey which means that the kernel generates one
 	 * and derives the pubkey from it. The purpose is that in this case
 	 * The caller subsequently invokes kpp_kpp_ssgen to obtain the
 	 * shared secret from the kernel-held privkey.
 	 */
-
-	ret = _kcapi_common_send_meta_fd(handle, fdptr, NULL, 0, ALG_OP_KEYGEN,
-					 0);
+	ret = _kcapi_common_send_meta(handle, NULL, 0, ALG_OP_KEYGEN, 0);
 	if (ret < 0)
 		return ret;
 
@@ -197,7 +192,7 @@ int32_t kcapi_kpp_keygen_retain(struct kcapi_handle *handle, int *fdptr,
 }
 
 DSO_PUBLIC
-int32_t kcapi_kpp_ssgen_retain(struct kcapi_handle *handle, int fdptr,
+int32_t kcapi_kpp_ssgen_retain(struct kcapi_handle *handle,
 			       uint8_t *pubkey, uint32_t pubkeylen,
 			       uint8_t *ss, uint32_t sslen, int access)
 {
@@ -208,13 +203,9 @@ int32_t kcapi_kpp_ssgen_retain(struct kcapi_handle *handle, int fdptr,
 	if (pubkeylen > INT_MAX || sslen > INT_MAX)
 		return -EMSGSIZE;
 
-	if (fdptr < 0)
-		return -EBADFD;
-
 	iov.iov_base = pubkey;
 	iov.iov_len = pubkeylen;
-	ret = _kcapi_common_send_meta_fd(handle, &fdptr, &iov, 1,
-					 ALG_OP_SSGEN, 0);
+	ret = _kcapi_common_send_meta(handle, &iov, 1, ALG_OP_SSGEN, 0);
 	if (ret < 0)
 		return ret;
 

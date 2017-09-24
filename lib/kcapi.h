@@ -1886,11 +1886,11 @@ int32_t kcapi_kpp_ssgen_aio(struct kcapi_handle *handle,
 			    struct iovec *iniov, struct iovec *outiov,
 			    uint32_t iovlen, int access);
 
-int32_t kcapi_kpp_keygen_retain(struct kcapi_handle *handle, int *fdptr,
+int32_t kcapi_kpp_keygen_retain(struct kcapi_handle *handle,
 				uint8_t *pubkey, uint32_t pubkeylen,
 				int access);
 
-int32_t kcapi_kpp_ssgen_retain(struct kcapi_handle *handle, int fdptr,
+int32_t kcapi_kpp_ssgen_retain(struct kcapi_handle *handle,
 			       uint8_t *pubkey, uint32_t pubkeylen,
 			       uint8_t *ss, uint32_t sslen, int access);
 
