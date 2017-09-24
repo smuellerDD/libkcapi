@@ -1858,6 +1858,42 @@ int32_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
 #define ECC_CURVE_NIST_P192     0x0001
 #define ECC_CURVE_NIST_P256     0x0002
 
+int kcapi_kpp_init(struct kcapi_handle **handle, const char *ciphername,
+		   uint32_t flags);
+
+void kcapi_kpp_destroy(struct kcapi_handle *handle);
+
+int kcapi_kpp_dh_setparam_pkcs3(struct kcapi_handle *handle,
+				const uint8_t *pkcs3, uint32_t pkcs3len);
+
+int kcapi_kpp_ecdh_setcurve(struct kcapi_handle *handle,
+			    unsigned short curve_id);
+
+int kcapi_kpp_setkey(struct kcapi_handle *handle,
+		     const uint8_t *key, uint32_t keylen);
+
+int32_t kcapi_kpp_keygen(struct kcapi_handle *handle,
+			 uint8_t *pubkey, uint32_t pubkeylen, int access);
+
+int32_t kcapi_kpp_ssgen(struct kcapi_handle *handle,
+			const uint8_t *pubkey, uint32_t pubkeylen,
+			uint8_t *ss, uint32_t sslen, int access);
+
+int32_t kcapi_kpp_keygen_aio(struct kcapi_handle *handle, struct iovec *outiov,
+			     uint32_t iovlen, int access);
+
+int32_t kcapi_kpp_ssgen_aio(struct kcapi_handle *handle,
+			    struct iovec *iniov, struct iovec *outiov,
+			    uint32_t iovlen, int access);
+
+int32_t kcapi_kpp_keygen_retain(struct kcapi_handle *handle, int *fdptr,
+				uint8_t *pubkey, uint32_t pubkeylen,
+				int access);
+
+int32_t kcapi_kpp_ssgen_retain(struct kcapi_handle *handle, int fdptr,
+			       uint8_t *pubkey, uint32_t pubkeylen,
+			       uint8_t *ss, uint32_t sslen, int access);
+
 /**
  * DOC: Key Derivation Functions
  *

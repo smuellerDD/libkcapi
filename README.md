@@ -185,6 +185,7 @@ explicitly noted:
 
 * kcapi-utils.c (small helper functions providing, including versioning APIs)
 
+* kcapi-kpp.c (key protocol primitives (i.e. Diffie-Hellman and EC Diffie-Hellman) support providing all kcapi_kpp_* functions)
 
 Author
 ======

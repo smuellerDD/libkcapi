@@ -88,3 +88,17 @@ LIBKCAPI_0.14.0 {
 	kcapi_hkdf;
 	kcapi_rng_seedsize;
 } LIBKCAPI_0.13.0;
+
+LIBKCAPI_0.15.0 {
+	kcapi_kpp_init;
+	kcapi_kpp_destroy;
+	kcapi_kpp_dh_setparam_pkcs3;
+	kcapi_kpp_ecdh_setcurve;
+	kcapi_kpp_setkey;
+	kcapi_kpp_keygen;
+	kcapi_kpp_ssgen;
+	kcapi_kpp_keygen_aio;
+	kcapi_kpp_ssgen_aio;
+	kcapi_kpp_keygen_retain;
+	kcapi_kpp_ssgen_retain;
+} LIBKCAPI_0.14.0;

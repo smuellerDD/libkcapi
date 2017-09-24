@@ -48,6 +48,12 @@ else
 libkcapi_la_SOURCES += lib/kcapi-rng.c
 endif
 
+if DISABLE_LIB_KPP
+libkcapi_la_SOURCES +=
+else
+libkcapi_la_SOURCES += lib/kcapi-kpp.c
+endif
+
 libkcapi_la_CPPFLAGS = $(COMMON_CPPFLAGS) -fPIC -fvisibility=hidden
 libkcapi_la_LDFLAGS = $(COMMON_LDFLAGS) -Wl,--version-script,$(top_srcdir)/lib/version.lds -version-number `echo $(VERSION) | sed 's/\./:/g'`
 

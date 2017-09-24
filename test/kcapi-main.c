@@ -58,6 +58,7 @@ enum type {
 	AEAD_AIO,
 	ASYM_AIO,
 	KDF_HKDF,
+	KPP,
 };
 
 struct kcapi_cavs {
@@ -2618,6 +2619,277 @@ out:
 	return ret;
 }
 
+/*
+ * Public key generation where private key stays in kernel attached to TFM:
+ * kcapi -x 13 -c "dh" -i 308201080282010100e0ea4b21b76a0761f6d55ddbc8c5108a3e73f1580c29ba419b6baa4a9130cc17d8d945dd1cc92c9a0a690fe52a184d2021dc039e6a9d54e15a4fc040d5db392e6bcad7926eb384793cb253a76d250b6cccd5523ca75c85942c2a5502be36c113f9afd97399c5ba6d8cc4a407eee82bf7b9d76a7ba6a2560ff17f4fbdb2861a5d4401e1848177aeae5fa93ecb1b1ad8880c85e059f8ea3909ab7f23f7606129e55280e8cc53741a6465399fd6e93bff68d52d715138111d94432462140834162f1a5e3cd230ccf82e2c2df62865d1753bf83001abb2260d2ad457441baabc023d91413668a2a3603c6ed775d15c9d9ecb36fbd285c1aec03fb9673af9b933c453020102
+ *
+ * Public key generation from given private key -- Verification of kernel
+ * with openssl
+ * ----------------------------------------------------------------------
+ *
+ * 1. Generate parameter set (use this in hex for as IV for kcapi-main)
+ *    openssl dhparam -outform DER -out dhparam.der 2048
+ * 2. Convert DER into PEM format (openssl genpkey only works with PEM)
+ *    openssl dhparam -inform DER -in dhparam.der -outform PEM -out dhparam.pem
+ * 3. Generate private and public key
+ *    openssl genpkey -paramfile dhparam.pem -out dhkey1.pem
+ *    openssl pkey -in dhkey1.pem -text -noout
+ * 4. Use private key from step 3 for -k parameter of kcapi-main
+ * 5. Verify that kcapi-main returns the same public key as in step 3.
+ * (in case of leading zeros, openssl pkey prints them whereas this app does
+ * not)
+ *
+ * Example test run verified with OpenSSL:
+ *
+$ openssl pkey -in dhkey1.pem -text -noout
+DH Private-Key: (2048 bit)
+    private-key:
+        53:7d:f8:4c:6c:e2:23:48:6c:bd:da:3a:ef:2b:81:
+        9a:57:a7:4b:fc:ab:09:c6:3d:1c:a1:43:27:b3:27:
+        e8:d5:d7:64:21:74:f4:11:08:22:87:8e:b2:ee:dd:
+        6d:37:8e:ff:3b:1a:d2:7e:91:97:bc:1a:d8:a0:8b:
+        f6:f2:8f:5b:4b:5f:8e:03:f7:33:21:f7:85:0f:10:
+        7f:68:e5:ad:3b:ad:97:e4:4e:79:7a:79:89:5b:e9:
+        bc:f9:15:86:db:e9:ae:b4:70:96:c8:21:35:d8:7c:
+        cb:d5:aa:d1:95:7f:bf:9d:91:70:01:40:84:9d:c5:
+        11:6f:91:bd:02:de:01:10:5b:61:bc:ab:d6:8c:55:
+        fa:31:7b:6d:d2:4b:8c:c9:79:41:7c:a4:80:a5:c2:
+        17:09:c4:32:a0:b9:b4:54:9a:78:fb:f0:38:cf:d9:
+        67:b1:03:4d:68:97:bc:1a:37:c5:c5:70:3d:15:2a:
+        e6:f6:b9:2c:f9:9c:4c:b4:b2:77:a4:23:f0:b2:63:
+        f4:ed:64:ce:8a:c7:d2:62:8d:5c:d5:ae:24:a0:3d:
+        3a:5e:10:37:eb:dd:24:2f:b9:95:3a:d2:b6:a3:da:
+        4b:20:95:40:01:61:a4:d2:0c:5e:b9:9b:d6:71:08:
+        70:04:e7:0e:bd:7b:83:5b:56:c6:a4:c7:cf:3a:54:
+        44
+    public-key:
+        00:ab:3b:f8:9a:2c:17:5b:34:76:2a:84:76:ca:fa:
+        d3:61:b6:77:b0:02:5c:aa:77:38:c6:81:6f:8e:1a:
+        f2:84:13:4e:f8:6c:e9:e3:7b:f7:59:c9:11:e6:ae:
+        f3:08:5e:84:85:9b:0d:07:ef:5f:cd:81:c4:f4:24:
+        eb:b4:58:ea:96:89:b5:8d:b5:75:06:eb:2e:93:f0:
+        f0:93:05:f3:3e:01:d6:f0:f3:fd:2d:15:e0:59:f4:
+        88:36:56:6b:a3:40:aa:24:5b:11:36:9a:5f:bd:a2:
+        1c:d6:bc:e3:2d:00:b3:8c:09:f0:ba:b8:9b:0d:5b:
+        a9:94:1b:c0:11:c2:ed:48:df:ad:a5:42:fe:a7:6b:
+        6a:dd:5e:fc:7d:08:96:c9:e2:7d:0c:03:d8:88:2b:
+        ee:e5:42:82:03:4c:75:cf:7a:3c:5a:ba:2d:1e:8c:
+        0e:e1:c8:47:2c:07:52:da:2b:b8:69:d1:8d:dd:f1:
+        a3:42:ea:e8:1f:03:54:a7:f8:97:3b:fb:6d:53:04:
+        a0:f6:b5:25:6f:70:b8:4d:8c:21:e6:80:c3:8d:3f:
+        2f:e9:0d:a7:48:99:d8:97:ae:13:c3:7e:4f:1e:fc:
+        67:15:3b:46:ce:fd:0d:7e:da:da:ac:1f:84:a7:d0:
+        43:27:95:27:95:6b:5a:e6:4c:ef:c0:0f:9e:48:a4:
+        a8:3a
+    prime:
+        00:e0:ea:4b:21:b7:6a:07:61:f6:d5:5d:db:c8:c5:
+        10:8a:3e:73:f1:58:0c:29:ba:41:9b:6b:aa:4a:91:
+        30:cc:17:d8:d9:45:dd:1c:c9:2c:9a:0a:69:0f:e5:
+        2a:18:4d:20:21:dc:03:9e:6a:9d:54:e1:5a:4f:c0:
+        40:d5:db:39:2e:6b:ca:d7:92:6e:b3:84:79:3c:b2:
+        53:a7:6d:25:0b:6c:cc:d5:52:3c:a7:5c:85:94:2c:
+        2a:55:02:be:36:c1:13:f9:af:d9:73:99:c5:ba:6d:
+        8c:c4:a4:07:ee:e8:2b:f7:b9:d7:6a:7b:a6:a2:56:
+        0f:f1:7f:4f:bd:b2:86:1a:5d:44:01:e1:84:81:77:
+        ae:ae:5f:a9:3e:cb:1b:1a:d8:88:0c:85:e0:59:f8:
+        ea:39:09:ab:7f:23:f7:60:61:29:e5:52:80:e8:cc:
+        53:74:1a:64:65:39:9f:d6:e9:3b:ff:68:d5:2d:71:
+        51:38:11:1d:94:43:24:62:14:08:34:16:2f:1a:5e:
+        3c:d2:30:cc:f8:2e:2c:2d:f6:28:65:d1:75:3b:f8:
+        30:01:ab:b2:26:0d:2a:d4:57:44:1b:aa:bc:02:3d:
+        91:41:36:68:a2:a3:60:3c:6e:d7:75:d1:5c:9d:9e:
+        cb:36:fb:d2:85:c1:ae:c0:3f:b9:67:3a:f9:b9:33:
+        c4:53
+    generator: 2 (0x2)
+
+ * Invocation of same parameters with kernel crypto API:
+ *
+ * kcapi -x 13 -c "dh" -i 308201080282010100e0ea4b21b76a0761f6d55ddbc8c5108a3e73f1580c29ba419b6baa4a9130cc17d8d945dd1cc92c9a0a690fe52a184d2021dc039e6a9d54e15a4fc040d5db392e6bcad7926eb384793cb253a76d250b6cccd5523ca75c85942c2a5502be36c113f9afd97399c5ba6d8cc4a407eee82bf7b9d76a7ba6a2560ff17f4fbdb2861a5d4401e1848177aeae5fa93ecb1b1ad8880c85e059f8ea3909ab7f23f7606129e55280e8cc53741a6465399fd6e93bff68d52d715138111d94432462140834162f1a5e3cd230ccf82e2c2df62865d1753bf83001abb2260d2ad457441baabc023d91413668a2a3603c6ed775d15c9d9ecb36fbd285c1aec03fb9673af9b933c453020102 -k 537df84c6ce223486cbdda3aef2b819a57a74bfcab09c63d1ca14327b327e8d5d7642174f4110822878eb2eedd6d378eff3b1ad27e9197bc1ad8a08bf6f28f5b4b5f8e03f73321f7850f107f68e5ad3bad97e44e797a79895be9bcf91586dbe9aeb47096c82135d87ccbd5aad1957fbf9d91700140849dc5116f91bd02de01105b61bcabd68c55fa317b6dd24b8cc979417ca480a5c21709c432a0b9b4549a78fbf038cfd967b1034d6897bc1a37c5c5703d152ae6f6b92cf99c4cb4b277a423f0b263f4ed64ce8ac7d2628d5cd5ae24a03d3a5e1037ebdd242fb9953ad2b6a3da4b2095400161a4d20c5eb99bd671087004e70ebd7b835b56c6a4c7cf3a5444
+ab3bf89a2c175b34762a8476cafad361b677b0025caa7738c6816f8e1af284134ef86ce9e37bf759c911e6aef3085e84859b0d07ef5fcd81c4f424ebb458ea9689b58db57506eb2e93f0f09305f33e01d6f0f3fd2d15e059f48836566ba340aa245b11369a5fbda21cd6bce32d00b38c09f0bab89b0d5ba9941bc011c2ed48dfada542fea76b6add5efc7d0896c9e27d0c03d8882beee54282034c75cf7a3c5aba2d1e8c0ee1c8472c0752da2bb869d18dddf1a342eae81f0354a7f8973bfb6d5304a0f6b5256f70b84d8c21e680c38d3f2fe90da74899d897ae13c37e4f1efc67153b46cefd0d7edadaac1f84a7d043279527956b5ae64cefc00f9e48a4a83a
+ *
+ * --> public key from OpenSSL matches result of key generation
+ *
+ * Generation of shared secret -- verification with OpenSSL
+ * --------------------------------------------------------
+ *
+ * Prerequisite: OpenSSL generated data for key gen.
+ *
+ * Note: Example derives shared secret from public/private key pair of
+ * *one* key (not two) -- the purpose is to demonstrate the correctness of
+ * the kernel implementation.
+ *
+ * 1. Extract public key from priv/pub key combo
+ *    openssl pkey -in dhkey1.pem -pubout -out dhpub1.pem
+ * 2. Generate shared secret
+ *    openssl pkeyutl -derive -inkey dhkey1.pem -peerkey dhpub1.pem -out secret.bin
+ * 3. Use same private key from above for -k and public key for -p and verify
+ *    that result matches secret.bin
+ *
+ * Example test run verified with OpenSSL:
+ *
+$ $ openssl pkey -pubin -in dhpub1.pem -text
+-----BEGIN PUBLIC KEY-----
+MIICJTCCARcGCSqGSIb3DQEDATCCAQgCggEBAODqSyG3agdh9tVd28jFEIo+c/FY
+DCm6QZtrqkqRMMwX2NlF3RzJLJoKaQ/lKhhNICHcA55qnVThWk/AQNXbOS5ryteS
+brOEeTyyU6dtJQtszNVSPKdchZQsKlUCvjbBE/mv2XOZxbptjMSkB+7oK/e512p7
+pqJWD/F/T72yhhpdRAHhhIF3rq5fqT7LGxrYiAyF4Fn46jkJq38j92BhKeVSgOjM
+U3QaZGU5n9bpO/9o1S1xUTgRHZRDJGIUCDQWLxpePNIwzPguLC32KGXRdTv4MAGr
+siYNKtRXRBuqvAI9kUE2aKKjYDxu13XRXJ2eyzb70oXBrsA/uWc6+bkzxFMCAQID
+ggEGAAKCAQEAqzv4miwXWzR2KoR2yvrTYbZ3sAJcqnc4xoFvjhryhBNO+Gzp43v3
+WckR5q7zCF6EhZsNB+9fzYHE9CTrtFjqlom1jbV1Busuk/DwkwXzPgHW8PP9LRXg
+WfSINlZro0CqJFsRNppfvaIc1rzjLQCzjAnwuribDVuplBvAEcLtSN+tpUL+p2tq
+3V78fQiWyeJ9DAPYiCvu5UKCA0x1z3o8WrotHowO4chHLAdS2iu4adGN3fGjQuro
+HwNUp/iXO/ttUwSg9rUlb3C4TYwh5oDDjT8v6Q2nSJnYl64Tw35PHvxnFTtGzv0N
+ftrarB+Ep9BDJ5UnlWta5kzvwA+eSKSoOg==
+-----END PUBLIC KEY-----
+DH Public-Key: (2048 bit)
+    public-key:
+        00:ab:3b:f8:9a:2c:17:5b:34:76:2a:84:76:ca:fa:
+        d3:61:b6:77:b0:02:5c:aa:77:38:c6:81:6f:8e:1a:
+        f2:84:13:4e:f8:6c:e9:e3:7b:f7:59:c9:11:e6:ae:
+        f3:08:5e:84:85:9b:0d:07:ef:5f:cd:81:c4:f4:24:
+        eb:b4:58:ea:96:89:b5:8d:b5:75:06:eb:2e:93:f0:
+        f0:93:05:f3:3e:01:d6:f0:f3:fd:2d:15:e0:59:f4:
+        88:36:56:6b:a3:40:aa:24:5b:11:36:9a:5f:bd:a2:
+        1c:d6:bc:e3:2d:00:b3:8c:09:f0:ba:b8:9b:0d:5b:
+        a9:94:1b:c0:11:c2:ed:48:df:ad:a5:42:fe:a7:6b:
+        6a:dd:5e:fc:7d:08:96:c9:e2:7d:0c:03:d8:88:2b:
+        ee:e5:42:82:03:4c:75:cf:7a:3c:5a:ba:2d:1e:8c:
+        0e:e1:c8:47:2c:07:52:da:2b:b8:69:d1:8d:dd:f1:
+        a3:42:ea:e8:1f:03:54:a7:f8:97:3b:fb:6d:53:04:
+        a0:f6:b5:25:6f:70:b8:4d:8c:21:e6:80:c3:8d:3f:
+        2f:e9:0d:a7:48:99:d8:97:ae:13:c3:7e:4f:1e:fc:
+        67:15:3b:46:ce:fd:0d:7e:da:da:ac:1f:84:a7:d0:
+        43:27:95:27:95:6b:5a:e6:4c:ef:c0:0f:9e:48:a4:
+        a8:3a
+    prime:
+        00:e0:ea:4b:21:b7:6a:07:61:f6:d5:5d:db:c8:c5:
+        10:8a:3e:73:f1:58:0c:29:ba:41:9b:6b:aa:4a:91:
+        30:cc:17:d8:d9:45:dd:1c:c9:2c:9a:0a:69:0f:e5:
+        2a:18:4d:20:21:dc:03:9e:6a:9d:54:e1:5a:4f:c0:
+        40:d5:db:39:2e:6b:ca:d7:92:6e:b3:84:79:3c:b2:
+        53:a7:6d:25:0b:6c:cc:d5:52:3c:a7:5c:85:94:2c:
+        2a:55:02:be:36:c1:13:f9:af:d9:73:99:c5:ba:6d:
+        8c:c4:a4:07:ee:e8:2b:f7:b9:d7:6a:7b:a6:a2:56:
+        0f:f1:7f:4f:bd:b2:86:1a:5d:44:01:e1:84:81:77:
+        ae:ae:5f:a9:3e:cb:1b:1a:d8:88:0c:85:e0:59:f8:
+        ea:39:09:ab:7f:23:f7:60:61:29:e5:52:80:e8:cc:
+        53:74:1a:64:65:39:9f:d6:e9:3b:ff:68:d5:2d:71:
+        51:38:11:1d:94:43:24:62:14:08:34:16:2f:1a:5e:
+        3c:d2:30:cc:f8:2e:2c:2d:f6:28:65:d1:75:3b:f8:
+        30:01:ab:b2:26:0d:2a:d4:57:44:1b:aa:bc:02:3d:
+        91:41:36:68:a2:a3:60:3c:6e:d7:75:d1:5c:9d:9e:
+        cb:36:fb:d2:85:c1:ae:c0:3f:b9:67:3a:f9:b9:33:
+        c4:53
+    generator: 2 (0x2)
+
+$ openssl pkeyutl -derive -inkey dhkey1.pem -peerkey dhpub1.pem -out secret.bin
+$ bin2hex.pl secret.bin /dev/stdout
+78fbd4d1ed7ea6fc8f1e1a6f8a5c750845401589ad3c135088b4ec78f54c57b436d1a7a25ef3f807f72b71387f6f3624b008024fa655cf902daf11e487181ab0f59aa46ff5d0ea41574a524cc07d6d8510dcef4d550718b042fb140fb166ade62669305380377f3958f0d91c81deda0c9c5fddea4f8dd4792629407dfc2c45622099a5fa4facd78adea5c4dc32daff9fc37e3b0248576376d2e5884a7b0f7af8d7a1d308dbcbf95fee99cc336be9e5dd9ea3874806a1b3fb390a737caf37dc884f6c0a61d3ab5a420ecb9ca34069a36264cb418d4d4520ba12170b849762f6bc2f31cbfbfe6eadac3c3739daa49d2a96fd76b553e7e1198837df41c59f9b7f54
+ *
+ * Invocation of same parameters with kernel crypto API:
+ *
+ * kcapi -x 13 -c "dh" -i 308201080282010100e0ea4b21b76a0761f6d55ddbc8c5108a3e73f1580c29ba419b6baa4a9130cc17d8d945dd1cc92c9a0a690fe52a184d2021dc039e6a9d54e15a4fc040d5db392e6bcad7926eb384793cb253a76d250b6cccd5523ca75c85942c2a5502be36c113f9afd97399c5ba6d8cc4a407eee82bf7b9d76a7ba6a2560ff17f4fbdb2861a5d4401e1848177aeae5fa93ecb1b1ad8880c85e059f8ea3909ab7f23f7606129e55280e8cc53741a6465399fd6e93bff68d52d715138111d94432462140834162f1a5e3cd230ccf82e2c2df62865d1753bf83001abb2260d2ad457441baabc023d91413668a2a3603c6ed775d15c9d9ecb36fbd285c1aec03fb9673af9b933c453020102 -k 537df84c6ce223486cbdda3aef2b819a57a74bfcab09c63d1ca14327b327e8d5d7642174f4110822878eb2eedd6d378eff3b1ad27e9197bc1ad8a08bf6f28f5b4b5f8e03f73321f7850f107f68e5ad3bad97e44e797a79895be9bcf91586dbe9aeb47096c82135d87ccbd5aad1957fbf9d91700140849dc5116f91bd02de01105b61bcabd68c55fa317b6dd24b8cc979417ca480a5c21709c432a0b9b4549a78fbf038cfd967b1034d6897bc1a37c5c5703d152ae6f6b92cf99c4cb4b277a423f0b263f4ed64ce8ac7d2628d5cd5ae24a03d3a5e1037ebdd242fb9953ad2b6a3da4b2095400161a4d20c5eb99bd671087004e70ebd7b835b56c6a4c7cf3a5444 -p 00ab3bf89a2c175b34762a8476cafad361b677b0025caa7738c6816f8e1af284134ef86ce9e37bf759c911e6aef3085e84859b0d07ef5fcd81c4f424ebb458ea9689b58db57506eb2e93f0f09305f33e01d6f0f3fd2d15e059f48836566ba340aa245b11369a5fbda21cd6bce32d00b38c09f0bab89b0d5ba9941bc011c2ed48dfada542fea76b6add5efc7d0896c9e27d0c03d8882beee54282034c75cf7a3c5aba2d1e8c0ee1c8472c0752da2bb869d18dddf1a342eae81f0354a7f8973bfb6d5304a0f6b5256f70b84d8c21e680c38d3f2fe90da74899d897ae13c37e4f1efc67153b46cefd0d7edadaac1f84a7d043279527956b5ae64cefc00f9e48a4a83a
+78fbd4d1ed7ea6fc8f1e1a6f8a5c750845401589ad3c135088b4ec78f54c57b436d1a7a25ef3f807f72b71387f6f3624b008024fa655cf902daf11e487181ab0f59aa46ff5d0ea41574a524cc07d6d8510dcef4d550718b042fb140fb166ade62669305380377f3958f0d91c81deda0c9c5fddea4f8dd4792629407dfc2c45622099a5fa4facd78adea5c4dc32daff9fc37e3b0248576376d2e5884a7b0f7af8d7a1d308dbcbf95fee99cc336be9e5dd9ea3874806a1b3fb390a737caf37dc884f6c0a61d3ab5a420ecb9ca34069a36264cb418d4d4520ba12170b849762f6bc2f31cbfbfe6eadac3c3739daa49d2a96fd76b553e7e1198837df41c59f9b7f54
+
+ * --> shared secret from OpenSSL matches result of kernel
+ */
+static int kpp(struct kcapi_cavs *cavs_test, uint32_t loops)
+{
+	struct kcapi_handle *handle = NULL;
+	uint8_t *outbuf = NULL;
+	uint32_t outbuflen;
+	int ret;
+
+	(void)loops;
+
+	if (!cavs_test->ivlen)
+		return -EINVAL;
+
+	if (kcapi_kpp_init(&handle, cavs_test->cipher, 0)) {
+		ret = -EINVAL;
+		printf("Allocation of cipher failed\n");
+		goto out;
+	}
+
+	ret = kcapi_kpp_dh_setparam_pkcs3(handle, cavs_test->iv,
+					  cavs_test->ivlen);
+	if (ret < 0) {
+		printf("Setting PKCS3 DH parameters failed: %d\n", ret);
+		goto out;
+	}
+
+	ret = kcapi_kpp_setkey(handle, cavs_test->key, cavs_test->keylen);
+	if (ret < 0) {
+		printf("Having kernel generating keys failed %d\n", ret);
+		goto out;
+	}
+
+	outbuflen = ret;
+	if (cavs_test->aligned) {
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), ret))
+			return -ENOMEM;
+		memset(outbuf, 0, ret);
+	} else {
+		outbuf = calloc(1, ret);
+		if (!outbuf)
+			return -ENOMEM;
+	}
+
+	if (cavs_test->pt && cavs_test->ptlen)
+		ret = kcapi_kpp_ssgen(handle, cavs_test->pt, cavs_test->ptlen,
+				      outbuf, outbuflen, 0);
+	else
+		ret = kcapi_kpp_keygen(handle, outbuf, outbuflen, 0);
+	if (ret < 0)
+		goto out;
+
+	if (cavs_test->keylen) {
+		bin2print(outbuf, ret);
+		printf("\n");
+	} else {
+		uint8_t *outbuf2 = calloc(1, outbuflen);
+		int ret2;
+
+		if (!outbuf2) {
+			ret = -ENOMEM;
+			goto out;
+		}
+
+		ret2 = kcapi_kpp_keygen(handle, outbuf2, outbuflen, 0);
+		if (ret2 < 0) {
+			ret = ret2;
+			free(outbuf2);
+			goto out;
+		}
+
+		if (ret != ret2) {
+			printf("Double keygen returned different result lengths\n");
+			free(outbuf2);
+			ret = -EINVAL;
+			goto out;
+		}
+
+		if (memcmp(outbuf, outbuf2, ret)) {
+			printf("Double keygen returned different results\n");
+			free(outbuf2);
+			ret = -EINVAL;
+			goto out;
+		}
+		free(outbuf2);
+
+		printf("DH from kernel generated key passed\n");
+	}
+
+	ret = 0;
+
+out:
+	if (outbuf)
+		free(outbuf);
+	kcapi_aead_destroy(handle);
+	return ret;
+}
+
 int main(int argc, char *argv[])
 {
 	int c = 0;
@@ -2862,6 +3134,8 @@ int main(int argc, char *argv[])
 		rc = cavs_hkdf(&cavs_test, loops);
 	} else if (PBKDF == cavs_test.type) {
 		rc = cavs_pbkdf(&cavs_test, loops);
+	} else if (KPP == cavs_test.type) {
+		rc = kpp(&cavs_test, loops);
 	} else
 		goto out;
 	if (rc)

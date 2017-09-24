@@ -105,4 +105,7 @@ AM_CONDITIONAL([DISABLE_LIB_AEAD], [test "x$with_lib_aead" = "xno"])
 AC_ARG_ENABLE([lib-rng], [AS_HELP_STRING([--disable-lib-rng], [Disable random number generator support in library to make it smaller])], [with_lib_rng=$enableval])
 AM_CONDITIONAL([DISABLE_LIB_RNG], [test "x$with_lib_rng" = "xno"])
 
+AC_ARG_ENABLE([lib-kpp], [AS_HELP_STRING([--disable-lib-kpp], [Disable key protocol primitives support in library to make it smaller])], [with_lib_kpp=$enableval])
+AM_CONDITIONAL([DISABLE_LIB_KPP], [test "x$with_lib_kpp" = "xno"])
+
 AC_OUTPUT
