@@ -99,6 +99,4 @@ LIBKCAPI_0.15.0 {
 	kcapi_kpp_ssgen;
 	kcapi_kpp_keygen_aio;
 	kcapi_kpp_ssgen_aio;
-	kcapi_kpp_keygen_retain;
-	kcapi_kpp_ssgen_retain;
 } LIBKCAPI_0.14.0;

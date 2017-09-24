@@ -1869,6 +1869,33 @@ int kcapi_kpp_dh_setparam_pkcs3(struct kcapi_handle *handle,
 int kcapi_kpp_ecdh_setcurve(struct kcapi_handle *handle,
 			    unsigned short curve_id);
 
+/**
+ * kcapi_kpp_setkey - set the private key of the DH / ECDH operation
+ *
+ * @handle: [in] cipher handle
+ * @key: [in] key buffer
+ * @keylen: [in] length of key buffer
+ *
+ * With this function, the caller sets the key for subsequent DH / ECDH
+ * public key generation or shared secret generation operations.
+ *
+ * If the key / keylen is zero, the kernel tries to generate the private key
+ * itself and retains it internally. This is useful if the DH / ECDH operation
+ * shall be performed on ephemeral keys where the caller is only interested
+ * in eventually obtain the shared secret.
+ *
+ * After the caller provided the key, the caller may securely destroy the key
+ * as it is now maintained by the kernel.
+ *
+ * @return in case of success a positive integer is returned that denominates
+ *	   the maximum output size of the cryptographic operation -- this value
+ *	   must be used as the size of the output buffer for one cryptographic
+ *	   operation);
+ *	   a negative errno-style error code if an error occurred -- the error
+ *	   -EOPTNOTSUPP is returned in case a kernel-triggered private
+ *	   key generation is requested, but the underlying cipher implementation
+ *	   does not support this operation.
+ */
 int kcapi_kpp_setkey(struct kcapi_handle *handle,
 		     const uint8_t *key, uint32_t keylen);
 
@@ -1885,14 +1912,6 @@ int32_t kcapi_kpp_keygen_aio(struct kcapi_handle *handle, struct iovec *outiov,
 int32_t kcapi_kpp_ssgen_aio(struct kcapi_handle *handle,
 			    struct iovec *iniov, struct iovec *outiov,
 			    uint32_t iovlen, int access);
-
-int32_t kcapi_kpp_keygen_retain(struct kcapi_handle *handle,
-				uint8_t *pubkey, uint32_t pubkeylen,
-				int access);
-
-int32_t kcapi_kpp_ssgen_retain(struct kcapi_handle *handle,
-			       uint8_t *pubkey, uint32_t pubkeylen,
-			       uint8_t *ss, uint32_t sslen, int access);
 
 /**
  * DOC: Key Derivation Functions
