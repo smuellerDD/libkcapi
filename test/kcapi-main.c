@@ -368,6 +368,10 @@ static int fuzz_cipher(struct kcapi_cavs *cavs_test, unsigned long flags,
 			}
 			kcapi_cipher_setkey(handle, key, i);
 		}
+
+		/* Some idiotic value */
+		kcapi_cipher_setkey(handle, NULL, 7890);
+
 		if (kcapi_cipher_setkey(handle, key, 16)) {
 			printf("Symmetric cipher setkey failed\n");
 			goto out;
@@ -441,9 +445,27 @@ static int fuzz_aead(struct kcapi_cavs *cavs_test, unsigned long flags,
 			}
 			kcapi_aead_setkey(handle, key, i);
 		}
+
+		/* Some idiotic value */
+		kcapi_aead_setkey(handle, NULL, 5123);
+
 		if (kcapi_aead_setkey(handle, key, 16)) {
-			printf("AEAD setkey failed\n");
-			goto out;
+			if (!strncmp(cavs_test->cipher, "authenc", 7)) {
+				uint8_t *k = (uint8_t *)
+					"\x08\x00\x01\x00\x00\x00\x00\x10"
+					"\x00\x00\x00\x00\x00\x00\x00\x00"
+					"\x00\x00\x00\x00\x00\x00\x00\x00"
+					"\x00\x00\x00\x00\x06\xa9\x21\x40"
+					"\x36\xb8\xa1\x5b\x51\x2e\x03\xd5"
+					"\x34\x12\x00\x06";
+				if (kcapi_aead_setkey(handle, k, 44)) {
+					printf("AEAD setkey failed\n");
+					goto out;
+				}
+			} else {
+				printf("AEAD setkey failed\n");
+				goto out;
+			}
 		}
 	}
 
