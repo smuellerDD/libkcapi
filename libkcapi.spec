@@ -122,5 +122,5 @@ gzip %{buildroot}%{_mandir}/man3/*.3
 
 
 %changelog
-* Sun Sep 10 2017 Stephan Mueller <smueller@chronox.de> - 0.14.0-1
+* Sun Sep 10 2017 Stephan Mueller <smueller@chronox.de> - 0.15.0-1
 - Initial packaging
