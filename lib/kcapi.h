@@ -1892,7 +1892,7 @@ int kcapi_kpp_ecdh_setcurve(struct kcapi_handle *handle,
  *	   must be used as the size of the output buffer for one cryptographic
  *	   operation);
  *	   a negative errno-style error code if an error occurred -- the error
- *	   -EOPTNOTSUPP is returned in case a kernel-triggered private
+ *	   -EOPNOTSUPP is returned in case a kernel-triggered private
  *	   key generation is requested, but the underlying cipher implementation
  *	   does not support this operation.
  */
