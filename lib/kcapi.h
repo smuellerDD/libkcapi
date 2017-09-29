@@ -1387,7 +1387,8 @@ void kcapi_akcipher_destroy(struct kcapi_handle *handle);
  * After the caller provided the key, the caller may securely destroy the key
  * as it is now maintained by the kernel.
  *
- * @return 0 upon success;
+ * @return upon success the value of the maximum size for the asymmetric
+ *	   operation is returned (e.g. the modulus size);
  *	   a negative errno-style error code if an error occurred
  */
 int kcapi_akcipher_setkey(struct kcapi_handle *handle,
@@ -1412,7 +1413,8 @@ int kcapi_akcipher_setkey(struct kcapi_handle *handle,
  * After the caller provided the key, the caller may securely destroy the key
  * as it is now maintained by the kernel.
  *
- * @return 0 upon success;
+ * @return upon success the value of the maximum size for the asymmetric
+ *	   operation is returned (e.g. the modulus size);
  *	   a negative errno-style error code if an error occurred
  */
 int kcapi_akcipher_setpubkey(struct kcapi_handle *handle,
@@ -1854,20 +1856,94 @@ int32_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
  * API function calls used to invoke Diffie-Hellmand or EC-Diffie-Hellman
  * operations.
  */
-/* Curves IDs */
-#define ECC_CURVE_NIST_P192     0x0001
-#define ECC_CURVE_NIST_P256     0x0002
 
+/**
+ * kcapi_kpp_init() - initialize cipher handle
+ *
+ * @handle: [out] cipher handle filled during the call
+ * @ciphername: [in] kernel crypto API cipher name as specified in
+ *	/proc/crypto
+ * @flags: [in] flags specifying the type of cipher handle
+ *
+ * This function provides the initialization of a KPP cipher handle and
+ * establishes the connection to the kernel.
+ *
+ * On success, a pointer to kcapi_handle object is returned in *handle.
+ * Function kcapi_kpp_destroy should be called afterwards to free
+ * resources.
+ *
+ * @return 0 upon success;
+ *	   -ENOENT - algorithm not available;
+ *	   -EOPNOTSUPP - AF_ALG family not available;
+ *	   -EINVAL - accept syscall failed
+ *	   -ENOMEM - cipher handle cannot be allocated
+ */
 int kcapi_kpp_init(struct kcapi_handle **handle, const char *ciphername,
 		   uint32_t flags);
 
+/**
+ * kcapi_kpp_destroy() - close the cipher handle and release resources
+ *
+ * @handle: [in] cipher handle to release
+ */
 void kcapi_kpp_destroy(struct kcapi_handle *handle);
 
+/**
+ * kcapi_kpp_dh_setparam_pkcs3 - set the PG parameters using PKCS3 format
+ *
+ * @handle: [in] cipher handle
+ * @pkcs3: [in] parameter buffer in DER format
+ * @pkcs3len: [in] length of key buffer
+ *
+ * With this function, the caller sets the PG parameters for subsequent cipher
+ * operations.
+ *
+ * The parameter set must be in DER format as follows
+ *
+ * SEQUENCE {
+ *	prime INTEGER ({ dh_get_p }),
+ *	base INTEGER ({ dh_get_g })
+ *}
+ *
+ * The following command generates such parameter set where the output
+ * file content is has the correct DER structure:
+ *
+ * openssl dhparam -outform DER -out dhparam.der 2048
+ *
+ * Note, this function defines that the subsequent key generation and
+ * shared secret operation performs an FFC Diffie-Hellman operation.
+ *
+ * After the caller provided the key, the caller may destroy the parameter
+ * as it is now maintained by the kernel.
+ *
+ * @return upon success the value of the maximum size for the KPP
+ *	   operation is returned (e.g. the prime size);
+ *	   a negative errno-style error code if an error occurred
+ */
 int kcapi_kpp_dh_setparam_pkcs3(struct kcapi_handle *handle,
 				const uint8_t *pkcs3, uint32_t pkcs3len);
 
+/* ECC curve IDs */
+#define ECC_CURVE_NIST_P192     0x0001
+#define ECC_CURVE_NIST_P256     0x0002
+
+/**
+ * kcapi_kpp_ecdh_setcurve - set the ECC curve to be used for ECDH
+ *
+ * @handle: [in] cipher handle
+ * @curve_id: [in] ID of the ECC curve
+ *
+ * With this function, the caller sets the ECC curve for subsequent cipher
+ * operations. The curve ID is one of the ECC_CURVE_* identifiers.
+ *
+ * Note, this function defines that the subsequent key generation and
+ * shared secret operation performs an ECC Diffie-Hellman operation.
+ *
+ * @return 0 upon success;
+ *	   a negative errno-style error code if an error occurred
+ */
 int kcapi_kpp_ecdh_setcurve(struct kcapi_handle *handle,
-			    unsigned short curve_id);
+			    unsigned long curve_id);
 
 /**
  * kcapi_kpp_setkey - set the private key of the DH / ECDH operation
@@ -1887,6 +1963,9 @@ int kcapi_kpp_ecdh_setcurve(struct kcapi_handle *handle,
  * After the caller provided the key, the caller may securely destroy the key
  * as it is now maintained by the kernel.
  *
+ * Note, the key can only be set after the DH parameters or the ECC curve
+ * has been set.
+ *
  * @return in case of success a positive integer is returned that denominates
  *	   the maximum output size of the cryptographic operation -- this value
  *	   must be used as the size of the output buffer for one cryptographic
@@ -1899,16 +1978,89 @@ int kcapi_kpp_ecdh_setcurve(struct kcapi_handle *handle,
 int kcapi_kpp_setkey(struct kcapi_handle *handle,
 		     const uint8_t *key, uint32_t keylen);
 
+/**
+ * kcapi_kpp_keygen - generate a public key
+ *
+ * @handle: [in] cipher handle
+ * @pubkey: [out] generated public key
+ * @pubkeylen: [in] length of key buffer
+ * @access: [in] kernel access type (KCAPI_ACCESS_HEURISTIC - use internal
+ *	    heuristic for  fastest kernel access; KCAPI_ACCESS_VMSPLICE - use
+ *	    vmsplice access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * @return number of bytes returned by the key generation operation upon
+ *	   success; a negative errno-style error code if an error occurred
+ */
 int32_t kcapi_kpp_keygen(struct kcapi_handle *handle,
 			 uint8_t *pubkey, uint32_t pubkeylen, int access);
 
+/**
+ * kcapi_kpp_ssgen - generate a shared secret
+ *
+ * @handle: [in] cipher handle
+ * @pubkey: [in] public key of peer that shall be used to generate the shared
+ *	    secret with
+ * @pubkeylen: [in] length of the public key buffer
+ * @ss: [out] generated shared secret
+ * @sslen: [in] length of key buffer
+ * @access: [in] kernel access type (KCAPI_ACCESS_HEURISTIC - use internal
+ *	    heuristic for  fastest kernel access; KCAPI_ACCESS_VMSPLICE - use
+ *	    vmsplice access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * @return number of bytes returned by the shared secret generation operation
+ *	   upon success; a negative errno-style error code if an error occurred
+ */
 int32_t kcapi_kpp_ssgen(struct kcapi_handle *handle,
 			const uint8_t *pubkey, uint32_t pubkeylen,
 			uint8_t *ss, uint32_t sslen, int access);
 
+/**
+ * kcapi_kpp_keygen_aio() - generate a public key (asynchronous one shot)
+ *
+ * @handle: [in] cipher handle
+ * @outiov: [out] head of scatter-gather list of the destination buffers filled
+ *	with the generated public key
+ * @iovlen: [in] number of scatter-gather list entries
+ * @access: [in] kernel access type (KCAPI_ACCESS_HEURISTIC - use internal
+ *	heuristic for  fastest kernel access; KCAPI_ACCESS_VMSPLICE - use
+ *	vmsplice access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * The individual scatter-gather list entries are processed with
+ * separate invocations of the the given cipher.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page
+ * boundary, the vmsplice call may not send all data to the kernel.
+ *
+ * @return number of bytes verify upon success;
+ *	   a negative errno-style error code if an error occurred
+ */
 int32_t kcapi_kpp_keygen_aio(struct kcapi_handle *handle, struct iovec *outiov,
 			     uint32_t iovlen, int access);
 
+/**
+ * kcapi_kpp_ssgen_aio() - generate a shared secret (asynchronous one shot)
+ *
+ * @handle: [in] cipher handle
+ * @iniov: [in] head of scatter-gather list of the source buffers with the
+ *	public keys of the peer
+ * @outiov: [out] head of scatter-gather list of the destination buffers filled
+ *	with the generated shared secret
+ * @iovlen: [in] number of scatter-gather list entries
+ * @access: [in] kernel access type (KCAPI_ACCESS_HEURISTIC - use internal
+ *	heuristic for  fastest kernel access; KCAPI_ACCESS_VMSPLICE - use
+ *	vmsplice access; KCAPI_ACCESS_SENDMSG - sendmsg access)
+ *
+ * The individual scatter-gather list entries are processed with
+ * separate invocations of the the given cipher.
+ *
+ * The memory should be aligned at the page boundary using
+ * posix_memalign(sysconf(_SC_PAGESIZE)), If it is not aligned at the page
+ * boundary, the vmsplice call may not send all data to the kernel.
+ *
+ * @return number of bytes verify upon success;
+ *	   a negative errno-style error code if an error occurred
+ */
 int32_t kcapi_kpp_ssgen_aio(struct kcapi_handle *handle,
 			    struct iovec *iniov, struct iovec *outiov,
 			    uint32_t iovlen, int access);

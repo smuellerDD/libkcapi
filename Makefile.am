@@ -13,12 +13,6 @@ libkcapi_la_SOURCES = lib/cryptouser.h \
 
 man_MANS =
 
-if DISABLE_LIB_ASYM
-libkcapi_la_SOURCES +=
-else
-libkcapi_la_SOURCES += lib/kcapi-asym.c
-endif
-
 if DISABLE_LIB_SYM
 libkcapi_la_SOURCES +=
 else
@@ -48,10 +42,16 @@ else
 libkcapi_la_SOURCES += lib/kcapi-rng.c
 endif
 
-if DISABLE_LIB_KPP
-libkcapi_la_SOURCES +=
+if ENABLE_LIB_ASYM
+libkcapi_la_SOURCES += lib/kcapi-asym.c
 else
+libkcapi_la_SOURCES +=
+endif
+
+if ENABLE_LIB_KPP
 libkcapi_la_SOURCES += lib/kcapi-kpp.c
+else
+libkcapi_la_SOURCES +=
 endif
 
 libkcapi_la_CPPFLAGS = $(COMMON_CPPFLAGS) -fPIC -fvisibility=hidden

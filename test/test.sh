@@ -409,37 +409,37 @@ PBKDF_name_1="hmac(sha1)"
 PBKDF_salt_1="73616c74"
 PBKDF_pw_1="70617373776f7264"
 PBKDF_count_1=1
-PBKDF_exp_1="0c60c80f961f0e71f3a9b524af6012062fe037a6"
+PBKDF_exp_1="0c60c80f961f0e71f3a9b524af6012062fe037a6"	# RFC 6070
 
 PBKDF_name_2="hmac(sha1)"
 PBKDF_salt_2="73616c74"
 PBKDF_pw_2="70617373776f7264"
 PBKDF_count_2=2
-PBKDF_exp_2="ea6c014dc72d6f8ccd1ed92ace1d41f0d8de8957"
+PBKDF_exp_2="ea6c014dc72d6f8ccd1ed92ace1d41f0d8de8957"	# RFC 6070
 
 PBKDF_name_3="hmac(sha1)"
 PBKDF_salt_3="73616c74"
 PBKDF_pw_3="70617373776f7264"
 PBKDF_count_3=4096
-PBKDF_exp_3="4b007901b765489abead49d926f721d065a429c1"
+PBKDF_exp_3="4b007901b765489abead49d926f721d065a429c1"	# RFC 6070
 
 PBKDF_name_4="hmac(sha1)"
 PBKDF_salt_4="73616c74"
 PBKDF_pw_4="70617373776f7264"
 PBKDF_count_4=16777216
-PBKDF_exp_4="eefe3d61cd4da4e4e9945b3d6ba2158c2634e984"
+PBKDF_exp_4="eefe3d61cd4da4e4e9945b3d6ba2158c2634e984"	# RFC 6070
 
 PBKDF_name_5="hmac(sha1)"
 PBKDF_salt_5="73616c7453414c5473616c7453414c5473616c7453414c5473616c7453414c5473616c74"
 PBKDF_pw_5="70617373776f726450415353574f524470617373776f7264"
 PBKDF_count_5=4096
-PBKDF_exp_5="3d2eec4fe41c849b80c8d83662c0e44a8b291a964cf2f07038"
+PBKDF_exp_5="3d2eec4fe41c849b80c8d83662c0e44a8b291a964cf2f07038" # RFC 6070
 
 PBKDF_name_6="hmac(sha1)"
 PBKDF_salt_6="7361006c74"
 PBKDF_pw_6="7061737300776f7264"
 PBKDF_count_6=4096
-PBKDF_exp_6="56fa6aa75548099dcc37d7f03425e0c3"
+PBKDF_exp_6="56fa6aa75548099dcc37d7f03425e0c3"		# RFC 6070
 
 PBKDF_name_7="hmac(sha1)"
 PBKDF_salt_7="73616c74"
@@ -529,6 +529,26 @@ HKDF_ikm_7="0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c"
 HKDF_salt_7=""
 HKDF_info_7=""
 HKDF_exp_7="2c91117204d745f3500d636a62f64f0ab3bae548aa53d423b0d1f27ebba6f5e5673a081d70cce7acfc48"
+
+###########################################################################
+###########################################################################
+###########################################################################
+
+# Test: generate public key
+KPP_name_1="dh"
+KPP_param_1="308201080282010100e0ea4b21b76a0761f6d55ddbc8c5108a3e73f1580c29ba419b6baa4a9130cc17d8d945dd1cc92c9a0a690fe52a184d2021dc039e6a9d54e15a4fc040d5db392e6bcad7926eb384793cb253a76d250b6cccd5523ca75c85942c2a5502be36c113f9afd97399c5ba6d8cc4a407eee82bf7b9d76a7ba6a2560ff17f4fbdb2861a5d4401e1848177aeae5fa93ecb1b1ad8880c85e059f8ea3909ab7f23f7606129e55280e8cc53741a6465399fd6e93bff68d52d715138111d94432462140834162f1a5e3cd230ccf82e2c2df62865d1753bf83001abb2260d2ad457441baabc023d91413668a2a3603c6ed775d15c9d9ecb36fbd285c1aec03fb9673af9b933c453020102"
+KPP_curve_1=""
+KPP_privkey_1="537df84c6ce223486cbdda3aef2b819a57a74bfcab09c63d1ca14327b327e8d5d7642174f4110822878eb2eedd6d378eff3b1ad27e9197bc1ad8a08bf6f28f5b4b5f8e03f73321f7850f107f68e5ad3bad97e44e797a79895be9bcf91586dbe9aeb47096c82135d87ccbd5aad1957fbf9d91700140849dc5116f91bd02de01105b61bcabd68c55fa317b6dd24b8cc979417ca480a5c21709c432a0b9b4549a78fbf038cfd967b1034d6897bc1a37c5c5703d152ae6f6b92cf99c4cb4b277a423f0b263f4ed64ce8ac7d2628d5cd5ae24a03d3a5e1037ebdd242fb9953ad2b6a3da4b2095400161a4d20c5eb99bd671087004e70ebd7b835b56c6a4c7cf3a5444"
+KPP_peerkey_1=""
+KPP_exp_1="ab3bf89a2c175b34762a8476cafad361b677b0025caa7738c6816f8e1af284134ef86ce9e37bf759c911e6aef3085e84859b0d07ef5fcd81c4f424ebb458ea9689b58db57506eb2e93f0f09305f33e01d6f0f3fd2d15e059f48836566ba340aa245b11369a5fbda21cd6bce32d00b38c09f0bab89b0d5ba9941bc011c2ed48dfada542fea76b6add5efc7d0896c9e27d0c03d8882beee54282034c75cf7a3c5aba2d1e8c0ee1c8472c0752da2bb869d18dddf1a342eae81f0354a7f8973bfb6d5304a0f6b5256f70b84d8c21e680c38d3f2fe90da74899d897ae13c37e4f1efc67153b46cefd0d7edadaac1f84a7d043279527956b5ae64cefc00f9e48a4a83a"
+
+# Test: generate shared secret
+KPP_name_2="dh"
+KPP_param_2="308201080282010100e0ea4b21b76a0761f6d55ddbc8c5108a3e73f1580c29ba419b6baa4a9130cc17d8d945dd1cc92c9a0a690fe52a184d2021dc039e6a9d54e15a4fc040d5db392e6bcad7926eb384793cb253a76d250b6cccd5523ca75c85942c2a5502be36c113f9afd97399c5ba6d8cc4a407eee82bf7b9d76a7ba6a2560ff17f4fbdb2861a5d4401e1848177aeae5fa93ecb1b1ad8880c85e059f8ea3909ab7f23f7606129e55280e8cc53741a6465399fd6e93bff68d52d715138111d94432462140834162f1a5e3cd230ccf82e2c2df62865d1753bf83001abb2260d2ad457441baabc023d91413668a2a3603c6ed775d15c9d9ecb36fbd285c1aec03fb9673af9b933c453020102"
+KPP_curve_2=""
+KPP_privkey_2="537df84c6ce223486cbdda3aef2b819a57a74bfcab09c63d1ca14327b327e8d5d7642174f4110822878eb2eedd6d378eff3b1ad27e9197bc1ad8a08bf6f28f5b4b5f8e03f73321f7850f107f68e5ad3bad97e44e797a79895be9bcf91586dbe9aeb47096c82135d87ccbd5aad1957fbf9d91700140849dc5116f91bd02de01105b61bcabd68c55fa317b6dd24b8cc979417ca480a5c21709c432a0b9b4549a78fbf038cfd967b1034d6897bc1a37c5c5703d152ae6f6b92cf99c4cb4b277a423f0b263f4ed64ce8ac7d2628d5cd5ae24a03d3a5e1037ebdd242fb9953ad2b6a3da4b2095400161a4d20c5eb99bd671087004e70ebd7b835b56c6a4c7cf3a5444"
+KPP_peerkey_2="00ab3bf89a2c175b34762a8476cafad361b677b0025caa7738c6816f8e1af284134ef86ce9e37bf759c911e6aef3085e84859b0d07ef5fcd81c4f424ebb458ea9689b58db57506eb2e93f0f09305f33e01d6f0f3fd2d15e059f48836566ba340aa245b11369a5fbda21cd6bce32d00b38c09f0bab89b0d5ba9941bc011c2ed48dfada542fea76b6add5efc7d0896c9e27d0c03d8882beee54282034c75cf7a3c5aba2d1e8c0ee1c8472c0752da2bb869d18dddf1a342eae81f0354a7f8973bfb6d5304a0f6b5256f70b84d8c21e680c38d3f2fe90da74899d897ae13c37e4f1efc67153b46cefd0d7edadaac1f84a7d043279527956b5ae64cefc00f9e48a4a83a"
+KPP_exp_2="78fbd4d1ed7ea6fc8f1e1a6f8a5c750845401589ad3c135088b4ec78f54c57b436d1a7a25ef3f807f72b71387f6f3624b008024fa655cf902daf11e487181ab0f59aa46ff5d0ea41574a524cc07d6d8510dcef4d550718b042fb140fb166ade62669305380377f3958f0d91c81deda0c9c5fddea4f8dd4792629407dfc2c45622099a5fa4facd78adea5c4dc32daff9fc37e3b0248576376d2e5884a7b0f7af8d7a1d308dbcbf95fee99cc336be9e5dd9ea3874806a1b3fb390a737caf37dc884f6c0a61d3ab5a420ecb9ca34069a36264cb418d4d4520ba12170b849762f6bc2f31cbfbfe6eadac3c3739daa49d2a96fd76b553e7e1198837df41c59f9b7f54"
 
 ###########################################################################
 ###########################################################################
@@ -740,6 +760,89 @@ asymfunc()
 			echo_fail "Asymmetric $impl_type $sout $aout test $i"
 			echo "($cmd)"
 			echo " Exp $ASYM_exp"
+			echo " Got $result"
+			failures=$(($failures+1))
+		fi
+	done
+}
+
+kppfunc()
+{
+	impl=$1
+	stream=$2
+	aligned=$3
+	aiofallback=$4
+
+	if [ x"$stream" = x"X" ]
+	then
+		stream=""
+	fi
+	if [ x"$aligned" = x"X" ]
+	then
+		aligned=""
+	fi
+
+	KPPEXEC="1 2"
+	for i in $KPPEXEC
+	do
+		eval KPP_name=\$KPP_name_$i
+		eval KPP_param=\$KPP_param_$i
+		eval KPP_curve=\$KPP_curve_$i
+		eval KPP_privkey=\$KPP_privkey_$i
+		eval KPP_peerkey=\$KPP_peerkey_$i
+		eval KPP_exp=\$KPP_exp_$i
+
+		opt=""
+		if [ -n "$KPP_param" ]
+		then
+			opt="-i $KPP_param"
+		fi
+		if [ -n "$KPP_curve" ]
+		then
+			opt="$opt -l $KPP_curve"
+		fi
+		if [ -n "$KPP_privkey" ]
+		then
+			opt="$opt -k $KPP_privkey"
+		fi
+		if [ -n "$KPP_peerkey" ]
+		then
+			opt="$opt -p $KPP_peerkey"
+		fi
+
+		cmd="$KCAPI -x $impl $stream $aligned -c $KPP_name $opt"
+		result=$($cmd 2>/dev/null)
+
+		impl_type="synchronous"
+		sout="one shot"
+		aout="non-aligned"
+		if [ $impl -eq 11 ]
+		then
+			impl_type="asynchronous"
+		fi
+		if [ -n "$aiofallback" ]
+		then
+			impl_type="$impl_type (AIO fallback)"
+		fi
+		if [ x"$stream" = x"-s" ]
+		then
+			sout="stream"
+		fi
+		if [ x"$stream" = x"-v" ]
+		then
+			sout="vmsplice"
+		fi
+		if [ x"$aligned" = x"-m" ]
+		then
+			aout="aligned"
+		fi
+		if [ x"$result" = x"$KPP_exp" ]
+		then
+			echo_pass "KPP $impl_type $sout $aout test $i"
+		else
+			echo_fail "KPP $impl_type $sout $aout test $i"
+			echo "($cmd)"
+			echo " Exp $KPP_exp"
 			echo " Got $result"
 			failures=$(($failures+1))
 		fi
@@ -1397,6 +1500,12 @@ if $(check_min_kernelver 4 99); then
 	multipletest_asym 11 -v	-g	# async, AIO fallback, splice
 else
 	echo_deact "All asymmetric tests deactivated"
+fi
+
+if $(check_min_kernelver 4 99); then
+	kppfunc 13
+else
+	echo_deact "All KPP tests deactivated"
 fi
 
 kdftest

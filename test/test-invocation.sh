@@ -21,7 +21,7 @@
 DIR=$(dirname $0)
 cd $DIR
 
-COMPILE_OPTS="--enable-kcapi-test --enable-kcapi-encapp --enable-kcapi-hasher --enable-kcapi-dgstapp --enable-kcapi-rngapp"
+COMPILE_OPTS="--enable-kcapi-test --enable-kcapi-encapp --enable-kcapi-hasher --enable-kcapi-dgstapp --enable-kcapi-rngapp --enable-lib-kpp --enable-lib-asym"
 
 exec_test()
 {

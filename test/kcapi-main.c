@@ -2621,7 +2621,7 @@ out:
 
 /*
  * Public key generation where private key stays in kernel attached to TFM:
- * kcapi -x 13 -c "dh" -i 308201080282010100e0ea4b21b76a0761f6d55ddbc8c5108a3e73f1580c29ba419b6baa4a9130cc17d8d945dd1cc92c9a0a690fe52a184d2021dc039e6a9d54e15a4fc040d5db392e6bcad7926eb384793cb253a76d250b6cccd5523ca75c85942c2a5502be36c113f9afd97399c5ba6d8cc4a407eee82bf7b9d76a7ba6a2560ff17f4fbdb2861a5d4401e1848177aeae5fa93ecb1b1ad8880c85e059f8ea3909ab7f23f7606129e55280e8cc53741a6465399fd6e93bff68d52d715138111d94432462140834162f1a5e3cd230ccf82e2c2df62865d1753bf83001abb2260d2ad457441baabc023d91413668a2a3603c6ed775d15c9d9ecb36fbd285c1aec03fb9673af9b933c453020102
+ * kcapi -x 13 -c "ecdh" -l 2
  *
  * Public key generation from given private key -- Verification of kernel
  * with openssl
@@ -2803,7 +2803,7 @@ static int kpp(struct kcapi_cavs *cavs_test, uint32_t loops)
 
 	(void)loops;
 
-	if (!cavs_test->ivlen)
+	if (!cavs_test->ivlen && !cavs_test->taglen)
 		return -EINVAL;
 
 	if (kcapi_kpp_init(&handle, cavs_test->cipher, 0)) {
@@ -2812,11 +2812,21 @@ static int kpp(struct kcapi_cavs *cavs_test, uint32_t loops)
 		goto out;
 	}
 
-	ret = kcapi_kpp_dh_setparam_pkcs3(handle, cavs_test->iv,
-					  cavs_test->ivlen);
-	if (ret < 0) {
-		printf("Setting PKCS3 DH parameters failed: %d\n", ret);
-		goto out;
+	if (cavs_test->ivlen) {
+		ret = kcapi_kpp_dh_setparam_pkcs3(handle, cavs_test->iv,
+						  cavs_test->ivlen);
+		if (ret < 0) {
+			printf("Setting PKCS3 DH parameters failed: %d\n", ret);
+			goto out;
+		}
+	}
+	if (cavs_test->taglen) {
+		ret = kcapi_kpp_ecdh_setcurve(handle,
+					      (unsigned short)cavs_test->taglen);
+		if (ret < 0) {
+			printf("Setting ECDH curve failed: %d\n", ret);
+			goto out;
+		}
 	}
 
 	ret = kcapi_kpp_setkey(handle, cavs_test->key, cavs_test->keylen);

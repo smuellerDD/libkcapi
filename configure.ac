@@ -10,7 +10,7 @@ dnl KCAPI_PATCHLEVEL API / ABI compatible, no functional changes, no
 dnl 		     enhancements, bug fixes only. Versions with
 dnl		     a decimal point are pre-releases.
 m4_define([__KCAPI_MAJVERSION], [0])
-m4_define([__KCAPI_MINVERSION], [14])
+m4_define([__KCAPI_MINVERSION], [15])
 m4_define([__KCAPI_PATCHLEVEL], [0])
 m4_define([KCAPI_VERSION], [__KCAPI_MAJVERSION.__KCAPI_MINVERSION.__KCAPI_PATCHLEVEL])
 
@@ -90,9 +90,6 @@ AM_CONDITIONAL([ENABLE_KCAPI_DGSTAPP], [test "x$with_kcapi_dgstapp" = "xyes"])
 AC_ARG_ENABLE([lib-kdf], [AS_HELP_STRING([--disable-lib-kdf], [Disable KDF support in library to make it smaller])], [with_lib_kdf=$enableval])
 AM_CONDITIONAL([DISABLE_LIB_KDF], [test "x$with_lib_kdf" = "xno"])
 
-AC_ARG_ENABLE([lib-asym], [AS_HELP_STRING([--disable-lib-asym], [Disable asymmetric cipher support in library to make it smaller])], [with_lib_asym=$enableval])
-AM_CONDITIONAL([DISABLE_LIB_ASYM], [test "x$with_lib_asym" = "xno"])
-
 AC_ARG_ENABLE([lib-sym], [AS_HELP_STRING([--disable-lib-sym], [Disable symmetric cipher support in library to make it smaller])], [with_lib_sym=$enableval])
 AM_CONDITIONAL([DISABLE_LIB_SYM], [test "x$with_lib_sym" = "xno"])
 
@@ -105,7 +102,10 @@ AM_CONDITIONAL([DISABLE_LIB_AEAD], [test "x$with_lib_aead" = "xno"])
 AC_ARG_ENABLE([lib-rng], [AS_HELP_STRING([--disable-lib-rng], [Disable random number generator support in library to make it smaller])], [with_lib_rng=$enableval])
 AM_CONDITIONAL([DISABLE_LIB_RNG], [test "x$with_lib_rng" = "xno"])
 
-AC_ARG_ENABLE([lib-kpp], [AS_HELP_STRING([--disable-lib-kpp], [Disable key protocol primitives support in library to make it smaller])], [with_lib_kpp=$enableval])
-AM_CONDITIONAL([DISABLE_LIB_KPP], [test "x$with_lib_kpp" = "xno"])
+AC_ARG_ENABLE([lib-asym], [AS_HELP_STRING([--enable-lib-asym], [Enable asymmetric cipher support in library])], [with_lib_asym=$enableval])
+AM_CONDITIONAL([ENABLE_LIB_ASYM], [test "x$with_lib_asym" = "xyes"])
+
+AC_ARG_ENABLE([lib-kpp], [AS_HELP_STRING([--enable-lib-kpp], [Enable key protocol primitives support in library])], [with_lib_kpp=$enableval])
+AM_CONDITIONAL([ENABLE_LIB_KPP], [test "x$with_lib_kpp" = "xyes"])
 
 AC_OUTPUT

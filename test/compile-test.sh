@@ -98,6 +98,8 @@ make distclean > /dev/null 2>&1
 		--enable-kcapi-rngapp \
 		--enable-kcapi-encapp \
 		--enable-kcapi-dgstapp \
+		--enable-lib-asym \
+		--enable-lib-kpp \
 		--prefix=$INSTALLTARGET
 check_result $? "configure"
 

@@ -21,14 +21,16 @@ memory.
 Directory Structure
 ===================
 
-lib/ -- directory holding the library
+`lib/` -- directory holding the library
 
-apps/ -- directory holding the applications discussed below; these
+`apps/` -- directory holding the applications discussed below; these
 	 applications link the library code in.
 
-test/ -- functional verification code
+`test/` -- functional verification code
 
-speed-test/ -- performance tests
+`speed-test/` -- performance tests
+
+`kernel-patches/` -- Linux kernel patches providing the interfaces for the asymmetric ciphers (akcipher) and the DH/ECDH ciphers (KPP). These patches must be applied to the Linux kernel if the respective configure options of either `--enable-lib-asym` or `--enable-lib-kpp` are used.
 
 Applications
 ============
@@ -102,6 +104,11 @@ The `configure` script supports the following options:
 * `--enable-kcapi-dgstapp`: compile and install the kcapi-dgst application
 * The various `--disable-lib-*` options allows the disabling of different
   library functions to allow minimizing the binary.
+* The various `--enable-lib-*` options allow the enabling of the different
+  library functions. All library functions referenced there do not have an
+  equivalent kernel support in the upstream Linux kernel. Yet, patches are
+  available in the `kernel-patches` directory that provide that interface
+  which need to be added to the kernel if desired.
 
 For instance, to compile the library with the `kcapi` test program and to
 install them in `/usr/`:
