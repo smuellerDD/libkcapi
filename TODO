@@ -1,6 +1,3 @@
 * Include linux/cryptouser.h once available in user space and remove header
   file copy from libkcapi code base.
 
-* Remaining task before release 1.0: include algif_akcipher and make
-  the akcipher API useful
-
