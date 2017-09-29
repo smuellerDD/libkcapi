@@ -1,0 +1,58 @@
+From f8f1b7a0430062d32ca384fb81ed297fa6304dcc Mon Sep 17 00:00:00 2001
+From: Stephan Mueller <smueller@chronox.de>
+Date: Thu, 28 Sep 2017 03:15:52 +0200
+Subject: [PATCH v2 3/8] crypto: AF_ALG - eliminate code duplication
+
+The handling function for setsockopt contains duplicated code which is
+cleaned up with this patch. This patch does not change the functionality.
+
+Signed-off-by: Stephan Mueller <smueller@chronox.de>
+---
+ crypto/af_alg.c | 17 +++--------------
+ 1 file changed, 3 insertions(+), 14 deletions(-)
+
+diff --git a/crypto/af_alg.c b/crypto/af_alg.c
+index add428b6304b..9335a1c56490 100644
+--- a/crypto/af_alg.c
++++ b/crypto/af_alg.c
+@@ -248,34 +248,23 @@ static int alg_setsockopt(struct socket *sock, int level, int optname,
+ 	if (level != SOL_ALG || !type)
+ 		goto unlock;
+ 
++	if (sock->state == SS_CONNECTED)
++		goto unlock;
++
+ 	switch (optname) {
+ 	case ALG_SET_KEY:
+-		if (sock->state == SS_CONNECTED)
+-			goto unlock;
+-
+ 		err = alg_setkey(sk, optval, optlen, type->setkey);
+ 		break;
+ 	case ALG_SET_PUBKEY:
+-		if (sock->state == SS_CONNECTED)
+-			goto unlock;
+-
+ 		err = alg_setkey(sk, optval, optlen, type->setpubkey);
+ 		break;
+ 	case ALG_SET_DH_PARAMETERS:
+-		if (sock->state == SS_CONNECTED)
+-			goto unlock;
+-
+ 		err = alg_setkey(sk, optval, optlen, type->dhparams);
+ 		break;
+ 	case ALG_SET_ECDH_CURVE:
+-		if (sock->state == SS_CONNECTED)
+-			goto unlock;
+-
+ 		err = alg_setkey(sk, optval, optlen, type->ecdhcurve);
+ 		break;
+ 	case ALG_SET_AEAD_AUTHSIZE:
+-		if (sock->state == SS_CONNECTED)
+-			goto unlock;
+ 		if (!type->setauthsize)
+ 			goto unlock;
+ 		err = type->setauthsize(ask->private, optlen);
+-- 
+2.13.5
+

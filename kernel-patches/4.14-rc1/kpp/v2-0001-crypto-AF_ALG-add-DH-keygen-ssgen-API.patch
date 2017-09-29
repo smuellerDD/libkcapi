@@ -1,0 +1,28 @@
+From ff4676688bdb8ca8236e978ea5d54ab5c15202af Mon Sep 17 00:00:00 2001
+From: Stephan Mueller <smueller@chronox.de>
+Date: Fri, 31 Mar 2017 05:35:07 +0200
+Subject: [PATCH v2 1/8] crypto: AF_ALG -- add DH keygen / ssgen API
+
+Add the flags for handling DH key generation and DH shared
+secret generation.
+
+Signed-off-by: Stephan Mueller <smueller@chronox.de>
+---
+ include/uapi/linux/if_alg.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/include/uapi/linux/if_alg.h b/include/uapi/linux/if_alg.h
+index 02e61627e089..c48eeb605ec2 100644
+--- a/include/uapi/linux/if_alg.h
++++ b/include/uapi/linux/if_alg.h
+@@ -41,5 +41,7 @@ struct af_alg_iv {
+ #define ALG_OP_ENCRYPT			1
+ #define ALG_OP_SIGN			2
+ #define ALG_OP_VERIFY			3
++#define ALG_OP_KEYGEN			4
++#define ALG_OP_SSGEN			5
+ 
+ #endif	/* _LINUX_IF_ALG_H */
+-- 
+2.13.5
+

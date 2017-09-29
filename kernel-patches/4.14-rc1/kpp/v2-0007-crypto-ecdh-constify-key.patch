@@ -1,0 +1,40 @@
+From ae8108d916e7245cd3656c7762f9aba2186a09c7 Mon Sep 17 00:00:00 2001
+From: Stephan Mueller <smueller@chronox.de>
+Date: Thu, 28 Sep 2017 16:31:30 +0200
+Subject: [PATCH v2 7/8] crypto: ecdh - constify key
+
+Signed-off-by: Stephan Mueller <smueller@chronox.de>
+---
+ include/crypto/ecdh.h | 2 +-
+ security/keys/dh.c    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/include/crypto/ecdh.h b/include/crypto/ecdh.h
+index 1aff2a8a3a68..4da299e1d5d8 100644
+--- a/include/crypto/ecdh.h
++++ b/include/crypto/ecdh.h
+@@ -40,7 +40,7 @@
+  */
+ struct ecdh {
+ 	unsigned short curve_id;
+-	char *key;
++	const char *key;
+ 	unsigned short key_size;
+ };
+ 
+diff --git a/security/keys/dh.c b/security/keys/dh.c
+index d1ea9f325f94..a157b68a5248 100644
+--- a/security/keys/dh.c
++++ b/security/keys/dh.c
+@@ -18,7 +18,7 @@
+ #include <keys/user-type.h>
+ #include "internal.h"
+ 
+-static ssize_t dh_data_from_key(key_serial_t keyid, void **data)
++static ssize_t dh_data_from_key(key_serial_t keyid, const void **data)
+ {
+ 	struct key *key;
+ 	key_ref_t key_ref;
+-- 
+2.13.5
+
