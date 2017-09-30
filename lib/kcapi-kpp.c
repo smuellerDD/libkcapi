@@ -91,6 +91,7 @@ static int32_t
 _kcapi_kpp_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 		     struct iovec *outiov, uint32_t iovlen, int access, int enc)
 {
+	struct iovec zeroiov;
 	int32_t ret;
 	int32_t rc;
 	uint32_t tosend = iovlen;
@@ -100,24 +101,22 @@ _kcapi_kpp_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 		return -EOPNOTSUPP;
 	}
 
-	ret = _kcapi_common_accept(handle, NULL);
+	ret = _kcapi_common_accept(handle, &handle->opfd);
 	if (ret)
 		return ret;
 
 	handle->aio.completed_reads = 0;
+
+	zeroiov.iov_base = NULL;
+	zeroiov.iov_len = 0;
 
 	/* Every IOVEC is processed as its individual cipher operation. */
 	while (tosend) {
 		uint32_t process = 1;
 		int32_t rc;
 
-		if (enc == ALG_OP_KEYGEN)
-			rc = _kcapi_common_send_meta(handle, NULL, 0,
-						     ALG_OP_KEYGEN, 0);
-		else
-			rc = _kcapi_aio_send_iov(handle, iniov, process,
-						 access, enc);
-
+		rc = _kcapi_aio_send_iov(handle, iniov ? iniov : &zeroiov,
+					 process, access, enc);
 		if (rc < 0)
 			return rc;
 

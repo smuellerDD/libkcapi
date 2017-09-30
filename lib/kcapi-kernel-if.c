@@ -427,12 +427,13 @@ int _kcapi_aio_send_iov(struct kcapi_handle *handle, struct iovec *iov,
 			uint32_t iovlen, int access, int enc)
 {
 	int ret;
+	size_t len = iov ? iov->iov_len : 0;
 
 	/*
 	 * Using two syscalls with memcpy is faster than four syscalls
 	 * without memcpy below the given threshold.
 	 */
-	if ((access == KCAPI_ACCESS_HEURISTIC && iov->iov_len <= (1<<13)) ||
+	if ((access == KCAPI_ACCESS_HEURISTIC && len <= (1<<13)) ||
 	    access == KCAPI_ACCESS_SENDMSG) {
 		ret = _kcapi_common_send_meta(handle, iov, iovlen, enc, 0);
 		if (0 > ret)
@@ -914,24 +915,13 @@ static int _kcapi_aio_init(struct kcapi_handle *handle, const char *type)
 			err = -EOPNOTSUPP;
 			goto err;
 		}
-	} else if (!strncmp("skcipher", type, 8)) {
+	}
+	if (!strncmp("skcipher", type, 8)) {
 		if (!_kcapi_kernver_ge(handle, 4, 13, 0)) {
 			kcapi_dolog(KCAPI_LOG_VERBOSE, "AIO support for symmetric ciphers not present on current kernel");
 			err = -EOPNOTSUPP;
 			goto err;
 		}
-	} else if (!strncmp("akcipher", type, 8)) {
-		if (!_kcapi_kernver_ge(handle, 4, 99, 0)) {
-			kcapi_dolog(KCAPI_LOG_VERBOSE, "AIO support for asymmetric ciphers not present on current kernel");
-			err = -EOPNOTSUPP;
-			goto err;
-		}
-	} else {
-		kcapi_dolog(KCAPI_LOG_WARN,
-			    "AIO support for unknown cipher type %s not present",
-			    type);
-		err = -EFAULT;
-		goto err;
 	}
 
 	handle->aio.cio = calloc(KCAPI_AIO_CONCURRENT, sizeof(struct iocb));
