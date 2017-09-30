@@ -816,7 +816,7 @@ kppfunc()
 		impl_type="synchronous"
 		sout="one shot"
 		aout="non-aligned"
-		if [ $impl -eq 11 ]
+		if [ $impl -eq 14 ]
 		then
 			impl_type="asynchronous"
 		fi
@@ -1477,33 +1477,31 @@ if $(check_min_kernelver 4 99); then
 	asymfunc 11
 	asymfunc 11 -s
 	asymfunc 11 -v
-	asymfunc 11 X X -g
-	asymfunc 11 -s X -g
-	asymfunc 11 -v X -g
 	asymfunc 4 X -m
 	asymfunc 4 -s -m
 	asymfunc 4 -v -m
 	asymfunc 11 X -m
 	asymfunc 11 -s -m
 	asymfunc 11 -v -m
-	asymfunc 11 X -m -g
-	asymfunc 11 -s -m -g
-	asymfunc 11 -v -m -g
 	multipletest_asym 4		# sync, no splice, one shot sendmsg
 	multipletest_asym 4 -s		# sync, no splice, stream sendmsg
 	multipletest_asym 4 -v		# sync, splice
 	multipletest_asym 11		# async, no splice, one shot sendmsg
 	multipletest_asym 11 -s		# async, no splice, stream sendmsg
 	multipletest_asym 11 -v		# async, splice
-	multipletest_asym 11 X -g	# async, AIO fallback, no splice, one shot sendmsg
-	multipletest_asym 11 -s -g	# async, AIO fallback, no splice, stream sendmsg
-	multipletest_asym 11 -v	-g	# async, AIO fallback, splice
 else
 	echo_deact "All asymmetric tests deactivated"
 fi
 
 if $(check_min_kernelver 4 99); then
 	kppfunc 13
+	kppfunc 13 X -m
+	kppfunc 13 -v
+	kppfunc 13 -v -m
+	kppfunc 14
+	kppfunc 14 X -m
+	kppfunc 14 -v
+	kppfunc 14 -v -m
 else
 	echo_deact "All KPP tests deactivated"
 fi

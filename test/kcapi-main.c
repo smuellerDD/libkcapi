@@ -59,6 +59,7 @@ enum type {
 	ASYM_AIO,
 	KDF_HKDF,
 	KPP,
+	KPP_AIO,
 };
 
 struct kcapi_cavs {
@@ -636,7 +637,7 @@ static int aux_test_rng(char *name, uint8_t *seed, uint32_t seedlen)
 
 static int auxiliary_tests(void)
 {
-	struct kcapi_handle *handle;
+	struct kcapi_handle *handle = NULL;
 	int ret = 0;
 
         if (kcapi_aead_init(&handle, "ccm(aes)", 0)) {
@@ -654,6 +655,7 @@ static int auxiliary_tests(void)
 		}
 	}
 	kcapi_aead_destroy(handle);
+	handle = NULL;
 
         if (kcapi_cipher_init(&handle, "cbc(aes)", 0)) {
                 printf("Allocation of cbc(aes) cipher failed\n");
@@ -669,6 +671,7 @@ static int auxiliary_tests(void)
 		}
 	}
 	kcapi_cipher_destroy(handle);
+	handle = NULL;
 
 	if (kcapi_md_init(&handle, "sha256", 0)) {
                 printf("Allocation of sha256 cipher failed\n");
@@ -2056,7 +2059,7 @@ out:
 }
 
 static int cavs_asym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
-			 int splice, int aiofallback)
+			 int splice)
 {
 	struct kcapi_handle *handle = NULL;
 	struct iovec *iniov_p, *outiov_p, *iniov = NULL, *outiov = NULL;
@@ -2077,8 +2080,7 @@ static int cavs_asym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 	if (!outiov)
 		goto out;
 
-	if (kcapi_akcipher_init(&handle, cavs_test->cipher,
-				aiofallback ? 0 :KCAPI_INIT_AIO)) {
+	if (kcapi_akcipher_init(&handle, cavs_test->cipher, KCAPI_INIT_AIO)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
 		goto out;
 	}
@@ -2794,7 +2796,7 @@ $ bin2hex.pl secret.bin /dev/stdout
 
  * --> shared secret from OpenSSL matches result of kernel
  */
-static int kpp(struct kcapi_cavs *cavs_test, uint32_t loops)
+static int kpp(struct kcapi_cavs *cavs_test, uint32_t loops, int splice)
 {
 	struct kcapi_handle *handle = NULL;
 	uint8_t *outbuf = NULL;
@@ -2848,55 +2850,97 @@ static int kpp(struct kcapi_cavs *cavs_test, uint32_t loops)
 
 	if (cavs_test->pt && cavs_test->ptlen)
 		ret = kcapi_kpp_ssgen(handle, cavs_test->pt, cavs_test->ptlen,
-				      outbuf, outbuflen, 0);
+				      outbuf, outbuflen, splice);
 	else
-		ret = kcapi_kpp_keygen(handle, outbuf, outbuflen, 0);
+		ret = kcapi_kpp_keygen(handle, outbuf, outbuflen, splice);
 	if (ret < 0)
 		goto out;
 
-	if (cavs_test->keylen) {
-		bin2print(outbuf, ret);
-		printf("\n");
-	} else {
-		uint8_t *outbuf2 = calloc(1, outbuflen);
-		int ret2;
-
-		if (!outbuf2) {
-			ret = -ENOMEM;
-			goto out;
-		}
-
-		ret2 = kcapi_kpp_keygen(handle, outbuf2, outbuflen, 0);
-		if (ret2 < 0) {
-			ret = ret2;
-			free(outbuf2);
-			goto out;
-		}
-
-		if (ret != ret2) {
-			printf("Double keygen returned different result lengths\n");
-			free(outbuf2);
-			ret = -EINVAL;
-			goto out;
-		}
-
-		if (memcmp(outbuf, outbuf2, ret)) {
-			printf("Double keygen returned different results\n");
-			free(outbuf2);
-			ret = -EINVAL;
-			goto out;
-		}
-		free(outbuf2);
-
-		printf("DH from kernel generated key passed\n");
-	}
+	bin2print(outbuf, ret);
+	printf("\n");
 
 	ret = 0;
 
 out:
 	if (outbuf)
 		free(outbuf);
-	kcapi_aead_destroy(handle);
+	kcapi_kpp_destroy(handle);
+	return ret;
+}
+
+static int kpp_aio(struct kcapi_cavs *cavs_test, uint32_t loops, int splice)
+{
+	struct kcapi_handle *handle = NULL;
+	struct iovec iniov, outiov;
+	uint8_t *outbuf = NULL;
+	uint32_t outbuflen;
+	int ret;
+
+	(void)loops;
+
+	if (!cavs_test->ivlen && !cavs_test->taglen)
+		return -EINVAL;
+
+	if (kcapi_kpp_init(&handle, cavs_test->cipher, KCAPI_INIT_AIO)) {
+		ret = -EINVAL;
+		printf("Allocation of cipher failed\n");
+		goto out;
+	}
+
+	if (cavs_test->ivlen) {
+		ret = kcapi_kpp_dh_setparam_pkcs3(handle, cavs_test->iv,
+						  cavs_test->ivlen);
+		if (ret < 0) {
+			printf("Setting PKCS3 DH parameters failed: %d\n", ret);
+			goto out;
+		}
+	}
+	if (cavs_test->taglen) {
+		ret = kcapi_kpp_ecdh_setcurve(handle,
+					      (unsigned short)cavs_test->taglen);
+		if (ret < 0) {
+			printf("Setting ECDH curve failed: %d\n", ret);
+			goto out;
+		}
+	}
+
+	ret = kcapi_kpp_setkey(handle, cavs_test->key, cavs_test->keylen);
+	if (ret < 0) {
+		printf("Having kernel generating keys failed %d\n", ret);
+		goto out;
+	}
+
+	outbuflen = ret;
+	if (cavs_test->aligned) {
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), ret))
+			return -ENOMEM;
+		memset(outbuf, 0, ret);
+	} else {
+		outbuf = calloc(1, ret);
+		if (!outbuf)
+			return -ENOMEM;
+	}
+
+	iniov.iov_base = cavs_test->pt;
+	iniov.iov_len = cavs_test->ptlen;
+	outiov.iov_base = outbuf;
+	outiov.iov_len = outbuflen;
+	if (cavs_test->pt && cavs_test->ptlen)
+		ret = kcapi_kpp_ssgen_aio(handle, &iniov, &outiov, 1, splice);
+	else
+		ret = kcapi_kpp_keygen_aio(handle, &outiov, 1, splice);
+	if (ret < 0)
+		goto out;
+
+	bin2print(outbuf, ret);
+	printf("\n");
+
+	ret = 0;
+
+out:
+	if (outbuf)
+		free(outbuf);
+	kcapi_kpp_destroy(handle);
 	return ret;
 }
 
@@ -3135,7 +3179,7 @@ int main(int argc, char *argv[])
 		else
 			rc = cavs_asym(&cavs_test, loops, splice);
 	} else if (ASYM_AIO == cavs_test.type) {
-		rc = cavs_asym_aio(&cavs_test, loops, splice, aiofallback);
+		rc = cavs_asym_aio(&cavs_test, loops, splice);
 	} else if (KDF_CTR == cavs_test.type ||
 		   KDF_FB == cavs_test.type ||
 		   KDF_DPI == cavs_test.type) {
@@ -3145,7 +3189,9 @@ int main(int argc, char *argv[])
 	} else if (PBKDF == cavs_test.type) {
 		rc = cavs_pbkdf(&cavs_test, loops);
 	} else if (KPP == cavs_test.type) {
-		rc = kpp(&cavs_test, loops);
+		rc = kpp(&cavs_test, loops, splice);
+	} else if (KPP_AIO == cavs_test.type) {
+		rc = kpp_aio(&cavs_test, loops, splice);
 	} else
 		goto out;
 	if (rc)
