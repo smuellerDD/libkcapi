@@ -1383,13 +1383,14 @@ check_memory
 
 hashfunc
 hashfunc -s
+multipletest_hash 3		# sync, no splice, one shot sendmsg
+multipletest_hash 3 -s		# sync, no splice, stream sendmsg
+multipletest_hash 3 -v		# sync, splice
+
 symfunc 1
 symfunc 1 -s
 symfunc 1 -v
 symfunc 1 -j
-symfunc 9
-symfunc 9 -s
-symfunc 9 -v
 symfunc 9 X X -g
 symfunc 9 -s X -g
 symfunc 9 -v X -g
@@ -1408,26 +1409,31 @@ multipletest_sym 1 -v		# sync, splice
 multipletest_sym 9 X -g		# async, AIO fallback, no splice, one shot sendmsg
 multipletest_sym 9 -s -g	# async, AIO fallback, no splice, stream sendmsg
 multipletest_sym 9 -v -g	# async, AIO fallback, splice
-multipletest_hash 3		# sync, no splice, one shot sendmsg
-multipletest_hash 3 -s		# sync, no splice, stream sendmsg
-multipletest_hash 3 -v		# sync, splice
+
+if $(check_min_kernelver 4 14); then
+	symfunc 9
+	symfunc 9 -s
+	symfunc 9 -v
+	symfunc 9 X -m
+	symfunc 9 -s -m
+	symfunc 9 -v -m
+	multipletest_sym 9
+	multipletest_sym 9 -s
+	multipletest_sym 9 -v
+else
+	echo_deact "Symmetric AIO tests deactivated"
+fi
 
 if $(check_min_kernelver 4 1); then
 	aeadfunc 2
 	aeadfunc 2 -s
 	aeadfunc 2 -v
-	aeadfunc 10
-	aeadfunc 10 -s
-	aeadfunc 10 -v
 	aeadfunc 10 X X -g
 	aeadfunc 10 -s X -g
 	aeadfunc 10 -v X -g
 	aeadfunc 2 X -m
 	aeadfunc 2 -s -m
 	aeadfunc 2 -v -m
-	aeadfunc 10 -s -m
-	aeadfunc 10 X -m
-	aeadfunc 10 -v -m
 	aeadfunc 10 -s -m -g
 	aeadfunc 10 X -m -g
 	aeadfunc 10 -v -m -g
@@ -1437,6 +1443,19 @@ if $(check_min_kernelver 4 1); then
 	multipletest_aead 10 X -g	# async, AIO fallback, no splice, one shot sendmsg
 	multipletest_aead 10 -s	-g	# async, AIO fallback, no splice, stream sendmsg
 	multipletest_aead 10 -v	-g	# async AIO fallback, splice
+	if $(check_min_kernelver 4 14); then
+		aeadfunc 10
+		aeadfunc 10 -s
+		aeadfunc 10 -v
+		aeadfunc 10 -s -m
+		aeadfunc 10 X -m
+		aeadfunc 10 -v -m
+		multipletest_aead 10
+		multipletest_aead 10 -s
+		multipletest_aead 10 -v
+	else
+		echo_deact "AEAD AIO tests deactivated"
+	fi
 else
 	echo_deact "All AEAD tests deactivated"
 fi
