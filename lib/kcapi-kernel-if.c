@@ -654,7 +654,8 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	if (nl.nl_family != AF_NETLINK) {
 		ret = -errno;
 		kcapi_dolog(KCAPI_LOG_ERR,
-			    "Netlink error: wrong address family %d",			nl.nl_family);
+			    "Netlink error: wrong address family %d",
+			    nl.nl_family);
 		goto out;
 	}
 
