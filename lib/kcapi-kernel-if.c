@@ -116,7 +116,9 @@ int32_t _kcapi_common_send_meta_fd(struct kcapi_handle *handle, int *fdptr,
 				   uint32_t enc, uint32_t flags)
 {
 	int32_t ret;
-	char *buffer = NULL;
+	char buffer_static[80] = { 0 };
+	char *buffer_p = buffer_static;
+	char *buffer_alloc = NULL;
 
 	/* plaintext / ciphertext data */
 	struct cmsghdr *header = NULL;
@@ -145,11 +147,18 @@ int32_t _kcapi_common_send_meta_fd(struct kcapi_handle *handle, int *fdptr,
 
 	memset(&msg, 0, sizeof(msg));
 
-	buffer = calloc(1, bufferlen);
-	if (!buffer)
-		return -ENOMEM;
+	/* allocate buffer, if static buffer is too small */
+	if (bufferlen > sizeof(buffer_static)) {
+		buffer_alloc = calloc(1, bufferlen);
+		if (!buffer_alloc)
+			return -ENOMEM;
+		buffer_p = buffer_alloc;
+		kcapi_dolog(KCAPI_LOG_VERBOSE,
+			    "_kcapi_common_send_meta_fd: submission buffer of size %u allocated",
+			    bufferlen);
+	}
 
-	msg.msg_control = buffer;
+	msg.msg_control = buffer_p;
 	msg.msg_controllen = bufferlen;
 	msg.msg_iov = iov;
 	msg.msg_iovlen = iovlen;
@@ -203,8 +212,9 @@ int32_t _kcapi_common_send_meta_fd(struct kcapi_handle *handle, int *fdptr,
 		    "AF_ALG: sendmsg syscall returned %d", ret);
 
 out:
-	kcapi_memset_secure(buffer, 0, bufferlen);
-	free(buffer);
+	kcapi_memset_secure(buffer_p, 0, bufferlen);
+	if (buffer_alloc)
+		free(buffer_alloc);
 	return ret;
 }
 
