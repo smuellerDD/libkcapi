@@ -132,8 +132,7 @@ static inline int32_t kcapi_md_conv_common(const char *name,
 		return ret;
 
 	ret = kcapi_md_digest(&handle, in, inlen, out, outlen);
-	if (ret < 0)
-		return ret;
+
 	_kcapi_handle_destroy_nofree(&handle);
 
 	return ret;
@@ -186,13 +185,12 @@ static inline int32_t kcapi_md_mac_conv_common(const char *name,
 
 	ret = kcapi_md_setkey(&handle, key, keylen);
 	if (ret)
-		return ret;
+		goto out;
 
 	ret = kcapi_md_digest(&handle, in, inlen, out, outlen);
-	if (ret < 0)
-		return ret;
-	_kcapi_handle_destroy_nofree(&handle);
 
+out:
+	_kcapi_handle_destroy_nofree(&handle);
 	return ret;
 }
 
