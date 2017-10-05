@@ -112,23 +112,41 @@ static int ciphertest(void)
 	int32_t ret;
 
 	ret = kcapi_cipher_enc_aes_cbc(in, 32, in, 32, in, out, sizeof(out));
-	if (ret != 32) {
-
+	if (ret != sizeof(out)) {
+		printf("AES CBC encrytion error");
+		return 1;
 	}
 
 	ret = kcapi_cipher_dec_aes_cbc(in, 32, in, 32, in, out, sizeof(out));
-	if (ret != 32) {
-
+	if (ret != sizeof(out)) {
+		printf("AES CBC decrytion error");
+		return 1;
 	}
 
 	ret = kcapi_cipher_enc_aes_ctr(in, 32, in, 32, in, out, sizeof(out));
-	if (ret != 32) {
-
+	if (ret != sizeof(out)) {
+		printf("AES CTR encrytion error");
+		return 1;
 	}
 
 	ret = kcapi_cipher_dec_aes_ctr(in, 32, in, 32, in, out, sizeof(out));
-	if (ret != 32) {
+	if (ret != sizeof(out)) {
+		printf("AES CTR decrytion error");
+		return 1;
+	}
 
+	return 0;
+}
+
+static int rngtest(void)
+{
+	uint8_t out[67];
+	int32_t ret;
+
+	ret = kcapi_rng_get_bytes(out, sizeof(out));
+	if (ret != sizeof(out)) {
+		printf("Random number generation error");
+		return 1;
 	}
 
 	return 0;
@@ -150,6 +168,10 @@ int main(int argc, char *argv[])
 		return ret;
 
 	ret = ciphertest();
+	if (ret)
+		return ret;
+
+	ret = rngtest();
 	if (ret)
 		return ret;
 

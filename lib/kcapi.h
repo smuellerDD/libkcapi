@@ -367,6 +367,24 @@ int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
 int32_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
 			       struct iovec *iov, uint32_t iovlen);
 
+
+int32_t kcapi_cipher_enc_aes_cbc(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, uint32_t inlen,
+				 const uint8_t *iv,
+				 uint8_t *out, uint32_t outlen);
+int32_t kcapi_cipher_dec_aes_cbc(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, uint32_t inlen,
+				 const uint8_t *iv,
+				 uint8_t *out, uint32_t outlen);
+int32_t kcapi_cipher_enc_aes_ctr(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, uint32_t inlen,
+				 const uint8_t *ctr,
+				 uint8_t *out, uint32_t outlen);
+int32_t kcapi_cipher_dec_aes_ctr(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, uint32_t inlen,
+				 const uint8_t *ctr,
+				 uint8_t *out, uint32_t outlen);
+
 /**
  * kcapi_cipher_ivsize() - return size of IV required for cipher
  *
@@ -1450,6 +1468,8 @@ int kcapi_rng_seed(struct kcapi_handle *handle, uint8_t *seed,
  */
 int32_t kcapi_rng_generate(struct kcapi_handle *handle,
 			   uint8_t *buffer, uint32_t len);
+
+int32_t kcapi_rng_get_bytes(uint8_t *buffer, uint32_t outlen);
 
 /**
  * kcapi_rng_seedsize() - return required seed size of DRNG
