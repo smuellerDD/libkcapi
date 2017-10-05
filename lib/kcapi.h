@@ -1139,6 +1139,226 @@ int32_t kcapi_md_digest(struct kcapi_handle *handle,
 		       uint8_t *out, uint32_t outlen);
 
 /**
+ * kcapi_md_sha1 - SHA-1 message digest on one buffer
+ *
+ * @in: [in] buffer with input data
+ * @inlen: [in] length of input buffer
+ * @out: [out] buffer for message digest
+ * @outlen: [in] length of out
+ *
+ * With this one-shot convenience function, a message digest of the given buffer
+ * is generated. The output buffer must be allocated by the caller and have at
+ * least the length of the message digest size for the chosen message digest.
+ *
+ * @return size of message digest upon success;
+ *	    -EIO - data cannot be obtained;
+ * 	    -ENOMEM - buffer is too small for the complete message digest,
+ * 	    the buffer is filled with the truncated message digest
+ */
+int32_t kcapi_md_sha1(const uint8_t *in, uint32_t inlen,
+		      uint8_t *out, uint32_t outlen);
+
+/**
+ * kcapi_md_sha224 - SHA-224 message digest on one buffer
+ *
+ * @in: [in] buffer with input data
+ * @inlen: [in] length of input buffer
+ * @out: [out] buffer for message digest
+ * @outlen: [in] length of out
+ *
+ * With this one-shot convenience function, a message digest of the given buffer
+ * is generated. The output buffer must be allocated by the caller and have at
+ * least the length of the message digest size for the chosen message digest.
+ *
+ * @return size of message digest upon success;
+ *	    -EIO - data cannot be obtained;
+ * 	    -ENOMEM - buffer is too small for the complete message digest,
+ * 	    the buffer is filled with the truncated message digest
+ */
+int32_t kcapi_md_sha224(const uint8_t *in, uint32_t inlen,
+			uint8_t *out, uint32_t outlen);
+
+/**
+ * kcapi_md_sha256 - SHA-256 message digest on one buffer
+ *
+ * @in: [in] buffer with input data
+ * @inlen: [in] length of input buffer
+ * @out: [out] buffer for message digest
+ * @outlen: [in] length of out
+ *
+ * With this one-shot convenience function, a message digest of the given buffer
+ * is generated. The output buffer must be allocated by the caller and have at
+ * least the length of the message digest size for the chosen message digest.
+ *
+ * @return size of message digest upon success;
+ *	    -EIO - data cannot be obtained;
+ * 	    -ENOMEM - buffer is too small for the complete message digest,
+ * 	    the buffer is filled with the truncated message digest
+ */
+int32_t kcapi_md_sha256(const uint8_t *in, uint32_t inlen,
+			uint8_t *out, uint32_t outlen);
+
+/**
+ * kcapi_md_sha384 - SHA-384 message digest on one buffer
+ *
+ * @in: [in] buffer with input data
+ * @inlen: [in] length of input buffer
+ * @out: [out] buffer for message digest
+ * @outlen: [in] length of out
+ *
+ * With this one-shot convenience function, a message digest of the given buffer
+ * is generated. The output buffer must be allocated by the caller and have at
+ * least the length of the message digest size for the chosen message digest.
+ *
+ * @return size of message digest upon success;
+ *	    -EIO - data cannot be obtained;
+ * 	    -ENOMEM - buffer is too small for the complete message digest,
+ * 	    the buffer is filled with the truncated message digest
+ */
+int32_t kcapi_md_sha384(const uint8_t *in, uint32_t inlen,
+			uint8_t *out, uint32_t outlen);
+
+/**
+ * kcapi_md_sha512 - SHA-512 message digest on one buffer
+ *
+ * @in: [in] buffer with input data
+ * @inlen: [in] length of input buffer
+ * @out: [out] buffer for message digest
+ * @outlen: [in] length of out
+ *
+ * With this one-shot convenience function, a message digest of the given buffer
+ * is generated. The output buffer must be allocated by the caller and have at
+ * least the length of the message digest size for the chosen message digest.
+ *
+ * @return size of message digest upon success;
+ *	    -EIO - data cannot be obtained;
+ * 	    -ENOMEM - buffer is too small for the complete message digest,
+ * 	    the buffer is filled with the truncated message digest
+ */
+int32_t kcapi_md_sha512(const uint8_t *in, uint32_t inlen,
+			uint8_t *out, uint32_t outlen);
+
+/**
+ * kcapi_md_hmac_sha1 - HMAC SHA-1 keyed message digest on one buffer
+ *
+ * @key: [in] buffer with HMAC key
+ * @keylen: [in] length of HMAC key buffer
+ * @in: [in] buffer with input data
+ * @inlen: [in] length of input buffer
+ * @out: [out] buffer for message digest
+ * @outlen: [in] length of out
+ *
+ * With this one-shot convenience function, a keyed message digest of the given
+ * buffer is generated. The output buffer must be allocated by the caller and
+ * have at least the length of the message digest size for the chosen keyed
+ * message digest.
+ *
+ * @return size of message digest upon success;
+ *	    -EIO - data cannot be obtained;
+ * 	    -ENOMEM - buffer is too small for the complete message digest,
+ * 	    the buffer is filled with the truncated message digest
+ */
+int32_t kcapi_md_hmac_sha1(const uint8_t *key, uint32_t keylen,
+			   const uint8_t *in, uint32_t inlen,
+			   uint8_t *out, uint32_t outlen);
+
+/**
+ * kcapi_md_hmac_sha224 - HMAC SHA-224 keyed message digest on one buffer
+ *
+ * @key: [in] buffer with HMAC key
+ * @keylen: [in] length of HMAC key buffer
+ * @in: [in] buffer with input data
+ * @inlen: [in] length of input buffer
+ * @out: [out] buffer for message digest
+ * @outlen: [in] length of out
+ *
+ * With this one-shot convenience function, a keyed message digest of the given
+ * buffer is generated. The output buffer must be allocated by the caller and
+ * have at least the length of the message digest size for the chosen keyed
+ * message digest.
+ *
+ * @return size of message digest upon success;
+ *	    -EIO - data cannot be obtained;
+ * 	    -ENOMEM - buffer is too small for the complete message digest,
+ * 	    the buffer is filled with the truncated message digest
+ */
+int32_t kcapi_md_hmac_sha224(const uint8_t *key, uint32_t keylen,
+			     const uint8_t *in, uint32_t inlen,
+			     uint8_t *out, uint32_t outlen);
+
+/**
+ * kcapi_md_hmac_sha256 - HMAC SHA-256 keyed message digest on one buffer
+ *
+ * @key: [in] buffer with HMAC key
+ * @keylen: [in] length of HMAC key buffer
+ * @in: [in] buffer with input data
+ * @inlen: [in] length of input buffer
+ * @out: [out] buffer for message digest
+ * @outlen: [in] length of out
+ *
+ * With this one-shot convenience function, a keyed message digest of the given
+ * buffer is generated. The output buffer must be allocated by the caller and
+ * have at least the length of the message digest size for the chosen keyed
+ * message digest.
+ *
+ * @return size of message digest upon success;
+ *	    -EIO - data cannot be obtained;
+ * 	    -ENOMEM - buffer is too small for the complete message digest,
+ * 	    the buffer is filled with the truncated message digest
+ */
+int32_t kcapi_md_hmac_sha256(const uint8_t *key, uint32_t keylen,
+			     const uint8_t *in, uint32_t inlen,
+			     uint8_t *out, uint32_t outlen);
+
+/**
+ * kcapi_md_hmac_sha384 - HMAC SHA-384 keyed message digest on one buffer
+ *
+ * @key: [in] buffer with HMAC key
+ * @keylen: [in] length of HMAC key buffer
+ * @in: [in] buffer with input data
+ * @inlen: [in] length of input buffer
+ * @out: [out] buffer for message digest
+ * @outlen: [in] length of out
+ *
+ * With this one-shot convenience function, a keyed message digest of the given
+ * buffer is generated. The output buffer must be allocated by the caller and
+ * have at least the length of the message digest size for the chosen keyed
+ * message digest.
+ *
+ * @return size of message digest upon success;
+ *	    -EIO - data cannot be obtained;
+ * 	    -ENOMEM - buffer is too small for the complete message digest,
+ * 	    the buffer is filled with the truncated message digest
+ */
+int32_t kcapi_md_hmac_sha384(const uint8_t *key, uint32_t keylen,
+			     const uint8_t *in, uint32_t inlen,
+			     uint8_t *out, uint32_t outlen);
+
+/**
+ * kcapi_md_hmac_sha512 - HMAC SHA-512 keyed message digest on one buffer
+ *
+ * @key: [in] buffer with HMAC key
+ * @keylen: [in] length of HMAC key buffer
+ * @in: [in] buffer with input data
+ * @inlen: [in] length of input buffer
+ * @out: [out] buffer for message digest
+ * @outlen: [in] length of out
+ *
+ * With this one-shot convenience function, a keyed message digest of the given
+ * buffer is generated. The output buffer must be allocated by the caller and
+ * have at least the length of the message digest size for the chosen keyed
+ * message digest.
+ *
+ * @return size of message digest upon success;
+ *	    -EIO - data cannot be obtained;
+ * 	    -ENOMEM - buffer is too small for the complete message digest,
+ * 	    the buffer is filled with the truncated message digest
+ */
+int32_t kcapi_md_hmac_sha512(const uint8_t *key, uint32_t keylen,
+			     const uint8_t *in, uint32_t inlen,
+			     uint8_t *out, uint32_t outlen);
+
+/**
  * kcapi_md_digestsize() - return the size of the message digest
  *
  * @handle: [in] cipher handle

@@ -60,6 +60,13 @@ exec_test()
 		exit $ret
 	fi
 
+	${DIR}/kcapi-md-convenience.sh
+	ret=$?
+	if [ $ret -ne 0 ]
+	then
+		exit $ret
+	fi
+
 	# Only execute on bare metal
 	if ! dmesg | grep -i Hypervisor | grep -q -i detected
 	then

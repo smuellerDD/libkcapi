@@ -81,6 +81,15 @@ bin_kcapi_enc_test_large_LDADD = libkcapi.la
 bin_kcapi_enc_test_large_SOURCES = test/kcapi-enc-test-large.c
 
 SCAN_FILES += $(bin_kcapi_enc_test_large_SOURCES)
+
+bin_PROGRAMS += bin/kcapi-md-convenience
+
+bin_kcapi_md_convenience_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-overlength-strings -pie -fPIE -g -Ilib/
+bin_kcapi_md_convenience_LDFLAGS = $(COMMON_LDFLAGS)
+bin_kcapi_md_convenience_LDADD = libkcapi.la
+bin_kcapi_md_convenience_SOURCES = test/kcapi-md-convenience.c
+
+SCAN_FILES += $(bin_kcapi_md_convenience_SOURCES)
 endif
 
 if ENABLE_KCAPI_SPEED
@@ -185,7 +194,7 @@ lib/doc/bin/docproc:
 %.xml: %.tmpl lib/doc/bin/docproc
 	cp $< $(TEMPFILE)
 	$(SED) -i "s/@@LIBVERSION@@/$(VERSION)/" $(TEMPFILE)
-	SRCTREE=lib/ ./lib/doc/bin/docproc doc $(TEMPFILE) > $@
+	LIBVERSION=$(VERSION) SRCTREE=lib/ ./lib/doc/bin/docproc doc $(TEMPFILE) > $@
 	rm $(TEMPFILE)
 
 if HAVE_DB2PDF

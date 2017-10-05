@@ -244,8 +244,11 @@ int32_t _kcapi_common_vmsplice_iov_fd(struct kcapi_handle *handle, int *fdptr,
 	uint32_t inlen = 0;
 	unsigned long i;
 
-	for (i = 0; i < iovlen; i++)
+	for (i = 0; i < iovlen; i++) {
+		if (!(iov + i))
+			return -EINVAL;
 		inlen += iov[i].iov_len;
+	}
 
 	/* kernel processes input data with max size of one page */
 	handle->processed_sg += ((inlen + sysconf(_SC_PAGESIZE) - 1) /
@@ -440,7 +443,7 @@ int _kcapi_aio_send_iov(struct kcapi_handle *handle, struct iovec *iov,
 			return ret;
 	} else {
 		ret = _kcapi_common_send_meta(handle, NULL, 0, enc,
-					      iov->iov_len ? MSG_MORE : 0);
+					      len ? MSG_MORE : 0);
 		if (0 > ret)
 			return ret;
 		ret = _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
@@ -839,7 +842,7 @@ static inline void _kcapi_aio_destroy(struct kcapi_handle *handle)
 	handle->aio.ciopp = NULL;
 }
 
-void _kcapi_handle_destroy(struct kcapi_handle *handle)
+void _kcapi_handle_destroy_nofree(struct kcapi_handle *handle)
 {
 	if (!handle)
 		return;
@@ -853,6 +856,11 @@ void _kcapi_handle_destroy(struct kcapi_handle *handle)
 		close(handle->pipes[1]);
 	_kcapi_aio_destroy(handle);
 	kcapi_memset_secure(handle, 0, sizeof(struct kcapi_handle));
+}
+
+void _kcapi_handle_destroy(struct kcapi_handle *handle)
+{
+	_kcapi_handle_destroy_nofree(handle);
 	free(handle);
 }
 
@@ -988,11 +996,10 @@ static void _kcapi_handle_flags(struct kcapi_handle *handle)
 				      UINT_MAX : ALG_MAX_PAGES;
 }
 
-int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
-		       const char *ciphername, uint32_t flags)
+int _kcapi_allocated_handle_init(struct kcapi_handle *handle, const char *type,
+				 const char *ciphername, uint32_t flags)
 {
 	struct sockaddr_alg sa;
-	struct kcapi_handle *handle;
 	int ret;
 	char versionbuffer[50];
 
@@ -1000,10 +1007,6 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 	kcapi_dolog(KCAPI_LOG_VERBOSE,
 		    "%s - initializing cipher operation with kernel",
 		    versionbuffer);
-
-	handle = calloc(1, sizeof(struct kcapi_handle));
-	if (!handle)
-		return -ENOMEM;
 
 	handle->opfd = -1;
 	handle->tfmfd = -1;
@@ -1013,7 +1016,7 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 
 	ret = _kcapi_get_kernver(handle);
 	if (ret)
-		goto err;
+		return ret;
 
 	memset(&sa, 0, sizeof(sa));
 	sa.salg_family = AF_ALG;
@@ -1026,7 +1029,7 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 		kcapi_dolog(KCAPI_LOG_ERR,
 			    "AF_ALG: socket syscall failed (errno: %d)",
 			    ret);
-		goto err;
+		return ret;
 	}
 	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: socket syscall passed");
 
@@ -1034,7 +1037,7 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 		ret = -errno;
 		kcapi_dolog(KCAPI_LOG_ERR, "AF_ALG: bind failed (errno: %d)",
 			    ret);
-		goto err;
+		return ret;
 	}
 	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: bind syscall passed");
 
@@ -1044,7 +1047,7 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 		kcapi_dolog(KCAPI_LOG_ERR,
 			    "AF_ALG: pipe syscall failed (errno: %d)",
 			    ret);
-		goto err;
+		return ret;
 	}
 	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: pipe syscall passed");
 
@@ -1053,7 +1056,7 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 		ret = -errno;
 		kcapi_dolog(KCAPI_LOG_ERR, "NETLINK_CRYPTO: cannot obtain cipher information for %s (is required crypto_user.c patch missing? see documentation)",
 			    ciphername);
-		goto err;
+		return ret;
 	}
 
 	if (flags & KCAPI_INIT_AIO) {
@@ -1067,7 +1070,7 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 		 * This allows compatibility for applications.
 		 */
 		if (ret && ret != -EOPNOTSUPP)
-			goto err;
+			return ret;
 		ret = 0;
 	} else
 		handle->aio.disable = true;
@@ -1078,12 +1081,25 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 		    "communication for %s with kernel initialized",
 		    ciphername);
 
-	*caller = handle;
-
 	return ret;
+}
 
-err:
-	_kcapi_handle_destroy(handle);
+int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
+		       const char *ciphername, uint32_t flags)
+{
+	struct kcapi_handle *handle;
+	int ret;
+
+	handle = calloc(1, sizeof(struct kcapi_handle));
+	if (!handle)
+		return -ENOMEM;
+
+	ret = _kcapi_allocated_handle_init(handle, type, ciphername, flags);
+	if (ret)
+		_kcapi_handle_destroy(handle);
+	else
+		*caller = handle;
+
 	return ret;
 }
 

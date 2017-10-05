@@ -296,7 +296,10 @@ static inline int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 
 int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 		       const char *ciphername, uint32_t flags);
+int _kcapi_allocated_handle_init(struct kcapi_handle *caller, const char *type,
+				 const char *ciphername, uint32_t flags);
 void _kcapi_handle_destroy(struct kcapi_handle *handle);
+void _kcapi_handle_destroy_nofree(struct kcapi_handle *handle);
 int _kcapi_common_setkey(struct kcapi_handle *handle, const uint8_t *key,
 			 uint32_t keylen);
 int32_t _kcapi_cipher_crypt(struct kcapi_handle *handle, const uint8_t *in,

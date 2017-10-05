@@ -433,7 +433,10 @@
   <sect1><title>Message Digest API</title>
    <para>
     Again, like for the symmetric ciphers, the message digest API implements
-    the one-shot and the stream use cases.
+    the one-shot and the stream use cases. In addition, convenience wrapper
+    functions for SHA-1 through SHA-512 are provided where the caller only
+    provides its input data and the return buffer for obtaining a message
+    digest or keyed message digest.
    </para>
   </sect1>
 
@@ -696,6 +699,18 @@
    </sect1>
    <sect1><title>Message Digest Cipher API - One Shot</title>
 !Fkcapi.h kcapi_md_digest
+   </sect1>
+   <sect1><title>Message Digest Cipher API - Convenience</title>
+!Fkcapi.h kcapi_md_sha1
+!Fkcapi.h kcapi_md_sha224
+!Fkcapi.h kcapi_md_sha256
+!Fkcapi.h kcapi_md_sha384
+!Fkcapi.h kcapi_md_sha512
+!Fkcapi.h kcapi_md_hmac_sha1
+!Fkcapi.h kcapi_md_hmac_sha224
+!Fkcapi.h kcapi_md_hmac_sha256
+!Fkcapi.h kcapi_md_hmac_sha384
+!Fkcapi.h kcapi_md_hmac_sha512
    </sect1>
    <sect1><title>Message Digest Cipher API - Stream</title>
 !Fkcapi.h kcapi_md_update
