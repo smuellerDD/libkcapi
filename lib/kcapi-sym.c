@@ -204,3 +204,91 @@ uint32_t kcapi_cipher_blocksize(struct kcapi_handle *handle)
 {
 	return handle->info.blocksize;
 }
+
+static inline int32_t kcapi_cipher_conv_enc_common(const char *name,
+					const uint8_t *key, uint32_t keylen,
+					const uint8_t *in, uint32_t inlen,
+					const uint8_t *iv,
+					uint8_t *out, uint32_t outlen)
+{
+	struct kcapi_handle handle;
+	int32_t ret = _kcapi_allocated_handle_init(&handle, "skcipher", name,
+						   0);
+
+	if (ret)
+		return ret;
+
+	ret = kcapi_cipher_setkey(&handle, key, keylen);
+	if (ret)
+		goto out;
+
+	ret = kcapi_cipher_encrypt(&handle, in, inlen, iv, out, outlen, 0);
+
+out:
+	_kcapi_handle_destroy_nofree(&handle);
+	return ret;
+}
+
+static inline int32_t kcapi_cipher_conv_dec_common(const char *name,
+					const uint8_t *key, uint32_t keylen,
+					const uint8_t *in, uint32_t inlen,
+					const uint8_t *iv,
+					uint8_t *out, uint32_t outlen)
+{
+	struct kcapi_handle handle;
+	int32_t ret = _kcapi_allocated_handle_init(&handle, "skcipher", name,
+						   0);
+
+	if (ret)
+		return ret;
+
+	ret = kcapi_cipher_setkey(&handle, key, keylen);
+	if (ret)
+		goto out;
+
+	ret = kcapi_cipher_encrypt(&handle, in, inlen, iv, out, outlen, 0);
+
+out:
+	_kcapi_handle_destroy_nofree(&handle);
+	return ret;
+}
+
+DSO_PUBLIC
+int32_t kcapi_cipher_enc_aes_cbc(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, uint32_t inlen,
+				 const uint8_t *iv,
+				 uint8_t *out, uint32_t outlen)
+{
+	return kcapi_cipher_conv_enc_common("cbc(aes)", key, keylen, in, inlen,
+					    iv, out, outlen);
+}
+
+DSO_PUBLIC
+int32_t kcapi_cipher_enc_aes_ctr(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, uint32_t inlen,
+				 const uint8_t *ctr,
+				 uint8_t *out, uint32_t outlen)
+{
+	return kcapi_cipher_conv_enc_common("ctr(aes)", key, keylen, in, inlen,
+					    ctr, out, outlen);
+}
+
+DSO_PUBLIC
+int32_t kcapi_cipher_dec_aes_cbc(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, uint32_t inlen,
+				 const uint8_t *iv,
+				 uint8_t *out, uint32_t outlen)
+{
+	return kcapi_cipher_conv_dec_common("cbc(aes)", key, keylen, in, inlen,
+					    iv, out, outlen);
+}
+
+DSO_PUBLIC
+int32_t kcapi_cipher_dec_aes_ctr(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, uint32_t inlen,
+				 const uint8_t *ctr,
+				 uint8_t *out, uint32_t outlen)
+{
+	return kcapi_cipher_conv_dec_common("ctr(aes)", key, keylen, in, inlen,
+					    ctr, out, outlen);
+}

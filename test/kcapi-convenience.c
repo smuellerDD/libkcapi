@@ -22,14 +22,11 @@
 #include <string.h>
 #include <kcapi.h>
 
-int main(int argc, char *argv[])
+static int hashtest(void)
 {
-        char *in = "teststring";
+	char *in = "teststring";
 	uint8_t out[64];
 	int32_t ret;
-
-	(void)argc;
-	(void)argv;
 
 	ret = kcapi_md_sha1((uint8_t*)in, strlen(in), out, sizeof(out));
 	if (ret != 20) {
@@ -60,6 +57,15 @@ int main(int argc, char *argv[])
 		printf("SHA-512 error");
 		return 1;
 	}
+
+	return 0;
+}
+
+static int hmactest(void)
+{
+	char *in = "teststring";
+	uint8_t out[64];
+	int32_t ret;
 
 	ret = kcapi_md_hmac_sha1((uint8_t*)in, strlen(in),
 				 (uint8_t*)in, strlen(in), out, sizeof(out));
@@ -95,6 +101,57 @@ int main(int argc, char *argv[])
 		printf("HMAC SHA-512 error");
 		return 1;
 	}
+
+	return 0;
+}
+
+static int ciphertest(void)
+{
+	uint8_t *in = (uint8_t *)"01234567890123450123456789012345";
+	uint8_t out[32];
+	int32_t ret;
+
+	ret = kcapi_cipher_enc_aes_cbc(in, 32, in, 32, in, out, sizeof(out));
+	if (ret != 32) {
+
+	}
+
+	ret = kcapi_cipher_dec_aes_cbc(in, 32, in, 32, in, out, sizeof(out));
+	if (ret != 32) {
+
+	}
+
+	ret = kcapi_cipher_enc_aes_ctr(in, 32, in, 32, in, out, sizeof(out));
+	if (ret != 32) {
+
+	}
+
+	ret = kcapi_cipher_dec_aes_ctr(in, 32, in, 32, in, out, sizeof(out));
+	if (ret != 32) {
+
+	}
+
+	return 0;
+}
+
+int main(int argc, char *argv[])
+{
+	int ret;
+
+	(void)argc;
+	(void)argv;
+
+	ret = hashtest();
+	if (ret)
+		return ret;
+
+	ret = hmactest();
+	if (ret)
+		return ret;
+
+	ret = ciphertest();
+	if (ret)
+		return ret;
 
         return 0;
 }

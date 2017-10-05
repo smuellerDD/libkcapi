@@ -82,14 +82,14 @@ bin_kcapi_enc_test_large_SOURCES = test/kcapi-enc-test-large.c
 
 SCAN_FILES += $(bin_kcapi_enc_test_large_SOURCES)
 
-bin_PROGRAMS += bin/kcapi-md-convenience
+bin_PROGRAMS += bin/kcapi-convenience
 
-bin_kcapi_md_convenience_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-overlength-strings -pie -fPIE -g -Ilib/
-bin_kcapi_md_convenience_LDFLAGS = $(COMMON_LDFLAGS)
-bin_kcapi_md_convenience_LDADD = libkcapi.la
-bin_kcapi_md_convenience_SOURCES = test/kcapi-md-convenience.c
+bin_kcapi_convenience_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-overlength-strings -pie -fPIE -g -Ilib/
+bin_kcapi_convenience_LDFLAGS = $(COMMON_LDFLAGS)
+bin_kcapi_convenience_LDADD = libkcapi.la
+bin_kcapi_convenience_SOURCES = test/kcapi-convenience.c
 
-SCAN_FILES += $(bin_kcapi_md_convenience_SOURCES)
+SCAN_FILES += $(bin_kcapi_convenience_SOURCES)
 endif
 
 if ENABLE_KCAPI_SPEED
