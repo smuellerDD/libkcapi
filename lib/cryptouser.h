@@ -18,6 +18,8 @@
  * 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include <linux/version.h>
+
 /* Netlink configuration messages.  */
 enum {
 	CRYPTO_MSG_BASE = 0x10,
@@ -32,7 +34,12 @@ enum {
 #define CRYPTO_NR_MSGTYPES (CRYPTO_MSG_MAX + 1 - CRYPTO_MSG_BASE)
 
 #ifndef __KERNEL__
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+#define CRYPTO_MAX_ALG_NAME 128
+#else
 #define CRYPTO_MAX_ALG_NAME 64
+#endif
 #define CR_RTA(x)  ((struct rtattr*)(((char*)(x)) + NLMSG_ALIGN(sizeof(struct crypto_user_alg))))
 #endif
 
