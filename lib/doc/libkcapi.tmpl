@@ -179,6 +179,28 @@
    obtained) is processed, i.e. no data is in flight any more.
   </para>
 
+  <sect1><title>Convenience Functions</title>
+   <para>
+    To support various use cases, the API provided with libkcapi is extensive.
+    Though, some developers want to simply use a given cipher without any
+    specific details. To accommodate such users, libkcapi provides convenience
+    functions or convenience wrappers.
+   </para>
+
+   <para>
+    The convenience functions provide exactly one function call to perform one
+    complete cipher operation, such as an AES CBC encryption operation or a
+    SHA-256 hashing. The caller only needs to provide the input and
+    output buffers of his data. The entire intrinsic operation of libkcapi
+    is hidden from the user.
+   </para>
+
+   <para>
+    Convenience functions are provided for the different cipher types. They are
+    clearly marked in the API specification below.
+   </para>
+  </sect1>
+
   <sect1><title>Synchronous Symmetric Cipher API</title>
    <para>
     Symmetric ciphers can be used in the following different ways:
@@ -638,6 +660,12 @@
 !Fkcapi.h kcapi_cipher_encrypt
 !Fkcapi.h kcapi_cipher_decrypt
    </sect1>
+   <sect1><title>Symmetric Cipher API - Convenience</title>
+!Fkcapi.h kcapi_cipher_enc_aes_cbc
+!Fkcapi.h kcapi_cipher_dec_aes_cbc
+!Fkcapi.h kcapi_cipher_enc_aes_ctr
+!Fkcapi.h kcapi_cipher_dec_aes_ctr
+   </sect1>
    <sect1><title>Asynchronous Symmetric Cipher API - One Shot</title>
 !Fkcapi.h kcapi_cipher_encrypt_aio
 !Fkcapi.h kcapi_cipher_decrypt_aio
@@ -723,6 +751,9 @@
 !Fkcapi.h kcapi_rng_seed
 !Fkcapi.h kcapi_rng_generate
 !Fkcapi.h kcapi_rng_seedsize
+   </sect1>
+   <sect1><title>Random Number API - Convenience</title>
+!Fkcapi.h kcapi_rng_get_bytes
    </sect1>
    <sect1><title>Asymmetric Cipher API - Generic</title>
 !Pkcapi.h Asymmetric Cipher API

@@ -367,19 +367,141 @@ int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
 int32_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
 			       struct iovec *iov, uint32_t iovlen);
 
-
+/**
+ * kcapi_cipher_enc_aes_cbc - Convenience function for AES CBC encryption
+ *
+ * @key: [in] key buffer
+ * @keylen: [in] length of key buffer
+ * @in: [in] plaintext data buffer
+ * @inlen: [in] length of in buffer
+ * @iv: [in] IV to be used for cipher operation
+ * @out: [out] ciphertext data buffer
+ * @outlen: [in] length of out buffer
+ *
+ * The convenience function performs an AES CBC encryption operation
+ * using the provided key, the given input buffer and the given IV.
+ * The output is stored in the out buffer.
+ *
+ * Note, AES CBC requires an input data that is a multiple of 16 bytes.
+ * If you have data that is not guaranteed to be multiples of 16 bytes, either
+ * add zero bytes at the end of the buffer to pad it up to a multiple of 16
+ * bytes. Otherwise, the CTR mode encryption operation may be usable.
+ *
+ * The output buffer must be at least as large as the input buffer.
+ *
+ * The IV must be exactly 16 bytes in size.
+ *
+ * The AES type (AES-128, AES-192 or AES-256) is determined by the size
+ * of the given key. If the key is 16 bytes long, AES-128 is used. A 24 byte
+ * key implies AES-192 and a 32 byte key implies AES-256.
+ *
+ * @return number of bytes generated upon success;
+ *	   a negative errno-style error code if an error occurred
+ */
 int32_t kcapi_cipher_enc_aes_cbc(const uint8_t *key, uint32_t keylen,
 				 const uint8_t *in, uint32_t inlen,
 				 const uint8_t *iv,
 				 uint8_t *out, uint32_t outlen);
+
+/**
+ * kcapi_cipher_dec_aes_cbc - Convenience function for AES CBC decryption
+ *
+ * @key: [in] key buffer
+ * @keylen: [in] length of key buffer
+ * @in: [in] ciphertext data buffer
+ * @inlen: [in] length of in buffer
+ * @iv: [in] IV to be used for cipher operation
+ * @out: [out] plaintext data buffer
+ * @outlen: [in] length of out buffer
+ *
+ * The convenience function performs an AES CBC decryption operation
+ * using the provided key, the given input buffer and the given IV.
+ * The output is stored in the out buffer.
+ *
+ * Note, AES CBC requires an input data that is a multiple of 16 bytes.
+ * If you have data that is not guaranteed to be multiples of 16 bytes, either
+ * add zero bytes at the end of the buffer to pad it up to a multiple of 16
+ * bytes. Otherwise, the CTR mode encryption operation may be usable.
+ *
+ * The output buffer must be at least as large as the input buffer.
+ *
+ * The IV must be exactly 16 bytes in size.
+ *
+ * The AES type (AES-128, AES-192 or AES-256) is determined by the size
+ * of the given key. If the key is 16 bytes long, AES-128 is used. A 24 byte
+ * key implies AES-192 and a 32 byte key implies AES-256.
+ *
+ * @return number of bytes generated upon success;
+ *	   a negative errno-style error code if an error occurred
+ */
 int32_t kcapi_cipher_dec_aes_cbc(const uint8_t *key, uint32_t keylen,
 				 const uint8_t *in, uint32_t inlen,
 				 const uint8_t *iv,
 				 uint8_t *out, uint32_t outlen);
+
+/**
+ * kcapi_cipher_enc_aes_ctr - Convenience function for AES CTR encryption
+ *
+ * @key: [in] key buffer
+ * @keylen: [in] length of key buffer
+ * @in: [in] plaintext data buffer
+ * @inlen: [in] length of in buffer
+ * @ctr: [in] start counter value to be used for cipher operation
+ * @out: [out] ciphertext data buffer
+ * @outlen: [in] length of out buffer
+ *
+ * The convenience function performs an AES counter mode encryption operation
+ * using the provided key, the given input buffer and the given IV.
+ * The output is stored in the out buffer.
+ *
+ * The input buffer can be of arbitrary length.
+ *
+ * The output buffer must be at least as large as the input buffer.
+ *
+ * The start counter can contain all zeros (not a NULL buffer!) and must be
+ * exactly 16 bytes in size.
+ *
+ * The AES type (AES-128, AES-192 or AES-256) is determined by the size
+ * of the given key. If the key is 16 bytes long, AES-128 is used. A 24 byte
+ * key implies AES-192 and a 32 byte key implies AES-256.
+ *
+ * @return number of bytes generated upon success;
+ *	   a negative errno-style error code if an error occurred
+ */
 int32_t kcapi_cipher_enc_aes_ctr(const uint8_t *key, uint32_t keylen,
 				 const uint8_t *in, uint32_t inlen,
 				 const uint8_t *ctr,
 				 uint8_t *out, uint32_t outlen);
+
+/**
+ * kcapi_cipher_dec_aes_ctr - Convenience function for AES CTR decryption
+ *
+ * @key: [in] key buffer
+ * @keylen: [in] length of key buffer
+ * @in: [in] ciphertext data buffer
+ * @inlen: [in] length of in buffer
+ * @ctr: [in] start counter value to be used for cipher operation
+ * @out: [out] plaintext data buffer
+ * @outlen: [in] length of out buffer
+ *
+ * The convenience function performs an AES counter mode encryption operation
+ * using the provided key, the given input buffer and the given IV.
+ * The output is stored in the out buffer.
+ *
+ * The input buffer can be of arbitrary length.
+ *
+ * The output buffer must be at least as large as the input buffer.
+ *
+ * The start counter can contain all zeros (not a NULL buffer!) and must be
+ * exactly 16 bytes in size.
+ *
+ * The AES type (AES-128, AES-192 or AES-256) is determined by the size
+ * of the given key. If the key is 16 bytes long, AES-128 is used. A 24 byte
+ * key implies AES-192 and a 32 byte key implies AES-256.
+ *
+ * @return number of bytes generated upon success;
+ *	   a negative errno-style error code if an error occurred
+ */
 int32_t kcapi_cipher_dec_aes_ctr(const uint8_t *key, uint32_t keylen,
 				 const uint8_t *in, uint32_t inlen,
 				 const uint8_t *ctr,
@@ -1469,6 +1591,18 @@ int kcapi_rng_seed(struct kcapi_handle *handle, uint8_t *seed,
 int32_t kcapi_rng_generate(struct kcapi_handle *handle,
 			   uint8_t *buffer, uint32_t len);
 
+/**
+ * kcapi_rng_get_bytes - Convenience function to generate random bytes
+ *
+ * @buffer: [out] filled with the random number
+ * @len: [in] buffer length
+ *
+ * This convenience function generates random bytes of the size of outlen
+ * and stores them into the provided buffer.
+ *
+ * @return size of random number generated upon success;
+ *	   -EIO - data cannot be obtained
+ */
 int32_t kcapi_rng_get_bytes(uint8_t *buffer, uint32_t outlen);
 
 /**
