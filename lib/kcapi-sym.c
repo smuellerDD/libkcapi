@@ -246,7 +246,7 @@ static inline int32_t kcapi_cipher_conv_dec_common(const char *name,
 	if (ret)
 		goto out;
 
-	ret = kcapi_cipher_encrypt(&handle, in, inlen, iv, out, outlen, 0);
+	ret = kcapi_cipher_decrypt(&handle, in, inlen, iv, out, outlen, 0);
 
 out:
 	_kcapi_handle_destroy_nofree(&handle);

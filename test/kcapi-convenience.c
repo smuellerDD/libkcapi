@@ -107,30 +107,35 @@ static int hmactest(void)
 
 static int ciphertest(void)
 {
-	uint8_t *in = (uint8_t *)"01234567890123450123456789012345";
-	uint8_t out[32];
+	uint8_t *origpt = (uint8_t *)"01234567890123450123456789012345";
+	uint8_t ct[32];
+	uint8_t newpt[32];
 	int32_t ret;
 
-	ret = kcapi_cipher_enc_aes_cbc(in, 32, in, 32, in, out, sizeof(out));
-	if (ret != sizeof(out)) {
+	ret = kcapi_cipher_enc_aes_cbc(origpt, 32, origpt, 32, origpt,
+				       ct, sizeof(ct));
+	if (ret != sizeof(ct)) {
 		printf("AES CBC encrytion error");
 		return 1;
 	}
 
-	ret = kcapi_cipher_dec_aes_cbc(in, 32, in, 32, in, out, sizeof(out));
-	if (ret != sizeof(out)) {
+	ret = kcapi_cipher_dec_aes_cbc(origpt, 32, ct, sizeof(ct), origpt,
+				       newpt, sizeof(newpt));
+	if (ret != sizeof(newpt) || memcmp(origpt, newpt, sizeof(newpt))) {
 		printf("AES CBC decrytion error");
 		return 1;
 	}
 
-	ret = kcapi_cipher_enc_aes_ctr(in, 32, in, 32, in, out, sizeof(out));
-	if (ret != sizeof(out)) {
+	ret = kcapi_cipher_enc_aes_ctr(origpt, 32, origpt, 32, origpt, ct,
+				       sizeof(ct));
+	if (ret != sizeof(ct)) {
 		printf("AES CTR encrytion error");
 		return 1;
 	}
 
-	ret = kcapi_cipher_dec_aes_ctr(in, 32, in, 32, in, out, sizeof(out));
-	if (ret != sizeof(out)) {
+	ret = kcapi_cipher_dec_aes_ctr(origpt, 32, ct, sizeof(ct), origpt,
+				       newpt, sizeof(newpt));
+	if (ret != sizeof(newpt) || memcmp(origpt, newpt, sizeof(newpt))) {
 		printf("AES CTR decrytion error");
 		return 1;
 	}
