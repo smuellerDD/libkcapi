@@ -60,38 +60,6 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, uint32_t assoclen)
 }
 
 DSO_PUBLIC
-void kcapi_aead_getdata(struct kcapi_handle *handle,
-			uint8_t *encdata, uint32_t encdatalen,
-			uint8_t **aad, uint32_t *aadlen,
-			uint8_t **data, uint32_t *datalen,
-			uint8_t **tag, uint32_t *taglen)
-{
-	kcapi_dolog(KCAPI_LOG_VERBOSE,
-		    "Usage of deprecated API kcapi_aead_getdata");
-
-	if (encdatalen <  handle->aead.taglen + handle->aead.assoclen) {
-		kcapi_dolog(KCAPI_LOG_ERR, "Result of encryption operation (%lu) is smaller than tag and AAD length (%lu)",
-			    (unsigned long)encdatalen,
-			    (unsigned long)handle->aead.taglen +
-			    (unsigned long)handle->aead.assoclen);
-		return;
-	}
-	if (aad) {
-		*aad = encdata;
-		*aadlen = handle->aead.assoclen;
-	}
-	if (data) {
-		*data = encdata + handle->aead.assoclen;
-		*datalen = encdatalen - handle->aead.assoclen -
-			   handle->aead.taglen;
-	}
-	if (tag) {
-		*tag = encdata + encdatalen - handle->aead.taglen;
-		*taglen = handle->aead.taglen;
-	}
-}
-
-DSO_PUBLIC
 void kcapi_aead_getdata_input(struct kcapi_handle *handle,
 			      uint8_t *encdata, uint32_t encdatalen, int enc,
 			      uint8_t **aad, uint32_t *aadlen,
@@ -280,34 +248,6 @@ int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 	return _kcapi_aead_encrypt_aio_fallback(handle, iniov, outiov, iovlen,
 						iv);
 
-#if 0
-	/*
-	 * For kernels older than 4.9:
-	 * Currently the kernel is only able to handle one complete individual
-	 * AEAD cipher operation at a time.
-	 *
-	 * The key to this limitation lies in the check (usedpages < outlen)
-	 * in the function aead_recvmsg_async.
-	 */
-	for (i = 0; i < iovlen; i++) {
-		int32_t rc = _kcapi_cipher_crypt_aio(handle, &iniov[i],
-						     &outiov[i], 1, access,
-						     ALG_OP_ENCRYPT);
-
-		if (rc < 0) {
-			/* if AIO support is not present */
-			if (rc == -EOPNOTSUPP) {
-				rc = _kcapi_aead_encrypt_aio_fallback(handle,
-						&iniov[i], &outiov[i], 1, iv);
-				if (rc < 0)
-					return rc;
-			} else
-				return rc;
-		}
-		ret += rc;
-	}
-#endif
-
 	return ret;
 }
 
@@ -371,36 +311,6 @@ int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 
 	return _kcapi_aead_decrypt_aio_fallback(handle, iniov, outiov, iovlen,
 						iv);
-
-#if 0
-	/*
-	 * For kernels older than 4.9:
-	 * The kernel is only able to handle one complete individual
-	 * AEAD cipher operation at a time.
-	 *
-	 * The key to this limitation lies in the check (usedpages < outlen)
-	 * in the function aead_recvmsg_async.
-	 */
-	for (i = 0; i < iovlen; i++) {
-		int32_t rc = _kcapi_cipher_crypt_aio(handle, &iniov[i],
-						     &outiov[i], 1, access,
-						     ALG_OP_DECRYPT);
-
-		if (rc < 0) {
-			/* if AIO support is not present */
-			if (rc == -EOPNOTSUPP) {
-				rc = _kcapi_aead_decrypt_aio_fallback(handle,
-						&iniov[i], &outiov[i], 1, iv);
-				if (rc < 0)
-					return rc;
-			} else
-				return rc;
-		}
-		ret += rc;
-	}
-
-	return ret;
-#endif
 }
 
 DSO_PUBLIC
@@ -473,17 +383,6 @@ DSO_PUBLIC
 uint32_t kcapi_aead_authsize(struct kcapi_handle *handle)
 {
 	return handle->info.aead_maxauthsize;
-}
-
-DSO_PUBLIC
-uint32_t kcapi_aead_outbuflen(struct kcapi_handle *handle,
-			      uint32_t inlen, uint32_t assoclen, uint32_t taglen)
-{
-	int bs = handle->info.blocksize;
-
-	kcapi_dolog(KCAPI_LOG_VERBOSE,
-		    "Usage of deprecated API kcapi_aead_outbuflen");
-	return ((inlen + bs - 1) / bs * bs + taglen + assoclen);
 }
 
 DSO_PUBLIC

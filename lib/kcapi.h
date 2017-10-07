@@ -697,39 +697,6 @@ int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 			       const uint8_t *iv, int access);
 
 /**
- * kcapi_aead_getdata() - get the resulting data from encryption
- *
- * @handle: [in] cipher handle
- * @encdata: [in] data buffer returned by the encryption operation
- * @encdatalen: [in] size of the encryption data buffer
- * @aad: [out] AD buffer pointer;  when set to NULL, no data pointer is
- *	returned
- * @aadlen: [out] length of AD; when aad was set to NULL, no information is
- *	returned
- * @data: [out] pointer to output buffer from AEAD encryption operation
- *	when set to NULL, no data pointer is returned
- * @datalen: [out] length of data buffer; when data was set to NULL, no
- *	information is returned
- * @tag: [out] tag buffer pointer;  when set to NULL, no data pointer is
- *	returned
- * @taglen: [out] length of tag; when tag was set to NULL, no information
- *	is returned
- *
- * DEPRECATED since 0.13.0
- *
- * This function is a service function to the consumer to locate the right
- * ciphertext buffer offset holding the authentication tag. In addition, it
- * provides the consumer with the length of the tag and the length of the
- * ciphertext.
- */
-DSO_DEPRECATED("0.13.0")
-void kcapi_aead_getdata(struct kcapi_handle *handle,
-			uint8_t *encdata, uint32_t encdatalen,
-			uint8_t **aad, uint32_t *aadlen,
-			uint8_t **data, uint32_t *datalen,
-			uint8_t **tag, uint32_t *taglen);
-
-/**
  * kcapi_aead_getdata_input() - get the pointers into input buffer
  *
  * @handle: [in] cipher handle
@@ -1080,22 +1047,6 @@ uint32_t kcapi_aead_blocksize(struct kcapi_handle *handle);
  *	   0 on error
  */
 uint32_t kcapi_aead_authsize(struct kcapi_handle *handle);
-
-/**
- * kcapi_aead_outbuflen() - return minimum output buffer length
- *
- * @handle: [in] cipher handle
- * @inlen: [in] size of plaintext or size of ciphertext
- * @assoclen: [in] size of associated data (AD)
- * @taglen: [in] size of authentication tag
- *
- * DEPRECATED since 0.13.0
- *
- * @return minimum size of output data length in bytes
- */
-DSO_DEPRECATED("0.13.0")
-uint32_t kcapi_aead_outbuflen(struct kcapi_handle *handle, uint32_t inlen,
-			      uint32_t assoclen, uint32_t taglen);
 
 /**
  * kcapi_aead_inbuflen_enc() - return minimum encryption input buffer length
@@ -1595,7 +1546,7 @@ int32_t kcapi_rng_generate(struct kcapi_handle *handle,
  * kcapi_rng_get_bytes - Convenience function to generate random bytes
  *
  * @buffer: [out] filled with the random number
- * @len: [in] buffer length
+ * @outlen: [in] buffer length
  *
  * This convenience function generates random bytes of the size of outlen
  * and stores them into the provided buffer.
