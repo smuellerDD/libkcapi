@@ -1,5 +1,5 @@
 Name:           libkcapi
-Version:        0.15.0
+Version:        1.0.0
 Release:        1%{?dist}
 URL:            http://www.chronox.de/libkcapi.html
 
@@ -122,5 +122,5 @@ gzip %{buildroot}%{_mandir}/man3/*.3
 
 
 %changelog
-* Sun Sep 10 2017 Stephan Mueller <smueller@chronox.de> - 0.15.0-1
+* Sat Oct 07 2017 Stephan Mueller <smueller@chronox.de> - 1.0.0-1
 - Initial packaging

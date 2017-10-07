@@ -1,4 +1,5 @@
 LIBKCAPI_0.12.0 {
+	global:
 	kcapi_cipher_init;
 	kcapi_cipher_destroy;
 	kcapi_cipher_setkey;
@@ -69,9 +70,11 @@ LIBKCAPI_0.12.0 {
 	kcapi_kdf_ctr;
 	kcapi_pbkdf;
 	kcapi_pbkdf_iteration_count;
+	local: *;
 };
 
 LIBKCAPI_0.13.0 {
+	global:
 	kcapi_aead_inbuflen_enc;
 	kcapi_aead_inbuflen_dec;
 	kcapi_aead_outbuflen_enc;
@@ -81,6 +84,7 @@ LIBKCAPI_0.13.0 {
 } LIBKCAPI_0.12.0;
 
 LIBKCAPI_0.14.0 {
+	global:
 	kcapi_akcipher_encrypt_aio;
 	kcapi_akcipher_decrypt_aio;
 	kcapi_akcipher_sign_aio;
@@ -89,7 +93,8 @@ LIBKCAPI_0.14.0 {
 	kcapi_rng_seedsize;
 } LIBKCAPI_0.13.0;
 
-LIBKCAPI_0.15.0 {
+LIBKCAPI_1.0.0 {
+	global:
 	kcapi_kpp_init;
 	kcapi_kpp_destroy;
 	kcapi_kpp_dh_setparam_pkcs3;
@@ -99,4 +104,19 @@ LIBKCAPI_0.15.0 {
 	kcapi_kpp_ssgen;
 	kcapi_kpp_keygen_aio;
 	kcapi_kpp_ssgen_aio;
+	kcapi_md_sha1;
+	kcapi_md_sha224;
+	kcapi_md_sha256;
+	kcapi_md_sha384;
+	kcapi_md_sha512;
+	kcapi_md_hmac_sha1;
+	kcapi_md_hmac_sha224;
+	kcapi_md_hmac_sha256;
+	kcapi_md_hmac_sha384;
+	kcapi_md_hmac_sha512;
+	kcapi_cipher_enc_aes_cbc;
+	kcapi_cipher_dec_aes_cbc;
+	kcapi_cipher_enc_aes_ctr;
+	kcapi_cipher_dec_aes_ctr;
+	kcapi_rng_get_bytes;
 } LIBKCAPI_0.14.0;

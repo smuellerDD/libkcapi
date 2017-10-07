@@ -9,8 +9,8 @@ dnl 		     unchanged if enhancements are not considered
 dnl KCAPI_PATCHLEVEL API / ABI compatible, no functional changes, no
 dnl 		     enhancements, bug fixes only. Versions with
 dnl		     a decimal point are pre-releases.
-m4_define([__KCAPI_MAJVERSION], [0])
-m4_define([__KCAPI_MINVERSION], [15])
+m4_define([__KCAPI_MAJVERSION], [1])
+m4_define([__KCAPI_MINVERSION], [0])
 m4_define([__KCAPI_PATCHLEVEL], [0])
 m4_define([KCAPI_VERSION], [__KCAPI_MAJVERSION.__KCAPI_MINVERSION.__KCAPI_PATCHLEVEL])
 

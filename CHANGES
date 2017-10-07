@@ -1,3 +1,53 @@
+Changes 1.0.0
+ * Fix: Small compile fixes for new checks of GCC 7
+ * API Change: Rename all LOG_* enums to KCAPI_LOG_* to prevent namespace
+   poisoning
+ * Fix: soname and file name of library now compiles with
+   conventions (thanks to Marcus Meissner)
+ * Fix: kcapi-rng.c: unify FD/syscall read code and fix
+   __NR_getrandom resolution
+ * Enhancement: add kcapi-enc application to access symmetric encryption on
+   command line
+ * Fix: consolidate duplicate code in kcapi-hasher
+ * Enhancement: add kcapi-dgst application to access hashes on command line
+ * Enhancement: add kcapi-rng man page
+ * Enhancement: add kcapi-rng --hex command line option
+ * Fix: enable full symmetric AIO support
+ * Fix: consolidate all test code into test/ and invoke all tests
+   with test-invocation.sh
+ * Fix: fix memleaks in error code paths as reported by clang
+ * Fix: reduce memory footprint by rearranging data structures
+ * Fix: kcapi-hasher is now fully FIPS 140-2 compliant as it now
+   includes the integrity test for libkcapi.so
+ * Enhancement: Add speed tests for MV-CESA accelerated ciphers and hash
+   algorithms (thanks to Bastian Stender)
+ * Test Enhancement: add kcapi-enc-test-large.c test testing edge conditions of
+   AF_ALG
+ * Test Enhancement: add virttest.sh - use of test system based on
+   eudyptula-boot to test on linux-4.3.6, linux-4.4.86, linux-4.5, linux-4.7,
+   linux-4.10, linux-4.12
+ * Test Enhancement: add kcapi-fuzz-test.sh to support fuzzing the AF_ALG
+   interfaces
+ * Enhancement: add RPM SPEC file (tested with Fedora 26)
+ * API Change: replace --disable-lib-asym with --enable-lib-asym as the
+   algif_akcipher.c kernel interface is not likely to be added to the kernel
+   anytime soon
+ * API Enhancement: add KPP API which is not compiled by default, use
+   --enable-lib-kpp (the algif_kpp.c kernel interface is not likely to be
+   added to the Linux kernel any time soon)
+ * Test Enhancement: Add KPP tests
+ * Enhancement: Re-enable AIO support for symmetric and AEAD ciphers down to
+   Linux kernels 4.1 and 4.7, respectively. This is due to integrating a
+   fix against a kernel crash when using AIO.
+ * Fix: simply KDF code base
+ * API Enhancement: add message digest convenience functions kcapi_md_*sha*
+ * API Enhancement: add cipher convenience functions kcapi_cipher_*_aes_*
+ * API Enhancement: add rng convenience function kcapi_rng_get_bytes
+ * API Change: remove kcapi_aead_getdata, use kcapi_aead_getdata_input and
+   kcapi_aead_getdata_output instead
+ * API Change: remove kcapi_aead_outbuflen, use kcapi_aead_outbuflen_enc and
+   kcapi_aead_outbuflen_dec instead
+
 Changes 0.14.0
  * AIO: fix tracking of completed IOCBs
  * speed-test: fix AEAD handling
