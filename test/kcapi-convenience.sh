@@ -20,7 +20,7 @@
 
 . libtest.sh
 
-APP="${APPDIR}/kcapi-md-convenience"
+APP="${APPDIR}/kcapi-convenience"
 find_platform $APP
 
 $APP

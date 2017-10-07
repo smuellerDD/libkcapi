@@ -60,7 +60,7 @@ exec_test()
 		exit $ret
 	fi
 
-	${DIR}/kcapi-md-convenience.sh
+	${DIR}/kcapi-convenience.sh
 	ret=$?
 	if [ $ret -ne 0 ]
 	then
