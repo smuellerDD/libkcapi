@@ -182,7 +182,7 @@ void kcapi_aead_getdata_output(struct kcapi_handle *handle,
 
 DSO_PUBLIC
 int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
-			   uint8_t *in, uint32_t inlen,
+			   const uint8_t *in, uint32_t inlen,
 			   const uint8_t *iv,
 			   uint8_t *out, uint32_t outlen, int access)
 {
@@ -253,7 +253,7 @@ int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 
 DSO_PUBLIC
 int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
-			   uint8_t *in, uint32_t inlen,
+			   const uint8_t *in, uint32_t inlen,
 			   const uint8_t *iv,
 			   uint8_t *out, uint32_t outlen, int access)
 {

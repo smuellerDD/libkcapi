@@ -651,7 +651,7 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, uint32_t assoclen);
  *	   a negative errno-style error code if an error occurred
  */
 int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
-			   uint8_t *in, uint32_t inlen,
+			   const uint8_t *in, uint32_t inlen,
 			   const uint8_t *iv,
 			   uint8_t *out, uint32_t outlen,
 			   int access);
@@ -798,7 +798,7 @@ void kcapi_aead_getdata_output(struct kcapi_handle *handle,
  *	   a negative errno-style error code if an error occurred
  */
 int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
-			   uint8_t *in, uint32_t inlen,
+			   const uint8_t *in, uint32_t inlen,
 			   const uint8_t *iv,
 			   uint8_t *out, uint32_t outlen, int access);
 
