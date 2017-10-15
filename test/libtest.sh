@@ -101,7 +101,8 @@ check_min_kernelver() {
 # Common variables
 #####################################################################
 # Location of shared lib
-export LD_LIBRARY_PATH="../.libs"
+export LD_LIBRARY_PATH="$(realpath ../.libs)"
+export LD_PRELOAD="$(realpath ../.libs/libkcapi.so)"
 export PATH=$PATH:.
 
 # Location of apps
