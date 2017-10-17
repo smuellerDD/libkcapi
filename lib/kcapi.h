@@ -1183,6 +1183,8 @@ int kcapi_md_setkey(struct kcapi_handle *handle,
  * @buffer: [in] holding the data to add to the message digest
  * @len: [in] buffer length
  *
+ * The input buffer can be at most INT_MAX in size.
+ *
  * @return 0 upon success;
  *	   a negative errno-style error code if an error occurred
  */
@@ -1219,6 +1221,8 @@ int32_t kcapi_md_final(struct kcapi_handle *handle,
  *
  * The message digest handle must have been initialized, potentially by also
  * setting the key using the generic message digest API functions.
+ *
+ * The input buffer can be at most INT_MAX in size.
  *
  * @return size of message digest upon success;
  *	    -EIO - data cannot be obtained;

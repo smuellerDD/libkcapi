@@ -54,6 +54,7 @@
 #include <ctype.h>
 #include <dlfcn.h>
 #include <libgen.h>
+#include <limits.h>
 
 #include <kcapi.h>
 
@@ -96,6 +97,7 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 	int ret = 0;
 	struct stat sb;
 	char *memblock = NULL;
+	uint8_t *memblock_p;
 	uint8_t md[64];
 
 	fd = open(filename, O_RDONLY | O_CLOEXEC);
@@ -125,8 +127,18 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 	}
 
 	/* Compute hash */
-	ret = kcapi_md_digest(handle, (uint8_t*)memblock, sb.st_size, md,
-			      sizeof(md));
+	memblock_p = (uint8_t *)memblock;
+	while (sb.st_size) {
+		uint32_t todo = (sb.st_size > INT_MAX) ? INT_MAX : sb.st_size;
+
+		ret = kcapi_md_update(handle, memblock_p, todo);
+		if (ret < 0)
+			goto out;
+		sb.st_size -= todo;
+		memblock_p += todo;
+	}
+
+	ret = kcapi_md_final(handle, md, sizeof(md));
 
 	if (ret > 0) {
 		if (comphash && comphashlen) {

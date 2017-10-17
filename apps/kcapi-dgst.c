@@ -105,6 +105,8 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 				goto out;
 		}
 	} else {
+		uint8_t *inmem_p;
+
 		inmem = mmap(NULL, insb.st_size, PROT_READ, MAP_SHARED,
 			     infd, 0);
 		if (inmem == MAP_FAILED) {
@@ -113,9 +115,16 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			goto out;
 		}
 
-		ret = kcapi_md_update(handle, inmem, insb.st_size);
-		if (ret < 0)
-			goto out;
+		inmem_p = inmem;
+		while (insb.st_size) {
+			uint32_t todo = (insb.st_size > INT_MAX) ? INT_MAX :
+			       					   insb.st_size;
+			ret = kcapi_md_update(handle, inmem_p, todo);
+			if (ret < 0)
+				goto out;
+			inmem_p += todo;
+			insb.st_size -= todo;
+		}
 	}
 
 	outlen = kcapi_md_digestsize(handle);
