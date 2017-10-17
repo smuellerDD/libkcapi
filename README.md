@@ -72,13 +72,13 @@ The version numbers for this library have the following schema:
 MAJOR.MINOR.PATCHLEVEL
 
 Changes in the major number implies API and ABI incompatible changes, or
-functional changes that require consumer to be updated (as long as this 
-number is zero, the API is not considered stable and can change without a 
+functional changes that require consumer to be updated (as long as this
+number is zero, the API is not considered stable and can change without a
 bump of the major version).
 
-Changes in the minor version are API compatible, but the ABI may change. 
-Functional enhancements only are added. Thus, a consumer can be left 
-unchanged if enhancements are not considered. The consumer only needs to 
+Changes in the minor version are API compatible, but the ABI may change.
+Functional enhancements only are added. Thus, a consumer can be left
+unchanged if enhancements are not considered. The consumer only needs to
 be recompiled.
 
 Patchlevel changes are API / ABI compatible. No functional changes, no
