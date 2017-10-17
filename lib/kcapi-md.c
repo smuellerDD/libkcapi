@@ -60,8 +60,11 @@ static inline int32_t _kcapi_md_update(struct kcapi_handle *handle,
 						   SPLICE_F_MORE);
 	}
 
-	if (ret < 0 || (uint32_t)ret < len)
+	if (ret < 0)
+		return ret;
+	if ((uint32_t)ret < len)
 		return -EIO;
+
 	return 0;
 }
 

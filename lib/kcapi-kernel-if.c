@@ -321,6 +321,8 @@ int32_t _kcapi_common_vmsplice_chunk_fd(struct kcapi_handle *handle, int *fdptr,
 
 		if ((handle->processed_sg++) > handle->flags.alg_max_pages) {
 			ret = _kcapi_common_send_data(handle, &iov, 1, sflags);
+			if (ret < 0)
+				return ret;
 		} else {
 			ret = vmsplice(handle->pipes[1], &iov, 1,
 				       SPLICE_F_GIFT|flags);
