@@ -2,7 +2,7 @@ ACLOCAL_AMFLAGS = -I m4
 AUTOMAKE_OPTIONS = subdir-objects
 lib_LTLIBRARIES = libkcapi.la
 
-COMMON_CPPFLAGS = -Wextra -Wall -pedantic -fwrapv --param ssp-buffer-size=4 -O2 -Werror -std=gnu99
+COMMON_CPPFLAGS = -Wextra -Wall -pedantic -fwrapv --param ssp-buffer-size=4 -O2 -Werror -std=gnu99 -fstack-protector-strong
 COMMON_LDFLAGS =  -Wl,-z,relro,-z,now
 
 libkcapi_la_SOURCES = lib/cryptouser.h \
