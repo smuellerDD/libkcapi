@@ -107,14 +107,10 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 		return -EIO;
 	}
 	
-	fstat(fd, &sb);
-
 	/* Do not return an error in case we cannot validate the data. */
-	if ((sb.st_mode & S_IFMT) != S_IFREG &&
-	    (sb.st_mode & S_IFMT) != S_IFLNK) {
-		fprintf(stderr, "%s is no regular file or symlink\n", filename);
+	ret = check_filetype(fd, &sb, filename);
+	if (ret)
 		goto out;
-	}
 
 	if (sb.st_size) {
 		memblock = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
