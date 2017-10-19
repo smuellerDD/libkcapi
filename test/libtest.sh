@@ -20,6 +20,8 @@
 # Common code for test cases
 #
 
+export PATH=$PATH:.
+
 #####################################################################
 # Common functions
 #####################################################################
@@ -80,7 +82,13 @@ find_platform()
 		exit 1
 	fi
 
-	PLATFORM=$(file $app | cut -d" " -f 3)
+	local binlocation="$(dirname $app)/.libs/$(basename $app)"
+	if [ -x "$binlocation" ]
+	then
+		PLATFORM=$(file $binlocation | cut -d" " -f 3)
+	else
+		PLATFORM=$(file $app | cut -d" " -f 3)
+	fi
 }
 
 # check whether a given kernel version is present
@@ -100,13 +108,8 @@ check_min_kernelver() {
 #####################################################################
 # Common variables
 #####################################################################
-# Location of shared lib
-export LD_LIBRARY_PATH="$(realpath ../.libs)"
-export LD_PRELOAD="$(realpath ../.libs/libkcapi.so)"
-export PATH=$PATH:.
-
 # Location of apps
-APPDIR="../bin/.libs"
+APPDIR="../bin"
 if [ ! -d $APPDIR ]
 then
 	APPDIR="../bin"
