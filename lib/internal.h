@@ -17,8 +17,8 @@
  * DAMAGE.
  */
 
-#ifndef _INTERNAL_H
-#define _INTERNAL_H
+#ifndef INTERNAL_H
+#define INTERNAL_H
 
 #define _GNU_SOURCE
 #include <unistd.h>
@@ -366,4 +366,4 @@ static inline int io_getevents(aio_context_t ctx, long min, long max,
 }
 #endif
 
-#endif /* _INTERNAL_H */
+#endif /* INTERNAL_H */

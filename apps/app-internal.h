@@ -17,8 +17,8 @@
  * DAMAGE.
  */
 
-#ifndef _APP_INTERNAL_H
-#define _APP_INTERNAL_H
+#ifndef APP_INTERNAL_H
+#define APP_INTERNAL_H
 
 #include <stdint.h>
 
@@ -60,4 +60,4 @@ int check_filetype(int fd, struct stat *sb, const char *filename);
 }
 #endif
 
-#endif /* _KCAPI_H */
+#endif /* APP_INTERNAL_H */

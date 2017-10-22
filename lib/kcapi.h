@@ -17,8 +17,8 @@
  * DAMAGE.
  */
 
-#ifndef _KCAPI_H
-#define _KCAPI_H
+#ifndef KCAPI_H
+#define KCAPI_H
 
 #include <stdint.h>
 #include <sys/uio.h>
@@ -2565,4 +2565,4 @@ int32_t kcapi_hkdf(const char *hashname,
 }
 #endif
 
-#endif /* _KCAPI_H */
+#endif /* KCAPI_H */
