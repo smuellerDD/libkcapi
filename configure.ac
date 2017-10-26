@@ -104,8 +104,14 @@ AM_CONDITIONAL([DISABLE_LIB_RNG], [test "x$with_lib_rng" = "xno"])
 
 AC_ARG_ENABLE([lib-asym], [AS_HELP_STRING([--enable-lib-asym], [Enable asymmetric cipher support in library])], [with_lib_asym=$enableval])
 AM_CONDITIONAL([ENABLE_LIB_ASYM], [test "x$with_lib_asym" = "xyes"])
+if test "$with_lib_asym" = "yes"; then
+  AC_DEFINE([WITH_LIB_ASYM], 1, [Asymmetric support enabled])
+fi
 
 AC_ARG_ENABLE([lib-kpp], [AS_HELP_STRING([--enable-lib-kpp], [Enable key protocol primitives support in library])], [with_lib_kpp=$enableval])
 AM_CONDITIONAL([ENABLE_LIB_KPP], [test "x$with_lib_kpp" = "xyes"])
+if test "$with_lib_kpp" = "yes"; then
+  AC_DEFINE([WITH_LIB_KPP], 1, [KPP support enabled])
+fi
 
 AC_OUTPUT

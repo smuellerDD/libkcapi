@@ -1950,8 +1950,8 @@ static int cavs_hash_stream(struct kcapi_cavs *cavs_test, uint32_t loops)
  * ./kcapi -x 4 -o 2 -c "pkcs1pad(rsa-generic,sha256)" -k 308202200201100282010100d71e77828c9231e76902a2d55c78dea20c8ffe285931df409c606106b92f62408076cb674ab55956691707faf94cbd6c377a467d70a76722b34d7a94c3ba4b7c4ba9327cb738954564a405a89f127c4ec6c82d400630f460a691bb9bca0479111375f0aed35189c574b9aa3fb683e4786bcdf95c4c85ea523b5193fc146b335d3070fa501b1b3881138df7a50cc08ef96352184ea9f9f85c5dcd7a0dd48e7bee917bad7db492d5ab163b0a8ace8ede471a1701867bab99f14b0c3a0d8247c1918cbb2e229e49636e02c1c93a9ba5221b0795d6100250fdfdd19bbeabc2c074d7ec00fb1171cb7adc81799f86684663824db7f1e6166f4263f494a0ca33cc751302031000100282010062b560314f3f6616c160ac472aff6b69004ab25ce150b91874a8e4dca8eccd30bbc1c6e3c6ac202a3e5e8b12e6820809380bab7cb3cc9cce9767ddef95404e92e244e91dc114fda9b1dc719c4621bd58886e221556c1efe0c98de5803eda7e930f52f6f5c191909e42494f8d9cba3883e933c2504fecc2f0a8b76e2825566b6267fe08f156e56f0e99f1e5957befeb0a2c92975723333607ddfbaef1b1d833b796714236c5a4a9194b1b524c506991f00efa80374bb5d02fb7440dd4f8398dab71675905883deb484833884efef8271bd655605e48b76d9aa837f97ade1bcd5d1a30d4e99e5b3c15f89c1fdad1864855ce83ee8e51c7de3212477d46b835df41020130020130020130020130020130 -p 3ec8a12620544452480de566f3b3f504be10a84894222dddba7ab4768d799889
  * c7a398eb43d108c23d78450470c901eef885377c0bf919705c457b2f3a0bb78bc40d7b3a640b0fdb78a90bfd8d82a48639bf21b884c4ce9fc2e8b6614617b94e0b5705b44ff99c932d9bd5481d8012ef3a777fbcb58e2b6b7cfc9f8c9da2c485b087e9179bb62362d2a99f57e8f70445243a45ebeb6a088eafc8a084bc5d1338f5178ca3969ba9388df035ad328a725bdf21ab4b0ea829bb6154bf05db8484dedd163631daf3426d7a90229b1129a6f83061dad38b541e42d1471d6fd1cd420bd1e415857e08d659644c0134919226e8b0258cf8f4fa8bc931337672fb64929fda628de12a71914340613c5abe86fc5be6f9a916311faf256dc24a236e6302a2
  *
- *
  */
+#ifdef WITH_LIB_ASYM
 static int cavs_asym(struct kcapi_cavs *cavs_test, uint32_t loops,
 		     int splice)
 {
@@ -2376,6 +2376,44 @@ out:
 	return ret;
 }
 
+#else /* WITH_LIB_ASYM */
+static int cavs_asym(struct kcapi_cavs *cavs_test, uint32_t loops,
+		     int splice)
+{
+	(void)cavs_test;
+	(void)loops;
+	(void)splice;
+
+	fprintf(stderr, "Asymmetric support not implemented\n");
+
+	return -EOPNOTSUPP;
+}
+
+static int cavs_asym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
+			 int splice)
+{
+	(void)cavs_test;
+	(void)loops;
+	(void)splice;
+
+	fprintf(stderr, "Asymmetric support not implemented\n");
+
+	return -EOPNOTSUPP;
+}
+
+static int cavs_asym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
+			    int splice)
+{
+	(void)cavs_test;
+	(void)loops;
+	(void)splice;
+
+	fprintf(stderr, "Asymmetric support not implemented\n");
+
+	return -EOPNOTSUPP;
+}
+
+#endif /* WITH_LIB_ASYM */
 /*
  * KDF
  *
@@ -2796,6 +2834,7 @@ $ bin2hex.pl secret.bin /dev/stdout
 
  * --> shared secret from OpenSSL matches result of kernel
  */
+#ifdef WITH_LIB_KPP
 static int kpp(struct kcapi_cavs *cavs_test, uint32_t loops, int splice)
 {
 	struct kcapi_handle *handle = NULL;
@@ -2943,6 +2982,30 @@ out:
 	kcapi_kpp_destroy(handle);
 	return ret;
 }
+#else /* WITH_LIB_KPP */
+static int kpp(struct kcapi_cavs *cavs_test, uint32_t loops, int splice)
+{
+	(void)cavs_test;
+	(void)loops;
+	(void)splice;
+
+	fprintf(stderr, "KPP support disabled\n");
+
+	return -EOPNOTSUPP;
+}
+
+static int kpp_aio(struct kcapi_cavs *cavs_test, uint32_t loops, int splice)
+{
+	(void)cavs_test;
+	(void)loops;
+	(void)splice;
+
+	fprintf(stderr, "KPP support disabled\n");
+
+	return -EOPNOTSUPP;
+}
+
+#endif /* WITH_LIB_KPP */
 
 int main(int argc, char *argv[])
 {
