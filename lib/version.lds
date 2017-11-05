@@ -120,3 +120,6 @@ LIBKCAPI_1.0.0 {
 	kcapi_cipher_dec_aes_ctr;
 	kcapi_rng_get_bytes;
 } LIBKCAPI_0.14.0;
+
+LIBKCAPI_1.0.1 {
+} LIBKCAPI_1.0.0;

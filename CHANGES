@@ -1,3 +1,20 @@
+Changes 1.0.1
+ * Fix: constify AEAD cipher input data
+ * Fix: use GCC byte swapping acceleration if present
+ * Fix: KDF counter handling on little endian systems when generating more than
+   255 blocks
+ * Use LD_PRELOAD for execution of test cases to force using of the freshly
+   compiled binaries
+ * Fix: return code handling of _kcapi_common_vmsplice_chunk_fd as reported
+   by Christophe Leroy
+ * Fix: return code handling in _kcapi_md_update
+ * Fix: kcapi-hasher now supports files larger than 2GB
+ * Fix: kcapi-dgst now supports files larger than 2GB
+ * Fix: use stack protector
+ * Fix: rename header guards to remove leading underscore as pointed out
+   by Markus Elfring
+ * Test Fix: Allow compiing the test code without asymmetric and KPP support
+
 Changes 1.0.0
  * Fix: Small compile fixes for new checks of GCC 7
  * API Change: Rename all LOG_* enums to KCAPI_LOG_* to prevent namespace
