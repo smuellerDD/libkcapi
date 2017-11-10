@@ -22,6 +22,7 @@
 
 HASHERBIN="${APPDIR}/kcapi-hasher"
 find_platform $HASHERBIN
+HASHERBIN=$(get_binlocation $HASHERBIN)
 
 SUMHASHER="${TMPDIR}/md5sum ${TMPDIR}/sha1sum ${TMPDIR}/sha256sum ${TMPDIR}/sha384sum ${TMPDIR}/sha512sum"
 HMACHASHER="${TMPDIR}/sha1hmac ${TMPDIR}/sha256hmac ${TMPDIR}/sha384hmac ${TMPDIR}/sha512hmac"
@@ -44,17 +45,21 @@ do
 	cp -f $HASHERBIN $i
 done
 
+libdir=$(dirname $(realpath ../.libs/libkcapi.so))
+libname=$(realpath ../.libs/libkcapi.so)
+
 for i in $SUMHASHER
 do
 	hash=$(basename $i)
 	hash=${hash%%sum}
 	hasher=$i
+	i=$(basename $i)
 	[ ! -e "$hasher" ] && {
 		echo_deact "Hasher $hasher does not exist"
 		continue
 	}
 
-	$hasher $0 $ANOTHER > $CHKFILE
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher $0 $ANOTHER > $CHKFILE
 	[ $? -ne 0 ] && {
 		echo_fail "Generation of hashes with hasher $hasher failed"
 		continue
@@ -76,10 +81,10 @@ do
 		continue
 	}
 
-	$hasher --status -c $CHKFILE
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher --status -c $CHKFILE
 	[ $? -ne 0 ] && echo_fail "Verification of checker file $CHKFILE with hasher $hasher failed"
 	
-	a=$($hasher -b 123 $0 | cut -f 1 -d" ")
+	a=$(LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -b 123 $0 | cut -f 1 -d" ")
 	b=$(openssl dgst -$hash -hmac 123 $0 | cut -f 2 -d" ")
 	[ x"$a" != x"$b" ] && {
 		echo_fail "HMAC calculation for $hasher failed"
@@ -99,12 +104,13 @@ do
 	hash=$(basename $i)
 	hash=${hash%%hmac}
 	hasher=$i
+	i=$(basename $i)
 	[ ! -e "$hasher" ] && {
 		echo_fail "Hasher $hasher does not exist"
 		continue
 	}
 
-	$hasher $0 $ANOTHER > $CHKFILE
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher $0 $ANOTHER > $CHKFILE
 	[ $? -ne 0 ] && {
 		echo_fail "Generation of hashes with hasher $hasher failed"
 		continue
@@ -126,7 +132,7 @@ do
 		continue
 	}
 
-	$hasher -q -c $CHKFILE
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -q -c $CHKFILE
 	if [ $? -ne 0 ]
 	then
 		echo_fail "Verification of checker file $CHKFILE with hasher $hasher failed"

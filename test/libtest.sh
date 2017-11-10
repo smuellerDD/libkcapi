@@ -72,6 +72,13 @@ echo_deact()
 	echo $(color "yellow")[DEACTIVATED: $PLATFORM - $KERNVER]$(color off) $@
 }
 
+get_binlocation()
+{
+	local app=$1
+	local binlocation="$(dirname $app)/.libs/$(basename $app)"
+	echo $binlocation
+}
+
 find_platform()
 {
 	local app=$1
@@ -82,7 +89,7 @@ find_platform()
 		exit 1
 	fi
 
-	local binlocation="$(dirname $app)/.libs/$(basename $app)"
+	local binlocation=$(get_binlocation $app)
 	if [ -x "$binlocation" ]
 	then
 		PLATFORM=$(file $binlocation | cut -d" " -f 3)

@@ -110,7 +110,7 @@ cd $CWD
 exec_test
 cd ..
 
-make distclean
+make distclean > /dev/null 2>&1
 
 # if we are on 64 bit system, test 32 bit alternative mode
 if $(uname -m | grep -q "x86_64")
