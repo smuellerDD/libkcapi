@@ -173,13 +173,16 @@ struct kcapi_aead_data {
  * @skcipher_aio_disable: AIO support for symmetric ciphers not present
  * @efd: event file descriptor
  * @aio_ctx: AIO context to use for AIO syscalls
+ * @iocb_ret: return code of each iocb request - set to AIO_OUTSTANDING until
+ *	      a return code is obtained
  * @cio: Active concurrent IOCBs
  */
+#define AIO_OUTSTANDING	((__s64)-1)
 struct kcapi_aio {
 	bool disable;
 	int efd;
 	aio_context_t aio_ctx;
-	uint32_t completed_reads;
+	__s64 iocb_ret[KCAPI_AIO_CONCURRENT];
 	struct iocb *cio;
 	struct iocb **ciopp;
 };
@@ -316,10 +319,10 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 int _kcapi_aio_send_iov(struct kcapi_handle *handle, struct iovec *iov,
 			uint32_t iovlen, int access, int enc);
 
-int32_t _kcapi_aio_read_iov_fd(struct kcapi_handle *handle, int *fdptr,
-			       struct iovec *iov, uint32_t iovlen);
-static inline int32_t _kcapi_aio_read_iov(struct kcapi_handle *handle,
-				   struct iovec *iov, uint32_t iovlen)
+int _kcapi_aio_read_iov_fd(struct kcapi_handle *handle, int *fdptr,
+			   struct iovec *iov, uint32_t iovlen);
+static inline int _kcapi_aio_read_iov(struct kcapi_handle *handle,
+				      struct iovec *iov, uint32_t iovlen)
 {
 	return _kcapi_aio_read_iov_fd(handle, &handle->opfd, iov, iovlen);
 }

@@ -358,11 +358,9 @@ int32_t _kcapi_common_vmsplice_chunk_fd(struct kcapi_handle *handle, int *fdptr,
 }
 
 /* Wrapper for io_getevents -- returns < 0 on error, or processed bytes */
-int32_t _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
+int _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
 			    struct timespec *timeout)
 {
-	int32_t processed = 0;
-
 	if (toread > KCAPI_AIO_CONCURRENT)
 		return -EINVAL;
 
@@ -391,18 +389,27 @@ int32_t _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
 			 * Older symmetric AIO implementations used a wrong
 			 * return code.
 			 */
-			if (events[i].res > 0)
-				processed = processed + events[i].res;
-			else
-				processed = processed + cb->aio_nbytes;
+			if (events[i].res > 0) {
+				handle->aio.iocb_ret[events[i].data] =
+								events[i].res;
+
+				/*
+				 * An error on one IOCB causes the entire AIO
+				 * request to fail.
+				 */
+				if ((size_t)events[i].res != cb->aio_nbytes)
+					return -EBADMSG;
+			} else {
+				handle->aio.iocb_ret[events[i].data] =
+								cb->aio_nbytes;
+			}
 
 			cb->aio_fildes = 0;
-			handle->aio.completed_reads++;
 		}
 		toread -= rc;
 	}
 
-	return processed;
+	return 0;
 }
 
 /* read data from successfully processed cipher operations */
@@ -466,8 +473,8 @@ int _kcapi_aio_send_iov(struct kcapi_handle *handle, struct iovec *iov,
 	return 0;
 }
 
-int32_t _kcapi_aio_read_iov_fd(struct kcapi_handle *handle, int *fdptr,
-			       struct iovec *iov, uint32_t iovlen)
+int _kcapi_aio_read_iov_fd(struct kcapi_handle *handle, int *fdptr,
+			   struct iovec *iov, uint32_t iovlen)
 {
 	struct iocb *cb = handle->aio.cio;
 	uint32_t i;
@@ -496,6 +503,9 @@ int32_t _kcapi_aio_read_iov_fd(struct kcapi_handle *handle, int *fdptr,
 		cb->aio_nbytes = iov->iov_len;
 		cb->aio_flags = IOCB_FLAG_RESFD;
 		cb->aio_resfd = handle->aio.efd;
+
+		handle->aio.iocb_ret[i] = AIO_OUTSTANDING;
+
 		cb++;
 		iov++;
 	}
@@ -1194,21 +1204,18 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 				struct iovec *iniov, struct iovec *outiov,
 				uint32_t iovlen, int access, int enc)
 {
-	int32_t processed = 0;
+	uint32_t i, outstanding = 0, iovlen_tmp = iovlen;
 	int32_t ret;
-	uint32_t tosend = iovlen;
 
 	if (handle->aio.disable == true) {
 		kcapi_dolog(KCAPI_LOG_WARN, "AIO support disabled\n");
 		return -EOPNOTSUPP;
 	}
 
-	handle->aio.completed_reads = 0;
-
 	/* Every IOVEC is processed as its individual cipher operation. */
-	while (tosend) {
-		uint32_t process = (KCAPI_AIO_CONCURRENT < tosend) ?
-					KCAPI_AIO_CONCURRENT : tosend;
+	while (iovlen) {
+		uint32_t process = (KCAPI_AIO_CONCURRENT < iovlen) ?
+					KCAPI_AIO_CONCURRENT : iovlen;
 
 		ret = _kcapi_aio_send_iov(handle, iniov, process, access, enc);
 		if (ret < 0)
@@ -1220,8 +1227,7 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 
 		iniov += process;
 		outiov += process;
-		processed += ret;
-		tosend = iovlen - handle->aio.completed_reads;
+		iovlen -= process;
 	}
 
 	/*
@@ -1236,12 +1242,24 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 	 * able to detect which particular request is completed. Thus, an
 	 * "open-ended" multi-staged AIO operation could not be implemented.
 	 */
+	for (i = 0; i < iovlen_tmp; i++) {
+		if (handle->aio.iocb_ret[i] == AIO_OUTSTANDING)
+			outstanding++;
+	}
 
-	ret = _kcapi_aio_read_all(handle, iovlen - handle->aio.completed_reads,
-				  NULL);
+	ret = _kcapi_aio_read_all(handle, outstanding, NULL);
 	if (ret < 0)
 		return ret;
-	processed += ret;
 
-	return processed;
+	outstanding = 0;
+	for (i = 0; i < iovlen_tmp; i++) {
+		if (handle->aio.iocb_ret[i] == AIO_OUTSTANDING) {
+			return -EBADMSG;
+		} else {
+			outstanding += (uint32_t)handle->aio.iocb_ret[i];
+			if (outstanding > INT_MAX)
+				return -EOVERFLOW;
+		}
+	}
+	return outstanding;
 }

@@ -92,9 +92,8 @@ _kcapi_kpp_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 		     struct iovec *outiov, uint32_t iovlen, int access, int enc)
 {
 	struct iovec zeroiov;
+	uint32_t i, outstanding = 0, iovlen_tmp = iovlen;
 	int32_t ret;
-	int32_t rc;
-	uint32_t tosend = iovlen;
 
 	if (handle->aio.disable) {
 		kcapi_dolog(KCAPI_LOG_WARN, "AIO support disabled\n");
@@ -105,30 +104,26 @@ _kcapi_kpp_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 	if (ret)
 		return ret;
 
-	handle->aio.completed_reads = 0;
-
 	zeroiov.iov_base = NULL;
 	zeroiov.iov_len = 0;
 
 	/* Every IOVEC is processed as its individual cipher operation. */
-	while (tosend) {
+	while (iovlen) {
 		uint32_t process = 1;
-		int32_t rc;
 
-		rc = _kcapi_aio_send_iov(handle, iniov ? iniov : &zeroiov,
+		ret = _kcapi_aio_send_iov(handle, iniov ? iniov : &zeroiov,
 					 process, access, enc);
-		if (rc < 0)
-			return rc;
+		if (ret < 0)
+			return ret;
 
-		rc = _kcapi_aio_read_iov(handle, outiov, process);
-		if (rc < 0)
-			return rc;
+		ret = _kcapi_aio_read_iov(handle, outiov, process);
+		if (ret < 0)
+			return ret;
 
 		if (iniov)
 			iniov += process;
 		outiov += process;
-		ret += rc;
-		tosend = iovlen - handle->aio.completed_reads;
+		iovlen -= process;
 	}
 
 	/*
@@ -143,13 +138,26 @@ _kcapi_kpp_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 	 * able to detect which particular request is completed. Thus, an
 	 * "open-ended" multi-staged AIO operation could not be implemented.
 	 */
-	rc = _kcapi_aio_read_all(handle, iovlen - handle->aio.completed_reads,
-				 NULL);
-	if (rc < 0)
-		return rc;
-	ret += rc;
+	for (i = 0; i < iovlen_tmp; i++) {
+		if (handle->aio.iocb_ret[i] == AIO_OUTSTANDING)
+			outstanding++;
+	}
 
-	return ret;
+	ret = _kcapi_aio_read_all(handle, outstanding, NULL);
+	if (ret < 0)
+		return ret;
+
+	outstanding = 0;
+	for (i = 0; i < iovlen_tmp; i++) {
+		if (handle->aio.iocb_ret[i] == AIO_OUTSTANDING) {
+			return -EBADMSG;
+		} else {
+			outstanding += (uint32_t)handle->aio.iocb_ret[i];
+			if (outstanding > INT_MAX)
+				return -EOVERFLOW;
+		}
+	}
+	return outstanding;
 }
 
 DSO_PUBLIC
