@@ -360,7 +360,7 @@ int32_t _kcapi_common_vmsplice_chunk_fd(struct kcapi_handle *handle, int *fdptr,
 
 /* Wrapper for io_getevents -- returns < 0 on error, or processed bytes */
 int _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
-			    struct timespec *timeout)
+			struct timespec *timeout)
 {
 	if (toread > KCAPI_AIO_CONCURRENT)
 		return -EINVAL;
@@ -413,39 +413,6 @@ int _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
 	return 0;
 }
 
-/* read data from successfully processed cipher operations */
-static int _kcapi_aio_poll_data(struct kcapi_handle *handle, struct timeval *tv)
-{
-	struct timespec timeout;
-	fd_set rfds;
-	u_int64_t eval = 0;
-	int ret;
-	int efd = handle->aio.efd;
-
-	FD_ZERO(&rfds);
-	FD_SET(efd, &rfds);
-
-	ret = select(efd + 1, &rfds, NULL, NULL, tv);
-	if (ret == -1) {
-		kcapi_dolog(KCAPI_LOG_ERR, "Select Error: %d\n", errno);
-		return -errno;
-	}
-	if (!FD_ISSET(efd, &rfds)) {
-		kcapi_dolog(KCAPI_LOG_ERR, "aio poll: no FDs\n");
-		return -EFAULT;
-	}
-
-	if (read(efd, &eval, sizeof(eval)) != sizeof(eval)) {
-		kcapi_dolog(KCAPI_LOG_ERR, "efd read error\n");
-		return -EFAULT;
-	}
-
-	timeout.tv_sec = 0;
-	timeout.tv_nsec = 0;
-
-	return _kcapi_aio_read_all(handle, eval, &timeout);
-}
-
 int _kcapi_aio_send_iov(struct kcapi_handle *handle, struct iovec *iov,
 			uint32_t iovlen, int access, int enc)
 {
@@ -486,11 +453,11 @@ int _kcapi_aio_read_iov_fd(struct kcapi_handle *handle, int *fdptr,
 
 	for (i = 0; i < iovlen; i++) {
 		while (cb->aio_fildes) {
-			struct timeval tv;
+			struct timespec timeout;
 
-			tv.tv_sec = 0;
-			tv.tv_usec = 10;
-			ret = _kcapi_aio_poll_data(handle, &tv);
+			timeout.tv_sec = 0;
+			timeout.tv_nsec = 10000;
+			ret = _kcapi_aio_read_all(handle, iovlen, &timeout);
 			if (ret < 0)
 				return ret;
 		}
@@ -524,7 +491,7 @@ int _kcapi_aio_read_iov_fd(struct kcapi_handle *handle, int *fdptr,
 		}
 	}
 
-	return _kcapi_aio_poll_data(handle, NULL);
+	return _kcapi_aio_read_all(handle, iovlen, NULL);
 }
 
 int32_t _kcapi_common_recv_data_fd(struct kcapi_handle *handle, int *fdptr,
