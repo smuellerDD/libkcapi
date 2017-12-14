@@ -1026,13 +1026,6 @@ int _kcapi_allocated_handle_init(struct kcapi_handle *handle, const char *type,
 	int ret;
 	char versionbuffer[50];
 
-	/* Disable the dumping of this process as we handle with keys */
-	ret = prctl(PR_SET_DUMPABLE, 0);
-	if (ret < 0) {
-		kcapi_dolog(KCAPI_LOG_ERR, "Cannot set prctl(PR_SET_DUMPABLE)");
-		return ret;
-	}
-
 	kcapi_versionstring(versionbuffer, sizeof(versionbuffer));
 	kcapi_dolog(KCAPI_LOG_VERBOSE,
 		    "%s - initializing cipher operation with kernel",
@@ -1275,4 +1268,12 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 		}
 	}
 	return outstanding;
+}
+
+void __attribute__ ((constructor)) kcapi_library_init(void)
+{
+	/* Disable the dumping of this process as we handle with keys */
+	if (prctl(PR_SET_DUMPABLE, 0) < 0)
+		kcapi_dolog(KCAPI_LOG_ERR,
+			    "Cannot set prctl(PR_SET_DUMPABLE)");
 }

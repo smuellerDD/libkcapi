@@ -1,7 +1,8 @@
 Changes 1.0.2
- * fix hasher-test.sh on 32-bit systems
- * fix AIO return code handling on large number of requests -- reported by
+ * Fix: hasher-test.sh on 32-bit systems
+ * Fix: AIO return code handling on large number of requests -- reported by
    Jonathan Cameron
+ * Enhancement: disable coredumps of library
 
 Changes 1.0.1
  * Fix: constify AEAD cipher input data
