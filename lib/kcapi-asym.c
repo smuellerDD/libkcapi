@@ -157,72 +157,24 @@ _kcapi_akcipher_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 			  struct iovec *outiov, uint32_t iovlen, int access,
 			  int enc)
 {
-	uint32_t i, outstanding = 0, iovlen_tmp = iovlen;
+	uint32_t processed = 0;
 	int32_t ret;
 
-	if (handle->aio.disable == true) {
-		kcapi_dolog(KCAPI_LOG_WARN, "AIO support disabled\n");
-		return -EOPNOTSUPP;
-	}
-
-	ret = _kcapi_common_accept(handle, &handle->opfd);
-	if (ret)
-		return ret;
-
-	/* Every IOVEC is processed as its individual cipher operation. */
+	/* TODO Every IOVEC is processed as its individual cipher operation. */
 	while (iovlen) {
-		uint32_t process = 1;
-
-		ret = _kcapi_aio_send_iov(handle, iniov, process, access, enc);
+		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, 1,
+					      access, enc);
 		if (ret < 0)
 			return ret;
 
-		ret = _kcapi_aio_read_iov(handle, outiov, process);
-		if (ret < 0)
-			return ret;
+		processed += ret;
 
-		iniov += process;
-		outiov += process;
-		iovlen -= process;
+		iniov++;
+		outiov++;
+		iovlen--;
 	}
 
-	/*
-	 * If a multi-staged AIO operation shall be designed, the following
-	 * loop needs to be moved to a closing API call. If done so, the
-	 * current function could be invoked multiple times to send more data
-	 * to the kernel before the closing call requires that all outstanding
-	 * requests are to be completed.
-	 *
-	 * If a multi-staged AIO operation is to be implemented, the issue
-	 * is that when submitting a number of requests, the caller is not
-	 * able to detect which particular request is completed. Thus, an
-	 * "open-ended" multi-staged AIO operation could not be implemented.
-	 */
-	for (i = 0; i < KCAPI_AIO_CONCURRENT; i++) {
-		if (handle->aio.iocb_ret[i] == AIO_OUTSTANDING)
-			outstanding++;
-	}
-
-	ret = _kcapi_aio_read_all(handle, outstanding, NULL);
-	if (ret < 0)
-		return ret;
-
-	outstanding = 0;
-	for (i = 0; i < KCAPI_AIO_CONCURRENT; i++) {
-		if (handle->aio.iocb_ret[i] == AIO_OUTSTANDING) {
-			return -EBADMSG;
-		} else if (handle->aio.iocb_ret[i] < 0) {
-			return handle->aio.iocb_ret[i];
-		} else {
-			if (handle->aio.iocb_ret[i] > INT_MAX)
-				return -EOVERFLOW;
-
-			outstanding += (uint32_t)handle->aio.iocb_ret[i];
-			if (outstanding > INT_MAX)
-				return -EOVERFLOW;
-		}
-	}
-	return outstanding;
+	return processed;
 }
 
 /*
