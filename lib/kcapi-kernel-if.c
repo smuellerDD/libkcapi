@@ -852,17 +852,21 @@ static int _kcapi_common_getinfo(struct kcapi_handle *handle,
 
 static inline void _kcapi_aio_destroy(struct kcapi_handle *handle)
 {
-	if (handle->aio.disable == true)
-		return;
 	if (handle->aio.efd != -1)
 		close(handle->aio.efd);
-	io_destroy(handle->aio.aio_ctx);
+	handle->aio.efd = -1;
+	if (handle->aio.aio_ctx)
+		io_destroy(handle->aio.aio_ctx);
+	handle->aio.aio_ctx = 0;
 	if (handle->aio.cio)
 		free(handle->aio.cio);
 	handle->aio.cio = NULL;
 	if (handle->aio.ciopp)
 		free(handle->aio.ciopp);
 	handle->aio.ciopp = NULL;
+	if (handle->aio.iocb_ret)
+		free(handle->aio.iocb_ret);
+	handle->aio.iocb_ret = NULL;
 }
 
 void _kcapi_handle_destroy_nofree(struct kcapi_handle *handle)
@@ -968,6 +972,12 @@ static int _kcapi_aio_init(struct kcapi_handle *handle, const char *type)
 		goto err;
 	}
 
+	handle->aio.iocb_ret = calloc(KCAPI_AIO_CONCURRENT, sizeof(__s64));
+	if (!handle->aio.iocb_ret) {
+		err = -ENOMEM;
+		goto err;
+	}
+
 	/*
 	 * Set up the pointers to pointers array that is required by
 	 * io_submit. Please do not ask me why the kernel wants this. :-)
@@ -996,16 +1006,8 @@ static int _kcapi_aio_init(struct kcapi_handle *handle, const char *type)
 	return 0;
 
 err:
-	handle->aio.disable = true;
-	if (handle->aio.efd != -1)
-		close(handle->aio.efd);
-	handle->aio.efd = -1;
-	if (handle->aio.cio)
-		free(handle->aio.cio);
-	handle->aio.cio = NULL;
-	if (handle->aio.ciopp)
-		free(handle->aio.ciopp);
-	handle->aio.ciopp = NULL;
+	_kcapi_aio_destroy(handle);
+
 	return err;
 }
 

@@ -182,7 +182,7 @@ struct kcapi_aio {
 	bool disable;
 	int efd;
 	aio_context_t aio_ctx;
-	__s64 iocb_ret[KCAPI_AIO_CONCURRENT];
+	__s64 *iocb_ret;
 	struct iocb *cio;
 	struct iocb **ciopp;
 };
