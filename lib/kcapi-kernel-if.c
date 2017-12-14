@@ -30,6 +30,7 @@
 #include <time.h>
 #include <sys/select.h>
 #include <sys/utsname.h>
+#include <sys/prctl.h>
 
 #include "cryptouser.h"
 #include "kcapi.h"
@@ -1024,6 +1025,13 @@ int _kcapi_allocated_handle_init(struct kcapi_handle *handle, const char *type,
 	struct sockaddr_alg sa;
 	int ret;
 	char versionbuffer[50];
+
+	/* Disable the dumping of this process as we handle with keys */
+	ret = prctl(PR_SET_DUMPABLE, 0);
+	if (ret < 0) {
+		kcapi_dolog(KCAPI_LOG_ERR, "Cannot set prctl(PR_SET_DUMPABLE)");
+		return ret;
+	}
 
 	kcapi_versionstring(versionbuffer, sizeof(versionbuffer));
 	kcapi_dolog(KCAPI_LOG_VERBOSE,
