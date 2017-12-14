@@ -1,3 +1,8 @@
+Changes 1.0.2
+ * fix hasher-test.sh on 32-bit systems
+ * fix AIO return code handling on large number of requests -- reported by
+   Jonathan Cameron
+
 Changes 1.0.1
  * Fix: constify AEAD cipher input data
  * Fix: use GCC byte swapping acceleration if present

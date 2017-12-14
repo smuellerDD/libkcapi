@@ -1255,7 +1255,12 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 	for (i = 0; i < iovlen_tmp; i++) {
 		if (handle->aio.iocb_ret[i] == AIO_OUTSTANDING) {
 			return -EBADMSG;
+		} else if (handle->aio.iocb_ret[i] < 0) {
+			return handle->aio.iocb_ret[i];
 		} else {
+			if (handle->aio.iocb_ret[i] > INT_MAX)
+				return -EOVERFLOW;
+
 			outstanding += (uint32_t)handle->aio.iocb_ret[i];
 			if (outstanding > INT_MAX)
 				return -EOVERFLOW;
