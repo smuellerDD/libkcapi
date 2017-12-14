@@ -177,7 +177,7 @@ struct kcapi_aead_data {
  *	      a return code is obtained
  * @cio: Active concurrent IOCBs
  */
-#define AIO_OUTSTANDING	((__s64)-1)
+#define AIO_OUTSTANDING	((__s64)-(1<<13))
 struct kcapi_aio {
 	bool disable;
 	int efd;
