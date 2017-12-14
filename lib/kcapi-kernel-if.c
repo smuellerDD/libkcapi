@@ -1200,6 +1200,12 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 		iovlen -= process;
 
 		for (i = 0; i < KCAPI_AIO_CONCURRENT; i++) {
+			/*
+			 * TODO at this point AIO_OUTSTANDING should be left
+			 * but this implies that kcapi_aio_read_iov must
+			 * be overhauled such to not use the iovec index as
+			 * the index into the IOCB table.
+			 */
 			if (handle->aio.iocb_ret[i] == AIO_OUTSTANDING) {
 				return -EBADMSG;
 			} else if (handle->aio.iocb_ret[i] < 0) {
