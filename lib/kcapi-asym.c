@@ -198,7 +198,7 @@ _kcapi_akcipher_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 	 * able to detect which particular request is completed. Thus, an
 	 * "open-ended" multi-staged AIO operation could not be implemented.
 	 */
-	for (i = 0; i < iovlen_tmp; i++) {
+	for (i = 0; i < KCAPI_AIO_CONCURRENT; i++) {
 		if (handle->aio.iocb_ret[i] == AIO_OUTSTANDING)
 			outstanding++;
 	}
@@ -208,7 +208,7 @@ _kcapi_akcipher_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 		return ret;
 
 	outstanding = 0;
-	for (i = 0; i < iovlen_tmp; i++) {
+	for (i = 0; i < KCAPI_AIO_CONCURRENT; i++) {
 		if (handle->aio.iocb_ret[i] == AIO_OUTSTANDING) {
 			return -EBADMSG;
 		} else if (handle->aio.iocb_ret[i] < 0) {
