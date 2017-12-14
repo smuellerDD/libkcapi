@@ -25,7 +25,7 @@
  * Synchronous symmetric ciphers
  ****************************************************************************/
 
-static int cp_skcipher_init_test(struct cp_test *test, size_t len)
+static int cp_skcipher_init_test(struct cp_test *test, size_t len, int aio)
 {
 	unsigned char *scratchpad = NULL;
 #define MAX_KEYLEN 64
@@ -41,7 +41,8 @@ static int cp_skcipher_init_test(struct cp_test *test, size_t len)
 		return -EFAULT;
 	}
 
-	if (kcapi_cipher_init(&test->u.skcipher.handle, test->driver_name, 0)) {
+	if (kcapi_cipher_init(&test->u.skcipher.handle, test->driver_name,
+			      aio)) {
 		printf(DRIVER_NAME": could not allocate skcipher handle for "
 		       "%s\n", test->driver_name);
 		goto out;
@@ -88,6 +89,11 @@ static int cp_skcipher_init_test(struct cp_test *test, size_t len)
 		len * kcapi_cipher_blocksize(test->u.skcipher.handle);
 	test->u.skcipher.scratchpad = scratchpad;
 
+	test->u.skcipher.iovec.iov_base = scratchpad;
+	test->u.skcipher.iovec.iov_len = test->u.skcipher.inputlen;
+
+	test->u.skcipher.aio = aio;
+
 	return 0;
 
 out:
@@ -107,27 +113,41 @@ static void cp_skcipher_fini_test(struct cp_test *test)
 	kcapi_cipher_destroy(test->u.skcipher.handle);
 }
 
-static unsigned int cp_ablkcipher_enc_test(struct cp_test *test)
+static unsigned int cp_skcipher_enc_test(struct cp_test *test)
 {
-	kcapi_cipher_encrypt(test->u.skcipher.handle,
-			     test->u.skcipher.scratchpad,
-			     test->u.skcipher.inputlen,
-			     test->u.skcipher.iv,
-			     test->u.skcipher.scratchpad,
-			     test->u.skcipher.inputlen,
-			     test->accesstype);
+	if (test->u.skcipher.aio)
+		kcapi_cipher_encrypt_aio(test->u.skcipher.handle,
+					 &test->u.skcipher.iovec,
+					 &test->u.skcipher.iovec,
+					 1, test->u.skcipher.iv,
+					 test->accesstype);
+	else
+		kcapi_cipher_encrypt(test->u.skcipher.handle,
+				     test->u.skcipher.scratchpad,
+				     test->u.skcipher.inputlen,
+				     test->u.skcipher.iv,
+				     test->u.skcipher.scratchpad,
+				     test->u.skcipher.inputlen,
+				     test->accesstype);
 	return test->u.skcipher.inputlen;
 }
 
-static unsigned int cp_ablkcipher_dec_test(struct cp_test *test)
+static unsigned int cp_skcipher_dec_test(struct cp_test *test)
 {
-	kcapi_cipher_decrypt(test->u.skcipher.handle,
-			     test->u.skcipher.scratchpad,
-			     test->u.skcipher.inputlen,
-			     test->u.skcipher.iv,
-			     test->u.skcipher.scratchpad,
-			     test->u.skcipher.inputlen,
-			     test->accesstype);
+	if (test->u.skcipher.aio)
+		kcapi_cipher_decrypt_aio(test->u.skcipher.handle,
+					 &test->u.skcipher.iovec,
+					 &test->u.skcipher.iovec,
+					 1, test->u.skcipher.iv,
+					 test->accesstype);
+	else
+		kcapi_cipher_decrypt(test->u.skcipher.handle,
+				     test->u.skcipher.scratchpad,
+				     test->u.skcipher.inputlen,
+				     test->u.skcipher.iv,
+				     test->u.skcipher.scratchpad,
+				     test->u.skcipher.inputlen,
+				     test->accesstype);
 	return test->u.skcipher.inputlen;
 }
 
@@ -422,9 +442,9 @@ void cp_skcipher_register(struct cp_test **skcipher_test, size_t *entries)
 			cp_skcipher_testdef[j].init_test = cp_skcipher_init_test;
 			cp_skcipher_testdef[j].fini_test = cp_skcipher_fini_test;
 			if (enc)
-				cp_skcipher_testdef[j].exec_test = cp_ablkcipher_enc_test;
+				cp_skcipher_testdef[j].exec_test = cp_skcipher_enc_test;
 			else
-				cp_skcipher_testdef[j].exec_test = cp_ablkcipher_dec_test;
+				cp_skcipher_testdef[j].exec_test = cp_skcipher_dec_test;
 		}
 	}
 	*skcipher_test = &cp_skcipher_testdef[0];

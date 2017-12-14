@@ -25,11 +25,13 @@
  * @exectime: execution time for current test -- if 0, use the predefined
  *	      execution time for the test.
  * @len: number of blocks to test
+ * @aio: whether to test AIO support
  *
  *
  * result: 0 on success, error otherwise
  */
-int cp_exec_test(struct cp_test *test, unsigned int exectime, size_t len)
+int cp_exec_test(struct cp_test *test, unsigned int exectime, size_t len,
+		 int aio)
 {
 	uint64_t testduration = 0;
 	uint64_t nano = 1;
@@ -43,7 +45,7 @@ int cp_exec_test(struct cp_test *test, unsigned int exectime, size_t len)
 		testduration = nano * exectime;
 
 	if (test->init_test) {
-		int ret = test->init_test(test, len);
+		int ret = test->init_test(test, len, aio);
 		if (ret) {
 			printf(DRIVER_NAME": initialization for %s failed\n",
 			       test->testname);
@@ -161,7 +163,7 @@ char *cp_print_status(struct cp_test *test, int raw)
 		memset(byteseconds, 0, sizeof(byteseconds));
 		cp_bytes2string((processed_bytes / totaltime), byteseconds,
 				(VALLEN + 1));
-		snprintf(str, 120, "%-26s|%s|%8lu bytes|%*s/s|%lu ops/s",
+		snprintf(str, 120, "%-24s|%s|%8lu bytes|%*s/s|%lu ops/s",
 			test->testname,
 			test->enc ? "e" : "d",
 			(unsigned long)test->results.chunksize,

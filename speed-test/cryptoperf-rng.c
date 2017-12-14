@@ -22,11 +22,13 @@
 /****************************************************************************
  * Random Number Generators
  ****************************************************************************/
-static int cp_rng_init_test(struct cp_test *test, size_t len)
+static int cp_rng_init_test(struct cp_test *test, size_t len, int aio)
 {
 	unsigned char *scratchpad = NULL;
 #define SEEDSIZE 64
 	unsigned char seed[SEEDSIZE];
+
+	(void)aio;
 
 	dbg("Initializing RNG test %s\n", test->testname);
 	if (!test->driver_name) {

@@ -25,11 +25,13 @@
  * Synchronous symmetric ciphers
  ****************************************************************************/
 
-static int cp_hash_init_test(struct cp_test *test, size_t len)
+static int cp_hash_init_test(struct cp_test *test, size_t len, int aio)
 {
 	unsigned char *scratchpad = NULL;
 #define MAX_KEYLEN 128
 	unsigned char data[MAX_KEYLEN];
+
+	(void)aio;
 
 	dbg("Initializing hash test %s\n", test->testname);
 	if (!test->driver_name) {
