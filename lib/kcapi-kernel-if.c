@@ -1174,7 +1174,7 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 				struct iovec *iniov, struct iovec *outiov,
 				uint32_t iovlen, int access, int enc)
 {
-	uint32_t i, outstanding = 0, processed = 0;
+	uint32_t i, outstanding = 0, processed = 0, inflight = 0;
 	int32_t ret;
 
 	if (handle->aio.disable == true) {
@@ -1184,8 +1184,9 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 
 	/* Every IOVEC is processed as its individual cipher operation. */
 	while (iovlen) {
-		uint32_t process = (KCAPI_AIO_CONCURRENT < iovlen) ?
-					KCAPI_AIO_CONCURRENT : iovlen;
+		uint32_t max_process = KCAPI_AIO_CONCURRENT - inflight;
+		uint32_t process = (max_process < iovlen) ?
+							max_process : iovlen;
 
 		ret = _kcapi_aio_send_iov(handle, iniov, process, access, enc);
 		if (ret < 0)
@@ -1199,15 +1200,10 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 		outiov += process;
 		iovlen -= process;
 
+		inflight = 0;
 		for (i = 0; i < KCAPI_AIO_CONCURRENT; i++) {
-			/*
-			 * TODO at this point AIO_OUTSTANDING should be left
-			 * but this implies that kcapi_aio_read_iov must
-			 * be overhauled such to not use the iovec index as
-			 * the index into the IOCB table.
-			 */
 			if (handle->aio.iocb_ret[i] == AIO_OUTSTANDING) {
-				return -EBADMSG;
+				inflight++;
 			} else if (handle->aio.iocb_ret[i] < 0) {
 				return handle->aio.iocb_ret[i];
 			} else {
