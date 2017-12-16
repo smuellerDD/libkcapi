@@ -104,10 +104,10 @@ static int cp_skcipher_init_test(struct cp_test *test, size_t len,
 		for (i = 0; i < aio; i++) {
 			test->u.skcipher.iovec[i].iov_base = scratchpad;
 			test->u.skcipher.iovec[i].iov_len = test->u.skcipher.inputlen;
-			scratchpad += aio;
+			scratchpad += test->u.skcipher.inputlen;
 		}
 
-		test->u.skcipher.aio = test->u.skcipher.inputlen;
+		test->u.skcipher.aio = aio;
 	}
 
 	return 0;
