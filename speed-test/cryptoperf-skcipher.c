@@ -191,9 +191,14 @@ static const struct cp_skcipher_tests testcases[] = {
 	{ "AES(i586) CBC(G) 128", "cbc(aes-asm)", 16 },
 	{ "AES(i586) CBC(G) 192", "cbc(aes-asm)", 24 },
 	{ "AES(i586) CBC(G) 256", "cbc(aes-asm)", 32 },
+
 	{ "AES(MV-CESA) CBC(MV-CESA) 128", "mv-cbc-aes", 16 },
 	{ "AES(MV-CESA) CBC(MV-CESA) 192", "mv-cbc-aes", 24 },
 	{ "AES(MV-CESA) CBC(MV-CESA) 256", "mv-cbc-aes", 32 },
+
+	{ "AES(hisi) CBC 128", "hisi_sec_aes_cbc", 16 },
+	{ "AES(hisi) CBC 192", "hisi_sec_aes_cbc", 24 },
+	{ "AES(hisi) CBC 256", "hisi_sec_aes_cbc", 32 },
 
 	{ "AES(G) CTR(G) 128", "ctr(aes-generic)", 16 },
 	{ "AES(G) CTR(G) 192", "ctr(aes-generic)", 24 },
