@@ -60,7 +60,7 @@ static void register_tests(int print)
 }
 
 static int exec_all_tests(struct test_array *tests, unsigned int exectime,
-			  size_t len, int aio)
+			  size_t len, unsigned int aio)
 {
 	size_t i;
 
@@ -100,7 +100,7 @@ static int find_test(const char *name, struct test_array *tests, int start,
 }
 
 static int exec_subset_test(const char *name, unsigned int exectime, size_t len,
-			    int raw, int access, int aio)
+			    int raw, int access, unsigned int aio)
 {
 	struct cp_test *test = NULL;
 	int i = 0;
@@ -149,7 +149,7 @@ static void usage(void)
 	fprintf(stderr, "\t-r --raw\tPrint out raw numbers for postprocessing\n");
 	fprintf(stderr, "\t-v --vmsplice\tUse vmsplice kernel interface\n");
 	fprintf(stderr, "\t-s --sendmsg\tUse sendmsg kernel interface\n");
-	fprintf(stderr, "\t-o --aio\tUse AIO interface\n");
+	fprintf(stderr, "\t-o --aio\tUse AIO interface with given number of IOVECs\n");
 }
 
 int main(int argc, char *argv[])
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
 	int i = 0;
 	int alltests = 0;
 	int accesstype = KCAPI_ACCESS_HEURISTIC;
-	int aio = 0;
+	unsigned int aio = 0;
 
 	register_tests(0);
 
@@ -177,13 +177,13 @@ int main(int argc, char *argv[])
 			{"cipher", 1, 0, 'c'},
 			{"time", 1, 0, 't'},
 			{"blocks", 1, 0, 'b'},
-			{"raw", 1, 0, 'r'},
+			{"raw", 0, 0, 'r'},
 			{"sendmsg", 0, 0, 's'},
 			{"vmsplice", 0, 0, 'v'},
-			{"aio", 0, 0, 'o'},
+			{"aio", 1, 0, 'o'},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "alc:t:b:rsvo", opts, &opt_index);
+		c = getopt_long(argc, argv, "alc:t:b:rsvo:", opts, &opt_index);
 		if(-1 == c)
 			break;
 		switch(c)
@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
 				accesstype = KCAPI_ACCESS_SENDMSG;
 				break;
 			case 'o':
-				aio = KCAPI_INIT_AIO;
+				aio = (unsigned int)atoi(optarg);
 				break;
 
 			default:

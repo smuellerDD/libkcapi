@@ -25,13 +25,12 @@
  * @exectime: execution time for current test -- if 0, use the predefined
  *	      execution time for the test.
  * @len: number of blocks to test
- * @aio: whether to test AIO support
- *
+ * @aio: number of iovs to send. If 0, don't use aio.
  *
  * result: 0 on success, error otherwise
  */
 int cp_exec_test(struct cp_test *test, unsigned int exectime, size_t len,
-		 int aio)
+		 unsigned int aio)
 {
 	uint64_t testduration = 0;
 	uint64_t nano = 1;
