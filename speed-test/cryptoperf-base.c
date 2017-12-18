@@ -57,6 +57,8 @@ int cp_exec_test(struct cp_test *test, unsigned int exectime, size_t len,
 	test->results.totaltime = 0;
 	test->results.rounds = 0;
 	test->results.byteperop = test->exec_test(test);
+	if (aio)
+		test->results.byteperop *= aio;
 
 	/* prime the test */
 	for (i = 0; i < 10; i++)
