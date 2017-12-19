@@ -85,7 +85,8 @@ static int cp_skcipher_init_test(struct cp_test *test, size_t len,
 	}
 
 	cp_read_random(scratchpad,
-		       kcapi_cipher_blocksize(test->u.skcipher.handle) * len);
+		       kcapi_cipher_blocksize(test->u.skcipher.handle) * len *
+					      (aio ? aio : 1));
 
 	test->u.skcipher.inputlen =
 		len * kcapi_cipher_blocksize(test->u.skcipher.handle);
