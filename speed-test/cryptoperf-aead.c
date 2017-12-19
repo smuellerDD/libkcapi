@@ -165,10 +165,51 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm,
 		}
 
 		for (i = 0; i < aio; i++) {
+			int ret = 0;
+
 			test->u.aead.iniov[i].iov_base = input;
 			test->u.aead.iniov[i].iov_len = test->u.aead.indatalen;
-			test->u.aead.iniov[i].iov_base = output;
-			test->u.aead.iniov[i].iov_len = test->u.aead.outdatalen;
+			test->u.aead.outiov[i].iov_base = output;
+			test->u.aead.outiov[i].iov_len = test->u.aead.outdatalen;
+
+			if (!i) {
+				input += test->u.aead.indatalen;
+				output += test->u.aead.outdatalen;
+				continue;
+			}
+
+			if (enc) {
+				cp_read_random(input, test->u.aead.indatalen);
+			} else {
+				/* we need good data to avoid testing just the hash */
+				cp_read_random(output, test->u.aead.outdatalen);
+				ret = kcapi_aead_encrypt(test->u.aead.handle,
+							output,
+							test->u.aead.outdatalen,
+							test->u.aead.iv,
+							input,
+							test->u.aead.indatalen, 0);
+				if (ret < 0) {
+					printf(DRIVER_NAME": could not create ciphertext for "
+				"%s (%d)\n", test->driver_name, ret);
+					goto out;
+				}
+				/* copy the AAD as this is not copied by the kernel */
+				memcpy(input, output, test->u.aead.assoclen);
+				/* just a verification to avoid being fooled */
+				ret = kcapi_aead_decrypt(test->u.aead.handle,
+							input,
+							test->u.aead.indatalen,
+							test->u.aead.iv,
+							output,
+							test->u.aead.outdatalen,
+							test->accesstype);
+				if (ret < 0) {
+					printf(DRIVER_NAME": could not decrypt ciphertext for "
+				"%s (%d)\n", test->driver_name, ret);
+					goto out;
+				}
+			}
 
 			input += test->u.aead.indatalen;
 			output += test->u.aead.outdatalen;
