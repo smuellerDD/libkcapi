@@ -381,8 +381,11 @@ int _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
 			 * If one cipher operation fails, so will the entire
 			 * AIO operation
 			 */
-			if (events[i].res < 0)
-				return events[i].res;
+			if (events[i].res < 0) {
+				handle->aio.iocb_ret[events[i].data] =
+							events[i].res;
+				return (int)events[i].res;
+			}
 
 			cb = (struct iocb *)(uintptr_t)events[i].obj;
 
