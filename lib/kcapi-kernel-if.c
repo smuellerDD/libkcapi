@@ -284,7 +284,7 @@ int32_t _kcapi_common_vmsplice_iov_fd(struct kcapi_handle *handle, int *fdptr,
 		    ret);
 
 	if ((uint32_t)ret != inlen) {
-		kcapi_dolog(KCAPI_LOG_ERR, "vmsplice: not all data received by kernel (data recieved: %ld -- data sent: %lu)",
+		kcapi_dolog(KCAPI_LOG_ERR, "vmsplice: not all data received by kernel (data received: %ld -- data sent: %lu)",
 			(long)ret, (unsigned long)inlen);
 		return -EFAULT;
 	}
