@@ -396,13 +396,6 @@ int _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
 			if (events[i].res > 0) {
 				handle->aio.iocb_ret[events[i].data] =
 								events[i].res;
-
-				/*
-				 * An error on one IOCB causes the entire AIO
-				 * request to fail.
-				 */
-				if ((size_t)events[i].res != cb->aio_nbytes)
-					return -EBADMSG;
 			} else {
 				handle->aio.iocb_ret[events[i].data] =
 								cb->aio_nbytes;
