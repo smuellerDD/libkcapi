@@ -1,0 +1,60 @@
+From 376b0c4f625df9c1326c994ae8e3ce7ff74a9456 Mon Sep 17 00:00:00 2001
+From: Stephan Mueller <smueller@chronox.de>
+Date: Sun, 7 Jan 2018 18:15:17 +0100
+Subject: [PATCH v10 0/3] crypto: add algif_akcipher user space API
+
+Hi,
+
+This patch set adds the AF_ALG user space API to externalize the
+asymmetric cipher API recently added to the kernel crypto API.
+
+The patch set is tested with the user space library of libkcapi [1].
+Use [1] test/test.sh for a full test run. The test covers the
+following scenarios:
+
+	* sendmsg of one IOVEC
+
+	* sendmsg of 16 IOVECs with non-linear buffer
+
+	* vmsplice of one IOVEC
+
+	* vmsplice of 15 IOVECs with non-linear buffer
+
+	* invoking multiple separate cipher operations with one
+	  open cipher handle
+
+	* encryption with private key (using vector from testmgr.h)
+
+	* encryption with public key (using vector from testmgr.h)
+
+	* decryption with private key (using vector from testmgr.h)
+
+Note, to enable the test, edit line [2] from "4 99" to "4 13".
+
+[1] http://www.chronox.de/libkcapi.html
+[2] https://github.com/smuellerDD/libkcapi/blob/master/test/test.sh#L1452
+
+Changes v10:
+ * port to kernel 4.15-rc3
+ * incorporate all fixes to AF_ALG applied during the 4.15-rc1 development cycle
+   including fixing of DoS errors
+
+Stephan Mueller (3):
+  crypto: AF_ALG -- add sign/verify API
+  crypto: AF_ALG -- add setpubkey setsockopt call
+  crypto: AF_ALG -- add asymmetric cipher
+
+ crypto/Kconfig              |   9 +
+ crypto/Makefile             |   1 +
+ crypto/af_alg.c             |  28 ++-
+ crypto/algif_aead.c         |  31 ++-
+ crypto/algif_akcipher.c     | 474 ++++++++++++++++++++++++++++++++++++++++++++
+ crypto/algif_skcipher.c     |  25 ++-
+ include/crypto/if_alg.h     |   7 +-
+ include/uapi/linux/if_alg.h |   3 +
+ 8 files changed, 547 insertions(+), 31 deletions(-)
+ create mode 100644 crypto/algif_akcipher.c
+
+-- 
+2.14.3
+

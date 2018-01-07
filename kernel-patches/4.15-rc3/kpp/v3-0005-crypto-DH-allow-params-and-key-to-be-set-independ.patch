@@ -1,0 +1,43 @@
+From bf5d3b2785ce88cc607591eca1f9a07312f7a3ea Mon Sep 17 00:00:00 2001
+From: Stephan Mueller <smueller@chronox.de>
+Date: Sun, 7 Jan 2018 12:54:26 +0100
+Subject: [PATCH v3 5/8] crypto: DH - allow params and key to be set
+ independently
+
+Parameters are handled independently from the secret key. Therefore,
+this patch allows setting of the parameter independently from the secret
+key. Before invoking the actual crypto operation, the code must now
+check that the secret key and the parameters are all present.
+
+Signed-off-by: Stephan Mueller <smueller@chronox.de>
+---
+ crypto/dh.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/crypto/dh.c b/crypto/dh.c
+index 5659fe7f446d..7d3485682edc 100644
+--- a/crypto/dh.c
++++ b/crypto/dh.c
+@@ -53,6 +53,10 @@ static int dh_check_params_length(unsigned int p_len)
+ 
+ static int dh_set_params(struct dh_ctx *ctx, struct dh *params)
+ {
++	/* If DH parameters are not given, do not check them. */
++	if (!params->p_size && !params->g_size)
++		return 0;
++
+ 	if (dh_check_params_length(params->p_size << 3))
+ 		return -EINVAL;
+ 
+@@ -104,7 +108,7 @@ static int dh_compute_value(struct kpp_request *req)
+ 	if (!val)
+ 		return -ENOMEM;
+ 
+-	if (unlikely(!ctx->xa)) {
++	if (unlikely(!ctx->xa || !ctx->p || !ctx->g)) {
+ 		ret = -EINVAL;
+ 		goto err_free_val;
+ 	}
+-- 
+2.14.3
+
