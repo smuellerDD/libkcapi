@@ -211,7 +211,7 @@ static inline int32_t kcapi_cipher_conv_enc_common(const char *name,
 					const uint8_t *iv,
 					uint8_t *out, uint32_t outlen)
 {
-	struct kcapi_handle handle;
+	struct kcapi_handle handle = { 0 };
 	int32_t ret = _kcapi_allocated_handle_init(&handle, "skcipher", name,
 						   0);
 

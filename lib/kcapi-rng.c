@@ -150,7 +150,7 @@ static int get_random(uint8_t *buf, uint32_t buflen)
 DSO_PUBLIC
 int32_t kcapi_rng_get_bytes(uint8_t *buffer, uint32_t outlen)
 {
-	struct kcapi_handle handle;
+	struct kcapi_handle handle = { 0 };
 	uint8_t buf[KCAPI_RNG_BUFSIZE] __aligned(KCAPI_APP_ALIGN);
 	uint8_t *seedbuf = buf;
 	uint32_t seedsize = 0, orig_outlen = outlen;
