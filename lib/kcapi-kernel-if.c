@@ -566,8 +566,8 @@ int _kcapi_common_setkey(struct kcapi_handle *handle,
 	ret = setsockopt(handle->tfmfd, SOL_ALG, ALG_SET_KEY, key, keylen);
 	if (ret < 0)
 		ret = -errno;
-	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: sendmsg syscall returned %d",
-		    ret);
+	kcapi_dolog(KCAPI_LOG_DEBUG,
+		    "AF_ALG setkey: setsockopt syscall returned %d", ret);
 
 	return ret;
 }
