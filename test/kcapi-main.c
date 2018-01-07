@@ -2013,8 +2013,6 @@ static int cavs_asym(struct kcapi_cavs *cavs_test, uint32_t loops,
 
 
 	for (i = 0; i < loops; i++) {
-		int errsv = 0;
-
 		if (cavs_test->enc == 0) {
 			ret = kcapi_akcipher_encrypt(handle,
 					cavs_test->pt, cavs_test->ptlen,
@@ -2034,14 +2032,12 @@ static int cavs_asym(struct kcapi_cavs *cavs_test, uint32_t loops,
 		} else
 			ret = -EINVAL;
 
-		errsv = errno;
-		if (0 > ret && EBADMSG != errsv) {
-			printf("Cipher operation of buffer failed: %d %d\n",
-			       errno, ret);
+		if (0 > ret && -EBADMSG != ret) {
+			printf("Cipher operation of buffer failed: %d\n", ret);
 			goto out;
 		}
 
-		if (EBADMSG == errsv) {
+		if (-EBADMSG == ret) {
 			printf("EBADMSG\n");
 		} else {
 			char *outhex = NULL;
@@ -2164,13 +2160,12 @@ static int cavs_asym_aio(struct kcapi_cavs *cavs_test, uint32_t loops,
 		ret = -EINVAL;
 	_get_time(&end);
 
-	if (0 > ret && EBADMSG != errno) {
-		printf("Cipher operation of buffer failed: %d %d\n",
-		       errno, ret);
+	if (0 > ret && -EBADMSG != ret) {
+		printf("Cipher operation of buffer failed: %d\n", ret);
 		goto out;
 	}
 
-	if (EBADMSG == errno) {
+	if (-EBADMSG == ret) {
 		printf("EBADMSG\n");
 	} else {
 		for (i = 0; i < loops; i++) {
@@ -2320,8 +2315,6 @@ static int cavs_asym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 	}
 
 	for (i = 0; i < loops; i++) {
-		int errsv = 0;
-
 		ret = kcapi_akcipher_stream_update_last(handle, iniov, numiovecs);
 		if (ret < 0) {
 			printf("asym update failed\n");
@@ -2330,14 +2323,12 @@ static int cavs_asym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 
 		ret = kcapi_akcipher_stream_op(handle, outiov, NUMIOVECS);
 
-		errsv = errno;
-		if (0 > ret && EBADMSG != errsv) {
-			printf("Cipher operation of buffer failed: %d %d\n",
-			       errno, ret);
+		if (0 > ret && -EBADMSG != ret) {
+			printf("Cipher operation of buffer failed: %d\n", ret);
 			goto out;
 		}
 
-		if (EBADMSG == errsv) {
+		if (-EBADMSG == ret) {
 			printf("EBADMSG\n");
 		} else {
 			uint32_t j = 0;
