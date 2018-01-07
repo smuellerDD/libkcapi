@@ -3,6 +3,16 @@ Changes 1.0.2
  * Fix: AIO return code handling on large number of requests -- reported by
    Jonathan Cameron
  * Enhancement: disable coredumps of library
+ * Fix: remove unchecked -fstack-protector-strong from Makefile -- reported by
+   Mathieu Malaterre
+ * Fix: document that kcapi_cipher_stream_op must be called in a loop to collect
+   all data in a multhreaded environment.
+ * Test Fix: Update symmetric multithreaded stream test to invoke
+   kcapi_cipher_stream_op in a loop to collect all data.
+ * Fix: Initialize the cipher handle on stack with zeros as the library expects
+   a zero-initialized cipher handle. This fixes a possible segfault where
+   free() is called on a non-initialized memory location.
+ * Fix: port algif_kpp and algif_akcipher to 4.15-rc3
 
 Changes 1.0.1
  * Fix: constify AEAD cipher input data
