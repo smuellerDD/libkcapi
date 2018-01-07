@@ -361,6 +361,18 @@ int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
  * will only be filled up to the maximum number of full block sizes that fit
  * into the buffer.
  *
+ * The kernel supports multithreaded applications where one or more threads
+ * send data via the kcapi_cipher_stream_update() function and another thread
+ * collects the processed data via kcapi_cipher_stream_op. The kernel, however,
+ * will return data via kcapi_cipher_stream_op() as soon as it has some data
+ * available. For example, one thread sends 1000 bytes to be encrypted and
+ * another thread already waits for the ciphertext. The kernel may send only,
+ * say, 500 bytes back to the waiting process during one
+ * kcapi_cipher_stream_op() call. In a subsequent calls to
+ * kcapi_cipher_stream_op() more ciphertext is returned. This implies that when
+ * the receiving thread shall collect all data there is,
+ * kcapi_cipher_stream_op() must be called in a loop until all data is received.
+ *
  * @return number of bytes obtained from the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */

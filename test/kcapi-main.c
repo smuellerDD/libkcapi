@@ -922,8 +922,6 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 		if (!outbuf)
 			goto out;
 	}
-	outiov.iov_base = outbuf;
-	outiov.iov_len = outbuflen;
 
 	ret = -EINVAL;
 	if (kcapi_cipher_init(&handle, cavs_test->cipher, 0)) {
@@ -951,6 +949,8 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 	}
 
 	for (i = 0; i < loops; i++) {
+		uint32_t outptr = 0;
+
 		if (cavs_test->enc) {
 			iov.iov_base = cavs_test->pt;
 			iov.iov_len = cavs_test->ptlen;
@@ -961,10 +961,18 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 
 		mt_sym_writer(handle, &iov, forking);
 
-		ret = kcapi_cipher_stream_op(handle, &outiov, 1);
-		if (0 > ret) {
-			printf("Finalization and cipher operation failed\n");
-			goto out;
+		outiov.iov_base = outbuf;
+		outiov.iov_len = outbuflen;
+		while (outptr < outbuflen) {
+			ret = kcapi_cipher_stream_op(handle, &outiov, 1);
+			if (0 > ret) {
+				printf("Finalization and cipher operation failed\n");
+				goto out;
+			}
+
+			outiov.iov_base = (uint8_t *)outiov.iov_base + ret;
+			outiov.iov_len += ret;
+			outptr += ret;
 		}
 
 		bin2print(outbuf, outbuflen);
