@@ -63,6 +63,8 @@
 static uint8_t fipscheck_hmackey[] = "orboDeJITITejsirpADONivirpUkvarP";
 static uint8_t hmaccalc_hmackey[] = "FIPS-FTW-RHT2009";
 
+static char *bsdhashname;
+
 static void usage(char *name)
 {
 	fprintf(stderr, "\n%s - calculation of hash sum (Using Linux Kernel Crypto API)\n", basename(name));
@@ -75,6 +77,7 @@ static void usage(char *name)
 	fprintf(stderr, "\t-s --status\t\tResult of verification given with return code\n");
 	fprintf(stderr, "\t-k --hkey [HEX KEY]\tPerform HMAC verification with given key\n");
 	fprintf(stderr, "\t-b --bkey [KEY]\t\tPerform HMAC verification with given key\n");
+	fprintf(stderr, "\t--tag\t\t\tCreate a BSD-style checksum\n");
 	fprintf(stderr, "\t-h --help\t\tPrint this help text\n");
 	fprintf(stderr, "\t-v --version\t\tShow version\n");
 }
@@ -93,45 +96,61 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 		  const char *comphash, uint32_t comphashlen,
 		  FILE *outfile)
 {	
-	int fd;
+	int fd = -1;
 	int ret = 0;
 	struct stat sb;
 	char *memblock = NULL;
 	uint8_t *memblock_p;
 	uint8_t md[64];
 
-	fd = open(filename, O_RDONLY | O_CLOEXEC);
-	if (fd < 0) {
-		fprintf(stderr, "Cannot open file %s: %s\n", filename,
-			strerror(errno));
-		return -EIO;
-	}
-	
-	/* Do not return an error in case we cannot validate the data. */
-	ret = check_filetype(fd, &sb, filename);
-	if (ret)
-		goto out;
-
-	if (sb.st_size) {
-		memblock = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
-		if (memblock == MAP_FAILED)
-		{
-			fprintf(stderr, "Use of mmap failed\n");
-			ret = -ENOMEM;
-			goto out;
+	if (filename) {
+		fd = open(filename, O_RDONLY | O_CLOEXEC);
+		if (fd < 0) {
+			fprintf(stderr, "Cannot open file %s: %s\n", filename,
+				strerror(errno));
+			return -EIO;
 		}
-	}
 
-	/* Compute hash */
-	memblock_p = (uint8_t *)memblock;
-	while (sb.st_size) {
-		uint32_t todo = (sb.st_size > INT_MAX) ? INT_MAX : sb.st_size;
-
-		ret = kcapi_md_update(handle, memblock_p, todo);
-		if (ret < 0)
+		/*
+		 * Do not return an error in case we cannot validate the data.
+		 */
+		ret = check_filetype(fd, &sb, filename);
+		if (ret)
 			goto out;
-		sb.st_size -= todo;
-		memblock_p += todo;
+
+		if (sb.st_size) {
+			memblock = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
+			if (memblock == MAP_FAILED)
+			{
+				fprintf(stderr, "Use of mmap failed\n");
+				ret = -ENOMEM;
+				goto out;
+			}
+		}
+
+		/* Compute hash */
+		memblock_p = (uint8_t *)memblock;
+		while (sb.st_size) {
+			uint32_t todo = (sb.st_size > INT_MAX) ? INT_MAX : sb.st_size;
+
+			ret = kcapi_md_update(handle, memblock_p, todo);
+			if (ret < 0)
+				goto out;
+			sb.st_size -= todo;
+			memblock_p += todo;
+		}
+	} else {
+		uint8_t tmpbuf[TMPBUFLEN] __aligned(KCAPI_APP_ALIGN);
+		size_t bufsize;
+
+		while ((bufsize =
+		        fread(tmpbuf, sizeof(uint8_t), TMPBUFLEN, stdin))) {
+
+			ret = kcapi_md_update(handle, tmpbuf, bufsize);
+			if (ret < 0)
+				goto out;
+		}
+		kcapi_memset_secure(tmpbuf, 0, sizeof(tmpbuf));
 	}
 
 	ret = kcapi_md_final(handle, md, sizeof(md));
@@ -147,14 +166,20 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 				ret = 1;
 			else
 				ret = 0;
-
 		} else {
-			bin2print(md, ret, filename, outfile, 1);
+			if (bsdhashname) {
+				fprintf(outfile, "%s (%s) = ", bsdhashname,
+					filename ? filename : "-");
+				bin2print(md, ret, NULL, outfile, 1);
+			} else {
+				bin2print(md, ret, filename ? filename : "-",
+					  outfile, 1);
+			}
 			ret = 0;
 		}
 	} else {
 		fprintf(stderr, "Generation of hash for file %s failed (%d)\n",
-			filename, ret);
+			filename ? filename : "stdin", ret);
 	}
 
 out:
@@ -226,30 +251,36 @@ static int hash_files(char *hashname, char *filename[], uint32_t files,
 		}
 	}
 	
-	for (i = 0; i < files; i++) {
-		FILE *out = stdout;
+	if (files) {
+		for (i = 0; i < files; i++) {
+			FILE *out = stdout;
 
-		if (fipshmac) {
-			char *outfile = get_hmac_file(filename[i]);
+			if (fipshmac) {
+				char *outfile = get_hmac_file(filename[i]);
 
-			if (!outfile) {
-				fprintf(stderr, "Cannot create HMAC file name\n");
-				continue;
-			}
-			out = fopen(outfile, "w");
-			if (!out) {
-				fprintf(stderr, "Cannot open HMAC file %s\n",
-					outfile);
+				if (!outfile) {
+					fprintf(stderr,
+						"Cannot create HMAC file name\n");
+					continue;
+				}
+				out = fopen(outfile, "w");
+				if (!out) {
+					fprintf(stderr,
+						"Cannot open HMAC file %s\n",
+						outfile);
+					free(outfile);
+					continue;
+				}
 				free(outfile);
-				continue;
 			}
-			free(outfile);
+			ret = hasher(handle, filename[i], NULL, 0, out);
+			if (fipshmac)
+				fclose(out);
+			if (ret)
+				break;
 		}
-		ret = hasher(handle, filename[i], NULL, 0, out);
-		if (fipshmac)
-			fclose(out);
-		if (ret)
-			break;
+	} else {
+		ret = hasher(handle, NULL, NULL, 0, stdout);
 	}
 
 	kcapi_md_destroy(handle);
@@ -297,54 +328,107 @@ static int process_checkfile(char *hashname, char *checkfile, char *targetfile,
 	}
 
 	while (fgets(buf, sizeof(buf), file)) {
-		int foundsep = 0;
-		uint32_t hashlen = 0;
+		char *filename = NULL; // parsed file name
+		char *hexhash = NULL;  // parsed hex value of hash
+		uint32_t hashlen = 0;  // length of hash hex value
 		uint32_t linelen = strlen(buf);
 		uint32_t i;
+		uint32_t bsd_style = 0; // >0 if --tag formatted style
 
-		/* remove trailing CR */
+		/* remove trailing CR and reduce buffer length */
 		for (i = linelen; i > 0; i--) {
-			if (!isprint(buf[i]))
-				buf[i] = 0;
-			else
+			if (!isprint(buf[i])) {
+				buf[i] = '\0';
+				linelen--;
+			} else
 				break;
 		}
 
 		for (i = 0; i < linelen; i++) {
-			if (isblank(buf[i])) {
-				foundsep = 1;
-				continue;
-			}
 
-			if (!foundsep) {
-				hashlen++;
-			} else {
-				char *filename = buf + i;
-				int r = hasher(handle, filename, buf, hashlen,
-					       stdout);
-
-				if (r == 0) {
-					if (log < CHK_QUIET)
-						printf("%s: OK\n", filename);
-				} else if (r == 1) {
-					if (log < CHK_STATUS)
-						printf("%s: Not OK\n",
-						       filename);
-					ret++;
-				} else
-					goto out;
+			/*
+			 * Check for BSD-style separator between file name and
+			 * hash value.
+			 */
+			if (((linelen - i) >= 3) &&
+			    isblank(buf[i]) &&
+			    buf[i+1] == '=' &&
+			    isblank(buf[i+2])) {
+				/* Start of hash value */
+				bsd_style = i + 3;
+				hexhash = buf + bsd_style;
 				break;
 			}
 		}
 
-		/* fipscheck does not have the filename in the check file */
-		if (!foundsep && targetfile) {
-			return hasher(handle, targetfile,
-				      buf, hashlen - 1, stdout);
+		for (i = 0; i < linelen; i++) {
+			/* file name / hash separator for regular case */
+			if (!bsd_style && isblank(buf[i])) {
+				filename = buf + i;
+				break;
+			}
+
+			/* Count hash bytes */
+			if (!bsd_style && !filename)
+				hashlen++;
+
+			/* Find file name start value of BSD-style. */
+			if (bsd_style &&
+			    (linelen - i) >= 2 &&
+			     isblank(buf[i]) &&
+			     buf[i + 1] == '(') {
+				filename = buf + i + 2;
+				break;
+			}
 		}
 
-		if (!foundsep)
-			ret++;
+		/* In regular case, hash starts at the beginning of buffer. */
+		if (!bsd_style)
+			hexhash = buf;
+
+		if (bsd_style) {
+			/* Hash starts after separator */
+			hashlen = linelen - bsd_style + 1;
+
+			/* remove closing parenthesis behind filename */
+			if (buf[(bsd_style - 4)] == ')')
+				buf[(bsd_style - 4)] = '\0';
+		}
+
+		if (!hexhash || !hashlen) {
+			printf("Hash not found\n");
+			return 1;
+		}
+
+		if (filename) {
+			int r;
+
+			/* Consume leading blank characters */
+			while (isblank(*filename) && isprint(*filename))
+				filename++;
+
+			r = hasher(handle, filename, hexhash, hashlen, stdout);
+
+			if (r == 0) {
+				if (log < CHK_QUIET)
+					printf("%s: OK\n", filename);
+			} else if (r == 1) {
+				if (log < CHK_STATUS)
+					printf("%s: Not OK\n",
+						filename);
+				ret++;
+			} else
+				goto out;
+		} else {
+			/*
+			 * fipscheck does not have the filename in the check
+			 * file
+			 */
+			if (targetfile) {
+				return hasher(handle, targetfile,
+					      hexhash, hashlen + 1, stdout);
+			}
+		}
 	}
 
 out:
@@ -489,6 +573,7 @@ int main(int argc, char *argv[])
 	int loglevel = 0;
 	int fipscheck = 0;
 	int fipshmac = 0;
+	int bsd_style = 0;
 
 	/*
 	 * Self-integrity check:
@@ -510,6 +595,7 @@ int main(int argc, char *argv[])
 		{"hkey", 1, 0, 'k'},
 		{"bkey", 1, 0, 'b'},
 		{"help", 0, 0, 'h'},
+		{"tag", 0, 0, 0},
 		{0, 0, 0, 0}
 	};
 
@@ -524,30 +610,39 @@ int main(int argc, char *argv[])
 	memset(hash, 0, sizeof(hash));
 	memset(check_hash, 0, sizeof(check_hash));
 	strncpy(check_hash, "hmac(sha256)", HASHNAMESIZE);
-	if (0 == strncmp(basen, "sha256sum", 9))
+	if (0 == strncmp(basen, "sha256sum", 9)) {
 		strncpy(hash, "sha256", HASHNAMESIZE);
-	else if (0 == strncmp(basen, "sha512sum", 9))
+		bsdhashname = "SHA256";
+	} else if (0 == strncmp(basen, "sha512sum", 9)) {
 		strncpy(hash, "sha512", HASHNAMESIZE);
-	else if (0 == strncmp(basen, "sha1sum", 7))
+		bsdhashname = "SHA512";
+	} else if (0 == strncmp(basen, "sha1sum", 7)) {
 		strncpy(hash, "sha1", HASHNAMESIZE);
-	else if (0 == strncmp(basen, "sha224sum", 9))
+		bsdhashname = "SHA1";
+	} else if (0 == strncmp(basen, "sha224sum", 9)) {
 		strncpy(hash, "sha224", HASHNAMESIZE);
-	else if (0 == strncmp(basen, "sha384sum", 9))
+		bsdhashname = "SHA224";
+	} else if (0 == strncmp(basen, "sha384sum", 9)) {
 		strncpy(hash, "sha384", HASHNAMESIZE);
-	else if (0 == strncmp(basen, "md5sum", 6))
+		bsdhashname = "SHA384";
+	} else if (0 == strncmp(basen, "md5sum", 6)) {
 		strncpy(hash, "md5", HASHNAMESIZE);
-	else if (0 == strncmp(basen, "fipshmac", 8)) {
+		bsdhashname = "MD5";
+	} else if (0 == strncmp(basen, "fipshmac", 8)) {
 		strncpy(hash, "hmac(sha256)", HASHNAMESIZE);
+		bsdhashname = "HMAC(SHA256)";
 		hmackey = fipscheck_hmackey;
 		hmackeylen = strlen((char *)fipscheck_hmackey);
 		fipshmac = 1;
 	} else if (0 == strncmp(basen, "fipscheck", 9)) {
 		strncpy(hash, "hmac(sha256)", HASHNAMESIZE);
+		bsdhashname = "HMAC(SHA256)";
 		hmackey = fipscheck_hmackey;
 		hmackeylen = strlen((char *)fipscheck_hmackey);
 		fipscheck = 1;
 	} else if (0 == strncmp(basen, "sha1hmac", 8)) {
 		strncpy(hash, "hmac(sha1)", HASHNAMESIZE);
+		bsdhashname = "HMAC(SHA1)";
 		hmackey = hmaccalc_hmackey;
 		hmackeylen = strlen((char *)hmaccalc_hmackey);
 		strncpy(check_hash, "hmac(sha512)", HASHNAMESIZE);
@@ -555,6 +650,7 @@ int main(int argc, char *argv[])
 		check_hmackeylen = strlen((char *)hmaccalc_hmackey);
 	} else if (0 == strncmp(basen, "sha224hmac", 10)) {
 		strncpy(hash, "hmac(sha224)", HASHNAMESIZE);
+		bsdhashname = "HMAC(SHA224)";
 		hmackey = hmaccalc_hmackey;
 		hmackeylen = strlen((char *)hmaccalc_hmackey);
 		strncpy(check_hash, "hmac(sha512)", HASHNAMESIZE);
@@ -562,6 +658,7 @@ int main(int argc, char *argv[])
 		check_hmackeylen = strlen((char *)hmaccalc_hmackey);
 	} else if (0 == strncmp(basen, "sha256hmac", 10)) {
 		strncpy(hash, "hmac(sha256)", HASHNAMESIZE);
+		bsdhashname = "HMAC(SHA256)";
 		hmackey = hmaccalc_hmackey;
 		hmackeylen = strlen((char *)hmaccalc_hmackey);
 		strncpy(check_hash, "hmac(sha512)", HASHNAMESIZE);
@@ -569,6 +666,7 @@ int main(int argc, char *argv[])
 		check_hmackeylen = strlen((char *)hmaccalc_hmackey);
 	} else if (0 == strncmp(basen, "sha384hmac", 10)) {
 		strncpy(hash, "hmac(sha384)", HASHNAMESIZE);
+		bsdhashname = "HMAC(SHA384)";
 		hmackey = hmaccalc_hmackey;
 		hmackeylen = strlen((char *)hmaccalc_hmackey);
 		strncpy(check_hash, "hmac(sha512)", HASHNAMESIZE);
@@ -576,6 +674,7 @@ int main(int argc, char *argv[])
 		check_hmackeylen = strlen((char *)hmaccalc_hmackey);
 	} else if (0 == strncmp(basen, "sha512hmac", 10)) {
 		strncpy(hash, "hmac(sha512)", HASHNAMESIZE);
+		bsdhashname = "HMAC(SHA512)";
 		hmackey = hmaccalc_hmackey;
 		hmackeylen = strlen((char *)hmaccalc_hmackey);
 		strncpy(check_hash, "hmac(sha512)", HASHNAMESIZE);
@@ -660,6 +759,9 @@ int main(int argc, char *argv[])
 					ret = 0;
 					goto out;
 				}
+				case 7:
+					bsd_style = 1;
+					break;
 				break;
 
 			case 'v':
@@ -725,6 +827,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (!bsd_style)
+		bsdhashname = NULL;
+
 	if (fipscheck_self(check_hash, check_hmackey, check_hmackeylen)) {
 		fprintf(stderr, "Integrity check of application %s failed\n",
 			basen);
@@ -751,11 +856,13 @@ int main(int argc, char *argv[])
 					hmackey, hmackeylen);
 		if (ret)
 			goto out;
-	}
+	} else if (optind == argc)
+		ret = hash_files(hash, NULL, 0, hmackey, hmackeylen, fipshmac);
 
 	if (optind < argc)
 		ret = hash_files(hash, argv + optind, (argc - optind),
 				 hmackey, hmackeylen, fipshmac);
+
 
 out:
 	if (basec)
