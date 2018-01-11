@@ -39,7 +39,8 @@ as listed in the following:
 
 All tests are collectively invoked with the `test-invocation.sh` script.
 In addition, the following tests are not integrated into the general
-test run:
+test run, but can be enabled by setting `ENABLE_FUZZ_TEST` to any value
+before running `test-invocation.sh` :
 
 * `kcapi-fuzz-test.sh`: Execute various fuzzing tests.
 

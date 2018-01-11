@@ -67,6 +67,17 @@ exec_test()
 		exit $ret
 	fi
 
+	# Run optionally.
+	if [ ! -z "$ENABLE_FUZZ_TEST"]
+	then
+		${DIR}/kcapi-fuzz-test.sh
+		ret=$?
+		if [ $ret -ne 0 ]
+		then
+			exit $ret
+		fi
+	fi
+
 	# Only execute on bare metal
 	if ! dmesg | grep -i Hypervisor | grep -q -i detected
 	then
