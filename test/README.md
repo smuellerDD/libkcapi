@@ -46,5 +46,8 @@ test run:
 Bi-arch tests
 -------------
 
-To test both word sizes simultaneously, use test-invocation.sh which
+To test both word sizes simultaneously, use `test-invocation.sh` which
 compiles and executes the test cases.
+
+You can disable the 32 bit tests by explicitly setting `NO_32BIT_TEST`
+to any value before running `test-invocation.sh`.
