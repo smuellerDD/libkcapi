@@ -1,0 +1,10 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: @PACKAGE_NAME@
+Description: Linux Kernel Crypto API User Space Interface Library
+Version: @PACKAGE_VERSION@
+Libs: -L${libdir} -lkcapi
+Cflags: -I${includedir}

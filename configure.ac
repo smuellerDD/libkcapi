@@ -114,4 +114,7 @@ if test "$with_lib_kpp" = "yes"; then
   AC_DEFINE([WITH_LIB_KPP], 1, [KPP support enabled])
 fi
 
+PKG_INSTALLDIR
+AC_CONFIG_FILES([libkcapi.pc])
+
 AC_OUTPUT

@@ -13,6 +13,8 @@ libkcapi_la_SOURCES = lib/cryptouser.h \
 
 man_MANS =
 
+pkgconfig_DATA = libkcapi.pc
+
 if DISABLE_LIB_SYM
 libkcapi_la_SOURCES +=
 else
