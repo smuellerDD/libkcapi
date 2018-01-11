@@ -67,6 +67,17 @@ exec_test()
 		exit $ret
 	fi
 
+	# Run optionally.
+	if [ ! -z "$ENABLE_FUZZ_TEST"]
+	then
+		${DIR}/kcapi-fuzz-test.sh
+		ret=$?
+		if [ $ret -ne 0 ]
+		then
+			exit $ret
+		fi
+	fi
+
 	# Only execute on bare metal
 	if ! dmesg | grep -i Hypervisor | grep -q -i detected
 	then
@@ -112,8 +123,9 @@ cd ..
 
 make distclean > /dev/null 2>&1
 
-# if we are on 64 bit system, test 32 bit alternative mode
-if $(uname -m | grep -q "x86_64")
+# if we are on 64 bit system, test 32 bit alternative mode,
+# except is has been disabled explicitly.
+if [ $(uname -m | grep -q "x86_64") && -z "$NO_32BIT_TEST" ]
 then
 	LDFLAGS=-m32 CFLAGS=-m32 ./configure $COMPILE_OPTS
 	make
