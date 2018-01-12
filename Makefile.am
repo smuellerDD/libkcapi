@@ -250,6 +250,7 @@ endif
 doc: $(sort $(DOC_TARGETS))
 
 clean-local:
+	rm -f *-stamp
 	rm -f lib/doc/*.xml
 	rm -f lib/doc/*.pdf
 	rm -f lib/doc/*.ps
@@ -257,3 +258,7 @@ clean-local:
 	rm -rf lib/doc/html/
 	rm -rf doc/
 	rm -rf bin/
+
+distclean-local:
+	rm -f lib/doc/Makefile*
+	rm -rf autom4te.cache/
