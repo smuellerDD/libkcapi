@@ -68,7 +68,7 @@ exec_test()
 	fi
 
 	# Run optionally.
-	if [ ! -z "$ENABLE_FUZZ_TEST"]
+	if [ ! -z "$ENABLE_FUZZ_TEST" ]
 	then
 		${DIR}/kcapi-fuzz-test.sh
 		ret=$?
