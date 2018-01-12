@@ -96,15 +96,16 @@ done
 
 for i in $HMACHASHER
 do
-	[ ! -x "/bin/$(basename $i)" ] && {
-		echo_deact "hmaccalc reference application /bin/$i missing"
-		continue
-	}
-
 	hash=$(basename $i)
 	hash=${hash%%hmac}
 	hasher=$i
 	i=$(basename $i)
+
+	[ ! -x "/bin/$i" ] && {
+		echo_deact "hmaccalc reference application /bin/$i missing"
+		continue
+	}
+
 	[ ! -e "$hasher" ] && {
 		echo_fail "Hasher $hasher does not exist"
 		continue
