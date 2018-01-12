@@ -196,7 +196,7 @@ TEMPFILE := $(shell mktemp)
 
 %.xml: %.tmpl lib/doc/bin/docproc$(EXEEXT)
 	$(SED) "s/@@LIBVERSION@@/$(VERSION)/" < $< > $(TEMPFILE)
-	LIBVERSION=$(VERSION) SRCTREE=lib/ ./lib/doc/bin/docproc$(EXEEXT) doc $(TEMPFILE) > $@
+	LIBVERSION=$(VERSION) SRCTREE=lib/ $(abs_top_builddir)/lib/doc/bin/docproc$(EXEEXT) doc $(TEMPFILE) > $@
 	rm $(TEMPFILE)
 
 if HAVE_DB2PDF
