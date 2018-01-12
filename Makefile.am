@@ -200,19 +200,31 @@ lib/doc/bin/docproc:
 	rm $(TEMPFILE)
 
 if HAVE_DB2PDF
-pdf: lib/doc/libkcapi.xml
-	db2$@ -o doc/ $<
+pdf: pdf-stamp
+pdf-stamp: lib/doc/libkcapi.xml
+	db2pdf -o doc/ $<
+	touch $@
 endif
 
 if HAVE_DB2PS
-ps: lib/doc/libkcapi.xml
-	db2$@ -o doc/ $<
+ps: ps-stamp
+ps-stamp: lib/doc/libkcapi.xml
+	db2ps -o doc/ $<
+	touch $@
 endif
 
 if HAVE_XMLTO
-man html: lib/doc/libkcapi.xml
-	$(MKDIR_P) lib/doc/$@
-	xmlto $@ -m lib/doc/stylesheet.xsl --skip-validation -o lib/doc/$@/ $< 2>/dev/null
+html: html-stamp
+html-stamp: lib/doc/libkcapi.xml
+	$(MKDIR_P) lib/doc/html
+	xmlto html -m lib/doc/stylesheet.xsl --skip-validation -o lib/doc/html/ $< 2>/dev/null
+	touch $@
+
+man: man-stamp
+man-stamp: lib/doc/libkcapi.xml
+	$(MKDIR_P) lib/doc/man
+	xmlto man -m lib/doc/stylesheet.xsl --skip-validation -o lib/doc/man/ $< 2>/dev/null
+	touch $@
 
 devel_manpages = lib/doc/man/*.3
 man_MANS += $(devel_manpages)
