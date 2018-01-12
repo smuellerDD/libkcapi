@@ -205,7 +205,7 @@ DOC_TARGETS += pdf
 pdf: pdf-stamp
 pdf-stamp: lib/doc/libkcapi.xml
 	$(MKDIR_P) doc/pdf
-	db2pdf -o doc/pdf $<
+	HOME=$(abs_top_builddir)/doc/pdf db2pdf -o doc/pdf $<
 	mv doc/pdf/*.pdf doc
 	rm -r doc/pdf
 	touch $@
@@ -217,7 +217,7 @@ DOC_TARGETS += ps
 ps: ps-stamp
 ps-stamp: lib/doc/libkcapi.xml
 	$(MKDIR_P) doc/ps
-	db2ps -o doc/ps $<
+	HOME=$(abs_top_builddir)/doc/ps db2ps -o doc/ps $<
 	mv doc/ps/*.ps doc
 	rm -r doc/ps
 	touch $@
