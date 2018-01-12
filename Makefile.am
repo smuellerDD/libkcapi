@@ -5,6 +5,8 @@ lib_LTLIBRARIES = libkcapi.la
 COMMON_CPPFLAGS = -Wextra -Wall -pedantic -fwrapv --param ssp-buffer-size=4 -O2 -Werror -std=gnu99
 COMMON_LDFLAGS =  -Wl,-z,relro,-z,now
 
+noinst_PROGRAMS = lib/doc/bin/docproc
+
 libkcapi_la_SOURCES = lib/cryptouser.h \
 		      lib/internal.h \
 		      lib/kcapi.h \
@@ -12,6 +14,8 @@ libkcapi_la_SOURCES = lib/cryptouser.h \
 		      lib/kcapi-utils.c
 
 man_MANS =
+
+DOC_TARGETS =
 
 pkgconfig_DATA = libkcapi.pc
 
@@ -190,35 +194,45 @@ endif
 if HAVE_MKTEMP
 TEMPFILE := $(shell mktemp)
 
-lib/doc/bin/docproc:
-	$(MAKE) -C lib/doc
-
-%.xml: %.tmpl lib/doc/bin/docproc
-	cp $< $(TEMPFILE)
-	$(SED) -i "s/@@LIBVERSION@@/$(VERSION)/" $(TEMPFILE)
-	LIBVERSION=$(VERSION) SRCTREE=lib/ ./lib/doc/bin/docproc doc $(TEMPFILE) > $@
+%.xml: %.tmpl lib/doc/bin/docproc$(EXEEXT)
+	$(SED) "s/@@LIBVERSION@@/$(VERSION)/" < $< > $(TEMPFILE)
+	LIBVERSION=$(VERSION) SRCTREE=lib/ ./lib/doc/bin/docproc$(EXEEXT) doc $(TEMPFILE) > $@
 	rm $(TEMPFILE)
 
 if HAVE_DB2PDF
+DOC_TARGETS += pdf
+
 pdf: pdf-stamp
 pdf-stamp: lib/doc/libkcapi.xml
-	db2pdf -o doc/ $<
+	$(MKDIR_P) doc/pdf
+	db2pdf -o doc/pdf $<
+	mv doc/pdf/*.pdf doc
+	rm -r doc/pdf
 	touch $@
 endif
 
 if HAVE_DB2PS
+DOC_TARGETS += ps
+
 ps: ps-stamp
 ps-stamp: lib/doc/libkcapi.xml
-	db2ps -o doc/ $<
+	$(MKDIR_P) doc/ps
+	db2ps -o doc/ps $<
+	mv doc/ps/*.ps doc
+	rm -r doc/ps
 	touch $@
 endif
 
 if HAVE_XMLTO
+DOC_TARGETS += html
+
 html: html-stamp
 html-stamp: lib/doc/libkcapi.xml
 	$(MKDIR_P) lib/doc/html
 	xmlto html -m lib/doc/stylesheet.xsl --skip-validation -o lib/doc/html/ $< 2>/dev/null
 	touch $@
+
+DOC_TARGETS += man
 
 man: man-stamp
 man-stamp: lib/doc/libkcapi.xml
@@ -233,6 +247,8 @@ $(devel_manpages): man
 endif
 endif
 
+doc: $(sort $(DOC_TARGETS))
+
 clean-local:
 	rm -f lib/doc/*.xml
 	rm -f lib/doc/*.pdf
@@ -241,6 +257,3 @@ clean-local:
 	rm -rf lib/doc/html/
 	rm -rf doc/
 	rm -rf bin/
-
-SUBDIRS = lib/doc
-
