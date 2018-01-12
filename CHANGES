@@ -1,3 +1,8 @@
+Changes 1.0.3
+ * Fix: support STDIN and --tag of sha*sum applications
+ * Enhancement: Add small enhancements to support integration with distros --
+   reported by Björn Esser
+
 Changes 1.0.2
  * Fix: hasher-test.sh on 32-bit systems
  * Fix: AIO return code handling on large number of requests -- reported by
