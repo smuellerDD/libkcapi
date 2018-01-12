@@ -168,7 +168,7 @@ man_MANS += apps/kcapi-dgst.1
 endif
 
 if HAVE_CLANG
-analyze_srcs = $(filter %.c, $(SCAN_FILES))
+analyze_srcs = $(filter %.c, $(sort $(SCAN_FILES)))
 analyze_plists = $(analyze_srcs:%.c=%.plist)
 
 MOSTLYCLEANFILES = $(analyze_plists)
@@ -184,7 +184,7 @@ endif
 
 if HAVE_CPPCHECK
 cppcheck:
-	cppcheck --enable=performance,warning,portability $(SCAN_FILES)
+	cppcheck --enable=performance,warning,portability $(sort $(SCAN_FILES))
 endif
 
 if HAVE_MKTEMP
