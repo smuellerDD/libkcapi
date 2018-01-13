@@ -144,8 +144,11 @@ kcapi_hasher_links = sha1sum sha224sum sha256sum sha384sum sha512sum \
 
 install-exec-hook:
 	(cd $(DESTDIR)$(bindir) && \
-	($(foreach link, $(kcapi_hasher_links), ln -f kcapi-hasher $(link);)) && \
-	($(foreach link, $(kcapi_hasher_links), openssl sha256 -hmac orboDeJITITejsirpADONivirpUkvarP $(link) > .$(link).hmac;)))
+	($(foreach link, $(kcapi_hasher_links), $(LN) -f kcapi-hasher $(link);)))
+if HAVE_OPENSSL
+	(cd $(DESTDIR)$(bindir) && \
+	($(foreach link, $(kcapi_hasher_links), $(OPENSSL) sha256 -hmac orboDeJITITejsirpADONivirpUkvarP $(link) > .$(link).hmac;)))
+endif
 endif
 
 if ENABLE_KCAPI_RNGAPP
@@ -195,7 +198,7 @@ MOSTLYCLEANFILES = $(analyze_plists)
 
 $(analyze_plists): %.plist: %.c
 	@echo "  CCSA  " $@
-	@clang --analyze $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) -Ilib/	$< -o $@
+	@$(CLANG) --analyze $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) -Ilib/	$< -o $@
 
 scan: $(analyze_plists)
 
@@ -204,16 +207,19 @@ endif
 
 if HAVE_CPPCHECK
 cppcheck:
-	cppcheck --enable=performance,warning,portability $(sort $(SCAN_FILES))
+	$(CPPCHECK) --enable=performance,warning,portability $(sort $(SCAN_FILES))
 endif
 
 if HAVE_MKTEMP
-TEMPFILE := $(shell mktemp)
+DOCPROC_TEMP := $(shell $(MKTEMP))
+else
+DOCPROC_TEMP := $(abs_top_builddir)/docproc.temp
+endif
 
 %.xml: %.tmpl lib/doc/bin/docproc$(EXEEXT)
-	$(SED) "s/@@LIBVERSION@@/$(VERSION)/" < $< > $(TEMPFILE)
-	LIBVERSION=$(VERSION) SRCTREE=lib/ $(abs_top_builddir)/lib/doc/bin/docproc$(EXEEXT) doc $(TEMPFILE) > $@
-	rm $(TEMPFILE)
+	$(SED) "s/@@LIBVERSION@@/$(VERSION)/" < $< > $(DOCPROC_TEMP)
+	LIBVERSION=$(VERSION) SRCTREE=lib/ $(abs_top_builddir)/lib/doc/bin/docproc$(EXEEXT) doc $(DOCPROC_TEMP) > $@
+	-rm $(DOCPROC_TEMP)
 
 if HAVE_DB2PDF
 DOC_TARGETS += pdf
@@ -221,10 +227,10 @@ DOC_TARGETS += pdf
 pdf: pdf-stamp
 pdf-stamp: lib/doc/libkcapi.xml
 	$(MKDIR_P) doc/pdf
-	HOME=$(abs_top_builddir)/doc/pdf db2pdf -o doc/pdf $<
-	mv doc/pdf/*.pdf doc
-	rm -r doc/pdf
-	touch $@
+	HOME=$(abs_top_builddir)/doc/pdf $(DB2PDF) -o doc/pdf $<
+	$(MV) doc/pdf/*.pdf doc
+	-rm -r doc/pdf
+	$(TOUCH) $@
 endif
 
 if HAVE_DB2PS
@@ -233,10 +239,10 @@ DOC_TARGETS += ps
 ps: ps-stamp
 ps-stamp: lib/doc/libkcapi.xml
 	$(MKDIR_P) doc/ps
-	HOME=$(abs_top_builddir)/doc/ps db2ps -o doc/ps $<
-	mv doc/ps/*.ps doc
-	rm -r doc/ps
-	touch $@
+	HOME=$(abs_top_builddir)/doc/ps $(DB2PS) -o doc/ps $<
+	$(MV) doc/ps/*.ps doc
+	-rm -r doc/ps
+	$(TOUCH) $@
 endif
 
 if HAVE_XMLTO
@@ -245,36 +251,36 @@ DOC_TARGETS += html
 html: html-stamp
 html-stamp: lib/doc/libkcapi.xml
 	$(MKDIR_P) lib/doc/html
-	xmlto html -m lib/doc/stylesheet.xsl --skip-validation -o lib/doc/html/ $< 2>/dev/null
-	touch $@
+	$(XMLTO) html -m lib/doc/stylesheet.xsl --skip-validation -o lib/doc/html/ $< 2>/dev/null
+	$(TOUCH) $@
 
 DOC_TARGETS += man
 
 man: man-stamp
 man-stamp: lib/doc/libkcapi.xml
 	$(MKDIR_P) lib/doc/man
-	xmlto man -m lib/doc/stylesheet.xsl --skip-validation -o lib/doc/man/ $< 2>/dev/null
-	touch $@
+	$(XMLTO) man -m lib/doc/stylesheet.xsl --skip-validation -o lib/doc/man/ $< 2>/dev/null
+	$(TOUCH) $@
 
 devel_manpages = lib/doc/man/*.3
 man_MANS += $(devel_manpages)
 
 $(devel_manpages): man
 endif
-endif
 
 doc: $(sort $(DOC_TARGETS))
 
 clean-local:
-	rm -f *-stamp
-	rm -f lib/doc/*.xml
-	rm -f lib/doc/*.pdf
-	rm -f lib/doc/*.ps
-	rm -rf lib/doc/man/
-	rm -rf lib/doc/html/
-	rm -rf doc/
-	rm -rf bin/
+	-rm -f $(DOCPROC_TEMP)
+	-rm -f *-stamp
+	-rm -f lib/doc/*.xml
+	-rm -f lib/doc/*.pdf
+	-rm -f lib/doc/*.ps
+	-rm -rf lib/doc/man/
+	-rm -rf lib/doc/html/
+	-rm -rf doc/
+	-rm -rf bin/
 
 distclean-local:
-	rm -f lib/doc/Makefile*
-	rm -rf autom4te.cache/
+	-rm -f lib/doc/Makefile*
+	-rm -rf autom4te.cache/

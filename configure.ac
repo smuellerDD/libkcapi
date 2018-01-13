@@ -27,26 +27,33 @@ AC_CONFIG_MACRO_DIR([m4])
 AX_PROG_CC_FOR_BUILD
 AX_CHECK_PIE
 
-AC_CHECK_PROG([CLANG], [clang], [yes])
-AC_CHECK_PROG([CPPCHECK], [cppcheck], [yes])
-AC_CHECK_PROG([XMLTO], [xmlto], [yes])
-AC_CHECK_PROG([DB2PDF], [db2pdf], [yes])
-AC_CHECK_PROG([DB2PS], [db2ps], [yes])
-AC_CHECK_PROG([MKTEMP], [mktemp], [yes])
+AC_PATH_PROG([OPENSSL], [openssl])
+AC_PATH_PROG([CLANG], [clang])
+AC_PATH_PROG([CPPCHECK], [cppcheck])
+AC_PATH_PROG([XMLTO], [xmlto])
+AC_PATH_PROG([DB2PDF], [db2pdf])
+AC_PATH_PROG([DB2PS], [db2ps])
+AC_PATH_PROG([MKTEMP], [mktemp])
 
 AC_SEARCH_LIBS(clock_gettime,rt)
 AC_PROG_MKDIR_P
 AC_PROG_SED
 AC_PROG_INSTALL
 AC_PROG_LN_S
+AC_PATH_PROG([CP], [cp])
+AC_PATH_PROG([LN], [ln])
+AC_PATH_PROG([MV], [mv])
+AC_PATH_PROG([TOUCH], [touch])
 
-AM_CONDITIONAL([HAVE_CLANG], [test "x$CLANG" = "xyes" ])
-AM_CONDITIONAL([HAVE_CPPCHECK], [test "x$CPPCHECK" = "xyes"])
-AM_CONDITIONAL([HAVE_XMLTO], [test "x$XMLTO" = "xyes"])
-AM_CONDITIONAL([HAVE_DB2PDF], [test "x$DB2PDF" = "xyes"])
-AM_CONDITIONAL([HAVE_DB2PS], [test "x$DB2PS" = "xyes"])
-AM_CONDITIONAL([HAVE_MKTEMP], [test "x$MKTEMP" = "xyes"])
+AM_CONDITIONAL([HAVE_OPENSSL], [test "x$OPENSSL" != "x"])
+AM_CONDITIONAL([HAVE_CLANG], [test "x$CLANG" != "x"])
+AM_CONDITIONAL([HAVE_CPPCHECK], [test "x$CPPCHECK" != "x"])
+AM_CONDITIONAL([HAVE_XMLTO], [test "x$XMLTO" != "x"])
+AM_CONDITIONAL([HAVE_DB2PDF], [test "x$DB2PDF" != "x"])
+AM_CONDITIONAL([HAVE_DB2PS], [test "x$DB2PS" != "x"])
+AM_CONDITIONAL([HAVE_MKTEMP], [test "x$MKTEMP" != "x"])
 
+AM_COND_IF([HAVE_OPENSSL], [], [AC_MSG_WARN([openssl not installed])])
 AM_COND_IF([HAVE_CLANG], [], [AC_MSG_WARN([clang not installed])])
 AM_COND_IF([HAVE_CPPCHECK], [], [AC_MSG_WARN([cppcheck not installed])])
 AM_COND_IF([HAVE_XMLTO], [], [AC_MSG_WARN([xmlto not installed])])
