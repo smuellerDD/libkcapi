@@ -99,10 +99,11 @@ do
 	hash=$(basename $i)
 	hash=${hash%%hmac}
 	hasher=$i
-	i=$(basename $i)
+	t=$(basename $i)
+	i=$(command -v $t)
 
-	[ ! -x "/bin/$i" ] && {
-		echo_deact "hmaccalc reference application /bin/$i missing"
+	[ -z "$i" ] && {
+		echo_deact "hmaccalc reference application $t missing"
 		continue
 	}
 
