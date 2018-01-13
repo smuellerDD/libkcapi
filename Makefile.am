@@ -5,7 +5,14 @@ lib_LTLIBRARIES = libkcapi.la
 COMMON_CPPFLAGS = -Wextra -Wall -pedantic -fwrapv --param ssp-buffer-size=4 -O2 -Werror -std=gnu99
 COMMON_LDFLAGS =  -Wl,-z,relro,-z,now
 
+libtool: $(LIBTOOL_DEPS)
+	$(SHELL) ./config.status libtool
+
 noinst_PROGRAMS = lib/doc/bin/docproc
+
+EXTRA_lib_doc_bin_docproc_DEPENDENCIES = libtool
+
+EXTRA_libkcapi_la_DEPENDENCIES = libtool
 
 libkcapi_la_SOURCES = lib/cryptouser.h \
 		      lib/internal.h \
@@ -29,6 +36,7 @@ if DISABLE_LIB_MD
 libkcapi_la_SOURCES +=
 else
 libkcapi_la_SOURCES += lib/kcapi-md.c
+
 if DISABLE_LIB_KDF
 libkcapi_la_SOURCES +=
 else
@@ -60,7 +68,7 @@ else
 libkcapi_la_SOURCES +=
 endif
 
-libkcapi_la_CPPFLAGS = $(COMMON_CPPFLAGS) -fPIC -fvisibility=hidden
+libkcapi_la_CPPFLAGS = $(COMMON_CPPFLAGS) -fvisibility=hidden
 libkcapi_la_LDFLAGS = $(COMMON_LDFLAGS) -Wl,--version-script,$(top_srcdir)/lib/version.lds -version-number `echo $(VERSION) | sed 's/\./:/g'`
 
 SCAN_FILES = $(libkcapi_la_SOURCES)
@@ -72,28 +80,31 @@ bin_PROGRAMS =
 if ENABLE_KCAPI_TEST
 bin_PROGRAMS += bin/kcapi
 
-bin_kcapi_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-overlength-strings -pie -fPIE -g -Ilib/
+bin_kcapi_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-overlength-strings -g -Ilib/
 bin_kcapi_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_LDADD = libkcapi.la
 bin_kcapi_SOURCES = test/kcapi-main.c
+EXTRA_bin_kcapi_DEPENDENCIES = libtool
 
 SCAN_FILES += $(bin_kcapi_SOURCES)
 
 bin_PROGRAMS += bin/kcapi-enc-test-large
 
-bin_kcapi_enc_test_large_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-overlength-strings -pie -fPIE -g -Ilib/
+bin_kcapi_enc_test_large_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-overlength-strings -g -Ilib/
 bin_kcapi_enc_test_large_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_enc_test_large_LDADD = libkcapi.la
 bin_kcapi_enc_test_large_SOURCES = test/kcapi-enc-test-large.c
+EXTRA_bin_kcapi_enc_test_large_DEPENDENCIES = libtool
 
 SCAN_FILES += $(bin_kcapi_enc_test_large_SOURCES)
 
 bin_PROGRAMS += bin/kcapi-convenience
 
-bin_kcapi_convenience_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-overlength-strings -pie -fPIE -g -Ilib/
+bin_kcapi_convenience_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-overlength-strings -g -Ilib/
 bin_kcapi_convenience_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_convenience_LDADD = libkcapi.la
 bin_kcapi_convenience_SOURCES = test/kcapi-convenience.c
+EXTRA_bin_kcapi_convenience_DEPENDENCIES = libtool
 
 SCAN_FILES += $(bin_kcapi_convenience_SOURCES)
 endif
@@ -101,7 +112,7 @@ endif
 if ENABLE_KCAPI_SPEED
 bin_PROGRAMS += bin/kcapi-speed
 
-bin_kcapi_speed_CPPFLAGS = $(COMMON_CPPFLAGS) -pie -fPIE -Wno-variadic-macros -Ilib/
+bin_kcapi_speed_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-variadic-macros -Ilib/
 bin_kcapi_speed_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_speed_LDADD = libkcapi.la
 bin_kcapi_speed_SOURCES = speed-test/cryptoperf.h \
@@ -111,6 +122,7 @@ bin_kcapi_speed_SOURCES = speed-test/cryptoperf.h \
 		      speed-test/cryptoperf-main.c \
 		      speed-test/cryptoperf-rng.c \
 		      speed-test/cryptoperf-skcipher.c
+EXTRA_bin_kcapi_speed_DEPENDENCIES = libtool
 
 SCAN_FILES += $(bin_kcapi_speed_SOURCES)
 endif
@@ -118,10 +130,11 @@ endif
 if ENABLE_KCAPI_HASHER
 bin_PROGRAMS += bin/kcapi-hasher
 
-bin_kcapi_hasher_CPPFLAGS = $(COMMON_CPPFLAGS) -fPIC -Ilib/
+bin_kcapi_hasher_CPPFLAGS = $(COMMON_CPPFLAGS) -Ilib/
 bin_kcapi_hasher_LDFLAGS = $(COMMON_LDFLAGS) -ldl
 bin_kcapi_hasher_LDADD = libkcapi.la
 bin_kcapi_hasher_SOURCES = apps/kcapi-hasher.c apps/app-internal.c
+EXTRA_bin_kcapi_hasher_DEPENDENCIES = libtool
 
 SCAN_FILES += $(bin_kcapi_hasher_SOURCES)
 
@@ -138,10 +151,11 @@ endif
 if ENABLE_KCAPI_RNGAPP
 bin_PROGRAMS += bin/kcapi-rng
 
-bin_kcapi_rng_CPPFLAGS = $(COMMON_CPPFLAGS) -pie -fPIE -Ilib/
+bin_kcapi_rng_CPPFLAGS = $(COMMON_CPPFLAGS) -Ilib/
 bin_kcapi_rng_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_rng_LDADD = libkcapi.la
 bin_kcapi_rng_SOURCES = apps/kcapi-rng.c apps/app-internal.c
+EXTRA_bin_kcapi_rng_DEPENDENCIES = libtool
 
 SCAN_FILES += $(bin_kcapi_rng_SOURCES)
 man_MANS += apps/kcapi-rng.1
@@ -150,10 +164,11 @@ endif
 if ENABLE_KCAPI_ENCAPP
 bin_PROGRAMS += bin/kcapi-enc
 
-bin_kcapi_enc_CPPFLAGS = $(COMMON_CPPFLAGS) -pie -fPIE -Ilib/
+bin_kcapi_enc_CPPFLAGS = $(COMMON_CPPFLAGS) -Ilib/
 bin_kcapi_enc_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_enc_LDADD = libkcapi.la
 bin_kcapi_enc_SOURCES = apps/kcapi-enc.c apps/app-internal.c
+EXTRA_bin_kcapi_enc_DEPENDENCIES = libtool
 
 SCAN_FILES += $(bin_kcapi_enc_SOURCES)
 man_MANS += apps/kcapi-enc.1
@@ -162,10 +177,11 @@ endif
 if ENABLE_KCAPI_DGSTAPP
 bin_PROGRAMS += bin/kcapi-dgst
 
-bin_kcapi_dgst_CPPFLAGS = $(COMMON_CPPFLAGS) -pie -fPIE -Ilib/
+bin_kcapi_dgst_CPPFLAGS = $(COMMON_CPPFLAGS) -Ilib/
 bin_kcapi_dgst_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_dgst_LDADD = libkcapi.la
 bin_kcapi_dgst_SOURCES = apps/kcapi-dgst.c apps/app-internal.c
+EXTRA_bin_kcapi_dgst_DEPENDENCIES = libtool
 
 SCAN_FILES += $(bin_kcapi_dgst_SOURCES)
 man_MANS += apps/kcapi-dgst.1
