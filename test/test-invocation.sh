@@ -125,7 +125,7 @@ make distclean > /dev/null 2>&1
 
 # if we are on 64 bit system, test 32 bit alternative mode,
 # except is has been disabled explicitly.
-if [ $(uname -m | grep -q "x86_64") && -z "$NO_32BIT_TEST" ]
+if $(uname -m | grep -q "x86_64") && [ -z "$NO_32BIT_TEST" ]
 then
 	LDFLAGS=-m32 CFLAGS=-m32 ./configure $COMPILE_OPTS
 	make
