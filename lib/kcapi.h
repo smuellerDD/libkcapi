@@ -177,7 +177,8 @@ int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
 				 int access);
 
 int32_t kcapi_cipher_encrypt_aio_iiv(struct kcapi_handle *handle,
-				     struct iovec *iniov, struct iovec *outiov,
+				     struct iovec *iniov, struct iovec *iviov,
+				     struct iovec *outiov,
 				     uint32_t iovlen, int access);
 
 /**
@@ -242,7 +243,8 @@ int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
 				 int access);
 
 int32_t kcapi_cipher_decrypt_aio_iiv(struct kcapi_handle *handle,
-				     struct iovec *iniov, struct iovec *outiov,
+				     struct iovec *iniov, struct iovec *iviov,
+				     struct iovec *outiov,
 				     uint32_t iovlen, int access);
 
 /**
@@ -717,8 +719,9 @@ int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 			       const uint8_t *iv, int access);
 
 int32_t kcapi_aead_encrypt_aio_iiv(struct kcapi_handle *handle,
-				   struct iovec *iniov, struct iovec *outiov,
-				   uint32_t iovlen, int access);
+				     struct iovec *iniov, struct iovec *iviov,
+				     struct iovec *outiov,
+				     uint32_t iovlen, int access);
 
 /**
  * kcapi_aead_getdata_input() - get the pointers into input buffer
@@ -868,8 +871,9 @@ int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 			       const uint8_t *iv, int access);
 
 int32_t kcapi_aead_decrypt_aio_iiv(struct kcapi_handle *handle,
-				   struct iovec *iniov, struct iovec *outiov,
-				   uint32_t iovlen, int access);
+				     struct iovec *iniov, struct iovec *iviov,
+				     struct iovec *outiov,
+				     uint32_t iovlen, int access);
 
 /**
  * kcapi_aead_stream_init_enc() - start an encryption operation (stream)

@@ -317,8 +317,9 @@ int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
 				  uint8_t *out, uint32_t outlen,
 				  int access, int enc);
 int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
-				struct iovec *iniov, struct iovec *outiov,
-				uint32_t iovlen, int access, int enc);
+				struct iovec *iniov, struct iovec *iviov,
+				struct iovec *outiov, uint32_t iovlen,
+				int access, int enc);
 
 int _kcapi_aio_send_iov(struct kcapi_handle *handle, struct iovec *iov,
 			uint32_t iovlen, int access, int enc);

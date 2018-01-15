@@ -1167,15 +1167,33 @@ int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
 }
 
 int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
-				struct iovec *iniov, struct iovec *outiov,
-				uint32_t iovlen, int access, int enc)
+				struct iovec *iniov, struct iovec *iviov,
+				struct iovec *outiov, uint32_t iovlen,
+				int access, int enc)
 {
 	uint32_t i, outstanding = 0, processed = 0, inflight = 0;
 	int32_t ret;
+	struct iovec *combined = iniov, *combined_p = NULL;
 
 	if (handle->aio.disable == true) {
 		kcapi_dolog(KCAPI_LOG_WARN, "AIO support disabled\n");
 		return -EOPNOTSUPP;
+	}
+
+	if (iviov) {
+		uint32_t i;
+
+		combined = malloc(sizeof(*combined) * 2 * iovlen);
+		combined_p = combined;
+		for (i = 0; i < iovlen; i++) {
+			uint32_t dst = i * 2;
+
+			combined[dst].iov_base = iviov[i].iov_base;
+			combined[dst].iov_len = iviov[i].iov_len;
+			dst++;
+			combined[dst].iov_base = iniov[i].iov_base;
+			combined[dst].iov_len = iniov[i].iov_len;
+		}
 	}
 
 	/* Every IOVEC is processed as its individual cipher operation. */
@@ -1183,16 +1201,18 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 		uint32_t max_process = KCAPI_AIO_CONCURRENT - inflight;
 		uint32_t process = (max_process < iovlen) ?
 							max_process : iovlen;
+		uint32_t iniov_process = process * (iviov ? 2 : 1);
 
-		ret = _kcapi_aio_send_iov(handle, iniov, process, access, enc);
+		ret = _kcapi_aio_send_iov(handle, combined,
+					  iniov_process, access, enc);
 		if (ret < 0)
-			return ret;
+			goto out;
 
 		ret = _kcapi_aio_read_iov(handle, outiov, process);
 		if (ret < 0)
-			return ret;
+			goto out;
 
-		iniov += process;
+		combined += iniov_process;
 		outiov += process;
 		iovlen -= process;
 
@@ -1201,14 +1221,19 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 			if (handle->aio.iocb_ret[i] == AIO_OUTSTANDING) {
 				inflight++;
 			} else if (handle->aio.iocb_ret[i] < 0) {
-				return handle->aio.iocb_ret[i];
+				ret = handle->aio.iocb_ret[i];
+				goto out;
 			} else {
-				if (handle->aio.iocb_ret[i] > INT_MAX)
-					return -EOVERFLOW;
+				if (handle->aio.iocb_ret[i] > INT_MAX) {
+					ret = -EOVERFLOW;
+					goto out;
+				}
 
 				processed += (uint32_t)handle->aio.iocb_ret[i];
-				if (processed > INT_MAX)
-					return -EOVERFLOW;
+				if (processed > INT_MAX) {
+					ret = -EOVERFLOW;
+					goto out;
+				}
 				handle->aio.iocb_ret[i] = 0;
 			}
 		}
@@ -1233,24 +1258,37 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 
 	ret = _kcapi_aio_read_all(handle, outstanding, NULL);
 	if (ret < 0)
-		return ret;
+		goto out;
 
 	for (i = 0; i < KCAPI_AIO_CONCURRENT; i++) {
 		if (handle->aio.iocb_ret[i] == AIO_OUTSTANDING) {
-			return -EBADMSG;
+			ret = -EBADMSG;
+			goto out;
 		} else if (handle->aio.iocb_ret[i] < 0) {
-			return handle->aio.iocb_ret[i];
+			ret = handle->aio.iocb_ret[i];
+			goto out;
 		} else {
-			if (handle->aio.iocb_ret[i] > INT_MAX)
-				return -EOVERFLOW;
+			if (handle->aio.iocb_ret[i] > INT_MAX) {
+				ret = -EOVERFLOW;
+				goto out;
+			}
 
 			processed += (uint32_t)handle->aio.iocb_ret[i];
-			if (processed > INT_MAX)
-				return -EOVERFLOW;
+			if (processed > INT_MAX) {
+				ret = -EOVERFLOW;
+				goto out;
+			}
 			handle->aio.iocb_ret[i] = 0;
 		}
 	}
-	return processed;
+
+	ret = 0;
+
+out:
+	if (combined_p)
+		free(combined_p);
+
+	return ret ? ret : (int32_t)processed;
 }
 
 void __attribute__ ((constructor)) kcapi_library_init(void)

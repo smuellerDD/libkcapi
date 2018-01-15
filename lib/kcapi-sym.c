@@ -89,7 +89,7 @@ int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
 		kcapi_dolog(KCAPI_LOG_WARN,
 			    "Multiple IOVECs in AIO may cause inconsistent results due to IV handling problems in the kernel - consider using kcapi_cipher_encrypt_aio_iiv");
 
-	ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
+	ret = _kcapi_cipher_crypt_aio(handle, iniov, NULL, outiov, iovlen,
 				      access, ALG_OP_ENCRYPT);
 	if (ret != -EOPNOTSUPP)
 		return ret;
@@ -100,12 +100,14 @@ int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
 
 DSO_PUBLIC
 int32_t kcapi_cipher_encrypt_aio_iiv(struct kcapi_handle *handle,
-				     struct iovec *iniov, struct iovec *outiov,
+				     struct iovec *iniov, struct iovec *iviov,
+				     struct iovec *outiov,
 				     uint32_t iovlen, int access)
 {
 	handle->cipher.iv = NULL;
 
-	return _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen, access,
+	return _kcapi_cipher_crypt_aio(handle, iniov, iviov, outiov, iovlen,
+				       access,
 				       ALG_OP_ENCRYPT | ALG_OP_INLINE_IV);
 }
 
@@ -160,7 +162,7 @@ int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
 		kcapi_dolog(KCAPI_LOG_WARN,
 			    "Multiple IOVECs in AIO may cause inconsistent results due to IV handling problems in the kernel - consider using kcapi_cipher_decrypt_aio_iiv");
 
-	ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
+	ret = _kcapi_cipher_crypt_aio(handle, iniov, NULL, outiov, iovlen,
 				      access, ALG_OP_DECRYPT);
 	if (ret != -EOPNOTSUPP)
 		return ret;
@@ -171,12 +173,14 @@ int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
 
 DSO_PUBLIC
 int32_t kcapi_cipher_decrypt_aio_iiv(struct kcapi_handle *handle,
-				     struct iovec *iniov, struct iovec *outiov,
+				     struct iovec *iniov, struct iovec *iviov,
+				     struct iovec *outiov,
 				     uint32_t iovlen, int access)
 {
 	handle->cipher.iv = NULL;
 
-	return _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen, access,
+	return _kcapi_cipher_crypt_aio(handle, iniov, iviov, outiov, iovlen,
+				       access,
 				       ALG_OP_DECRYPT | ALG_OP_INLINE_IV);
 }
 

@@ -162,7 +162,7 @@ _kcapi_akcipher_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 
 	/* TODO Every IOVEC is processed as its individual cipher operation. */
 	while (iovlen) {
-		ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, 1,
+		ret = _kcapi_cipher_crypt_aio(handle, iniov, NULL, outiov, 1,
 					      access, enc);
 		if (ret < 0)
 			return ret;

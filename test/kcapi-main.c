@@ -1104,8 +1104,9 @@ static int cavs_sym_aio_iiv(struct kcapi_cavs *cavs_test, uint32_t loops,
 	uint8_t *outbuf = NULL;
 	uint32_t outbuflen = 0;
 	struct iovec *iniov = NULL;
+	struct iovec *iviov = NULL;
 	struct iovec *outiov = NULL;
-	struct iovec *iniov_p, *outiov_p;
+	struct iovec *iniov_p, *iviov_p, *outiov_p;
 	uint32_t i;
 	struct timespec begin, end;
 
@@ -1127,6 +1128,9 @@ static int cavs_sym_aio_iiv(struct kcapi_cavs *cavs_test, uint32_t loops,
 	iniov = calloc(1, loops * sizeof(struct iovec));
 	if (!iniov)
 		return -ENOMEM;
+	iviov = calloc(1, loops * sizeof(struct iovec));
+	if (!iviov)
+		goto out;
 	outiov = calloc(1, loops * sizeof(struct iovec));
 	if (!outiov)
 		goto out;
@@ -1150,32 +1154,44 @@ static int cavs_sym_aio_iiv(struct kcapi_cavs *cavs_test, uint32_t loops,
 	}
 
 	iniov_p = iniov;
+	iviov_p = iviov;
 	outiov_p = outiov;
 	for (i = 0; i < loops; i++) {
 		if (cavs_test->enc) {
-			iniov_p->iov_len = cavs_test->ptlen + cavs_test->ivlen;
-			iniov_p->iov_base = inbuf + (i * iniov_p->iov_len);
+			uint32_t inputlen = cavs_test->ivlen + cavs_test->ptlen;
 
-			memcpy(iniov_p->iov_base,
+			iviov_p->iov_len = cavs_test->ivlen;
+			iviov_p->iov_base = inbuf + (i * inputlen);
+			iniov_p->iov_len = cavs_test->ptlen;
+			iniov_p->iov_base = (uint8_t *)iviov_p->iov_base +
+					    cavs_test->ivlen;
+
+			memcpy(iviov_p->iov_base,
 			       cavs_test->iv, cavs_test->ivlen);
-			memcpy((uint8_t *)iniov_p->iov_base + cavs_test->ivlen,
+			memcpy(iniov_p->iov_base,
 			       cavs_test->pt, cavs_test->ptlen);
 
 			outiov_p->iov_len = cavs_test->ptlen;
 			outiov_p->iov_base = outbuf + (i * outiov_p->iov_len);
 		} else {
-			iniov_p->iov_len = cavs_test->ctlen + cavs_test->ivlen;
-			iniov_p->iov_base = inbuf + (i * iniov_p->iov_len);
+			uint32_t inputlen = cavs_test->ivlen + cavs_test->ctlen;
 
-			memcpy(iniov_p->iov_base,
+			iviov_p->iov_len = cavs_test->ivlen;
+			iviov_p->iov_base = inbuf + (i * inputlen);
+			iniov_p->iov_len = cavs_test->ctlen;
+			iniov_p->iov_base = (uint8_t *)iviov_p->iov_base +
+					    cavs_test->ivlen;
+
+			memcpy(iviov_p->iov_base,
 			       cavs_test->iv, cavs_test->ivlen);
-			memcpy((uint8_t *)iniov_p->iov_base + cavs_test->ivlen,
+			memcpy(iniov_p->iov_base,
 			       cavs_test->ct, cavs_test->ctlen);
 
 			outiov_p->iov_len = cavs_test->ctlen;
 			outiov_p->iov_base = outbuf + (i * outiov_p->iov_len);
 		}
 		iniov_p++;
+		iviov_p++;
 		outiov_p++;
 	}
 
@@ -1195,11 +1211,11 @@ static int cavs_sym_aio_iiv(struct kcapi_cavs *cavs_test, uint32_t loops,
 
 	_get_time(&begin);
 	if (cavs_test->enc)
-		ret = kcapi_cipher_encrypt_aio_iiv(handle, iniov, outiov, loops,
-						   splice);
+		ret = kcapi_cipher_encrypt_aio_iiv(handle, iniov, iviov,
+						   outiov, loops, splice);
 	else
-		ret = kcapi_cipher_decrypt_aio_iiv(handle, iniov, outiov, loops,
-						   splice);
+		ret = kcapi_cipher_decrypt_aio_iiv(handle, iniov, iviov,
+						   outiov, loops, splice);
 	_get_time(&end);
 	if (0 > ret)  {
 		printf("En/Decryption of buffer failed\n");
@@ -1221,6 +1237,8 @@ out:
 		free(outbuf);
 	if (iniov)
 		free(iniov);
+	if (iviov)
+		free(iviov);
 	if (outiov)
 		free(outiov);
 
@@ -1633,6 +1651,8 @@ static int cavs_aead_aio_iiv(struct kcapi_cavs *cavs_test, uint32_t loops,
 	struct timespec begin, end;
 	struct iovec *iniov = NULL;
 	struct iovec *iniov_p;
+	struct iovec *iviov = NULL;
+	struct iovec *iviov_p;
 	struct iovec *outiov = NULL;
 	struct iovec *outiov_p;
 
@@ -1645,6 +1665,11 @@ static int cavs_aead_aio_iiv(struct kcapi_cavs *cavs_test, uint32_t loops,
 	iniov = calloc(1, loops * sizeof(struct iovec));
 	if (!iniov)
 		return -ENOMEM;
+	iviov = calloc(1, loops * sizeof(struct iovec));
+	if (!iviov) {
+		ret = -ENOMEM;
+		goto out;
+	}
 	outiov = calloc(1, loops * sizeof(struct iovec));
 	if (!outiov) {
 		ret = -ENOMEM;
@@ -1689,9 +1714,8 @@ static int cavs_aead_aio_iiv(struct kcapi_cavs *cavs_test, uint32_t loops,
 						   cavs_test->assoclen,
 						   cavs_test->taglen);
 
-	inbuflen += newivlen;
-
-	maxbuflen = (inbuflen > outbuflen) ? inbuflen : outbuflen;
+	maxbuflen = ((inbuflen + newivlen) > outbuflen) ?
+		     (inbuflen + newivlen) : outbuflen;
 
 	if (cavs_test->aligned) {
 		if (posix_memalign((void *)&inbuf, sysconf(_SC_PAGESIZE),
@@ -1710,12 +1734,13 @@ static int cavs_aead_aio_iiv(struct kcapi_cavs *cavs_test, uint32_t loops,
 	kcapi_aead_getdata_output(handle, outbuf, outbuflen, cavs_test->enc,
 				  &assoc, &assoclen, &data, &datalen,
 				  &tag, &taglen);
-	kcapi_aead_getdata_input(handle, inbuf + newivlen, inbuflen - newivlen,
+	kcapi_aead_getdata_input(handle, inbuf + newivlen, inbuflen,
 				 cavs_test->enc,
 				 &i_assoc, &i_assoclen, &i_data, &i_datalen,
 				 &i_tag, &i_taglen);
 
 	iniov_p = iniov;
+	iviov_p = iviov;
 	outiov_p = outiov;
 	for (i = 0; i < loops; i++) {
 		memcpy(inbuf + (i * maxbuflen), newiv, newivlen);
@@ -1729,7 +1754,10 @@ static int cavs_aead_aio_iiv(struct kcapi_cavs *cavs_test, uint32_t loops,
 			memcpy(i_tag + (i * maxbuflen), cavs_test->tag,
 			       i_taglen);
 		}
-		iniov_p->iov_base = inbuf + (i * maxbuflen);
+		iviov_p->iov_base = inbuf + (i * maxbuflen);
+		iviov_p->iov_len = newivlen;
+		iviov_p++;
+		iniov_p->iov_base = i_assoc + (i * maxbuflen);
 		iniov_p->iov_len = inbuflen;
 		iniov_p++;
 		outiov_p->iov_base = outbuf + (i * maxbuflen);
@@ -1746,11 +1774,11 @@ static int cavs_aead_aio_iiv(struct kcapi_cavs *cavs_test, uint32_t loops,
 
 	_get_time(&begin);
 	if (cavs_test->enc)
-		ret = kcapi_aead_encrypt_aio_iiv(handle, iniov, outiov, loops,
-						 splice);
+		ret = kcapi_aead_encrypt_aio_iiv(handle, iniov, iviov,
+						 outiov, loops, splice);
 	else
-		ret = kcapi_aead_decrypt_aio_iiv(handle, iniov, outiov, loops,
-						 splice);
+		ret = kcapi_aead_decrypt_aio_iiv(handle, iniov, iviov,
+						 outiov, loops, splice);
 	_get_time(&end);
 
 	if (0 > ret && -EBADMSG != ret) {
@@ -1786,6 +1814,8 @@ out:
 		free(inbuf);
 	if (iniov)
 		free(iniov);
+	if (iviov)
+		free(iviov);
 	if (outiov)
 		free(outiov);
 	return ret;
