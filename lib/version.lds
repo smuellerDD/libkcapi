@@ -129,3 +129,11 @@ LIBKCAPI_1.0.2 {
 
 LIBKCAPI_1.0.3 {
 } LIBKCAPI_1.0.2;
+
+LIBKCAPI_1.1.0 {
+	global:
+	kcapi_cipher_encrypt_aio_iiv;
+	kcapi_cipher_decrypt_aio_iiv;
+	kcapi_aead_encrypt_aio_iiv;
+	kcapi_aead_decrypt_aio_iiv;
+} LIBKCAPI_1.0.3;

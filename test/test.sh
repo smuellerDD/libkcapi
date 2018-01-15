@@ -651,6 +651,10 @@ symfunc()
 		then
 			impl_type="asynchronous"
 		fi
+		if [ $impl -eq 9 ]
+		then
+			impl_type="asynchronous inline IV"
+		fi
 		if [ -n "$aiofallback" ]
 		then
 			impl_type="$impl_type (AIO fallback)"
@@ -934,6 +938,10 @@ aeadfunc()
 		then
 			impl_type="asynchronous"
 		fi
+		if [ $impl -eq 16 ]
+		then
+			impl_type="asynchronous inline IV"
+		fi
 		if [ -n "$aiofallback" ]
 		then
 			impl_type="$impl_type (AIO fallback)"
@@ -1173,6 +1181,10 @@ multipletest_sym() {
 	then
 		impl_type="asynchronous"
 	fi
+	if [ $symimpl -eq 15 ]
+	then
+		impl_type="asynchronous inline IV"
+	fi
 	if [ -n "$aiofallback" ]
 	then
 		impl_type="$impl_type (AIO fallback)"
@@ -1184,6 +1196,10 @@ multipletest_sym() {
 	then
 		#block chaining
 		expected="8b19050f66582cb7f7e4b6c873819b7108afa0eaa7de29bac7d903576b674c32"
+	elif [ $symimpl -eq 15 ]
+	then
+		# inline IV
+		expected="8b19050f66582cb7f7e4b6c873819b718b19050f66582cb7f7e4b6c873819b71"
 	elif [ x"$stream" = x"-s" ]
 	then
 		#block chaining
@@ -1211,6 +1227,8 @@ multipletest_aead() {
 	aiofallback=$3
 	printaad=$4
 
+	local printaad_expected
+
 	if [ x"$stream" = x"X" ]
 	then
 		stream=""
@@ -1234,6 +1252,10 @@ multipletest_aead() {
 			return
 		fi
 	fi
+	if [ $impl -eq 16 ]
+	then
+		impl_type="asynchronous inline IV"
+	fi
 	if [ -n "$aiofallback" ]
 	then
 		impl_type="$impl_type (AIO fallback)"
@@ -1252,7 +1274,7 @@ multipletest_aead() {
 	result=$($cmd 2>/dev/null)
 	# there is no block chaining effect here, because GCM/CCM initialize the
 	# counter part for each encryption operation to 1
-	if [ $impl -eq 10 ]
+	if [ $impl -eq 10 -o $impl -eq 16 ]
 	then
 		expected="${printaad_expected}8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723${printaad_expected}8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723${printaad_expected}8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723${printaad_expected}8dd351509dcf1df9c33987fb31cd708dd60d65d3d4e1baa53581d891d994d723"
 	else
@@ -1424,6 +1446,20 @@ else
 	echo_deact "Symmetric AIO tests deactivated"
 fi
 
+if $(check_min_kernelver 4 15); then
+	symfunc 15
+	symfunc 15 -s
+	symfunc 15 -v
+	symfunc 15 X -m
+	symfunc 15 -s -m
+	symfunc 15 -v -m
+	multipletest_sym 15
+	multipletest_sym 15 -s
+	multipletest_sym 15 -v
+else
+	echo_deact "Symmetric AIO tests with inline IV deactivated"
+fi
+
 if $(check_min_kernelver 4 1); then
 	aeadfunc 2
 	aeadfunc 2 -s
@@ -1487,6 +1523,20 @@ if $(check_min_kernelver 4 14); then
 	multipletest_aead 10 -v	-g -u	# async AIO fallback, splice
 else
 	echo_deact "AEAD tests of copied AAD deactivated"
+fi
+
+if $(check_min_kernelver 4 15); then
+	aeadfunc 16
+	aeadfunc 16 -s
+	aeadfunc 16 -v
+	aeadfunc 16 -s -m
+	aeadfunc 16 X -m
+	aeadfunc 16 -v -m
+	multipletest_aead 16
+	multipletest_aead 16 -s
+	multipletest_aead 16 -v
+else
+	echo_deact "AEAD AIO tests with inline IV deactivated"
 fi
 
 if $(check_min_kernelver 4 99); then

@@ -85,6 +85,10 @@ int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
 
 	handle->cipher.iv = iv;
 
+	if (iovlen > 1)
+		kcapi_dolog(KCAPI_LOG_WARN,
+			    "Multiple IOVECs in AIO may cause inconsistent results due to IV handling problems in the kernel - consider using kcapi_cipher_encrypt_aio_iiv");
+
 	ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
 				      access, ALG_OP_ENCRYPT);
 	if (ret != -EOPNOTSUPP)
@@ -92,6 +96,17 @@ int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
 
 	return _kcapi_cipher_encrypt_aio_fallback(handle, iniov, outiov,
 						  iovlen, iv);
+}
+
+DSO_PUBLIC
+int32_t kcapi_cipher_encrypt_aio_iiv(struct kcapi_handle *handle,
+				     struct iovec *iniov, struct iovec *outiov,
+				     uint32_t iovlen, int access)
+{
+	handle->cipher.iv = NULL;
+
+	return _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen, access,
+				       ALG_OP_ENCRYPT | ALG_OP_INLINE_IV);
 }
 
 DSO_PUBLIC
@@ -141,6 +156,10 @@ int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
 
 	handle->cipher.iv = iv;
 
+	if (iovlen > 1)
+		kcapi_dolog(KCAPI_LOG_WARN,
+			    "Multiple IOVECs in AIO may cause inconsistent results due to IV handling problems in the kernel - consider using kcapi_cipher_decrypt_aio_iiv");
+
 	ret = _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen,
 				      access, ALG_OP_DECRYPT);
 	if (ret != -EOPNOTSUPP)
@@ -148,6 +167,17 @@ int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
 
 	return _kcapi_cipher_decrypt_aio_fallback(handle, iniov, outiov,
 						  iovlen, iv);
+}
+
+DSO_PUBLIC
+int32_t kcapi_cipher_decrypt_aio_iiv(struct kcapi_handle *handle,
+				     struct iovec *iniov, struct iovec *outiov,
+				     uint32_t iovlen, int access)
+{
+	handle->cipher.iv = NULL;
+
+	return _kcapi_cipher_crypt_aio(handle, iniov, outiov, iovlen, access,
+				       ALG_OP_DECRYPT | ALG_OP_INLINE_IV);
 }
 
 DSO_PUBLIC

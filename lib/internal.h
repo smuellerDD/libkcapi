@@ -61,17 +61,21 @@ extern "C"
 
 
 #ifndef ALG_OP_SIGN
-#define ALG_OP_SIGN			2
+#define ALG_OP_SIGN			0x2
 #endif
 #ifndef ALG_OP_VERIFY
-#define ALG_OP_VERIFY			3
+#define ALG_OP_VERIFY			0x3
 #endif
 
 #ifndef ALG_OP_KEYGEN
-#define ALG_OP_KEYGEN			4
+#define ALG_OP_KEYGEN			0x4
 #endif
 #ifndef ALG_OP_SSGEN
-#define ALG_OP_SSGEN			5
+#define ALG_OP_SSGEN			0x5
+#endif
+
+#ifndef ALG_OP_INLINE_IV
+#define ALG_OP_INLINE_IV		0x10
 #endif
 
 /* remove once in socket.h */
