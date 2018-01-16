@@ -898,8 +898,12 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 			   int forking)
 {
 	struct kcapi_handle *handle = NULL;
+	struct kcapi_handle *handle2 = NULL;
+	struct kcapi_handle *handle_ptr;
 	int ret = -ENOMEM;
 	uint8_t *outbuf = NULL;
+	uint8_t *outbuf2 = NULL;
+	uint8_t *outbuf_ptr;
 	uint32_t outbuflen = 0;
 	struct iovec outiov;
 	struct iovec iov;
@@ -916,17 +920,25 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 		outbuflen = cavs_test->ctlen;
 	}
 	if (cavs_test->aligned) {
-		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE), outbuflen))
+		if (posix_memalign((void *)&outbuf, sysconf(_SC_PAGESIZE),
+				   outbuflen))
 			goto out;
 		memset(outbuf, 0, outbuflen);
+		if (posix_memalign((void *)&outbuf2, sysconf(_SC_PAGESIZE),
+				   outbuflen))
+			goto out;
+		memset(outbuf2, 0, outbuflen);
 	} else {
 		outbuf = calloc(1, outbuflen);
 		if (!outbuf)
 			goto out;
+		outbuf2 = calloc(1, outbuflen);
+		if (!outbuf2)
+			goto out;
 	}
 
 	ret = -EINVAL;
-	if (kcapi_cipher_init(&handle, cavs_test->cipher, 0)) {
+	if (kcapi_cipher_init(&handle2, cavs_test->cipher, 0)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
 		ret = -EINVAL;
 		goto out;
@@ -934,8 +946,15 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 
 	/* Set key */
 	if (!cavs_test->keylen || !cavs_test->key ||
-	    kcapi_cipher_setkey(handle, cavs_test->key, cavs_test->keylen)) {
+	    kcapi_cipher_setkey(handle2, cavs_test->key, cavs_test->keylen)) {
 		printf("Symmetric cipher setkey failed\n");
+		goto out;
+	}
+
+	/* Test multiple opfds. */
+	ret = kcapi_handle_reinit(&handle, handle2, 0);
+	if (ret < 0) {
+		printf("Re-initialization of cipher failed\n");
 		goto out;
 	}
 
@@ -950,7 +969,20 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 		goto out;
 	}
 
-	for (i = 0; i < loops; i++) {
+	if (cavs_test->enc)
+		ret = kcapi_cipher_stream_init_enc(handle2, cavs_test->iv,
+						   NULL, 0);
+	else
+		ret = kcapi_cipher_stream_init_dec(handle2, cavs_test->iv,
+						   NULL, 0);
+	if (0 > ret)  {
+		printf("Initialization of cipher buffer failed\n");
+		goto out;
+	}
+
+	handle_ptr = handle;
+	outbuf_ptr = outbuf;
+	for (i = 0; i < loops * 2; i++) {
 		uint32_t outptr = 0;
 
 		if (cavs_test->enc) {
@@ -961,12 +993,12 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 			iov.iov_len = cavs_test->ctlen;
 		}
 
-		mt_sym_writer(handle, &iov, forking);
+		mt_sym_writer(handle_ptr, &iov, forking);
 
-		outiov.iov_base = outbuf;
+		outiov.iov_base = outbuf_ptr;
 		outiov.iov_len = outbuflen;
 		while (outptr < outbuflen) {
-			ret = kcapi_cipher_stream_op(handle, &outiov, 1);
+			ret = kcapi_cipher_stream_op(handle_ptr, &outiov, 1);
 			if (0 > ret) {
 				printf("Finalization and cipher operation failed\n");
 				goto out;
@@ -977,8 +1009,24 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 			outptr += ret;
 		}
 
-		bin2print(outbuf, outbuflen);
-		printf("\n");
+		if (handle_ptr == handle) {
+			bin2print(outbuf, outbuflen);
+			printf("\n");
+			handle_ptr = handle2;
+			outbuf_ptr = outbuf2;
+		} else {
+			/* compare 2nd opfd results with first results */
+			if (memcmp(outbuf, outbuf2, outbuflen)) {
+				printf("Two concurrent opfd operations are not identical\n");
+				printf("First opfd result: ");
+				bin2print(outbuf, outbuflen);
+				printf("\nSecond opfd result: ");
+				bin2print(outbuf2, outbuflen);
+				printf("\n");
+			}
+			handle_ptr = handle;
+			outbuf_ptr = outbuf;
+		}
 	}
 
 	if (forking)
@@ -987,8 +1035,11 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 	ret = 0;
 out:
 	kcapi_cipher_destroy(handle);
+	kcapi_cipher_destroy(handle2);
 	if (outbuf)
 		free(outbuf);
+	if (outbuf2)
+		free(outbuf2);
 
 	return ret;
 }

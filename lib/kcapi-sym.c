@@ -47,7 +47,8 @@ int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 			     const uint8_t *iv,
 			     uint8_t *out, uint32_t outlen, int access)
 {
-	uint32_t bs = handle->info.blocksize;
+	struct kcapi_handle_tfm *tfm = handle->tfm;
+	uint32_t bs = tfm->info.blocksize;
 
 	/* require properly sized output data size */
 	if (outlen < ((inlen + bs - 1) / bs * bs))
@@ -117,11 +118,13 @@ int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 			     const uint8_t *iv,
 			     uint8_t *out, uint32_t outlen, int access)
 {
+	struct kcapi_handle_tfm *tfm = handle->tfm;
+
 	/* require properly sized output data size */
-	if (inlen % handle->info.blocksize)
+	if (inlen % tfm->info.blocksize)
 		kcapi_dolog(KCAPI_LOG_WARN,
 			    "Symmetric Decryption: Ciphertext buffer is not multiple of block size %u",
-			    handle->info.blocksize);
+			    tfm->info.blocksize);
 
 	if (outlen < inlen)
 		kcapi_dolog(KCAPI_LOG_WARN,
@@ -230,13 +233,17 @@ int32_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
 DSO_PUBLIC
 uint32_t kcapi_cipher_ivsize(struct kcapi_handle *handle)
 {
-	return handle->info.ivsize;
+	struct kcapi_handle_tfm *tfm = handle->tfm;
+
+	return tfm->info.ivsize;
 }
 
 DSO_PUBLIC
 uint32_t kcapi_cipher_blocksize(struct kcapi_handle *handle)
 {
-	return handle->info.blocksize;
+	struct kcapi_handle_tfm *tfm = handle->tfm;
+
+	return tfm->info.blocksize;
 }
 
 static inline int32_t kcapi_cipher_conv_enc_common(const char *name,
@@ -245,21 +252,20 @@ static inline int32_t kcapi_cipher_conv_enc_common(const char *name,
 					const uint8_t *iv,
 					uint8_t *out, uint32_t outlen)
 {
-	struct kcapi_handle handle = { 0 };
-	int32_t ret = _kcapi_allocated_handle_init(&handle, "skcipher", name,
-						   0);
+	struct kcapi_handle *handle;
+	int32_t ret = _kcapi_handle_init(&handle, "skcipher", name, 0);
 
 	if (ret)
 		return ret;
 
-	ret = kcapi_cipher_setkey(&handle, key, keylen);
+	ret = kcapi_cipher_setkey(handle, key, keylen);
 	if (ret)
 		goto out;
 
-	ret = kcapi_cipher_encrypt(&handle, in, inlen, iv, out, outlen, 0);
+	ret = kcapi_cipher_encrypt(handle, in, inlen, iv, out, outlen, 0);
 
 out:
-	_kcapi_handle_destroy_nofree(&handle);
+	_kcapi_handle_destroy(handle);
 	return ret;
 }
 
@@ -269,21 +275,20 @@ static inline int32_t kcapi_cipher_conv_dec_common(const char *name,
 					const uint8_t *iv,
 					uint8_t *out, uint32_t outlen)
 {
-	struct kcapi_handle handle;
-	int32_t ret = _kcapi_allocated_handle_init(&handle, "skcipher", name,
-						   0);
+	struct kcapi_handle *handle;
+	int32_t ret = _kcapi_handle_init(&handle, "skcipher", name, 0);
 
 	if (ret)
 		return ret;
 
-	ret = kcapi_cipher_setkey(&handle, key, keylen);
+	ret = kcapi_cipher_setkey(handle, key, keylen);
 	if (ret)
 		goto out;
 
-	ret = kcapi_cipher_decrypt(&handle, in, inlen, iv, out, outlen, 0);
+	ret = kcapi_cipher_decrypt(handle, in, inlen, iv, out, outlen, 0);
 
 out:
-	_kcapi_handle_destroy_nofree(&handle);
+	_kcapi_handle_destroy(handle);
 	return ret;
 }
 

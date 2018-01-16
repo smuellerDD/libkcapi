@@ -97,7 +97,7 @@ int _kcapi_common_accept(struct kcapi_handle *handle, int *fdptr)
 	if (*fdptr != -1)
 		return 0;
 
-	fd = accept(handle->tfmfd, NULL, 0);
+	fd = accept(handle->tfm->tfmfd, NULL, 0);
 	if (fd == -1) {
 		int errsv;
 
@@ -116,6 +116,7 @@ int32_t _kcapi_common_send_meta_fd(struct kcapi_handle *handle, int *fdptr,
 				   struct iovec *iov, uint32_t iovlen,
 				   uint32_t enc, uint32_t flags)
 {
+	struct kcapi_handle_tfm *tfm = handle->tfm;
 	int32_t ret;
 	char buffer_static[80] = { 0 };
 	char *buffer_p = buffer_static;
@@ -129,7 +130,7 @@ int32_t _kcapi_common_send_meta_fd(struct kcapi_handle *handle, int *fdptr,
 	/* IV data */
 	struct af_alg_iv *alg_iv = NULL;
 	uint32_t iv_msg_size = handle->cipher.iv ?
-			  CMSG_SPACE(sizeof(*alg_iv) + handle->info.ivsize) :
+			  CMSG_SPACE(sizeof(*alg_iv) + tfm->info.ivsize) :
 			  0;
 
 	/* AEAD data */
@@ -187,8 +188,8 @@ int32_t _kcapi_common_send_meta_fd(struct kcapi_handle *handle, int *fdptr,
 		header->cmsg_type = ALG_SET_IV;
 		header->cmsg_len = iv_msg_size;
 		alg_iv = (void*)CMSG_DATA(header);
-		alg_iv->ivlen = handle->info.ivsize;
-		memcpy(alg_iv->iv, handle->cipher.iv, handle->info.ivsize);
+		alg_iv->ivlen = tfm->info.ivsize;
+		memcpy(alg_iv->iv, handle->cipher.iv, tfm->info.ivsize);
 	}
 
 	/* set AEAD information */
@@ -563,7 +564,7 @@ int _kcapi_common_setkey(struct kcapi_handle *handle,
 {
 	int ret;
 
-	ret = setsockopt(handle->tfmfd, SOL_ALG, ALG_SET_KEY, key, keylen);
+	ret = setsockopt(handle->tfm->tfmfd, SOL_ALG, ALG_SET_KEY, key, keylen);
 	if (ret < 0)
 		ret = -errno;
 	kcapi_dolog(KCAPI_LOG_DEBUG,
@@ -576,6 +577,7 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 				  const char *ciphername,
 				  int drivername)
 {
+	struct kcapi_handle_tfm *tfm = handle->tfm;
 	int ret = -EFAULT;
 
 	/* NETLINK_CRYPTO specific */
@@ -733,41 +735,51 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 		struct rtattr *rta = tb[CRYPTOCFGA_REPORT_HASH];
 		struct crypto_report_hash *rsh =
 			(struct crypto_report_hash *) RTA_DATA(rta);
-		handle->info.hash_digestsize = rsh->digestsize;
-		handle->info.blocksize = rsh->blocksize;
-		kcapi_dolog(KCAPI_LOG_DEBUG, "Get cipher info: hash with digestsize %u,  blocksize %u",
+		tfm->info.hash_digestsize = rsh->digestsize;
+		tfm->info.blocksize = rsh->blocksize;
+		kcapi_dolog(KCAPI_LOG_DEBUG,
+			    "Get cipher info: hash with digestsize %u,  blocksize %u",
 			    rsh->digestsize, rsh->blocksize);
+
+		tfm->info.cipher_type = KCAPI_CIPHER_MD;
 	}
 	if (tb[CRYPTOCFGA_REPORT_BLKCIPHER]) {
 		struct rtattr *rta = tb[CRYPTOCFGA_REPORT_BLKCIPHER];
 		struct crypto_report_blkcipher *rblk =
 			(struct crypto_report_blkcipher *) RTA_DATA(rta);
-		handle->info.blocksize = rblk->blocksize;
-		handle->info.ivsize = rblk->ivsize;
-		handle->info.blk_min_keysize = rblk->min_keysize;
-		handle->info.blk_max_keysize = rblk->max_keysize;
+		tfm->info.blocksize = rblk->blocksize;
+		tfm->info.ivsize = rblk->ivsize;
+		tfm->info.blk_min_keysize = rblk->min_keysize;
+		tfm->info.blk_max_keysize = rblk->max_keysize;
 		kcapi_dolog(KCAPI_LOG_DEBUG, "Get cipher info: block cipher with blocksize %u, ivsize %u, minimum keysize %u, maximum keysize %u",
 			    rblk->blocksize, rblk->ivsize, rblk->min_keysize,
 			    rblk->max_keysize);
+
+		tfm->info.cipher_type = KCAPI_CIPHER_SKCIPHER;
 	}
 	if (tb[CRYPTOCFGA_REPORT_AEAD]) {
 		struct rtattr *rta = tb[CRYPTOCFGA_REPORT_AEAD];
 		struct crypto_report_aead *raead =
 			(struct crypto_report_aead *) RTA_DATA(rta);
-		handle->info.blocksize = raead->blocksize;
-		handle->info.ivsize = raead->ivsize;
-		handle->info.aead_maxauthsize = raead->maxauthsize;
+		tfm->info.blocksize = raead->blocksize;
+		tfm->info.ivsize = raead->ivsize;
+		tfm->info.aead_maxauthsize = raead->maxauthsize;
 		kcapi_dolog(KCAPI_LOG_DEBUG, "Get cipher info: AEAD block cipher with blocksize %u, ivsize %u, maximum authentication size %u",
 			    raead->blocksize, raead->ivsize,
 			    raead->maxauthsize);
+
+		tfm->info.cipher_type = KCAPI_CIPHER_AEAD;
 	}
 	if (tb[CRYPTOCFGA_REPORT_RNG]) {
 		struct rtattr *rta = tb[CRYPTOCFGA_REPORT_RNG];
 		struct crypto_report_rng *rrng =
 			(struct crypto_report_rng *) RTA_DATA(rta);
-		handle->info.rng_seedsize = rrng->seedsize;
-		kcapi_dolog(KCAPI_LOG_DEBUG, "Get cipher info: RNG cipher with seedsize %u",
+		tfm->info.rng_seedsize = rrng->seedsize;
+		kcapi_dolog(KCAPI_LOG_DEBUG,
+			    "Get cipher info: RNG cipher with seedsize %u",
 			    rrng->seedsize);
+
+		tfm->info.cipher_type = KCAPI_CIPHER_RNG;
 	}
 	if (tb[CRYPTOCFGA_UNSPEC])
 		kcapi_dolog(KCAPI_LOG_DEBUG,
@@ -784,12 +796,18 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	if (tb[CRYPTOCFGA_REPORT_CIPHER])
 		kcapi_dolog(KCAPI_LOG_DEBUG,
 			    "Get cipher info: simple cipher algorithm type received");
-	if (tb[CRYPTOCFGA_REPORT_AKCIPHER])
+	if (tb[CRYPTOCFGA_REPORT_AKCIPHER]) {
 		kcapi_dolog(KCAPI_LOG_DEBUG,
 			    "Get cipher info: asymmetric cipher algorithm type received");
-	if (tb[CRYPTOCFGA_REPORT_KPP])
+
+		tfm->info.cipher_type = KCAPI_CIPHER_AKCIPHER;
+	}
+	if (tb[CRYPTOCFGA_REPORT_KPP]) {
 		kcapi_dolog(KCAPI_LOG_DEBUG,
 			    "Get cipher info: kpp cipher algorithm type received");
+
+		tfm->info.cipher_type = KCAPI_CIPHER_KPP;
+	}
 	if (tb[CRYPTOCFGA_REPORT_ACOMP])
 		kcapi_dolog(KCAPI_LOG_DEBUG,
 			    "Get cipher info: asymmetric compression algorithm type received");
@@ -832,12 +850,26 @@ static inline void _kcapi_aio_destroy(struct kcapi_handle *handle)
 	handle->aio.iocb_ret = NULL;
 }
 
-void _kcapi_handle_destroy_nofree(struct kcapi_handle *handle)
+static void _kcapi_handle_destroy_tfm(struct kcapi_handle *handle)
+{
+	struct kcapi_handle_tfm *tfm;
+	if (!handle || !handle->tfm)
+		return;
+
+	tfm = handle->tfm;
+	if (atomic_dec_and_test(&tfm->refcnt)) {
+		if (tfm->tfmfd != -1)
+			close(tfm->tfmfd);
+		kcapi_memset_secure(tfm, 0, sizeof(*tfm));
+		free(tfm);
+		handle->tfm = NULL;
+	}
+}
+
+void _kcapi_handle_destroy(struct kcapi_handle *handle)
 {
 	if (!handle)
 		return;
-	if (handle->tfmfd != -1)
-		close(handle->tfmfd);
 	if (handle->opfd != -1)
 		close(handle->opfd);
 	if (handle->pipes[0] != -1)
@@ -845,17 +877,14 @@ void _kcapi_handle_destroy_nofree(struct kcapi_handle *handle)
 	if (handle->pipes[1] != -1)
 		close(handle->pipes[1]);
 	_kcapi_aio_destroy(handle);
+	_kcapi_handle_destroy_tfm(handle);
 	kcapi_memset_secure(handle, 0, sizeof(struct kcapi_handle));
-}
-
-void _kcapi_handle_destroy(struct kcapi_handle *handle)
-{
-	_kcapi_handle_destroy_nofree(handle);
 	free(handle);
 }
 
 static int _kcapi_get_kernver(struct kcapi_handle *handle)
 {
+	struct kcapi_handle_tfm *tfm = handle->tfm;
 	struct utsname kernel;
 	char *saveptr = NULL;
 	char *res = NULL;
@@ -869,19 +898,19 @@ static int _kcapi_get_kernver(struct kcapi_handle *handle)
 		printf("Could not parse kernel version");
 		return -EFAULT;
 	}
-	handle->sysinfo.kernel_maj = strtoul(res, NULL, 10);
+	tfm->sysinfo.kernel_maj = strtoul(res, NULL, 10);
 	res = strtok_r(NULL, ".", &saveptr);
 	if (!res) {
 		printf("Could not parse kernel version");
 		return -EFAULT;
 	}
-	handle->sysinfo.kernel_minor = strtoul(res, NULL, 10);
+	tfm->sysinfo.kernel_minor = strtoul(res, NULL, 10);
 	res = strtok_r(NULL, ".", &saveptr);
 	if (!res) {
 		printf("Could not parse kernel version");
 		return -EFAULT;
 	}
-	handle->sysinfo.kernel_patchlevel = strtoul(res, NULL, 10);
+	tfm->sysinfo.kernel_patchlevel = strtoul(res, NULL, 10);
 
 	return 0;
 }
@@ -890,32 +919,35 @@ static int _kcapi_get_kernver(struct kcapi_handle *handle)
 static bool _kcapi_kernver_ge(struct kcapi_handle *handle, unsigned int maj,
 			      unsigned int minor, unsigned int patchlevel)
 {
-	if (maj < handle->sysinfo.kernel_maj)
+	struct kcapi_handle_tfm *tfm = handle->tfm;
+
+	if (maj < tfm->sysinfo.kernel_maj)
 		return true;
-	if (maj == handle->sysinfo.kernel_maj) {
-		if (minor < handle->sysinfo.kernel_minor)
+	if (maj == tfm->sysinfo.kernel_maj) {
+		if (minor < tfm->sysinfo.kernel_minor)
 			return true;
-		if (minor == handle->sysinfo.kernel_minor) {
-			if (patchlevel <= handle->sysinfo.kernel_patchlevel)
+		if (minor == tfm->sysinfo.kernel_minor) {
+			if (patchlevel <= tfm->sysinfo.kernel_patchlevel)
 				return true;
 		}
 	}
 	return false;
 }
 
-static int _kcapi_aio_init(struct kcapi_handle *handle, const char *type)
+static int _kcapi_aio_init(struct kcapi_handle *handle)
 {
+	struct kcapi_handle_tfm *tfm = handle->tfm;
 	uint32_t i;
 	int err;
 
-	if (!strncmp("aead", type, 4)) {
+	if (tfm->info.cipher_type == KCAPI_CIPHER_AEAD) {
 		if (!_kcapi_kernver_ge(handle, 4, 7, 0)) {
 			kcapi_dolog(KCAPI_LOG_VERBOSE, "AIO support for AEAD cipher not present on current kernel");
 			err = -EOPNOTSUPP;
 			goto err;
 		}
 	}
-	if (!strncmp("skcipher", type, 8)) {
+	if (tfm->info.cipher_type == KCAPI_CIPHER_SKCIPHER) {
 		if (!_kcapi_kernver_ge(handle, 4, 1, 0)) {
 			kcapi_dolog(KCAPI_LOG_VERBOSE, "AIO support for symmetric ciphers not present on current kernel");
 			err = -EOPNOTSUPP;
@@ -984,50 +1016,14 @@ static void _kcapi_handle_flags(struct kcapi_handle *handle)
 				      UINT_MAX : ALG_MAX_PAGES;
 }
 
-int _kcapi_allocated_handle_init(struct kcapi_handle *handle, const char *type,
-				 const char *ciphername, uint32_t flags)
+static int _kcapi_handle_init_op(struct kcapi_handle *handle, uint32_t flags)
 {
-	struct sockaddr_alg sa;
 	int ret;
-	char versionbuffer[50];
-
-	kcapi_versionstring(versionbuffer, sizeof(versionbuffer));
-	kcapi_dolog(KCAPI_LOG_VERBOSE,
-		    "%s - initializing cipher operation with kernel",
-		    versionbuffer);
 
 	handle->opfd = -1;
-	handle->tfmfd = -1;
 	handle->pipes[0] = -1;
 	handle->pipes[1] = -1;
 	handle->aio.efd = -1;
-
-	ret = _kcapi_get_kernver(handle);
-	if (ret)
-		return ret;
-
-	memset(&sa, 0, sizeof(sa));
-	sa.salg_family = AF_ALG;
-	snprintf((char *)sa.salg_type, sizeof(sa.salg_type),"%s", type);
-	snprintf((char *)sa.salg_name, sizeof(sa.salg_name),"%s", ciphername);
-
-	handle->tfmfd = socket(AF_ALG, SOCK_SEQPACKET, 0);
-	if (handle->tfmfd == -1) {
-		ret = -errno;
-		kcapi_dolog(KCAPI_LOG_ERR,
-			    "AF_ALG: socket syscall failed (errno: %d)",
-			    ret);
-		return ret;
-	}
-	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: socket syscall passed");
-
-	if (bind(handle->tfmfd, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
-		ret = -errno;
-		kcapi_dolog(KCAPI_LOG_ERR, "AF_ALG: bind failed (errno: %d)",
-			    ret);
-		return ret;
-	}
-	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: bind syscall passed");
 
 	ret = pipe(handle->pipes);
 	if (ret) {
@@ -1039,16 +1035,8 @@ int _kcapi_allocated_handle_init(struct kcapi_handle *handle, const char *type,
 	}
 	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: pipe syscall passed");
 
-	ret = _kcapi_common_getinfo(handle, ciphername);
-	if (ret) {
-		ret = -errno;
-		kcapi_dolog(KCAPI_LOG_ERR, "NETLINK_CRYPTO: cannot obtain cipher information for %s (is required crypto_user.c patch missing? see documentation)",
-			    ciphername);
-		return ret;
-	}
-
 	if (flags & KCAPI_INIT_AIO) {
-		ret = _kcapi_aio_init(handle, type);
+		ret = _kcapi_aio_init(handle);
 
 		/*
 		 * We complain about kernels without AIO support, but allow
@@ -1065,29 +1053,136 @@ int _kcapi_allocated_handle_init(struct kcapi_handle *handle, const char *type,
 
 	_kcapi_handle_flags(handle);
 
-	kcapi_dolog(KCAPI_LOG_VERBOSE,
-		    "communication for %s with kernel initialized",
-		    ciphername);
-
 	return ret;
+}
+
+static int _kcapi_handle_init_tfm(struct kcapi_handle *handle, const char *type,
+				  const char *ciphername)
+{
+	struct kcapi_handle_tfm *tfm = handle->tfm;
+	struct sockaddr_alg sa;
+	int ret;
+	char versionbuffer[50];
+
+	kcapi_versionstring(versionbuffer, sizeof(versionbuffer));
+	kcapi_dolog(KCAPI_LOG_VERBOSE,
+		    "%s - initializing cipher operation with kernel",
+		    versionbuffer);
+
+	tfm->tfmfd = -1;
+	atomic_set(1, &tfm->refcnt);
+
+	ret = _kcapi_get_kernver(handle);
+	if (ret)
+		return ret;
+
+	memset(&sa, 0, sizeof(sa));
+	sa.salg_family = AF_ALG;
+	snprintf((char *)sa.salg_type, sizeof(sa.salg_type),"%s", type);
+	snprintf((char *)sa.salg_name, sizeof(sa.salg_name),"%s", ciphername);
+
+	tfm->tfmfd = socket(AF_ALG, SOCK_SEQPACKET, 0);
+	if (tfm->tfmfd == -1) {
+		ret = -errno;
+		kcapi_dolog(KCAPI_LOG_ERR,
+			    "AF_ALG: socket syscall failed (errno: %d)",
+			    ret);
+		return ret;
+	}
+	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: socket syscall passed");
+
+	if (bind(tfm->tfmfd, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
+		ret = -errno;
+		kcapi_dolog(KCAPI_LOG_ERR, "AF_ALG: bind failed (errno: %d)",
+			    ret);
+		return ret;
+	}
+	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: bind syscall passed");
+
+	ret = _kcapi_common_getinfo(handle, ciphername);
+	if (ret) {
+		ret = -errno;
+		kcapi_dolog(KCAPI_LOG_ERR, "NETLINK_CRYPTO: cannot obtain cipher information for %s (is required crypto_user.c patch missing? see documentation)",
+			    ciphername);
+		return ret;
+	}
+
+	return 0;
 }
 
 int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 		       const char *ciphername, uint32_t flags)
 {
 	struct kcapi_handle *handle;
+	struct kcapi_handle_tfm *tfm;
 	int ret;
 
 	handle = calloc(1, sizeof(struct kcapi_handle));
 	if (!handle)
 		return -ENOMEM;
 
-	ret = _kcapi_allocated_handle_init(handle, type, ciphername, flags);
-	if (ret)
-		_kcapi_handle_destroy(handle);
-	else
-		*caller = handle;
+	tfm = calloc(1, sizeof(struct kcapi_handle_tfm));
+	if (!tfm) {
+		free(handle);
+		return -ENOMEM;
+	}
 
+	handle->tfm = tfm;
+
+	ret = _kcapi_handle_init_tfm(handle, type, ciphername);
+	if (ret)
+		goto err;
+
+	ret = _kcapi_handle_init_op(handle, flags);
+	if (ret)
+		goto err;
+
+	*caller = handle;
+
+	kcapi_dolog(KCAPI_LOG_VERBOSE,
+		    "communication for %s with kernel initialized",
+		    ciphername);
+
+	return 0;
+
+err:
+	_kcapi_handle_destroy(handle);
+	return ret;
+}
+
+DSO_PUBLIC
+int kcapi_handle_reinit(struct kcapi_handle **newhandle,
+			struct kcapi_handle *existing, uint32_t flags)
+{
+	struct kcapi_handle *handle;
+	struct kcapi_handle_tfm *tfm;
+	int ret;
+
+	if (!existing || !existing->tfm)
+		return -EINVAL;
+
+	tfm = existing->tfm;
+
+	handle = calloc(1, sizeof(struct kcapi_handle));
+	if (!handle)
+		return -ENOMEM;
+
+	atomic_inc(&tfm->refcnt);
+	handle->tfm = tfm;
+
+	ret = _kcapi_handle_init_op(handle, flags);
+	if (ret)
+		goto err;
+
+	*newhandle = handle;
+
+	kcapi_dolog(KCAPI_LOG_VERBOSE,
+		    "new cipher handle from existing handle initialized");
+
+	return 0;
+
+err:
+	_kcapi_handle_destroy(handle);
 	return ret;
 }
 

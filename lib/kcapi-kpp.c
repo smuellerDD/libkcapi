@@ -43,9 +43,10 @@ DSO_PUBLIC
 int kcapi_kpp_dh_setparam_pkcs3(struct kcapi_handle *handle,
 				const uint8_t *pkcs3, uint32_t pkcs3len)
 {
+	struct kcapi_handle_tfm *tfm = handle->tfm;
 	int ret = 0;
 
-	ret = setsockopt(handle->tfmfd, SOL_ALG, ALG_SET_DH_PARAMETERS,
+	ret = setsockopt(tfm->tfmfd, SOL_ALG, ALG_SET_DH_PARAMETERS,
 			 pkcs3, pkcs3len);
 	return (ret >= 0) ? ret : -errno;
 }
@@ -54,11 +55,12 @@ DSO_PUBLIC
 int kcapi_kpp_ecdh_setcurve(struct kcapi_handle *handle,
 			    unsigned long curve_id)
 {
+	struct kcapi_handle_tfm *tfm = handle->tfm;
 	char curve_id_str[sizeof(unsigned long)];
 	int ret = 0;
 
 	snprintf(curve_id_str, sizeof(curve_id_str), "%lu", curve_id);
-	ret = setsockopt(handle->tfmfd, SOL_ALG, ALG_SET_ECDH_CURVE,
+	ret = setsockopt(tfm->tfmfd, SOL_ALG, ALG_SET_ECDH_CURVE,
 			 curve_id_str, sizeof(curve_id_str));
 	return (ret >= 0) ? ret : -errno;
 }

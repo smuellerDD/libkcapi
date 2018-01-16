@@ -136,4 +136,5 @@ LIBKCAPI_1.1.0 {
 	kcapi_cipher_decrypt_aio_iiv;
 	kcapi_aead_encrypt_aio_iiv;
 	kcapi_aead_decrypt_aio_iiv;
+	kcapi_handle_reinit;
 } LIBKCAPI_1.0.3;
