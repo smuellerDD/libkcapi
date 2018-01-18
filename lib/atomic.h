@@ -209,7 +209,7 @@ static inline int atomic_nand(int i, atomic_t *v)
  */
 static inline int atomic_cmpxchg(atomic_t *v, int old, int new)
 {
-	return __sync_val_compare_and_swap(&v->counter, old, new);
+	return __sync_bool_compare_and_swap(&v->counter, old, new);
 }
 
 #endif
