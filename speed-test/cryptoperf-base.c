@@ -26,11 +26,12 @@
  *	      execution time for the test.
  * @len: number of blocks to test
  * @aio: number of iovs to send. If 0, don't use aio.
+ * @iiv: use per iov iivs when in aio mode.
  *
  * result: 0 on success, error otherwise
  */
 int cp_exec_test(struct cp_test *test, unsigned int exectime, size_t len,
-		 unsigned int aio)
+		 unsigned int aio, unsigned int iiv)
 {
 	uint64_t testduration = 0;
 	uint64_t nano = 1;
@@ -44,7 +45,7 @@ int cp_exec_test(struct cp_test *test, unsigned int exectime, size_t len,
 		testduration = nano * exectime;
 
 	if (test->init_test) {
-		int ret = test->init_test(test, len, aio);
+		int ret = test->init_test(test, len, aio, iiv);
 		if (ret) {
 			printf(DRIVER_NAME": initialization for %s failed\n",
 			       test->testname);

@@ -25,7 +25,8 @@
  * Synchronous symmetric ciphers
  ****************************************************************************/
 
-static int cp_hash_init_test(struct cp_test *test, size_t len, unsigned int aio)
+static int cp_hash_init_test(struct cp_test *test, size_t len, unsigned int aio,
+			     __attribute__((unused)) unsigned int iiv)
 {
 	unsigned char *scratchpad = NULL;
 #define MAX_KEYLEN 128

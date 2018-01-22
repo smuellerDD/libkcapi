@@ -22,7 +22,8 @@
 /****************************************************************************
  * Random Number Generators
  ****************************************************************************/
-static int cp_rng_init_test(struct cp_test *test, size_t len, unsigned int aio)
+static int cp_rng_init_test(struct cp_test *test, size_t len, unsigned int aio,
+			    __attribute((unused))unsigned int iiv)
 {
 	unsigned char *scratchpad = NULL;
 #define SEEDSIZE 64

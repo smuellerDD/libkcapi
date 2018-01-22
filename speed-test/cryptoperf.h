@@ -71,8 +71,9 @@ struct skcipher_def {
 	unsigned char *scratchpad;
 	unsigned char *iv;
 	size_t inputlen;
-	unsigned int aio;
+	unsigned int aio, iiv;
 	struct iovec *iovec;
+	struct iovec *iviovec;
 	struct kcapi_handle *handle;
 };
 
@@ -113,7 +114,8 @@ struct cp_test {
 	int enc;
 	unsigned int exectime;
 	struct cp_res results;
-	int (*init_test)(struct cp_test *test, size_t len, unsigned int aio);
+	int (*init_test)(struct cp_test *test, size_t len, unsigned int aio,
+			 unsigned int iiv);
 	unsigned int (*exec_test)(struct cp_test *test);
 	void (*fini_test)(struct cp_test *test);
 
@@ -177,7 +179,7 @@ static inline void cp_zfree(void *ptr, unsigned int len)
  */
 char *cp_print_status(struct cp_test *test, int raw);
 int cp_exec_test(struct cp_test *test, unsigned int exectime, size_t len,
-		 unsigned int aio);
+		 unsigned int aio, unsigned int iiv);
 int cp_read_random(unsigned char *buf, size_t buflen);
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))

@@ -232,25 +232,29 @@ out:
 }
 
 static int cp_aead_init_enc_dflt(struct cp_test *test, size_t len,
-				 unsigned int aio)
+				 unsigned int aio,
+				 __attribute__((unused)) unsigned int iiv)
 {
 	return cp_aead_init_test(test, len, 1, 0, aio);
 }
 
 static int cp_aead_init_enc_ccm(struct cp_test *test, size_t len,
-				unsigned int aio)
+				unsigned int aio,
+				__attribute__((unused)) unsigned int iiv)
 {
 	return cp_aead_init_test(test, len, 1, 1, aio);
 }
 
 static int cp_aead_init_dec_dflt(struct cp_test *test, size_t len,
-				 unsigned int aio)
+				 unsigned int aio,
+				 __attribute__((unused)) unsigned int iiv)
 {
 	return cp_aead_init_test(test, len, 0, 0, aio);
 }
 
 static int cp_aead_init_dec_ccm(struct cp_test *test, size_t len,
-				unsigned int aio)
+				unsigned int aio,
+				__attribute__((unused)) unsigned int iiv)
 {
 	return cp_aead_init_test(test, len, 0, 1, aio);
 }
