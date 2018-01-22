@@ -26,7 +26,7 @@
  ****************************************************************************/
 
 static int cp_skcipher_init_test(struct cp_test *test, size_t len,
-				 unsigned int aio)
+				 unsigned int aio, unsigned int iiv)
 {
 	unsigned char *scratchpad = NULL;
 #define MAX_KEYLEN 64
@@ -66,13 +66,24 @@ static int cp_skcipher_init_test(struct cp_test *test, size_t len,
 	/* handle stream ciphers */
 	if (bs == 1)
 		bs = 16;
-	err = posix_memalign((void *)&ivdata, bs, bs);
-	if (err) {
-		printf(DRIVER_NAME": could not allocate ivdata for "
-		       "%s (error: %d)\n", test->driver_name, err);
-		goto out;
+	if (iiv) {
+		err = posix_memalign((void *)&ivdata, bs, bs * aio);
+		if (err) {
+			printf(DRIVER_NAME": could not allocate ivdata for "
+			       "%s (error: %d)\n", test->driver_name, err);
+			goto out;
+		}
+		cp_read_random(ivdata, aio * bs);
+	} else {
+		err = posix_memalign((void *)&ivdata, bs, bs);
+		if (err) {
+			printf(DRIVER_NAME": could not allocate ivdata for "
+			       "%s (error: %d)\n", test->driver_name, err);
+			goto out;
+		}
+		
+		cp_read_random(ivdata, bs);
 	}
-	cp_read_random(ivdata, kcapi_cipher_blocksize(test->u.skcipher.handle));
 	test->u.skcipher.iv = ivdata;
 
 	err = posix_memalign((void *)&scratchpad, sysconf(_SC_PAGESIZE),
@@ -102,13 +113,26 @@ static int cp_skcipher_init_test(struct cp_test *test, size_t len,
 			goto out;
 		}
 
+		if (iiv) {
+			err = posix_memalign((void *)&test->u.skcipher.iviovec, bs,
+					     aio * sizeof(struct iovec));
+			if (err) {
+				printf(DRIVER_NAME": could not allocate iviovec buffer\n");
+				goto out;
+			}
+		}
 		for (i = 0; i < aio; i++) {
 			test->u.skcipher.iovec[i].iov_base = scratchpad;
 			test->u.skcipher.iovec[i].iov_len = test->u.skcipher.inputlen;
 			scratchpad += test->u.skcipher.inputlen;
+			if (iiv) {
+				test->u.skcipher.iviovec[i].iov_base = &ivdata[i * bs];
+				test->u.skcipher.iviovec[i].iov_len = bs;
+			}
 		}
 
 		test->u.skcipher.aio = aio;
+		test->u.skcipher.iiv = iiv;
 	}
 
 	return 0;
@@ -127,21 +151,32 @@ static void cp_skcipher_fini_test(struct cp_test *test)
 	dbg("Cleaning up asynchronous symmetric test %s\n", test->testname);
 	free(test->u.skcipher.scratchpad);
 	free(test->u.skcipher.iv);
-	if (test->u.skcipher.aio)
+	if (test->u.skcipher.aio) {
 		free(test->u.skcipher.iovec);
+		if (test->u.skcipher.iiv)
+			free(test->u.skcipher.iviovec);
+	}
 	kcapi_cipher_destroy(test->u.skcipher.handle);
 }
 
 static unsigned int cp_skcipher_enc_test(struct cp_test *test)
 {
 	if (test->u.skcipher.aio)
-		kcapi_cipher_encrypt_aio(test->u.skcipher.handle,
-					 test->u.skcipher.iovec,
-					 test->u.skcipher.iovec,
-					 test->u.skcipher.aio,
-					 test->u.skcipher.iv,
-					 test->accesstype);
-	else
+		if (test->u.skcipher.iiv) {
+			kcapi_cipher_encrypt_aio_iiv(test->u.skcipher.handle,
+						     test->u.skcipher.iovec,
+						     test->u.skcipher.iviovec,
+						     test->u.skcipher.iovec,
+						     test->u.skcipher.aio,
+						     test->accesstype);
+		else
+			kcapi_cipher_encrypt_aio(test->u.skcipher.handle,
+						 test->u.skcipher.iovec,
+						 test->u.skcipher.iovec,
+						 test->u.skcipher.aio,
+						 test->u.skcipher.iv,
+						 test->accesstype);
+	} else
 		kcapi_cipher_encrypt(test->u.skcipher.handle,
 				     test->u.skcipher.scratchpad,
 				     test->u.skcipher.inputlen,
@@ -154,14 +189,22 @@ static unsigned int cp_skcipher_enc_test(struct cp_test *test)
 
 static unsigned int cp_skcipher_dec_test(struct cp_test *test)
 {
-	if (test->u.skcipher.aio)
-		kcapi_cipher_decrypt_aio(test->u.skcipher.handle,
-					 test->u.skcipher.iovec,
-					 test->u.skcipher.iovec,
-					 test->u.skcipher.aio,
-					 test->u.skcipher.iv,
-					 test->accesstype);
-	else
+	if (test->u.skcipher.aio) {
+		if (test->u.skcipher.iiv)
+			kcapi_cipher_decrypt_aio_iiv(test->u.skcipher.handle,
+						     test->u.skcipher.iovec,
+						     test->u.skcipher.iviovec,
+						     test->u.skcipher.iovec,
+						     test->u.skcipher.aio,
+						     test->accesstype);
+		else
+			kcapi_cipher_decrypt_aio(test->u.skcipher.handle,
+						 test->u.skcipher.iovec,
+						 test->u.skcipher.iovec,
+						 test->u.skcipher.aio,
+						 test->u.skcipher.iv,
+						 test->accesstype);
+	} else
 		kcapi_cipher_decrypt(test->u.skcipher.handle,
 				     test->u.skcipher.scratchpad,
 				     test->u.skcipher.inputlen,

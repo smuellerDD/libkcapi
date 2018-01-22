@@ -60,7 +60,7 @@ static void register_tests(int print)
 }
 
 static int exec_all_tests(struct test_array *tests, unsigned int exectime,
-			  size_t len, unsigned int aio)
+			  size_t len, unsigned int aio, unsigned int iiv)
 {
 	size_t i;
 
@@ -68,7 +68,7 @@ static int exec_all_tests(struct test_array *tests, unsigned int exectime,
 		char *out = NULL;
 
 		/* Execute all tests and do not error out on errors */
-		if (cp_exec_test(&tests->array[i], exectime, len, aio))
+		if (cp_exec_test(&tests->array[i], exectime, len, aio, iiv))
 			continue;
 		out = cp_print_status(&tests->array[i], 0);
 		if (!out)
@@ -100,7 +100,7 @@ static int find_test(const char *name, struct test_array *tests, int start,
 }
 
 static int exec_subset_test(const char *name, unsigned int exectime, size_t len,
-			    int raw, int access, unsigned int aio)
+			    int raw, int access, unsigned int aio, unsigned int iiv)
 {
 	struct cp_test *test = NULL;
 	int i = 0;
@@ -116,7 +116,7 @@ static int exec_subset_test(const char *name, unsigned int exectime, size_t len,
 				break;
 			ret++;
 			test->accesstype = access;
-			if (cp_exec_test(test, exectime, len, aio))
+			if (cp_exec_test(test, exectime, len, aio, iiv))
 				return -EFAULT;
 			out = cp_print_status(test, raw);
 			if (!out)
@@ -150,6 +150,7 @@ static void usage(void)
 	fprintf(stderr, "\t-v --vmsplice\tUse vmsplice kernel interface\n");
 	fprintf(stderr, "\t-s --sendmsg\tUse sendmsg kernel interface\n");
 	fprintf(stderr, "\t-o --aio\tUse AIO interface with given number of IOVECs\n");
+	fprintf(stderr, "\i-o --iiv\tUse per IOV IVs rather than chaining in AIO mode\n");
 }
 
 int main(int argc, char *argv[])
@@ -164,6 +165,7 @@ int main(int argc, char *argv[])
 	int alltests = 0;
 	int accesstype = KCAPI_ACCESS_HEURISTIC;
 	unsigned int aio = 0;
+	int iiv = 0;
 
 	register_tests(0);
 
@@ -181,9 +183,10 @@ int main(int argc, char *argv[])
 			{"sendmsg", 0, 0, 's'},
 			{"vmsplice", 0, 0, 'v'},
 			{"aio", 1, 0, 'o'},
+			{"iiv", 0, 0, 'i'},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "alc:t:b:rsvo:", opts, &opt_index);
+		c = getopt_long(argc, argv, "alc:t:b:rsvo:i", opts, &opt_index);
 		if(-1 == c)
 			break;
 		switch(c)
@@ -216,6 +219,9 @@ int main(int argc, char *argv[])
 			case 'o':
 				aio = (unsigned int)atoi(optarg);
 				break;
+			case 'i':
+				iiv = 1;
+				break;
 
 			default:
 				usage();
@@ -225,7 +231,7 @@ int main(int argc, char *argv[])
 
 	if (alltests) {
 		for (i = 0; i < 4; i++)
-			exec_all_tests(&tests[i], exectime, blocks, aio);
+			exec_all_tests(&tests[i], exectime, blocks, aio, iiv);
 		return 0;
 	}
 
@@ -234,7 +240,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	ret = exec_subset_test(cipher, exectime, blocks, raw, accesstype, aio);
+	ret = exec_subset_test(cipher, exectime, blocks, raw, accesstype, aio, iiv);
 
 out:
 	if (cipher)
