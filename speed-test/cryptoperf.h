@@ -89,6 +89,7 @@ struct skcipher_def {
 	unsigned char *iv;
 	size_t inputlen;
 	struct iovec *iovec;
+	struct iovec *iviovec;
 	struct kcapi_handle *handle;
 };
 

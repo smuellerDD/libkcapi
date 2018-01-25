@@ -37,6 +37,11 @@ static int cp_aead_init_test(struct cp_test *test, int enc, int ccm)
 	unsigned char *ivdata = NULL;
 	uint32_t ivlen = 0;
 
+	if (params->iiv) {
+		printf(DRIVER_NAME": Currently no IIV support for AEAD\n");
+		return -EINVAL;
+	}
+
 	dbg("Initializing AEAD test %s\n", test->testname);
 	if (!test->driver_name) {
 		printf(DRIVER_NAME": missing test definition information for %s\n",

@@ -186,9 +186,10 @@ int main(int argc, char *argv[])
 			{"sendmsg", 0, 0, 's'},
 			{"vmsplice", 0, 0, 'v'},
 			{"aio", 1, 0, 'o'},
+			{"iiv", 0, 0, 'i'},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "alc:t:b:rsvo:", opts, &opt_index);
+		c = getopt_long(argc, argv, "alc:t:b:rsvo:i", opts, &opt_index);
 		if(-1 == c)
 			break;
 		switch(c)
@@ -220,6 +221,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'o':
 				test_params.aio = (unsigned int)atoi(optarg);
+				break;
+			case 'i':
+				test_params.iiv = 1;
 				break;
 
 			default:

@@ -33,6 +33,7 @@ static int cp_skcipher_init_test(struct cp_test *test)
 	unsigned char data[MAX_KEYLEN];
 	unsigned char *ivdata = NULL;
 	unsigned int bs;
+	unsigned int ivdata_len;
 	int err;
 
 	dbg("Initializing symmetric test %s\n", test->testname);
@@ -66,13 +67,18 @@ static int cp_skcipher_init_test(struct cp_test *test)
 	/* handle stream ciphers */
 	if (bs == 1)
 		bs = 16;
-	err = posix_memalign((void *)&ivdata, bs, bs);
+
+	ivdata_len = bs;
+	if (params->iiv)
+		ivdata_len *= params->aio;
+
+	err = posix_memalign((void *)&ivdata, bs, ivdata_len);
 	if (err) {
 		printf(DRIVER_NAME": could not allocate ivdata for "
 		       "%s (error: %d)\n", test->driver_name, err);
 		goto out;
 	}
-	cp_read_random(ivdata, kcapi_cipher_blocksize(test->u.skcipher.handle));
+	cp_read_random(ivdata, ivdata_len);
 	test->u.skcipher.iv = ivdata;
 
 	err = posix_memalign((void *)&scratchpad, sysconf(_SC_PAGESIZE),
@@ -103,10 +109,27 @@ static int cp_skcipher_init_test(struct cp_test *test)
 			goto out;
 		}
 
+		if (params->iiv) {
+			err = posix_memalign((void *)&test->u.skcipher.iviovec,
+					     bs,
+					     params->aio * sizeof(struct iovec));
+			if (err) {
+				printf(DRIVER_NAME": could not allocate iviovec buffer\n");
+				goto out;
+			}
+		}
+
 		for (i = 0; i < params->aio; i++) {
 			test->u.skcipher.iovec[i].iov_base = scratchpad;
-			test->u.skcipher.iovec[i].iov_len = test->u.skcipher.inputlen;
+			test->u.skcipher.iovec[i].iov_len =
+						test->u.skcipher.inputlen;
 			scratchpad += test->u.skcipher.inputlen;
+
+			if (params->iiv) {
+				test->u.skcipher.iviovec[i].iov_base =
+								&ivdata[i * bs];
+				test->u.skcipher.iviovec[i].iov_len = bs;
+			}
 		}
 	}
 
@@ -128,8 +151,11 @@ static void cp_skcipher_fini_test(struct cp_test *test)
 	dbg("Cleaning up asynchronous symmetric test %s\n", test->testname);
 	free(test->u.skcipher.scratchpad);
 	free(test->u.skcipher.iv);
-	if (params->aio)
+	if (params->aio) {
 		free(test->u.skcipher.iovec);
+		if (params->iiv)
+			free(test->u.skcipher.iviovec);
+	}
 	kcapi_cipher_destroy(test->u.skcipher.handle);
 }
 
@@ -137,14 +163,22 @@ static unsigned int cp_skcipher_enc_test(struct cp_test *test)
 {
 	struct cp_test_param *params = test->test_params;
 
-	if (params->aio)
-		kcapi_cipher_encrypt_aio(test->u.skcipher.handle,
-					 test->u.skcipher.iovec,
-					 test->u.skcipher.iovec,
-					 params->aio,
-					 test->u.skcipher.iv,
-					 params->accesstype);
-	else
+	if (params->aio) {
+		if (params->iiv)
+			kcapi_cipher_encrypt_aio_iiv(test->u.skcipher.handle,
+						     test->u.skcipher.iovec,
+						     test->u.skcipher.iviovec,
+						     test->u.skcipher.iovec,
+						     params->aio,
+						     params->accesstype);
+		else
+			kcapi_cipher_encrypt_aio(test->u.skcipher.handle,
+						 test->u.skcipher.iovec,
+						 test->u.skcipher.iovec,
+						 params->aio,
+						 test->u.skcipher.iv,
+						 params->accesstype);
+	} else
 		kcapi_cipher_encrypt(test->u.skcipher.handle,
 				     test->u.skcipher.scratchpad,
 				     test->u.skcipher.inputlen,
@@ -159,14 +193,22 @@ static unsigned int cp_skcipher_dec_test(struct cp_test *test)
 {
 	struct cp_test_param *params = test->test_params;
 
-	if (params->aio)
-		kcapi_cipher_decrypt_aio(test->u.skcipher.handle,
-					 test->u.skcipher.iovec,
-					 test->u.skcipher.iovec,
-					 params->aio,
-					 test->u.skcipher.iv,
-					 params->accesstype);
-	else
+	if (params->aio) {
+		if (params->iiv)
+			kcapi_cipher_decrypt_aio_iiv(test->u.skcipher.handle,
+						     test->u.skcipher.iovec,
+						     test->u.skcipher.iviovec,
+						     test->u.skcipher.iovec,
+						     params->aio,
+						     params->accesstype);
+		else
+			kcapi_cipher_decrypt_aio(test->u.skcipher.handle,
+						 test->u.skcipher.iovec,
+						 test->u.skcipher.iovec,
+						 params->aio,
+						 test->u.skcipher.iv,
+						 params->accesstype);
+	} else
 		kcapi_cipher_decrypt(test->u.skcipher.handle,
 				     test->u.skcipher.scratchpad,
 				     test->u.skcipher.inputlen,
