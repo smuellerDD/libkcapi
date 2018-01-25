@@ -22,13 +22,12 @@
 /****************************************************************************
  * Random Number Generators
  ****************************************************************************/
-static int cp_rng_init_test(struct cp_test *test, size_t len, unsigned int aio)
+static int cp_rng_init_test(struct cp_test *test)
 {
 	unsigned char *scratchpad = NULL;
+	struct cp_test_param *params = test->test_params;
 #define SEEDSIZE 64
 	unsigned char seed[SEEDSIZE];
-
-	(void)aio;
 
 	dbg("Initializing RNG test %s\n", test->testname);
 	if (!test->driver_name) {
@@ -50,17 +49,17 @@ static int cp_rng_init_test(struct cp_test *test, size_t len, unsigned int aio)
 		goto out;
 	}
 
-	if (!len)
-		len = 1;
+	if (!params->len)
+		params->len = 1;
 	if (posix_memalign((void *)&scratchpad, 16,
-			   test->u.rng.blocksize * len)) {
+			   test->u.rng.blocksize * params->len)) {
 		printf(DRIVER_NAME": could not allocate scratchpad for "
 		       "%s\n", test->driver_name);
 		goto out;
 	}
 
 	test->u.rng.scratchpad = scratchpad;
-	test->u.rng.inputlen = len * test->u.rng.blocksize;
+	test->u.rng.inputlen = params->len * test->u.rng.blocksize;
 
 	return 0;
 

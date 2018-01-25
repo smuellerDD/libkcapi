@@ -22,29 +22,25 @@
 /**
  * Execute one particular test and record the timing information
  * @test: test case definition
- * @exectime: execution time for current test -- if 0, use the predefined
- *	      execution time for the test.
- * @len: number of blocks to test
- * @aio: number of iovs to send. If 0, don't use aio.
  *
  * result: 0 on success, error otherwise
  */
-int cp_exec_test(struct cp_test *test, unsigned int exectime, size_t len,
-		 unsigned int aio)
+int cp_exec_test(struct cp_test *test)
 {
 	uint64_t testduration = 0;
 	uint64_t nano = 1;
 	unsigned int i = 0;
+	struct cp_test_param *params = test->test_params;
 
 	nano = nano << 32;
 
 	testduration = nano * test->exectime;
 
-	if (exectime)
-		testduration = nano * exectime;
+	if (params->exectime)
+		testduration = nano * params->exectime;
 
 	if (test->init_test) {
-		int ret = test->init_test(test, len, aio);
+		int ret = test->init_test(test);
 		if (ret) {
 			printf(DRIVER_NAME": initialization for %s failed\n",
 			       test->testname);
@@ -57,8 +53,8 @@ int cp_exec_test(struct cp_test *test, unsigned int exectime, size_t len,
 	test->results.totaltime = 0;
 	test->results.rounds = 0;
 	test->results.byteperop = test->exec_test(test);
-	if (aio)
-		test->results.byteperop *= aio;
+	if (params->aio)
+		test->results.byteperop *= params->aio;
 
 	/* prime the test */
 	for (i = 0; i < 10; i++)

@@ -25,10 +25,10 @@
  * Synchronous symmetric ciphers
  ****************************************************************************/
 
-static int cp_skcipher_init_test(struct cp_test *test, size_t len,
-				 unsigned int aio)
+static int cp_skcipher_init_test(struct cp_test *test)
 {
 	unsigned char *scratchpad = NULL;
+	struct cp_test_param *params = test->test_params;
 #define MAX_KEYLEN 64
 	unsigned char data[MAX_KEYLEN];
 	unsigned char *ivdata = NULL;
@@ -43,7 +43,7 @@ static int cp_skcipher_init_test(struct cp_test *test, size_t len,
 	}
 
 	if (kcapi_cipher_init(&test->u.skcipher.handle, test->driver_name,
-			      aio ? KCAPI_INIT_AIO : 0)) {
+			      params->aio ? KCAPI_INIT_AIO : 0)) {
 		printf(DRIVER_NAME": could not allocate skcipher handle for "
 		       "%s\n", test->driver_name);
 		goto out;
@@ -76,8 +76,8 @@ static int cp_skcipher_init_test(struct cp_test *test, size_t len,
 	test->u.skcipher.iv = ivdata;
 
 	err = posix_memalign((void *)&scratchpad, sysconf(_SC_PAGESIZE),
-		kcapi_cipher_blocksize(test->u.skcipher.handle) * len *
-				       (aio ? aio : 1));
+		kcapi_cipher_blocksize(test->u.skcipher.handle) * params->len *
+				       (params->aio ? params->aio : 1));
 	if (err) {
 		printf(DRIVER_NAME": could not allocate scratchpad for "
 		       "%s (error %d)\n", test->driver_name, err);
@@ -85,30 +85,29 @@ static int cp_skcipher_init_test(struct cp_test *test, size_t len,
 	}
 
 	cp_read_random(scratchpad,
-		       kcapi_cipher_blocksize(test->u.skcipher.handle) * len *
-					      (aio ? aio : 1));
+		       kcapi_cipher_blocksize(test->u.skcipher.handle) *
+					      params->len *
+					      (params->aio ? params->aio : 1));
 
 	test->u.skcipher.inputlen =
-		len * kcapi_cipher_blocksize(test->u.skcipher.handle);
+		params->len * kcapi_cipher_blocksize(test->u.skcipher.handle);
 	test->u.skcipher.scratchpad = scratchpad;
 
-	if (aio) {
+	if (params->aio) {
 		unsigned int i;
 
 		err = posix_memalign((void *)&test->u.skcipher.iovec, bs,
-				     aio * sizeof(struct iovec));
+				     params->aio * sizeof(struct iovec));
 		if (err) {
 			printf(DRIVER_NAME": could not allocate iovec buffer\n");
 			goto out;
 		}
 
-		for (i = 0; i < aio; i++) {
+		for (i = 0; i < params->aio; i++) {
 			test->u.skcipher.iovec[i].iov_base = scratchpad;
 			test->u.skcipher.iovec[i].iov_len = test->u.skcipher.inputlen;
 			scratchpad += test->u.skcipher.inputlen;
 		}
-
-		test->u.skcipher.aio = aio;
 	}
 
 	return 0;
@@ -124,23 +123,27 @@ out:
 
 static void cp_skcipher_fini_test(struct cp_test *test)
 {
+	struct cp_test_param *params = test->test_params;
+
 	dbg("Cleaning up asynchronous symmetric test %s\n", test->testname);
 	free(test->u.skcipher.scratchpad);
 	free(test->u.skcipher.iv);
-	if (test->u.skcipher.aio)
+	if (params->aio)
 		free(test->u.skcipher.iovec);
 	kcapi_cipher_destroy(test->u.skcipher.handle);
 }
 
 static unsigned int cp_skcipher_enc_test(struct cp_test *test)
 {
-	if (test->u.skcipher.aio)
+	struct cp_test_param *params = test->test_params;
+
+	if (params->aio)
 		kcapi_cipher_encrypt_aio(test->u.skcipher.handle,
 					 test->u.skcipher.iovec,
 					 test->u.skcipher.iovec,
-					 test->u.skcipher.aio,
+					 params->aio,
 					 test->u.skcipher.iv,
-					 test->accesstype);
+					 params->accesstype);
 	else
 		kcapi_cipher_encrypt(test->u.skcipher.handle,
 				     test->u.skcipher.scratchpad,
@@ -148,19 +151,21 @@ static unsigned int cp_skcipher_enc_test(struct cp_test *test)
 				     test->u.skcipher.iv,
 				     test->u.skcipher.scratchpad,
 				     test->u.skcipher.inputlen,
-				     test->accesstype);
+				     params->accesstype);
 	return test->u.skcipher.inputlen;
 }
 
 static unsigned int cp_skcipher_dec_test(struct cp_test *test)
 {
-	if (test->u.skcipher.aio)
+	struct cp_test_param *params = test->test_params;
+
+	if (params->aio)
 		kcapi_cipher_decrypt_aio(test->u.skcipher.handle,
 					 test->u.skcipher.iovec,
 					 test->u.skcipher.iovec,
-					 test->u.skcipher.aio,
+					 params->aio,
 					 test->u.skcipher.iv,
-					 test->accesstype);
+					 params->accesstype);
 	else
 		kcapi_cipher_decrypt(test->u.skcipher.handle,
 				     test->u.skcipher.scratchpad,
@@ -168,7 +173,7 @@ static unsigned int cp_skcipher_dec_test(struct cp_test *test)
 				     test->u.skcipher.iv,
 				     test->u.skcipher.scratchpad,
 				     test->u.skcipher.inputlen,
-				     test->accesstype);
+				     params->accesstype);
 	return test->u.skcipher.inputlen;
 }
 

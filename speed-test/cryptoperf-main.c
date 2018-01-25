@@ -59,18 +59,21 @@ static void register_tests(int print)
 	print_tests(&tests[3], print);
 }
 
-static int exec_all_tests(struct test_array *tests, unsigned int exectime,
-			  size_t len, unsigned int aio)
+static int exec_all_tests(struct test_array *tests,
+			  struct cp_test_param *test_params)
 {
 	size_t i;
 
 	for (i = 0; i < tests->entries; i++) {
+		struct cp_test *test = &tests->array[i];
 		char *out = NULL;
 
+		test->test_params = test_params;
+
 		/* Execute all tests and do not error out on errors */
-		if (cp_exec_test(&tests->array[i], exectime, len, aio))
+		if (cp_exec_test(test))
 			continue;
-		out = cp_print_status(&tests->array[i], 0);
+		out = cp_print_status(test, 0);
 		if (!out)
 			return -ENOMEM;
 		printf("%s\n", out);
@@ -99,8 +102,8 @@ static int find_test(const char *name, struct test_array *tests, int start,
 	return -EFAULT;
 }
 
-static int exec_subset_test(const char *name, unsigned int exectime, size_t len,
-			    int raw, int access, unsigned int aio)
+static int exec_subset_test(const char *name, int raw,
+			    struct cp_test_param *test_params)
 {
 	struct cp_test *test = NULL;
 	int i = 0;
@@ -115,8 +118,10 @@ static int exec_subset_test(const char *name, unsigned int exectime, size_t len,
 			if (ret < 0)
 				break;
 			ret++;
-			test->accesstype = access;
-			if (cp_exec_test(test, exectime, len, aio))
+
+			test->test_params = test_params;
+
+			if (cp_exec_test(test))
 				return -EFAULT;
 			out = cp_print_status(test, raw);
 			if (!out)
@@ -155,15 +160,15 @@ static void usage(void)
 int main(int argc, char *argv[])
 {
 	int c = 0;
-	unsigned int exectime = 0;
-	unsigned long blocks = 1;
+	struct cp_test_param test_params = { 0 };
 	char *cipher = NULL;
 	int raw = 0;
 	int ret = 1;
 	int i = 0;
 	int alltests = 0;
-	int accesstype = KCAPI_ACCESS_HEURISTIC;
-	unsigned int aio = 0;
+
+	test_params.len = 1;
+	test_params.accesstype = KCAPI_ACCESS_HEURISTIC;
 
 	register_tests(0);
 
@@ -199,22 +204,22 @@ int main(int argc, char *argv[])
 				cipher = strndup(optarg, 50);
 				break;
 			case 't':
-				exectime = (unsigned int)atoi(optarg);
+				test_params.exectime = (unsigned int)atoi(optarg);
 				break;
 			case 'b':
-				blocks = (unsigned int)atoi(optarg);
+				test_params.len = (unsigned int)atoi(optarg);
 				break;
 			case 'r':
 				raw = 1;
 				break;
 			case 'v':
-				accesstype = KCAPI_ACCESS_VMSPLICE;
+				test_params.accesstype = KCAPI_ACCESS_VMSPLICE;
 				break;
 			case 's':
-				accesstype = KCAPI_ACCESS_SENDMSG;
+				test_params.accesstype = KCAPI_ACCESS_SENDMSG;
 				break;
 			case 'o':
-				aio = (unsigned int)atoi(optarg);
+				test_params.aio = (unsigned int)atoi(optarg);
 				break;
 
 			default:
@@ -225,7 +230,7 @@ int main(int argc, char *argv[])
 
 	if (alltests) {
 		for (i = 0; i < 4; i++)
-			exec_all_tests(&tests[i], exectime, blocks, aio);
+			exec_all_tests(&tests[i], &test_params);
 		return 0;
 	}
 
@@ -234,7 +239,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	ret = exec_subset_test(cipher, exectime, blocks, raw, accesstype, aio);
+	ret = exec_subset_test(cipher, raw, &test_params);
 
 out:
 	if (cipher)
