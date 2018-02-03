@@ -1132,14 +1132,14 @@ int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
 {
 	int32_t totallen = 0;
 	uint32_t maxprocess = sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES;
+	int32_t ret;
 
 	if (outlen > INT_MAX)
 		return -EMSGSIZE;
 
-	while (inlen) {
+	while (inlen && outlen) {
 		uint32_t inprocess = inlen;
 		uint32_t outprocess = outlen;
-		int32_t ret = 0;
 
 		/*
 		 * We do not check that sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES is
@@ -1161,6 +1161,17 @@ int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
 		inlen -= inprocess;
 		out += ret;
 		outlen -= ret;
+	}
+
+	/* Pick up any remaining data. */
+	if (outlen) {
+		do {
+			ret = _kcapi_common_read_data(handle, out, outlen);
+			if (ret > 0) {
+				out += ret;
+				outlen -= ret;
+			}
+		} while ((ret > 0 || errno == EINTR) && outlen);
 	}
 
 	return totallen;
