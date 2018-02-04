@@ -541,7 +541,8 @@ int32_t _kcapi_common_recv_data_fd(struct kcapi_handle *handle, int *fdptr,
 int32_t _kcapi_common_read_data_fd(struct kcapi_handle *handle, int *fdptr,
 				   uint8_t *out, uint32_t outlen)
 {
-	int32_t ret;
+	int ret;
+	int32_t totallen = 0;
 
 	if (outlen > INT_MAX)
 		return -EMSGSIZE;
@@ -550,12 +551,24 @@ int32_t _kcapi_common_read_data_fd(struct kcapi_handle *handle, int *fdptr,
 	if (ret)
 		return ret;
 
-	ret = read(*fdptr, out, outlen);
-	if (ret < 0)
-		ret = -errno;
-	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: read syscall returned %d", ret);
 
-	return ret;
+	if (outlen) {
+		do {
+			ret = read(*fdptr, out, outlen);
+			if (ret > 0) {
+				out += ret;
+				outlen -= ret;
+				totallen += ret;
+			}
+			kcapi_dolog(KCAPI_LOG_DEBUG,
+				    "AF_ALG: read syscall returned %d", ret);
+		} while ((ret > 0 || errno == EINTR) && outlen);
+
+		if (ret < 0)
+			return -errno;
+	}
+
+	return totallen;
 }
 
 int _kcapi_common_setkey(struct kcapi_handle *handle,
@@ -1161,17 +1174,6 @@ int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
 		inlen -= inprocess;
 		out += ret;
 		outlen -= ret;
-	}
-
-	/* Pick up any remaining data. */
-	if (outlen) {
-		do {
-			ret = _kcapi_common_read_data(handle, out, outlen);
-			if (ret > 0) {
-				out += ret;
-				outlen -= ret;
-			}
-		} while ((ret > 0 || errno == EINTR) && outlen);
 	}
 
 	return totallen;
