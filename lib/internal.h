@@ -187,7 +187,8 @@ struct kcapi_aead_data {
 
 /**
  * AIO related data structure to hold all information for AIO
- * @skcipher_aio_disable: AIO support for symmetric ciphers not present
+ * @disable: AIO support for symmetric ciphers not present
+ * @iiv_flag_sent: true if ALG_OP_INLINE_IV is sent
  * @efd: event file descriptor
  * @aio_ctx: AIO context to use for AIO syscalls
  * @iocb_ret: return code of each iocb request - set to AIO_OUTSTANDING until
@@ -197,6 +198,7 @@ struct kcapi_aead_data {
 #define AIO_OUTSTANDING	((__s64)-(1<<13))
 struct kcapi_aio {
 	bool disable;
+	bool iiv_flag_sent;
 	int efd;
 	aio_context_t aio_ctx;
 	__s64 *iocb_ret;

@@ -262,8 +262,7 @@ int32_t kcapi_aead_encrypt_aio_iiv(struct kcapi_handle *handle,
 	handle->cipher.iv = NULL;
 
 	return _kcapi_cipher_crypt_aio(handle, iniov, iviov, outiov, iovlen,
-				       access,
-				       ALG_OP_ENCRYPT | ALG_OP_INLINE_IV);
+				       access, ALG_OP_ENCRYPT);
 }
 
 DSO_PUBLIC
@@ -341,8 +340,7 @@ int32_t kcapi_aead_decrypt_aio_iiv(struct kcapi_handle *handle,
 	handle->cipher.iv = NULL;
 
 	return _kcapi_cipher_crypt_aio(handle, iniov, iviov, outiov, iovlen,
-				       access,
-				       ALG_OP_DECRYPT | ALG_OP_INLINE_IV);
+				       access, ALG_OP_DECRYPT);
 }
 
 DSO_PUBLIC

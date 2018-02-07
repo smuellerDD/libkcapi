@@ -1292,6 +1292,15 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 			combined[dst].iov_base = iniov[i].iov_base;
 			combined[dst].iov_len = iniov[i].iov_len;
 		}
+
+		/*
+		 * Inform the kernel about the IIV processing during the first
+		 * sendmsg invocation.
+		 */
+		if (!handle->aio.iiv_flag_sent) {
+			enc |= ALG_OP_INLINE_IV;
+			handle->aio.iiv_flag_sent = true;
+		}
 	}
 
 	/* Every IOVEC is processed as its individual cipher operation. */
