@@ -216,6 +216,9 @@ else
 DOCPROC_TEMP := $(abs_top_builddir)/docproc.temp
 endif
 
+lib/doc/bin/docproc${EXEEXT}:
+	@$(CC_FOR_BUILD) -std=c99 -Wall -Wextra -o $@ $<
+
 %.xml: %.tmpl lib/doc/bin/docproc$(EXEEXT)
 	$(SED) "s/@@LIBVERSION@@/$(VERSION)/" < $< > $(DOCPROC_TEMP)
 	LIBVERSION=$(VERSION) SRCTREE=lib/ $(abs_top_builddir)/lib/doc/bin/docproc$(EXEEXT) doc $(DOCPROC_TEMP) > $@
