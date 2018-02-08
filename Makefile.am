@@ -216,10 +216,9 @@ else
 DOCPROC_TEMP := $(abs_top_builddir)/docproc.temp
 endif
 
-$(docproc_OBJECTS) : CC=$(CC_FOR_BUILD)
-$(docproc_OBJECTS) : CFLAGS=$(CFLAGS_FOR_BUILD)
-$(docproc_OBJECTS) : CPPFLAGS= $(COMMON_CPPFLAGS) $(CPPFLAGS_FOR_BUILD)
-$(docproc_OBJECTS) : LDFLAGS= $(COMMON_LDFLAGS) $(LDFLAGS_FOR_BUILD)
+$(docproc_OBJECTS) : CC = $(CC_FOR_BUILD)
+$(docproc_OBJECTS) : CFLAGS = $(CFLAGS_FOR_BUILD)
+$(docproc_OBJECTS) : CPPFLAGS = $(COMMON_CPPFLAGS) $(CPPFLAGS_FOR_BUILD)
 
 lib/doc/bin/docproc${EXEEXT}: $(docproc_OBJECTS)
 	$(CC_FOR_BUILD) $(COMMON_CPPFLAGS) $(CPPFLAGS) $(CFLAGS) $(COMMON_LDFLAGS) $(LDFLAGS) -o $@ $<
