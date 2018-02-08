@@ -412,14 +412,12 @@ static int process_checkfile(char *hashname, char *checkfile, char *targetfile,
 			if (r == 0) {
 				if (log < CHK_QUIET)
 					printf("%s: OK\n", filename);
-			} else if (r == 1) {
+			} else {
 				if (log < CHK_STATUS)
 					printf("%s: Not OK\n",
 						filename);
-				ret++;
-			} else {
-				ret = r;
-				goto out;
+				if (ret >= 0)
+					ret++;
 			}
 		} else {
 			/*
