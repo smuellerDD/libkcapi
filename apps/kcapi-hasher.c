@@ -417,8 +417,10 @@ static int process_checkfile(char *hashname, char *checkfile, char *targetfile,
 					printf("%s: Not OK\n",
 						filename);
 				ret++;
-			} else
+			} else {
+				ret = r;
 				goto out;
+			}
 		} else {
 			/*
 			 * fipscheck does not have the filename in the check
