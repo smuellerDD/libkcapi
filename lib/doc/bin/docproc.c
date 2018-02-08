@@ -411,7 +411,7 @@ static void find_all_symbols(char *filename)
 
 	count = 0;
 	/* poor man's strtok, but with counting */
-	for (i = 0; i < data_len; i++) {
+	for (i = 0; i < (int)data_len; i++) {
 		if (data[i] == '\n') {
 			count++;
 			data[i] = '\0';
@@ -421,7 +421,7 @@ static void find_all_symbols(char *filename)
 	all_list_len += count;
 	all_list = realloc(all_list, sizeof(char *) * all_list_len);
 	str = data;
-	for (i = 0; i < data_len && start != all_list_len; i++) {
+	for (i = 0; i < (int)data_len && start != all_list_len; i++) {
 		if (data[i] == '\0') {
 			all_list[start] = str;
 			str = data + i + 1;
