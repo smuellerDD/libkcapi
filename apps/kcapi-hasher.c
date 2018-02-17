@@ -758,10 +758,10 @@ int main(int argc, char *argv[])
 					usage(argv[0]);
 					ret = 0;
 					goto out;
-				}
 				case 7:
 					bsd_style = 1;
 					break;
+				}
 				break;
 
 			case 'v':
