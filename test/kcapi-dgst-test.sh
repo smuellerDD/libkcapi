@@ -61,6 +61,7 @@ init_setup()
 gen_orig()
 {
 	local size=$1
+	touch $ORIGPT
 	dd if=/dev/urandom of=$ORIGPT bs=$size count=1 2>/dev/null
 }
 
@@ -204,7 +205,7 @@ test_filein_fileout()
 
 init_setup
 
-for i in 1 15 16 29 32 257 512 1023 16385 65535 65536 65537 99999 100000 100001
+for i in 0 1 15 16 29 32 257 512 1023 16385 65535 65536 65537 99999 100000 100001
 do
 	gen_orig $i
 	test_stdin_stdout $KEYFILE_128
