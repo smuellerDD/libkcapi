@@ -104,7 +104,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			if (ret < 0)
 				goto out;
 		}
-	} else {
+	} else if (insb.st_size) {
 		uint8_t *inmem_p;
 
 		inmem = mmap(NULL, insb.st_size, PROT_READ, MAP_SHARED,
