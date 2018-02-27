@@ -222,7 +222,7 @@ $(lib_doc_bin_docproc_OBJECTS) : CFLAGS = $(CFLAGS_FOR_BUILD)
 $(lib_doc_bin_docproc_OBJECTS) : CPPFLAGS = $(COMMON_CPPFLAGS) $(CPPFLAGS_FOR_BUILD)
 
 lib/doc/bin/docproc${EXEEXT}: $(lib_doc_bin_docproc_OBJECTS)
-	$(CC_FOR_BUILD) $(COMMON_CPPFLAGS) $(CPPFLAGS) $(CFLAGS) -o $@ $<
+	$(CC_FOR_BUILD) $(COMMON_CPPFLAGS) $(CPPFLAGS_FOR_BUILD) $(CFLAGS_FOR_BUILD) -o $@ $<
 
 %.xml: %.tmpl lib/doc/bin/docproc$(EXEEXT)
 	$(SED) "s/@@LIBVERSION@@/$(VERSION)/" < $< > $(DOCPROC_TEMP)
