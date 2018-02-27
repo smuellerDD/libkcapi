@@ -69,10 +69,9 @@ CFLAGS="-Werror -fstack-protector-strong"
 AC_MSG_CHECKING([whether CC supports -fstack-protector-strong])
 AC_LINK_IFELSE([AC_LANG_PROGRAM([])],
 	[AC_MSG_RESULT([yes])]
-	AM_CFLAGS=-fstack-protector-strong,
-	[AC_MSG_RESULT([no])])
-CFLAGS="$my_cflags"
-AC_SUBST([AM_CFLAGS])
+	CFLAGS="-fstack-protector-strong $my_cflags",
+	[AC_MSG_RESULT([no])]
+	CFLAGS="$my_cflags")
 AX_ADD_FORTIFY_SOURCE
 
 AC_CHECK_API_VERSION
