@@ -24,6 +24,7 @@ man_MANS =
 
 DOC_TARGETS =
 
+pkgconfigdir=$(libdir)/pkgconfig
 pkgconfig_DATA = libkcapi.pc
 
 if DISABLE_LIB_SYM
