@@ -189,10 +189,12 @@ struct kcapi_aio {
 
 struct kcapi_flags {
 	/*
-	 * New AEAD interface introduced with 4.9.0 to only require a tag
-	 * if it is required as input or output.
+	 * A flag to distinguish the new AEAD interface introduced with 4.9.0 to
+	 * only require a tag if it is required as input or output.
+	 *
+	 * Also, kernels before 4.9.0 misbehave when no data is sent for hashing.
 	 */
-	bool newtag;
+	bool ge_v4_9;
 
 	/* AF_ALG interfaces changed to process more pages concurrently. */
 	uint32_t alg_max_pages;

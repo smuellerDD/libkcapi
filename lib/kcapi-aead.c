@@ -79,7 +79,7 @@ void kcapi_aead_getdata_input(struct kcapi_handle *handle,
 		encdatalen -= handle->aead.assoclen;
 	}
 
-	l_taglen = (enc && handle->flags.newtag == true) ? 0 :
+	l_taglen = (enc && handle->flags.ge_v4_9 == true) ? 0 :
 							handle->aead.taglen;
 	/* databuffer is all between AAD buffer (if present) and tag */
 	if (encdatalen < l_taglen) {
@@ -135,7 +135,7 @@ void kcapi_aead_getdata_output(struct kcapi_handle *handle,
 	}
 
 	/* with 4.9.0 we do not have a tag for decryption */
-	if (handle->flags.newtag == true)
+	if (handle->flags.ge_v4_9 == true)
 		l_taglen = (enc) ? handle->aead.taglen : 0;
 	else
 		l_taglen = handle->aead.taglen;
@@ -392,7 +392,7 @@ uint32_t kcapi_aead_inbuflen_enc(struct kcapi_handle *handle,
 {
 	uint32_t len = inlen + assoclen;
 
-	if (!handle->flags.newtag == true)
+	if (!handle->flags.ge_v4_9 == true)
 		len += taglen;
 
 	return len;
@@ -430,7 +430,7 @@ uint32_t kcapi_aead_outbuflen_dec(struct kcapi_handle *handle,
 	int bs = handle->info.blocksize;
 	uint32_t outlen = (inlen + bs - 1) / bs * bs + assoclen;
 
-	if (!handle->flags.newtag == true)
+	if (!handle->flags.ge_v4_9 == true)
 		outlen += taglen;
 
 	/* the kernel does not like zero length output buffers */
