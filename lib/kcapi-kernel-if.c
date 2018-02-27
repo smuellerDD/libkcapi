@@ -989,8 +989,8 @@ err:
 
 static void _kcapi_handle_flags(struct kcapi_handle *handle)
 {
-	/* new memory structure for AF_ALG AEAD interface */
-	handle->flags.newtag = _kcapi_kernver_ge(handle, 4, 9, 0);
+	/* new memory structure for AF_ALG AEAD interface + fixed hashing empty input */
+	handle->flags.ge_v4_9 = _kcapi_kernver_ge(handle, 4, 9, 0);
 
 	/* older interfaces only processed 16 pages in a row */
 	handle->flags.alg_max_pages = _kcapi_kernver_ge(handle, 4, 11, 0) ?
