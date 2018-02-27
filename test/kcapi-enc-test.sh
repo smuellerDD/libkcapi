@@ -66,7 +66,7 @@ bin2hex_noaad()
 	local origfile=$1
 	local aadlenskip=$2
 
-	local hex=$(od --endian=big -A n -v -t x2 -w512 -j$aadlenskip $origfile | sed 's/ //g')
+	local hex=$(hexdump -ve '/1 "%02x"' -s$aadlenskip $origfile)
 
 	echo $hex
 }
