@@ -207,7 +207,7 @@ endif
 
 if HAVE_CPPCHECK
 cppcheck:
-	$(CPPCHECK) --enable=performance,warning,portability $(sort $(SCAN_FILES))
+	$(CPPCHECK) --error-exitcode=42 --enable=performance,warning,portability $(sort $(SCAN_FILES))
 endif
 
 if HAVE_MKTEMP
