@@ -65,6 +65,7 @@ static inline int32_t _kcapi_md_update(struct kcapi_handle *handle,
 	if ((uint32_t)ret < len)
 		return -EIO;
 
+	handle->processed_sg += 1;
 	return 0;
 }
 
@@ -86,6 +87,10 @@ static int32_t _kcapi_md_final(struct kcapi_handle *handle,
 			    (unsigned long)len,	handle->info.hash_digestsize);
 		return -EINVAL;
 	}
+
+	/* Work around zero-sized hashing bug in pre-4.9 kernels: */
+	if (!handle->flags.ge_v4_9 && !handle->processed_sg)
+		_kcapi_md_update(handle, NULL, 0);
 
 	iov.iov_base = (void*)(uintptr_t)buffer;
 	iov.iov_len = len;
