@@ -1,0 +1,47 @@
+language: c
+
+sudo: required
+
+compiler:
+    - clang
+    - gcc
+
+addons:
+    apt:
+        packages:
+            - pkg-config
+            - realpath
+            - gcc-multilib
+            - openssl
+            - cppcheck
+            - xmlto
+            - docbook-utils
+
+install:
+    # We need a recent cppcheck because the one shipped with trusty has bugs:
+    - mkdir deps
+    - git clone 'https://github.com/danmar/cppcheck/' deps/cppcheck
+    - cd deps/cppcheck
+    - git checkout 1.82
+    - CPPCHECK_CONFIG="SRCDIR=build CFGDIR=/usr/local/share/cppcheck/cfg HAVE_RULES=yes CXXFLAGS='-O2 -DNDEBUG -Wall -Wno-sign-compare -Wno-unused-function'"
+    - eval make -j`nproc --all` $CPPCHECK_CONFIG
+    - eval sudo make install $CPPCHECK_CONFIG
+    - cd -
+
+script:
+    - autoreconf -i && OK_AUTOCONF=y
+    - >
+        [ "$OK_AUTOCONF" = y ] && ./configure \
+            --enable-kcapi-hasher \
+            --enable-kcapi-test \
+            --enable-kcapi-rngapp \
+            --enable-kcapi-encapp \
+            --enable-kcapi-dgstapp \
+            --enable-lib-asym \
+            --enable-lib-kpp && OK_CONFIGURE=y
+    - >
+        [ "$OK_CONFIGURE" = y ] && make -j`nproc --all`
+    - >
+        [ "$OK_CONFIGURE" = y ] && make cppcheck
+    - >
+        [ "$OK_CONFIGURE" = y ] && cd test && bash ./test-invocation.sh

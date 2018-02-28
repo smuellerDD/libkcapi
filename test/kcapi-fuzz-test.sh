@@ -59,3 +59,5 @@ fi
 
 echo "==================================================================="
 echo "Number of failures: $failures"
+
+exit $failures

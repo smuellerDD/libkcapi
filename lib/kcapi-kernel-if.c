@@ -1004,6 +1004,8 @@ int _kcapi_allocated_handle_init(struct kcapi_handle *handle, const char *type,
 	int ret;
 	char versionbuffer[50];
 
+	memset(handle, 0, sizeof(*handle));
+
 	kcapi_versionstring(versionbuffer, sizeof(versionbuffer));
 	kcapi_dolog(KCAPI_LOG_VERBOSE,
 		    "%s - initializing cipher operation with kernel",
