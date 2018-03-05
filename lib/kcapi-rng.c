@@ -150,12 +150,15 @@ static int get_random(uint8_t *buf, uint32_t buflen)
 DSO_PUBLIC
 int32_t kcapi_rng_get_bytes(uint8_t *buffer, uint32_t outlen)
 {
-	struct kcapi_handle handle = { 0 };
+	struct kcapi_handle handle;
 	uint8_t buf[KCAPI_RNG_BUFSIZE] __aligned(KCAPI_APP_ALIGN);
 	uint8_t *seedbuf = buf;
 	uint32_t seedsize = 0, orig_outlen = outlen;
-	int32_t ret = _kcapi_allocated_handle_init(&handle, "rng", "stdrng", 0);
+	int32_t ret;
 
+	memset(&handle, 0, sizeof(handle));
+
+	ret = _kcapi_allocated_handle_init(&handle, "rng", "stdrng", 0);
 	if (ret)
 		return ret;
 

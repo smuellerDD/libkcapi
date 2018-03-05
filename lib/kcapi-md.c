@@ -133,9 +133,12 @@ static inline int32_t kcapi_md_conv_common(const char *name,
 					   const uint8_t *in, uint32_t inlen,
 					   uint8_t *out, uint32_t outlen)
 {
-	struct kcapi_handle handle = { 0 };
-	int32_t ret = _kcapi_allocated_handle_init(&handle, "hash", name, 0);
+	struct kcapi_handle handle;
+	int32_t ret;
 
+	memset(&handle, 0, sizeof(handle));
+
+	ret = _kcapi_allocated_handle_init(&handle, "hash", name, 0);
 	if (ret)
 		return ret;
 
