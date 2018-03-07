@@ -320,6 +320,7 @@ static int process_checkfile(const char *hashname,  const char *bsdhashname,
 {
 	FILE *file = NULL;
 	int ret = 0;
+	int checked_any = 0;
 	struct kcapi_handle *handle;
 
 	/*
@@ -457,13 +458,20 @@ static int process_checkfile(const char *hashname,  const char *bsdhashname,
 				goto out;
 			}
 		}
+
+		checked_any = 1;
 	}
 
 out:
 	if (file)
 		fclose(file);
 	kcapi_md_destroy(handle);
-	return ret;
+
+	/*
+	 * If we found no lines to check, return an error.
+	 * (See https://pagure.io/hmaccalc/c/1afb99549816192eb8e6bc8101bc417c2ffa764c)
+	 */
+	return checked_any ? ret : 1;
 
 }
 
