@@ -397,7 +397,8 @@ static int process_checkfile(char *hashname, char *checkfile, char *targetfile,
 
 		if (!hexhash || !hashlen) {
 			printf("Hash not found\n");
-			return 1;
+			ret = 1;
+			goto out;
 		}
 
 		if (filename) {
@@ -425,8 +426,9 @@ static int process_checkfile(char *hashname, char *checkfile, char *targetfile,
 			 * file
 			 */
 			if (targetfile) {
-				return hasher(handle, targetfile,
-					      hexhash, hashlen + 1, stdout);
+				ret = hasher(handle, targetfile,
+					     hexhash, hashlen + 1, stdout);
+				goto out;
 			}
 		}
 	}
