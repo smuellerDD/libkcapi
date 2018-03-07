@@ -48,6 +48,29 @@ done
 libdir=$(dirname $(realpath ../.libs/libkcapi.so))
 libname=$(realpath ../.libs/libkcapi.so)
 
+for hasher in $SUMHASHER $HMACHASHER
+do
+	>$CHKFILE
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -c $CHKFILE
+	if [ $? -eq 0 ]
+	then
+		echo_fail "Verification of empty checker file with hasher $hasher did not fail"
+	else
+		echo_pass "Failure on empty checker file for $hasher"
+	fi
+
+	echo >$CHKFILE
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -c $CHKFILE
+	if [ $? -eq 0 ]
+	then
+		echo_fail "Verification of empty line checker file with hasher $hasher did not fail"
+	else
+		echo_pass "Failure on empty line checker file for $hasher"
+	fi
+
+	rm -f $CHKFILE
+done
+
 for i in $SUMHASHER
 do
 	hash=$(basename $i)
