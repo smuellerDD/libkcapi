@@ -44,4 +44,6 @@ script:
     - >
         [ "$OK_CONFIGURE" = y ] && make cppcheck
     - >
+        [ "$OK_CONFIGURE" = y ] && make scan
+    - >
         [ "$OK_CONFIGURE" = y ] && cd test && bash ./test-invocation.sh
