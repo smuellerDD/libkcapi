@@ -142,7 +142,8 @@ static int hasher(struct kcapi_handle *handle, char *filename,
 			goto out;
 
 		if (sb.st_size) {
-			memblock = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
+			memblock = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED,
+					fd, 0);
 			if (memblock == MAP_FAILED)
 			{
 				fprintf(stderr, "Use of mmap failed\n");
