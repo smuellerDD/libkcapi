@@ -667,7 +667,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 				goto out;
 
 			ret = return_data(handle, opts, outfd, outsize,
-					  generated_bytes, 1);
+					  generated_bytes, outsize == avail);
 			if (ret < 0)
 				goto out;
 
