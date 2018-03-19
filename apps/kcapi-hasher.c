@@ -272,6 +272,7 @@ static int hash_files(const char *hashname, const char *bsdhashname,
 		if (ret) {
 			fprintf(stderr, "Setting HMAC key for %s failed (%d)\n",
 				hashname, ret);
+			kcapi_md_destroy(handle);
 			return -EINVAL;
 		}
 	}
@@ -342,7 +343,8 @@ static int process_checkfile(const char *hashname,  const char *bsdhashname,
 		if (ret) {
 			fprintf(stderr, "Setting HMAC key for %s failed (%d)\n",
 				hashname, ret);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto out;
 		}
 	}
 
@@ -472,7 +474,7 @@ out:
 	 * If we found no lines to check, return an error.
 	 * (See https://pagure.io/hmaccalc/c/1afb99549816192eb8e6bc8101bc417c2ffa764c)
 	 */
-	return checked_any ? ret : 1;
+	return ret != 0 ? ret : !checked_any;
 
 }
 
@@ -487,7 +489,7 @@ static int fipscheck_self(const char *hash,
 	char selfname[BUFSIZE];
 	int32_t selfnamesize = 0;
 	Dl_info info;
-	void *dl, *sym;
+	void *dl = NULL, *sym;
 
 #ifdef HAVE_SECURE_GETENV
 	if (secure_getenv("KCAPI_HASHER_FORCE_FIPS")) {
@@ -564,8 +566,6 @@ static int fipscheck_self(const char *hash,
 
 	strncpy(selfname, info.dli_fname, (sizeof(selfname) - 1));
 
-	dlclose(dl);
-
 	free(checkfile);
 	checkfile = get_hmac_file(selfname);
 	if (!checkfile) {
@@ -579,6 +579,8 @@ static int fipscheck_self(const char *hash,
 out:
 	if (checkfile)
 		free(checkfile);
+	if (dl)
+		dlclose(dl);
 	return ret;
 }
 

@@ -319,7 +319,7 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 	if (opts->key_fd != -1) {
 		ret = read_complete(opts->key_fd, keybuf, sizeof(keybuf));
 		if (ret < 0)
-			return ret;
+			goto out;
 
 		have_key = 1;
 		keybuflen = ret;
