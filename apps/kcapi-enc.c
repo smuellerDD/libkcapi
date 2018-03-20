@@ -476,7 +476,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		ret = hex2bin_alloc(opts->aad, strlen(opts->aad),
 				    &aadbuf, &opts->aadlen);
 		if (ret)
-			return ret;
+			goto out;
 
 		/* Set AAD length. */
 		kcapi_aead_setassoclen(handle, opts->aadlen);
@@ -507,7 +507,8 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		if (infd < 0) {
 			dolog(KCAPI_LOG_ERR, "Cannot open file %s: %s",
 			      opts->infile, strerror(errno));
-			return -EIO;
+			ret = -EIO;
+			goto out;
 		}
 		ret = check_filetype(infd, &insb, opts->infile);
 		if (ret)
@@ -639,8 +640,6 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 					      "Input file's trailing bytes will be treated as padding during decryption unless you turn off padding handling with --nounpad\n");
 				}
 			}
-
-
 		}
 
 		while (sent_data < (uint64_t)insb.st_size) {
@@ -810,7 +809,7 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 	if (opts->key_fd != -1) {
 		ret = read_complete(opts->key_fd, keybuf, sizeof(keybuf));
 		if (ret < 0)
-			return ret;
+			goto out;
 
 		have_key = 1;
 		keybuflen = ret;
