@@ -27,7 +27,7 @@ struct test_array {
 	size_t entries;
 };
 
-struct test_array tests[4];
+static struct test_array tests[4];
 
 static void print_tests(struct test_array *tests, int print)
 {

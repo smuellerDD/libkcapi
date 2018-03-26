@@ -66,22 +66,22 @@ struct hash_name {
 	const char *bsdname;
 };
 
-const struct hash_name NAMES_MD5[2] = {
+static const struct hash_name NAMES_MD5[2] = {
 	{ "md5", "MD5" }, { "hmac(md5)", "HMAC(MD5)" }
 };
-const struct hash_name NAMES_SHA1[2] = {
+static const struct hash_name NAMES_SHA1[2] = {
 	{ "sha1", "SHA1" }, { "hmac(sha1)", "HMAC(SHA1)" }
 };
-const struct hash_name NAMES_SHA224[2] = {
+static const struct hash_name NAMES_SHA224[2] = {
 	{ "sha224", "SHA224" }, { "hmac(sha224)", "HMAC(SHA224)" }
 };
-const struct hash_name NAMES_SHA256[2] = {
+static const struct hash_name NAMES_SHA256[2] = {
 	{ "sha256", "SHA256" }, { "hmac(sha256)", "HMAC(SHA256)" }
 };
-const struct hash_name NAMES_SHA384[2] = {
+static const struct hash_name NAMES_SHA384[2] = {
 	{ "sha384", "SHA384" }, { "hmac(sha384)", "HMAC(SHA384)" }
 };
-const struct hash_name NAMES_SHA512[2] = {
+static const struct hash_name NAMES_SHA512[2] = {
 	{ "sha512", "SHA512" }, { "hmac(sha512)", "HMAC(SHA512)" }
 };
 
