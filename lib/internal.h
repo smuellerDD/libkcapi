@@ -232,7 +232,7 @@ struct kcapi_handle {
  * Declarations for internal functions
  ************************************************************/
 
-int kcapi_verbosity_level;
+extern int kcapi_verbosity_level;
 void kcapi_dolog(int severity, const char *fmt, ...);
 
 int32_t _kcapi_common_send_meta_fd(struct kcapi_handle *handle, int *fdptr,
