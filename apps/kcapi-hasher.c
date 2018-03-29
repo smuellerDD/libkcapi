@@ -133,6 +133,7 @@ static void usage(char *name, int fipscheck)
 	fprintf(stderr, "\t-k --key-file FILE\tUse HMAC key from given file\n");
 	fprintf(stderr, "\t-K --key KEY\t\tUse KEY as the HMAC key\n");
 	fprintf(stderr, "\t   --tag\t\tCreate a BSD-style checksum\n");
+	fprintf(stderr, "\t-b, -d, -P\t\tCompatibility hmaccalc options; ignored\n");
 	fprintf(stderr, "\t   --help\t\tPrint this help text\n");
 	fprintf(stderr, "\t-v --version\t\tShow version\n");
 }
