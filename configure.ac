@@ -122,6 +122,11 @@ if test "$with_lib_kpp" = "yes"; then
 fi
 
 PKG_INSTALLDIR
+if test "x$pkgconfigdir" = "x"; then
+  pkgconfigdir = "${libdir}/pkgconfig"
+fi
+AC_SUBST([pkgconfigdir], [$pkgconfigdir])
+
 AC_CONFIG_FILES([libkcapi.pc])
 
 AC_OUTPUT
