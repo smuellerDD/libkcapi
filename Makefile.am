@@ -148,7 +148,7 @@ install-exec-hook:
 	($(foreach link, $(kcapi_hasher_links), $(LN) -f kcapi-hasher $(link);)))
 if HAVE_OPENSSL
 	(cd $(DESTDIR)$(bindir) && \
-	($(foreach link, $(kcapi_hasher_links), $(OPENSSL) sha256 -hmac orboDeJITITejsirpADONivirpUkvarP $(link) > .$(link).hmac;)))
+	($(foreach link, $(kcapi_hasher_links), $(OPENSSL) sha256 -hmac orboDeJITITejsirpADONivirpUkvarP $(link) > $(CHECK_PREFIX)$(link).$(CHECK_SUFFIX);)))
 endif
 endif
 

@@ -335,6 +335,12 @@ out:
 	return ret;
 }
 
+static char *paste(char *dst, const char *src, size_t size)
+{
+	strncpy(dst, src, size);
+	return dst + size;
+}
+
 /*
  * Convert a given file name into its respective HMAC file name
  *
@@ -343,17 +349,17 @@ out:
  */
 static char *get_hmac_file(const char *filename)
 {
-	uint32_t basenamestart = 0;
-	uint32_t i;
-	uint32_t filelen;
-	char *checkfile = NULL;
+	size_t i, filelen, basenamestart = 0;
+	size_t prefixlen = strlen(CHECK_PREFIX);
+	size_t suffixlen = strlen(CHECK_SUFFIX);
+	char *cursor, *checkfile = NULL;
 
 	filelen = strlen(filename);
 	if (filelen > 4096) {
 		fprintf(stderr, "File too long\n");
 		return NULL;
 	}
-	checkfile = malloc(filelen + 7);
+	checkfile = malloc(filelen + prefixlen + 1 + suffixlen);
 	if (!checkfile)
 		return NULL;
 
@@ -361,14 +367,14 @@ static char *get_hmac_file(const char *filename)
 		if (!strncmp(filename + i, "/", 1))
 			basenamestart = i + 1;
 	}
+
+	cursor = checkfile;
 	if (basenamestart > 0)
-		strncpy(checkfile, filename, basenamestart);
-	strncpy(checkfile + basenamestart, ".", 1);
-	strncpy(checkfile + basenamestart + 1,
-		filename + basenamestart,
-		filelen - basenamestart);
-	strncpy(checkfile + filelen + 1, ".hmac", 5);
-	strncpy(checkfile + filelen + 6, "\0", 1);
+		cursor = paste(cursor, filename, basenamestart);
+	cursor = paste(cursor, CHECK_PREFIX, prefixlen);
+	cursor = paste(cursor, filename + basenamestart, filelen - basenamestart);
+	cursor = paste(cursor, "."CHECK_SUFFIX, 1 + suffixlen);
+	strncpy(cursor, "\0", 1);
 	return checkfile;
 }
 
