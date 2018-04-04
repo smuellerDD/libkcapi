@@ -33,7 +33,7 @@
 #include "app-internal.h"
 
 static unsigned int verbosity = KCAPI_LOG_NONE;
-char appname[16];
+static char appname[16];
 
 static uint8_t hex_char(unsigned int bin, int u)
 {

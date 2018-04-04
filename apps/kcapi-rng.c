@@ -48,7 +48,7 @@
 static struct kcapi_handle *rng = NULL;
 static unsigned int Verbosity = KCAPI_LOG_WARN;
 static char *rng_name = NULL;
-bool hexout = false;
+static bool hexout = false;
 
 #if !defined(HAVE_GETRANDOM) && !defined(__NR_getrandom)
 static int random_fd = -1;
@@ -136,7 +136,7 @@ static void usage(void)
 	exit(1);
 }
 
-static unsigned long parse_opts(int argc, char *argv[])
+static int parse_opts(int argc, char *argv[], unsigned long *outlen)
 {
 	int c = 0;
 	char version[30];
@@ -219,7 +219,8 @@ static unsigned long parse_opts(int argc, char *argv[])
 	if (!bytes)
 		usage();
 
-	return bytes;
+	*outlen = bytes;
+	return 0;
 }
 
 int main(int argc, char *argv[])
@@ -228,7 +229,11 @@ int main(int argc, char *argv[])
 	uint8_t buf[KCAPI_RNG_BUFSIZE] __aligned(KCAPI_APP_ALIGN);
 	uint8_t *seedbuf = buf;
 	uint32_t seedsize = 0;
-	unsigned long outlen = parse_opts(argc, argv);
+	unsigned long outlen;
+
+	ret = parse_opts(argc, argv, &outlen);
+	if (ret)
+		return ret;
 
 	set_verbosity("kcapi-rng", Verbosity);
 
