@@ -129,3 +129,7 @@ LIBKCAPI_1.0.2 {
 
 LIBKCAPI_1.0.3 {
 } LIBKCAPI_1.0.2;
+
+LIBKCAPI_1.1.0 {
+	kcapi_handle_reinit;
+} LIBKCAPI_1.0.3;

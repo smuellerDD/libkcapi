@@ -51,10 +51,10 @@ static inline int32_t _kcapi_md_update(struct kcapi_handle *handle,
 
 	/* zero buffer length cannot be handled via splice */
 	if (len < (1<<15)) {
-		ret = _kcapi_common_accept(handle, &handle->opfd);
+		ret = _kcapi_common_accept(handle, _kcapi_get_opfd(handle));
 		if (ret)
 			return ret;
-		ret = send(handle->opfd, buffer, len, MSG_MORE);
+		ret = send(*_kcapi_get_opfd(handle), buffer, len, MSG_MORE);
 	} else {
 		ret = _kcapi_common_vmsplice_chunk(handle, buffer, len,
 						   SPLICE_F_MORE);
@@ -80,11 +80,12 @@ static int32_t _kcapi_md_final(struct kcapi_handle *handle,
 			       uint8_t *buffer, uint32_t len)
 {
 	struct iovec iov;
+	struct kcapi_handle_tfm *tfm = handle->tfm;
 
 	if (!buffer || !len) {
 		kcapi_dolog(KCAPI_LOG_ERR,
 			    "Message digest: output buffer too small (seen %lu - required %u)",
-			    (unsigned long)len,	handle->info.hash_digestsize);
+			    (unsigned long)len,	tfm->info.hash_digestsize);
 		return -EINVAL;
 	}
 
@@ -120,31 +121,32 @@ int32_t kcapi_md_digest(struct kcapi_handle *handle,
 DSO_PUBLIC
 uint32_t kcapi_md_digestsize(struct kcapi_handle *handle)
 {
-	return handle->info.hash_digestsize;
+	struct kcapi_handle_tfm *tfm = handle->tfm;
+
+	return tfm->info.hash_digestsize;
 }
 
 DSO_PUBLIC
 uint32_t kcapi_md_blocksize(struct kcapi_handle *handle)
 {
-	return handle->info.blocksize;
+	struct kcapi_handle_tfm *tfm = handle->tfm;
+
+	return tfm->info.blocksize;
 }
 
 static inline int32_t kcapi_md_conv_common(const char *name,
 					   const uint8_t *in, uint32_t inlen,
 					   uint8_t *out, uint32_t outlen)
 {
-	struct kcapi_handle handle;
-	int32_t ret;
+	struct kcapi_handle *handle;
+	int32_t ret = _kcapi_handle_init(&handle, "hash", name, 0);
 
-	memset(&handle, 0, sizeof(handle));
-
-	ret = _kcapi_allocated_handle_init(&handle, "hash", name, 0);
 	if (ret)
 		return ret;
 
-	ret = kcapi_md_digest(&handle, in, inlen, out, outlen);
+	ret = kcapi_md_digest(handle, in, inlen, out, outlen);
 
-	_kcapi_handle_destroy_nofree(&handle);
+	_kcapi_handle_destroy(handle);
 
 	return ret;
 }
@@ -188,20 +190,20 @@ static inline int32_t kcapi_md_mac_conv_common(const char *name,
 	const uint8_t *key, uint32_t keylen,
 	const uint8_t *in, uint32_t inlen, uint8_t *out, uint32_t outlen)
 {
-	struct kcapi_handle handle;
-	int32_t ret = _kcapi_allocated_handle_init(&handle, "hash", name, 0);
+	struct kcapi_handle *handle;
+	int32_t ret = _kcapi_handle_init(&handle, "hash", name, 0);
 
 	if (ret)
 		return ret;
 
-	ret = kcapi_md_setkey(&handle, key, keylen);
+	ret = kcapi_md_setkey(handle, key, keylen);
 	if (ret)
 		goto out;
 
-	ret = kcapi_md_digest(&handle, in, inlen, out, outlen);
+	ret = kcapi_md_digest(handle, in, inlen, out, outlen);
 
 out:
-	_kcapi_handle_destroy_nofree(&handle);
+	_kcapi_handle_destroy(handle);
 	return ret;
 }
 

@@ -1,3 +1,25 @@
+Changes 1.1.0
+ * API Enhancement: Addition of inline IV handling
+ * API Enhancement: Addition of kcapi_handle_reinit
+ * Fix: simplify code by removing the internal *_fd functions from
+   kcapi-kernel-if.c
+ * Test enhancement: add IIV speed testing
+ * Fix: add a loop around the read system call to always obtain all generated
+   data
+ * Fix: use host compiler for compiling docproc (reported by Christophe LEROY,
+   fixed by Björn Esser)
+ * Fix: make error handling of hashing applications consistent with coreutils
+   applications (reported by Christophe LEROY)
+ * Fix: support for zero length files (patched by Ondrej Mosnáček)
+ * Fix: support for zero message hashes on kernels <= 4.9 (patched by
+	Ondrej Mosnáček)
+ * Fix: Add Travis CI test system provided by Ondrej Mosnáček
+ * Fix: Add several fixes to kcapi-hasher by Ondrej Mosnáček
+ * Fix: Add additional tests for kcapi-hasher by Ondrej Mosnáček
+ * Fix: Apply unpadding only to last block of data by Ondrej Mosnáček
+ * Fix: Fix resource leaks in error code paths suggested by Ondrej Mosnáček
+ * Enhancement: achieve hmaccalc CLI equivalence by Ondrej Mosnáček
+
 Changes 1.0.3
  * Fix: support STDIN and --tag of sha*sum applications
  * Enhancement: Add small enhancements to support integration with distros --

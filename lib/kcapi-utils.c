@@ -54,7 +54,8 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
 		 uint8_t **newiv, uint32_t *newivlen)
 {
 	uint8_t *niv = NULL;
-	uint32_t nivlen = handle->info.ivsize;
+	struct kcapi_handle_tfm *tfm = handle->tfm;
+	uint32_t nivlen = tfm->info.ivsize;
 	uint32_t copylen = (ivlen > nivlen) ? nivlen : ivlen;
 	int ret = 0;
 

@@ -50,7 +50,7 @@ extern "C"
  * 
  * @KCAPI_INIT_AIO Handle uses AIO kernel interface if available
  */
-#define KCAPI_INIT_AIO			(1<<0)
+#define KCAPI_INIT_AIO		(1<<0)
 
 /*
  * Opaque cipher handle
@@ -64,6 +64,44 @@ struct kcapi_handle;
  */
 
 /**
+ * kcapi_handle_reinit() - re-initialize a new kernel interface
+ *
+ * @newhandle: [out] cipher handle filled during the call
+ * @existing: [in] existing cipher handle from which a new handle shall be
+ *	      re-initialized
+ * @flags: [in] flags specifying the type of cipher handle
+ *
+ * The kernel crypto API interface operates with two types of file descriptors,
+ * the TFM file descriptor and the OP file descriptor.
+ *
+ * The TFM file descriptor receives the cipher-operation static information:
+ * the key, and the AEAD tag size.
+ *
+ * The OP file descriptor receives the volatile data, such as the plaintext /
+ * ciphertext, the IV, or the AEAD AD size.
+ *
+ * The kernel crypto API AF_ALG interface supports the concept that one TFM
+ * file descriptor can operate with multiple OP file descriptors. The different
+ * OP file descriptors can perform completely separate cipher operations
+ * using the same key which can execute in parallel. The parallel execution
+ * can be performed in the same or different process threads.
+ *
+ * kcapi_handle_reinit() function allows the allocation of a new cipher handle
+ * with a new OP file descriptor but using the same TFM file descriptor. To
+ * obtain a reference to the TFM file descriptor, an @existing cipher handle
+ * is used as source. kcapi_handle_reinit() can be invoked multiple times.
+ * Each resulting cipher handle must be deallocated with kcapi_cipher_destroy().
+ * The deallocation ensures that the TFM resource is only released if the
+ * last handle using this TFM resource is released.
+ *
+ * @return 0 upon success;
+ *	   -EINVAL - accept syscall failed
+ *	   -ENOMEM - cipher handle cannot be allocated
+ */
+int kcapi_handle_reinit(struct kcapi_handle **newhandle,
+			struct kcapi_handle *existing, uint32_t flags);
+
+/**
  * kcapi_cipher_init() - initialize cipher handle
  *
  * @handle: [out] cipher handle filled during the call
@@ -75,7 +113,8 @@ struct kcapi_handle;
  * establishes the connection to the kernel.
  *
  * On success, a pointer to kcapi_handle object is returned in *handle.
- * Function kcapi_cipher_destroy should be called afterwards to free resources.
+ * Function kcapi_cipher_destroy() should be called afterwards to free
+ * resources.
  *
  * @return 0 upon success;
  *	   -ENOENT - algorithm not available;

@@ -75,7 +75,9 @@ int32_t kcapi_rng_generate(struct kcapi_handle *handle,
 DSO_PUBLIC
 uint32_t kcapi_rng_seedsize(struct kcapi_handle *handle)
 {
-	return handle->info.rng_seedsize;
+	struct kcapi_handle_tfm *tfm = handle->tfm;
+
+	return tfm->info.rng_seedsize;
 }
 
 #if !defined(HAVE_GETRANDOM) && !defined(__NR_getrandom)
@@ -150,19 +152,15 @@ static int get_random(uint8_t *buf, uint32_t buflen)
 DSO_PUBLIC
 int32_t kcapi_rng_get_bytes(uint8_t *buffer, uint32_t outlen)
 {
-	struct kcapi_handle handle;
+	struct kcapi_handle *handle;
 	uint8_t buf[KCAPI_RNG_BUFSIZE] __aligned(KCAPI_APP_ALIGN);
 	uint8_t *seedbuf = buf;
 	uint32_t seedsize = 0, orig_outlen = outlen;
-	int32_t ret;
-
-	memset(&handle, 0, sizeof(handle));
-
-	ret = _kcapi_allocated_handle_init(&handle, "rng", "stdrng", 0);
+	int32_t ret = _kcapi_handle_init(&handle, "rng", "stdrng", 0);
 	if (ret)
 		return ret;
 
-	seedsize = kcapi_rng_seedsize(&handle);
+	seedsize = kcapi_rng_seedsize(handle);
 	if (seedsize) {
 		/*
 		 * Only reseed, if there is a seedsize defined. For example,
@@ -193,7 +191,7 @@ int32_t kcapi_rng_get_bytes(uint8_t *buffer, uint32_t outlen)
 	 * Invoke seeding even if seedsize is 0 -- this also triggers any
 	 * internal seeding operation like in the DRBG.
 	 */
-	ret = kcapi_rng_seed(&handle, seedbuf, seedsize);
+	ret = kcapi_rng_seed(handle, seedbuf, seedsize);
 	if (ret)
 		goto out;
 
@@ -201,7 +199,7 @@ int32_t kcapi_rng_get_bytes(uint8_t *buffer, uint32_t outlen)
 		uint32_t todo = (outlen < KCAPI_RNG_BUFSIZE) ?
 					outlen : KCAPI_RNG_BUFSIZE;
 
-		ret = kcapi_rng_generate(&handle, buffer, todo);
+		ret = kcapi_rng_generate(handle, buffer, todo);
 		if (ret < 0)
 			goto out;
 
@@ -222,6 +220,6 @@ out:
 		free(seedbuf);
 	} else
 		kcapi_memset_secure(buf, 0, sizeof(buf));
-	_kcapi_handle_destroy_nofree(&handle);
+	_kcapi_handle_destroy(handle);
 	return ret;
 }

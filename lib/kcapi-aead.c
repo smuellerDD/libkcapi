@@ -44,9 +44,11 @@ int kcapi_aead_setkey(struct kcapi_handle *handle,
 DSO_PUBLIC
 int kcapi_aead_settaglen(struct kcapi_handle *handle, uint32_t taglen)
 {
+	struct kcapi_handle_tfm *tfm = handle->tfm;
+
 	handle->aead.tag = NULL;
 	handle->aead.taglen = taglen;
-	if (setsockopt(handle->tfmfd, SOL_ALG, ALG_SET_AEAD_AUTHSIZE,
+	if (setsockopt(tfm->tfmfd, SOL_ALG, ALG_SET_AEAD_AUTHSIZE,
 		       NULL, taglen) == -1)
 		return -EINVAL;
 
@@ -370,19 +372,25 @@ int32_t kcapi_aead_stream_op(struct kcapi_handle *handle,
 DSO_PUBLIC
 uint32_t kcapi_aead_ivsize(struct kcapi_handle *handle)
 {
-	return handle->info.ivsize;
+	struct kcapi_handle_tfm *tfm = handle->tfm;
+
+	return tfm->info.ivsize;
 }
 
 DSO_PUBLIC
 uint32_t kcapi_aead_blocksize(struct kcapi_handle *handle)
 {
-	return handle->info.blocksize;
+	struct kcapi_handle_tfm *tfm = handle->tfm;
+
+	return tfm->info.blocksize;
 }
 
 DSO_PUBLIC
 uint32_t kcapi_aead_authsize(struct kcapi_handle *handle)
 {
-	return handle->info.aead_maxauthsize;
+	struct kcapi_handle_tfm *tfm = handle->tfm;
+
+	return tfm->info.aead_maxauthsize;
 }
 
 DSO_PUBLIC
@@ -412,7 +420,8 @@ uint32_t kcapi_aead_outbuflen_enc(struct kcapi_handle *handle,
 				  uint32_t inlen, uint32_t assoclen,
 				  uint32_t taglen)
 {
-	int bs = handle->info.blocksize;
+	struct kcapi_handle_tfm *tfm = handle->tfm;
+	int bs = tfm->info.blocksize;
 	uint32_t outlen = (inlen + bs - 1) / bs * bs + taglen + assoclen;
 
 	/* the kernel does not like zero length output buffers */
@@ -427,7 +436,8 @@ uint32_t kcapi_aead_outbuflen_dec(struct kcapi_handle *handle,
 				  uint32_t inlen, uint32_t assoclen,
 				  uint32_t taglen)
 {
-	int bs = handle->info.blocksize;
+	struct kcapi_handle_tfm *tfm = handle->tfm;
+	int bs = tfm->info.blocksize;
 	uint32_t outlen = (inlen + bs - 1) / bs * bs + assoclen;
 
 	if (!handle->flags.ge_v4_9 == true)

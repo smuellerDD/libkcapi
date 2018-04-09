@@ -45,9 +45,10 @@ DSO_PUBLIC
 int kcapi_akcipher_setpubkey(struct kcapi_handle *handle,
 			     const uint8_t *key, uint32_t keylen)
 {
+	struct kcapi_handle_tfm *tfm = handle->tfm;
 	int ret = 0;
 
-	ret = setsockopt(handle->tfmfd, SOL_ALG, ALG_SET_PUBKEY, key, keylen);
+	ret = setsockopt(tfm->tfmfd, SOL_ALG, ALG_SET_PUBKEY, key, keylen);
 	return (ret >= 0) ? ret : -errno;
 }
 

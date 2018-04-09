@@ -37,6 +37,8 @@
 
 #include <linux/if_alg.h>
 
+#include "atomic.h"
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -95,6 +97,16 @@ extern "C"
 enum { false, true };
 typedef _Bool bool;
 
+enum kcapi_cipher_type {
+	KCAPI_CIPHER_SKCIPHER,
+	KCAPI_CIPHER_AEAD,
+	KCAPI_CIPHER_KDF,
+	KCAPI_CIPHER_RNG,
+	KCAPI_CIPHER_MD,
+	KCAPI_CIPHER_KPP,
+	KCAPI_CIPHER_AKCIPHER,
+};
+
 /**
  * Information obtained for different ciphers during handle init time
  * using the NETLINK_CRYPTO interface.
@@ -107,6 +119,7 @@ typedef _Bool bool;
  * @rng_seedsize seed size (RNG)
  */
 struct kcapi_cipher_info {
+	enum kcapi_cipher_type cipher_type;
 	/* generic */
 	uint32_t blocksize;
 	uint32_t ivsize;
@@ -205,25 +218,37 @@ struct kcapi_sys {
 };
 
 /**
- * Cipher handle
+ * Kernel crypto API TFM representation - The entries are static after
+ * initialization.
  * @tfmfd: Socket descriptor for AF_ALG
+ * @sysinfo: System information
+ * @info: properties of ciphers
+ * @refcnt: reference counter of data structure
+ */
+struct kcapi_handle_tfm {
+	int tfmfd;
+	struct kcapi_sys sysinfo;
+	struct kcapi_cipher_info info;
+	atomic_t refcnt;
+};
+
+/**
+ * Cipher handle
+ * @tfm: kernel crypto API TFM
  * @opfd: FD to open kernel crypto API TFM
  * @pipes: vmplice/splice pipe pair
  * @processed_sg: number of scatter/gather entries sent to the kernel
  * @ciper: Common data for all ciphers
  * @aead: AEAD cipher specific data
- * @info: properties of ciphers
  * @aio: AIO information
  */
 struct kcapi_handle {
-	int tfmfd;
+	struct kcapi_handle_tfm *tfm;
 	int pipes[2];
 	int opfd;
 	uint32_t processed_sg;
-	struct kcapi_sys sysinfo;
 	struct kcapi_cipher_data cipher;
 	struct kcapi_aead_data aead;
-	struct kcapi_cipher_info info;
 	struct kcapi_aio aio;
 	struct kcapi_flags flags;
 };
@@ -235,6 +260,11 @@ struct kcapi_handle {
 extern int kcapi_verbosity_level;
 void kcapi_dolog(int severity, const char *fmt, ...);
 
+static inline int *_kcapi_get_opfd(struct kcapi_handle *handle)
+{
+	return &handle->opfd;
+}
+
 int32_t _kcapi_common_send_meta_fd(struct kcapi_handle *handle, int *fdptr,
 				   struct iovec *iov, uint32_t iovlen,
 				   uint32_t enc, uint32_t flags);
@@ -242,8 +272,8 @@ static inline int32_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen,
 				       uint32_t enc, uint32_t flags)
 {
-	return _kcapi_common_send_meta_fd(handle, &handle->opfd, iov, iovlen,
-					  enc, flags);
+	return _kcapi_common_send_meta_fd(handle, _kcapi_get_opfd(handle),
+					  iov, iovlen, enc, flags);
 }
 
 int32_t _kcapi_common_vmsplice_iov_fd(struct kcapi_handle *handle, int *fdptr,
@@ -253,8 +283,8 @@ static inline int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 				   struct iovec *iov, unsigned long iovlen,
 				   uint32_t flags)
 {
-	return _kcapi_common_vmsplice_iov_fd(handle, &handle->opfd, iov, iovlen,
-					     flags);
+	return _kcapi_common_vmsplice_iov_fd(handle, _kcapi_get_opfd(handle),
+					     iov, iovlen, flags);
 }
 
 int32_t _kcapi_common_send_data_fd(struct kcapi_handle *handle, int *fdprt,
@@ -264,8 +294,8 @@ static inline int32_t _kcapi_common_send_data(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen,
 				       uint32_t flags)
 {
-	return _kcapi_common_send_data_fd(handle, &handle->opfd, iov, iovlen,
-					  flags);
+	return _kcapi_common_send_data_fd(handle, _kcapi_get_opfd(handle),
+					  iov, iovlen, flags);
 }
 
 int32_t _kcapi_common_recv_data_fd(struct kcapi_handle *handle, int *fdptr,
@@ -273,7 +303,8 @@ int32_t _kcapi_common_recv_data_fd(struct kcapi_handle *handle, int *fdptr,
 static inline int32_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 				       struct iovec *iov, uint32_t iovlen)
 {
-	return _kcapi_common_recv_data_fd(handle, &handle->opfd, iov, iovlen);
+	return _kcapi_common_recv_data_fd(handle, _kcapi_get_opfd(handle),
+					  iov, iovlen);
 }
 
 int32_t _kcapi_common_read_data_fd(struct kcapi_handle *handle, int *fdptr,
@@ -281,7 +312,8 @@ int32_t _kcapi_common_read_data_fd(struct kcapi_handle *handle, int *fdptr,
 static inline int32_t _kcapi_common_read_data(struct kcapi_handle *handle,
 				       uint8_t *out, uint32_t outlen)
 {
-	return _kcapi_common_read_data_fd(handle, &handle->opfd, out, outlen);
+	return _kcapi_common_read_data_fd(handle, _kcapi_get_opfd(handle),
+					  out, outlen);
 }
 
 int _kcapi_common_accept(struct kcapi_handle *handle, int *fdptr);
@@ -294,17 +326,14 @@ static inline int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 					    const uint8_t *in, uint32_t inlen,
 					    uint32_t flags)
 {
-	return _kcapi_common_vmsplice_chunk_fd(handle, &handle->opfd, in,
-					       inlen, flags);
+	return _kcapi_common_vmsplice_chunk_fd(handle, _kcapi_get_opfd(handle),
+					       in, inlen, flags);
 }
 
 
 int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 		       const char *ciphername, uint32_t flags);
-int _kcapi_allocated_handle_init(struct kcapi_handle *caller, const char *type,
-				 const char *ciphername, uint32_t flags);
 void _kcapi_handle_destroy(struct kcapi_handle *handle);
-void _kcapi_handle_destroy_nofree(struct kcapi_handle *handle);
 int _kcapi_common_setkey(struct kcapi_handle *handle, const uint8_t *key,
 			 uint32_t keylen);
 int32_t _kcapi_cipher_crypt(struct kcapi_handle *handle, const uint8_t *in,
@@ -326,7 +355,8 @@ int _kcapi_aio_read_iov_fd(struct kcapi_handle *handle, int *fdptr,
 static inline int _kcapi_aio_read_iov(struct kcapi_handle *handle,
 				      struct iovec *iov, uint32_t iovlen)
 {
-	return _kcapi_aio_read_iov_fd(handle, &handle->opfd, iov, iovlen);
+	return _kcapi_aio_read_iov_fd(handle, _kcapi_get_opfd(handle),
+				      iov, iovlen);
 }
 
 int32_t _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
