@@ -49,6 +49,21 @@
 #define SUCCESS 1
 #define FAILURE 0
 
+/**
+ * Test parameters specifying which types of tests should be executed.
+ * @exectime: execution time for current test -- if 0, use the predefined
+ *	      execution time for the test.
+ * @len: number of blocks to test
+ * @aio: number of iovs to send. If 0, don't use aio.
+ * @accesstype: KCAPI_ACCESS_VMSPLICE or KCAPI_ACCESS_SENDMSG
+ */
+struct cp_test_param {
+	unsigned int exectime;
+	size_t len;
+	unsigned int aio;
+	int accesstype;
+};
+
 /*
  * Cipher-specific test data
  */
@@ -71,7 +86,6 @@ struct skcipher_def {
 	unsigned char *scratchpad;
 	unsigned char *iv;
 	size_t inputlen;
-	unsigned int aio;
 	struct iovec *iovec;
 	struct kcapi_handle *handle;
 };
@@ -84,7 +98,6 @@ struct aead_def {
 	size_t indatalen;
 	size_t outdatalen;
 	size_t assoclen;
-	unsigned int aio;
 	struct iovec *iniov;
 	struct iovec *outiov;
 	struct kcapi_handle *handle;
@@ -109,11 +122,11 @@ struct cp_test {
 	char *testname;
 	char *driver_name;
 	char *type;
-	int accesstype;
 	int enc;
 	unsigned int exectime;
 	struct cp_res results;
-	int (*init_test)(struct cp_test *test, size_t len, unsigned int aio);
+	struct cp_test_param *test_params;
+	int (*init_test)(struct cp_test *test);
 	unsigned int (*exec_test)(struct cp_test *test);
 	void (*fini_test)(struct cp_test *test);
 
@@ -176,8 +189,7 @@ static inline void cp_zfree(void *ptr, unsigned int len)
  * general functions
  */
 char *cp_print_status(struct cp_test *test, int raw);
-int cp_exec_test(struct cp_test *test, unsigned int exectime, size_t len,
-		 unsigned int aio);
+int cp_exec_test(struct cp_test *test);
 int cp_read_random(unsigned char *buf, size_t buflen);
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))

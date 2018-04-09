@@ -24,9 +24,9 @@
  * AEAD ciphers
  ****************************************************************************/
 
-static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm,
-			     unsigned int aio)
+static int cp_aead_init_test(struct cp_test *test, int enc, int ccm)
 {
+	struct cp_test_param *params = test->test_params;
 	unsigned char *input = NULL;
 	unsigned char *output = NULL;
 #define MAX_KEYLEN 64
@@ -45,7 +45,7 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm,
 	}
 
 	if (kcapi_aead_init(&test->u.aead.handle, test->driver_name,
-			    aio ? KCAPI_INIT_AIO : 0)) {
+			    params->aio ? KCAPI_INIT_AIO : 0)) {
 		printf(DRIVER_NAME": could not allocate aead handle for "
 		       "%s\n", test->driver_name);
 		goto out;
@@ -83,28 +83,30 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm,
 
 	if (enc) {
 		test->u.aead.indatalen = kcapi_aead_inbuflen_enc(
-			test->u.aead.handle, BLOCKLEN * len,
+			test->u.aead.handle, BLOCKLEN * params->len,
 			test->u.aead.assoclen, TAGLEN);
 		test->u.aead.outdatalen = kcapi_aead_outbuflen_enc(
-			test->u.aead.handle, BLOCKLEN * len,
+			test->u.aead.handle, BLOCKLEN * params->len,
 			test->u.aead.assoclen, TAGLEN);
 	} else {
 		test->u.aead.indatalen = kcapi_aead_inbuflen_dec(
-			test->u.aead.handle, BLOCKLEN * len,
+			test->u.aead.handle, BLOCKLEN * params->len,
 			test->u.aead.assoclen, TAGLEN);
 		test->u.aead.outdatalen = kcapi_aead_outbuflen_dec(
-			test->u.aead.handle, BLOCKLEN * len,
+			test->u.aead.handle, BLOCKLEN * params->len,
 			test->u.aead.assoclen, TAGLEN);
 	}
 
 	if (posix_memalign((void *)&input, sysconf(_SC_PAGESIZE),
-			   test->u.aead.indatalen * (aio ? aio : 1))) {
+			   test->u.aead.indatalen *
+					(params->aio ? params->aio : 1))) {
 		printf(DRIVER_NAME": could not allocate input buffer for "
 		       "%s\n", test->driver_name);
 		goto out;
 	}
 	if (posix_memalign((void *)&output, sysconf(_SC_PAGESIZE),
-			   test->u.aead.outdatalen * (aio ? aio : 1))) {
+			   test->u.aead.outdatalen *
+					(params->aio ? params->aio : 1))) {
 		printf(DRIVER_NAME": could not allocate output buffer for "
 		       "%s\n", test->driver_name);
 		goto out;
@@ -141,7 +143,7 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm,
 					 test->u.aead.iv,
 					 test->u.aead.output,
 					 test->u.aead.outdatalen,
-					 test->accesstype);
+					 params->accesstype);
 		if (ret < 0) {
 			printf(DRIVER_NAME": could not decrypt ciphertext for "
 		       "%s (%d)\n", test->driver_name, ret);
@@ -149,22 +151,22 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm,
 		}
 	}
 
-	if (aio) {
+	if (params->aio) {
 		unsigned int i;
 
 		if (posix_memalign((void *)&test->u.aead.iniov, BLOCKLEN,
-				     aio * sizeof(struct iovec))) {
+				     params->aio * sizeof(struct iovec))) {
 			printf(DRIVER_NAME": could not allocate iniov buffer\n");
 			goto out;
 		}
 		if (posix_memalign((void *)&test->u.aead.outiov, BLOCKLEN,
-				     aio * sizeof(struct iovec))) {
+				     params->aio * sizeof(struct iovec))) {
 			free(test->u.aead.iniov);
 			printf(DRIVER_NAME": could not allocate outiov buffer\n");
 			goto out;
 		}
 
-		for (i = 0; i < aio; i++) {
+		for (i = 0; i < params->aio; i++) {
 			int ret = 0;
 
 			test->u.aead.iniov[i].iov_base = input;
@@ -203,7 +205,7 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm,
 							test->u.aead.iv,
 							output,
 							test->u.aead.outdatalen,
-							test->accesstype);
+							params->accesstype);
 				if (ret < 0) {
 					printf(DRIVER_NAME": could not decrypt ciphertext for "
 				"%s (%d)\n", test->driver_name, ret);
@@ -214,8 +216,6 @@ static int cp_aead_init_test(struct cp_test *test, size_t len, int enc, int ccm,
 			input += test->u.aead.indatalen;
 			output += test->u.aead.outdatalen;
 		}
-
-		test->u.aead.aio = aio;
 	}
 
 	return 0;
@@ -231,37 +231,35 @@ out:
 	return -ENOMEM;
 }
 
-static int cp_aead_init_enc_dflt(struct cp_test *test, size_t len,
-				 unsigned int aio)
+static int cp_aead_init_enc_dflt(struct cp_test *test)
 {
-	return cp_aead_init_test(test, len, 1, 0, aio);
+	return cp_aead_init_test(test, 1, 0);
 }
 
-static int cp_aead_init_enc_ccm(struct cp_test *test, size_t len,
-				unsigned int aio)
+static int cp_aead_init_enc_ccm(struct cp_test *test)
 {
-	return cp_aead_init_test(test, len, 1, 1, aio);
+	return cp_aead_init_test(test, 1, 1);
 }
 
-static int cp_aead_init_dec_dflt(struct cp_test *test, size_t len,
-				 unsigned int aio)
+static int cp_aead_init_dec_dflt(struct cp_test *test)
 {
-	return cp_aead_init_test(test, len, 0, 0, aio);
+	return cp_aead_init_test(test, 0, 0);
 }
 
-static int cp_aead_init_dec_ccm(struct cp_test *test, size_t len,
-				unsigned int aio)
+static int cp_aead_init_dec_ccm(struct cp_test *test)
 {
-	return cp_aead_init_test(test, len, 0, 1, aio);
+	return cp_aead_init_test(test, 0, 1);
 }
 
 static void cp_aead_fini_test(struct cp_test *test)
 {
+	struct cp_test_param *params = test->test_params;
+
 	dbg("Cleaning up asynchronous symmetric test %s\n", test->testname);
 	free(test->u.aead.input);
 	free(test->u.aead.output);
 	free(test->u.aead.iv);
-	if (test->u.aead.aio) {
+	if (params->aio) {
 		free(test->u.aead.iniov);
 		free(test->u.aead.outiov);
 	}
@@ -270,13 +268,15 @@ static void cp_aead_fini_test(struct cp_test *test)
 
 static unsigned int cp_ablkcipher_enc_test(struct cp_test *test)
 {
-	if (test->u.aead.aio)
+	struct cp_test_param *params = test->test_params;
+
+	if (params->aio)
 		kcapi_aead_encrypt_aio(test->u.aead.handle,
 				       test->u.aead.iniov,
 				       test->u.aead.outiov,
-				       test->u.aead.aio,
+				       params->aio,
 				       test->u.aead.iv,
-				       test->accesstype);
+				       params->accesstype);
 	else
 		kcapi_aead_encrypt(test->u.aead.handle,
 				   test->u.aead.input,
@@ -284,19 +284,21 @@ static unsigned int cp_ablkcipher_enc_test(struct cp_test *test)
 				   test->u.aead.iv,
 				   test->u.aead.output,
 				   test->u.aead.outdatalen,
-				   test->accesstype);
+				   params->accesstype);
 	return test->u.aead.outdatalen;
 }
 
 static unsigned int cp_ablkcipher_dec_test(struct cp_test *test)
 {
-	if (test->u.aead.aio)
+	struct cp_test_param *params = test->test_params;
+
+	if (params->aio)
 		kcapi_aead_decrypt_aio(test->u.aead.handle,
 				       test->u.aead.iniov,
 				       test->u.aead.outiov,
-				       test->u.aead.aio,
+				       params->aio,
 				       test->u.aead.iv,
-				       test->accesstype);
+				       params->accesstype);
 	else
 		kcapi_aead_decrypt(test->u.aead.handle,
 				   test->u.aead.input,
@@ -304,7 +306,7 @@ static unsigned int cp_ablkcipher_dec_test(struct cp_test *test)
 				   test->u.aead.iv,
 				   test->u.aead.output,
 				   test->u.aead.outdatalen,
-				   test->accesstype);
+				   params->accesstype);
 	return test->u.aead.outdatalen;
 }
 

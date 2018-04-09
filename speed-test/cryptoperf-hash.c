@@ -17,21 +17,20 @@
  * DAMAGE.
  */
 
-#include <stdlib.h>
-
 #include "cryptoperf.h"
+
+#include <stdlib.h>
 
 /****************************************************************************
  * Synchronous symmetric ciphers
  ****************************************************************************/
 
-static int cp_hash_init_test(struct cp_test *test, size_t len, unsigned int aio)
+static int cp_hash_init_test(struct cp_test *test)
 {
+	struct cp_test_param *params = test->test_params;
 	unsigned char *scratchpad = NULL;
 #define MAX_KEYLEN 128
 	unsigned char data[MAX_KEYLEN];
-
-	(void)aio;
 
 	dbg("Initializing hash test %s\n", test->testname);
 	if (!test->driver_name) {
@@ -62,21 +61,22 @@ static int cp_hash_init_test(struct cp_test *test, size_t len, unsigned int aio)
 		}
 	}
 
-	if (len < 4)
-		len = 4;
+	if (params->len < 4)
+		params->len = 4;
 
 	if (posix_memalign((void *)&scratchpad,
 			   kcapi_md_blocksize(test->u.hash.handle),
-			   kcapi_md_blocksize(test->u.hash.handle) * len)) {
+			   kcapi_md_blocksize(test->u.hash.handle) * params->len)) {
 		printf(DRIVER_NAME": could not allocate scratchpad for "
 		       "%s\n", test->driver_name);
 		goto out;
 	}
 
 	cp_read_random(scratchpad,
-		       kcapi_md_blocksize(test->u.hash.handle) * len);
+		       kcapi_md_blocksize(test->u.hash.handle) * params->len);
 
-	test->u.hash.inputlen = len * kcapi_md_blocksize(test->u.hash.handle);
+	test->u.hash.inputlen =
+			params->len * kcapi_md_blocksize(test->u.hash.handle);
 	test->u.hash.scratchpad = scratchpad;
 	return 0;
 
