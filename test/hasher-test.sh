@@ -68,6 +68,33 @@ do
 		echo_pass "Failure on empty line checker file for $hasher"
 	fi
 
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher $0 $ANOTHER | \
+		sed -E 's/(\w+\s)\s/\1*/' >$CHKFILE
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -q -c $CHKFILE
+	if [ $? -eq 0 ]
+	then
+		echo_pass "Parsing checker file with asterisk with $hasher"
+	else
+		echo_fail "Parsing checker file with asterisk (binary mode) with $hasher failed"
+	fi
+
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher $0 $ANOTHER | \
+		LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -q -c -
+	if [ $? -eq 0 ]
+	then
+		echo_pass "Checker file '-' interpretation with $hasher"
+	else
+		echo_fail "Checker file '-' interpretation with $hasher failed"
+	fi
+
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher $0 - <$ANOTHER >/dev/null
+	if [ $? -eq 0 ]
+	then
+		echo_pass "Input file '-' interpretation with $hasher"
+	else
+		echo_fail "Input file '-' interpretation with $hasher failed"
+	fi
+
 	rm -f $CHKFILE
 done
 
@@ -100,17 +127,24 @@ do
 		continue
 	}
 	[ ! -f "$CHKFILE" ] && {
-		echo_fail "Generation of checker file $CHKFILE with referemce hasher $i failed"
+		echo_fail "Generation of checker file $CHKFILE with reference hasher $i failed"
 		continue
 	}
 
 	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher --status -c $CHKFILE
 	[ $? -ne 0 ] && echo_fail "Verification of checker file $CHKFILE with hasher $hasher failed"
-	
-	a=$(LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -b 123 $0 | cut -f 1 -d" ")
-	b=$(openssl dgst -$hash -hmac 123 $0 | cut -f 2 -d" ")
+
+	echo -n 123 >$CHKFILE
+
+	a=$(openssl dgst -$hash -hmac 123 $0 | cut -f 2 -d" ")
+	b=$(LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -K 123 $0 | cut -f 1 -d" ")
+	c=$(LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -k $CHKFILE $0 | cut -f 1 -d" ")
 	[ x"$a" != x"$b" ] && {
-		echo_fail "HMAC calculation for $hasher failed"
+		echo_fail "HMAC calculation for $hasher failed (cmdline key)"
+		continue
+	}
+	[ x"$a" != x"$b" ] && {
+		echo_fail "HMAC calculation for $hasher failed (key in regular file)"
 		continue
 	}
 	echo_pass "HMAC calculation for $hasher"
@@ -153,7 +187,7 @@ do
 		continue
 	}
 	[ ! -f "$CHKFILE" ] && {
-		echo_fail "Generation of checker file $CHKFILE with referemce hasher $i failed"
+		echo_fail "Generation of checker file $CHKFILE with reference hasher $i failed"
 		continue
 	}
 
@@ -163,6 +197,105 @@ do
 		echo_fail "Verification of checker file $CHKFILE with hasher $hasher failed"
 	else
 		echo_pass "Verification of hasher $hasher"
+	fi
+
+	rm -f $CHKFILE
+done
+
+#
+# Test unkeyed HMAC mode:
+#
+for i in $HMACHASHER
+do
+	ref=${i%%hmac}sum
+	hasher=$i
+
+	[ ! -e "$hasher" ] && {
+		echo_fail "Hasher $hasher does not exist"
+		continue
+	}
+
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $ref $0 $ANOTHER > $CHKFILE
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -u -q -c $CHKFILE
+	if [ $? -ne 0 ]
+	then
+		echo_fail "Unkeyed verification with hasher $hasher failed"
+	else
+		echo_pass "Unkeyed verification with hasher $hasher"
+	fi
+
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -u $0 $ANOTHER > $CHKFILE
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $ref --status -c $CHKFILE
+	if [ $? -ne 0 ]
+	then
+		echo_fail "Unkeyed generation of checker file with hasher $hasher failed"
+	else
+		echo_pass "Unkeyed generation of checker file with hasher $hasher"
+	fi
+
+	rm -f $CHKFILE
+done
+
+#
+# Test hmaccalc's ignored compatibility options:
+#
+for i in $HMACHASHER
+do
+	hasher=$i
+
+	compat="-d -P -b"
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher $compat $0 $ANOTHER > /dev/null
+	if [ $? -ne 0 ]
+	then
+		echo_fail "Hasher $hasher does not accept compatiblity options: $compat"
+	else
+		echo_pass "Compatibility options for hasher $hasher"
+	fi
+done
+
+#
+# Test hmaccalc's -S option:
+#
+for i in $HMACHASHER
+do
+	hasher=$i
+
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -S >$CHKFILE
+	if [ $? -ne 0 ]
+	then
+		echo_fail "Hasher $hasher does not accept the -S option"
+	elif ! [ -s $CHKFILE ]
+	then
+		echo_fail "Hasher $hasher does not output hash with the -S option"
+	else
+		echo_pass "Self-checksum option for hasher $hasher"
+	fi
+
+	rm -f $CHKFILE
+done
+
+#
+# Test hmaccalc's -h option:
+#
+for i in $HMACHASHER
+do
+	hasher=$i
+
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -h sha1 $0 $ANOTHER >$CHKFILE
+	if [ $? -ne 0 ]
+	then
+		echo_fail "Hasher $hasher does not accept the -h option"
+		rm -f $CHKFILE
+		continue
+	fi
+
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $TMPDIR/sha1hmac $0 $ANOTHER | \
+		diff $CHKFILE -
+	if  [ $? -ne 0 ]
+	then
+		echo_fail "Hasher $hasher does not work correctly with the -h option"
+	else
+		echo_pass "Different hash option for hasher $hasher"
 	fi
 
 	rm -f $CHKFILE
@@ -187,13 +320,16 @@ function run_kat() {
 	key="$1"; shift
 	data="$1"; shift
 	result="$1"; shift
+	truncate="$1"; shift
 
-	keyhex="$(expand_string "$key" | hexdump -ve '/1 "%02x"')"
+	truncate_opt=''
+	[ -z "$truncate" ] || truncate_opt="-t $truncate"
 
 	expand_string "$data" >"$ANOTHER"
 	echo "${result#0x}  $ANOTHER" >"$CHKFILE"
 
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname "${TMPDIR}/$hasher" -q -k "$keyhex" -c "$CHKFILE"
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname "${TMPDIR}/$hasher" -q \
+		-k <(expand_string "$key") -c "$CHKFILE" $truncate_opt
 	if [ $? -ne 0 ]
 	then
 		echo_fail "Verification of hasher $hasher -c ... with KAT '$id' failed"
@@ -201,8 +337,9 @@ function run_kat() {
 		echo_pass "Verification of hasher $hasher -c ... with KAT '$id'"
 	fi
 
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname "${TMPDIR}/$hasher" -q -k "$keyhex" "$ANOTHER" | \
-		diff - "$CHKFILE"
+	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname "${TMPDIR}/$hasher" -q \
+		-k <(expand_string "$key") "$ANOTHER" $truncate_opt \
+		| diff - "$CHKFILE"
 	if [ $? -ne 0 ]
 	then
 		echo_fail "Verification of hasher $hasher output with KAT '$id' failed"
@@ -232,10 +369,9 @@ do
 	run_kat sha256$suffix "RFC 4231, section 4.5, #1" 0x0102030405060708090a0b0c0d0e0f10111213141516171819 0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd 0x82558a389a443c0ea4cc819899f2083a85f0faa3e578f8077a2e3ff46729665b
 	run_kat sha384$suffix "RFC 4231, section 4.5, #2" 0x0102030405060708090a0b0c0d0e0f10111213141516171819 0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd 0x3e8a69b7783c25851933ab6290af6ca77a9981480850009cc5577c6e1f573b4e6801dd23c4a7d679ccf8a386c674cffb
 	run_kat sha512$suffix "RFC 4231, section 4.5, #3" 0x0102030405060708090a0b0c0d0e0f10111213141516171819 0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd 0xb0ba465637458c6990e5a8c5f61d4af7e576d97ff94b872de76f8050361ee3dba91ca5c11aa25eb4d679275cc5788063a5f19741120c4f2de2adebeb10a298dd
-	# Do not run truncated tests (truncated tags are not supported):
-	#run_kat sha256$suffix "RFC 4231, section 4.6, #1" 0x0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c 0x546573742057697468205472756e636174696f6e 0xa3b6167473100ee06e0c796c2955552b
-	#run_kat sha384$suffix "RFC 4231, section 4.6, #2" 0x0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c 0x546573742057697468205472756e636174696f6e 0x3abf34c3503b2a23a46efc619baef897
-	#run_kat sha512$suffix "RFC 4231, section 4.6, #3" 0x0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c 0x546573742057697468205472756e636174696f6e 0x415fad6271580a531d4179bc891d87a6
+	run_kat sha256$suffix "RFC 4231, section 4.6, #1" 0x0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c 0x546573742057697468205472756e636174696f6e 0xa3b6167473100ee06e0c796c2955552b 128
+	run_kat sha384$suffix "RFC 4231, section 4.6, #2" 0x0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c 0x546573742057697468205472756e636174696f6e 0x3abf34c3503b2a23a46efc619baef897 128
+	run_kat sha512$suffix "RFC 4231, section 4.6, #3" 0x0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c 0x546573742057697468205472756e636174696f6e 0x415fad6271580a531d4179bc891d87a6 128
 	run_kat sha256$suffix "RFC 4231, section 4.7, #1" 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 0x54657374205573696e67204c6172676572205468616e20426c6f636b2d53697a65204b6579202d2048617368204b6579204669727374 0x60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54
 	run_kat sha384$suffix "RFC 4231, section 4.7, #2" 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 0x54657374205573696e67204c6172676572205468616e20426c6f636b2d53697a65204b6579202d2048617368204b6579204669727374 0x4ece084485813e9088d2c63a041bc5b44f9ef1012a2b588f3cd11f05033ac4c60c2ef6ab4030fe8296248df163f44952
 	run_kat sha512$suffix "RFC 4231, section 4.7, #3" 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 0x54657374205573696e67204c6172676572205468616e20426c6f636b2d53697a65204b6579202d2048617368204b6579204669727374 0x80b24263c7c1a3ebb71493c1dd7be8b49b46d1f41b4aeec1121b013783f8f3526b56d037e05f2598bd0fd2215d6a1e5295e64f73f63f0aec8b915a985d786598

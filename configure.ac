@@ -121,6 +121,30 @@ if test "$with_lib_kpp" = "yes"; then
   AC_DEFINE([WITH_LIB_KPP], 1, [KPP support enabled])
 fi
 
+AC_ARG_ENABLE([sum-prefix],
+	      AS_HELP_STRING([--enable-sum-prefix=PRE],[prefix to add to filenames when deriving the binary's checksum file's name (no default)]),
+	      if test x$enableval != xno ; then
+		  CHECK_PREFIX="$enableval"
+	      else
+		  CHECK_PREFIX=
+	      fi
+	      ,CHECK_PREFIX=)
+
+AC_ARG_ENABLE(sum-suffix,
+	      AS_HELP_STRING([--enable-sum-suffix=EXT],[suffix to add to filenames when deriving the binary's checksum file's name (default "hmac")]),
+	      if test x$enableval != xno ; then
+		  CHECK_SUFFIX="$enableval"
+	      else
+		  CHECK_SUFFIX=
+	      fi
+	      ,CHECK_SUFFIX=hmac)
+
+AC_SUBST(CHECK_PREFIX)
+AC_SUBST(CHECK_SUFFIX)
+
+AC_DEFINE_UNQUOTED(CHECK_PREFIX,"$CHECK_PREFIX",[Define to the prefix which contains the hmac for a binary.])
+AC_DEFINE_UNQUOTED(CHECK_SUFFIX,"$CHECK_SUFFIX",[Define to the suffix which contains the hmac for a binary.])
+
 PKG_INSTALLDIR
 if test "x$pkgconfigdir" = "x"; then
   pkgconfigdir = "${libdir}/pkgconfig"
