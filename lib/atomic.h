@@ -188,8 +188,10 @@ static inline int atomic_and(int i, atomic_t *v)
 	return __sync_and_and_fetch(&v->counter, i);
 }
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wsync-fetch-and-nand-semantics-changed"
+#endif
 /**
  * Atomic nand operation
  * @param i integer value to nand
@@ -200,7 +202,9 @@ static inline int atomic_nand(int i, atomic_t *v)
 {
 	return __sync_nand_and_fetch(&v->counter, i);
 }
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
 /**
  * Atomic compare and exchange operation (if current value of atomic
