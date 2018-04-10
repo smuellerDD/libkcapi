@@ -160,12 +160,14 @@ static void usage(void)
 int main(int argc, char *argv[])
 {
 	int c = 0;
-	struct cp_test_param test_params = { 0 };
+	struct cp_test_param test_params;
 	char *cipher = NULL;
 	int raw = 0;
 	int ret = 1;
 	int i = 0;
 	int alltests = 0;
+
+	memset(&test_params, 0, sizeof(test_params));
 
 	test_params.len = 1;
 	test_params.accesstype = KCAPI_ACCESS_HEURISTIC;
