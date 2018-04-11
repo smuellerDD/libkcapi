@@ -1,5 +1,4 @@
 Changes 1.1.0
- * API Enhancement: Addition of inline IV handling
  * API Enhancement: Addition of kcapi_handle_reinit
  * Fix: simplify code by removing the internal *_fd functions from
    kcapi-kernel-if.c
