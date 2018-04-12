@@ -1,6 +1,6 @@
 /* Kernel crypto API AF_ALG Key-Agreement Protocol Primitives API
  *
- * Copyright (C) 2017, Stephan Mueller <smueller@chronox.de>
+ * Copyright (C) 2017 - 2018, Stephan Mueller <smueller@chronox.de>
  *
  * License: see COPYING file in root directory
  *
