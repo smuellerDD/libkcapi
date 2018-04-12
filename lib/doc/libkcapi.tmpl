@@ -519,6 +519,119 @@
    </para>
   </sect1>
 
+  <sect1><title>Asynchronous I/O Use Cases and Libkcapi</title>
+   <para>
+    The kernel crypto API user space interface supports different use cases
+    with the asynchronous I/O operations which are illustrated in the following
+    sections. These sections also illustrate the API calls to be used to follow
+    the respective use cases.
+   </para>
+
+   <para>
+    All APIs that perform synchronous operation do not have different purposes
+    and thus do not require special precautions when using them.
+   </para>
+
+   <para>
+    The different use cases round asynchronous I/O revolve around different
+    ways how to send data to the kernel and to retrieve processed data.
+   </para>
+
+   <sect2><title>Multiple Staged Cipher Operations</title>
+    <para>
+     Using the kcapi_cipher_*_aio and kcapi_aead_*_aio API calls, a caller can
+     supply one or more IOVECs of data to the kernel. However, the caller can
+     only supply one IV to the kernel.
+    </para>
+
+    <para>
+     The API calls only allow specifying one integer defining the number of
+     IOVECs in the arrays of the input data as well as the output data.
+     The libkcapi library uses the input and output IOVECs as pairs. I.e.
+     the first IOVEC of the input array relate to the first IOVEC of the output
+     array, and so on.
+    </para>
+
+    <para>
+     The kernel invokes the cipher operation when a recvmsg system call is
+     processed. The AIO handling transforms each output IOVEC into one separate
+     invocation of the recvmsg handler that processes the data submitted with
+     the corresponding input IOVEC. This means, each output IOVEC will
+     trigger one cipher operation. When multiple IOVECs are processed by the
+     kernel's AIO handling, all resulting recvmsg calls are invoked with the
+     in the data same order specified by the list of IOVECs.
+    </para>
+
+    <para>
+     WARNING: Currently, it is not guaranteed that the drivers perform the proper
+     serialization of the parallel processing of the different IOVECs. For
+     example, when providing two IOVECs, they may be both using the initially
+     set IV. Thus, they are not chained. User space is able to serialize
+     the AIO operation in this case by invoking the AIO API calls with
+     input/output IOVEC arrays holding one entry each only. However, this
+     would imply that this type of invocation will not be different from a
+     synchronous invocation.
+    </para>
+   </sect2>
+
+   <sect2><title>Multiple Separate Cipher Operations</title>
+    <para>
+     The kernel and thus libkcapi supports the use case where several of the
+     aforementioned multiple staged cipher operations are can be performed
+     in parallel which are totally isolated from each other. In this case,
+     different IVs are used.
+    </para>
+
+    <para>
+     Using the kcapi_handle_reinit libkcapi API call, the caller can obtain
+     a new cipher handle from an existing handle. Both share the same key
+     and cipher -- the kernel crypto API maintains the same TFM data structure
+     for both. However, both cipher handles can now encrypt or decrypt data
+     completely isolated from each other. Specifically, the following data
+     of a cipher operation is isolated between the different cipher handles --
+     this is all data that is not set with a setsockopt(2) system call:
+
+     <itemizedlist>
+      <listitem>
+       <para>Input: plaintext (encryption) or ciphertext (decryption)</para>
+      </listitem>
+      <listitem>
+       <para>Output: plaintext (decryption) or ciphertext (encryption)</para>
+      </listitem>
+      <listitem>
+       <para>IV</para>
+      </listitem>
+      <listitem>
+       <para>AEAD: associated authenticated data (AAD) and its length</para>
+      </listitem>
+      <listitem>
+       <para>AEAD: tag</para>
+      </listitem>
+     </itemizedlist>
+
+     The following data is shared between the different cipher handles -- this
+     covers all data that can be set with a setsockopt(2) system call:
+
+     <itemizedlist>
+      <listitem>
+       <para>Key</para>
+      </listitem>
+      <listitem>
+       <para>AEAD: Tag length</para>
+      </listitem>
+     </itemizedlist>
+
+     This means that the "multiple staged cipher operations" discussed above
+     can be performed with each cipher handle independently.
+    </para>
+
+    <para>
+     The call kcapi_handle_reinit does not open another socket, but implies
+     that only a new accept(2) system call is performed.
+    </para>
+   </sect2>
+  </sect1>
+
   <sect1><title>Kernel Interfaces</title>
    <para>
     Depending on the version of your kernel, some of the kernel interfaces
@@ -643,6 +756,7 @@
 !Fkcapi.h kcapi_version
 !Fkcapi.h kcapi_pad_iv
 !Fkcapi.h kcapi_memset_secure
+!Fkcapi.h kcapi_handle_reinit
    </sect1>
    <sect1><title>Symmetric Cipher API - Generic</title>
     <para>
