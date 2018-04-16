@@ -360,7 +360,7 @@ static char *get_hmac_file(const char *filename)
 		fprintf(stderr, "File too long\n");
 		return NULL;
 	}
-	checkfile = malloc(filelen + prefixlen + 1 + suffixlen);
+	checkfile = malloc(filelen + prefixlen + 1 + suffixlen + 1);
 	if (!checkfile)
 		return NULL;
 
