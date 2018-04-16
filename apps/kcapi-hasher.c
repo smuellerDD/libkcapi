@@ -583,6 +583,7 @@ static int process_checkfile(const struct hash_params *params,
 				if (ret >= 0)
 					ret++;
 			}
+			checked_any = 1;
 		} else {
 			/*
 			 * fipscheck does not have the filename in the check
@@ -591,11 +592,10 @@ static int process_checkfile(const struct hash_params *params,
 			if (targetfile) {
 				ret = hasher(handle, params, targetfile,
 				             hexhash, hexhashlen + 1, stdout);
+				checked_any = 1;
 				goto out;
 			}
 		}
-
-		checked_any = 1;
 	}
 
 out:
