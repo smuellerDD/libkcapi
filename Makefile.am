@@ -139,16 +139,25 @@ EXTRA_bin_kcapi_hasher_DEPENDENCIES = libtool
 
 SCAN_FILES += $(bin_kcapi_hasher_SOURCES)
 
-kcapi_hasher_links = sha1sum sha224sum sha256sum sha384sum sha512sum \
-	             md5sum fipscheck fipshmac \
-		     sha1hmac sha224hmac sha256hmac sha384hmac sha512hmac
+hasher_links_fc = sha1sum sha224sum sha256sum sha384sum sha512sum \
+		  md5sum fipscheck fipshmac
+hasher_links_hc = sha1hmac sha224hmac sha256hmac sha384hmac sha512hmac
+hasher_links = $(hasher_links_fc) $(hasher_links_hc)
+
+CHECKSUM_CMD_FC = $(OPENSSL) sha256 -r -hmac orboDeJITITejsirpADONivirpUkvarP
+CHECKSUM_CMD_HC = $(OPENSSL) sha512 -r -hmac FIPS-FTW-RHT2009
 
 install-exec-hook:
 	(cd $(DESTDIR)$(bindir) && \
-	($(foreach link, $(kcapi_hasher_links), $(LN) -f kcapi-hasher $(link);)))
+	($(foreach link, $(hasher_links), $(LN) -f kcapi-hasher $(link);)))
 if HAVE_OPENSSL
 	(cd $(DESTDIR)$(bindir) && \
-	($(foreach link, $(kcapi_hasher_links), $(OPENSSL) sha256 -hmac orboDeJITITejsirpADONivirpUkvarP $(link) > $(CHECK_PREFIX)$(link).$(CHECK_SUFFIX);)))
+	($(foreach link, $(hasher_links_fc), \
+		$(CHECKSUM_CMD_FC) $(link) > $(CHECK_PREFIX)$(link).$(CHECK_SUFFIX);) \
+	$(foreach link, $(hasher_links_hc), \
+		$(CHECKSUM_CMD_HC) $(link) > $(CHECK_PREFIX)$(link).$(CHECK_SUFFIX);):))
+	($(foreach lib, $(wildcard $(DESTDIR)$(libdir)/libkcapi.so*), \
+		$(CHECKSUM_CMD_FC) $(lib)  > $(CHECK_PREFIX)$(lib).$(CHECK_SUFFIX);):)
 endif
 endif
 
