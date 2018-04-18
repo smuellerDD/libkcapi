@@ -611,7 +611,8 @@ out:
 
 }
 
-static int fipscheck_self(const struct hash_params *params, int just_print)
+static int fipscheck_self(const struct hash_params *params_bin,
+                          const struct hash_params *params_lib, int just_print)
 {
 	char *checkfile = NULL;
 	uint32_t n = 0;
@@ -668,7 +669,7 @@ static int fipscheck_self(const struct hash_params *params, int just_print)
 	}
 
 	if (just_print) {
-		ret = hash_files(params, names, 1, 0, 1);
+		ret = hash_files(params_bin, names, 1, 0, 1);
 		goto out;
 	}
 
@@ -678,7 +679,7 @@ static int fipscheck_self(const struct hash_params *params, int just_print)
 		goto out;
 	}
 
-	ret = process_checkfile(params, checkfile, selfname, CHK_STATUS);
+	ret = process_checkfile(params_bin, checkfile, selfname, CHK_STATUS);
 	if (ret)
 		goto out;
 
@@ -710,7 +711,7 @@ static int fipscheck_self(const struct hash_params *params, int just_print)
 		goto out;
 	}
 
-	ret = process_checkfile(params, checkfile, selfname, CHK_STATUS);
+	ret = process_checkfile(params_lib, checkfile, selfname, CHK_STATUS);
 
 out:
 	if (checkfile)
@@ -1010,7 +1011,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (fipscheck_self(params_self, print_self_hash)) {
+	/* library self-check must be consistent across apps: */
+	if (fipscheck_self(params_self, &PARAMS_SELF_FIPSCHECK, print_self_hash)) {
 		fprintf(stderr, "Integrity check of application %s failed\n",
 			basen);
 		ret = 1;
