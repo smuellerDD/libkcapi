@@ -114,7 +114,7 @@ static void usage(char *name, int fipscheck)
 	const char *base = basename(name);
 	fprintf(stderr, "\n%s - calculation of hash sum (Using Linux Kernel Crypto API)\n", basename(name));
 	fprintf(stderr, "\nUsage:\n");
-	fprintf(stderr, "\t%s [OPTION]... -S\n", base);
+	fprintf(stderr, "\t%s [OPTION]... -S|-L\n", base);
 	if (fipscheck)
 		fprintf(stderr, "\t%s [OPTION]... FILE\n", base);
 	else {
@@ -123,6 +123,7 @@ static void usage(char *name, int fipscheck)
 	}
 	fprintf(stderr, "\nOptions:\n");
 	fprintf(stderr, "\t-S --self-sum\t\tPrint checksum of this binary and exit\n");
+	fprintf(stderr, "\t-L --self-sum-lib\tPrint checksum of the libkcapi library and exit\n");
 	if (!fipscheck)
 		fprintf(stderr, "\t-c --check FILE\t\tVerify hash sums from file\n");
 	fprintf(stderr, "\t-u --unkeyed\t\tForce unkeyed hash\n");
@@ -611,7 +612,13 @@ out:
 
 }
 
-static int fipscheck_self(const struct hash_params *params, int just_print)
+/* self-check modes: */
+#define SELFCHECK_CHECK		0
+#define SELFCHECK_PRINT_SELF	1
+#define SELFCHECK_PRINT_LIB	2
+
+static int fipscheck_self(const struct hash_params *params_bin,
+                          const struct hash_params *params_lib, int mode)
 {
 	char *checkfile = NULL;
 	uint32_t n = 0;
@@ -625,9 +632,9 @@ static int fipscheck_self(const struct hash_params *params, int just_print)
 	void *dl = NULL, *sym;
 
 #ifdef HAVE_SECURE_GETENV
-	if (secure_getenv("KCAPI_HASHER_FORCE_FIPS") || just_print) {
+	if (secure_getenv("KCAPI_HASHER_FORCE_FIPS") || mode != SELFCHECK_CHECK) {
 #else
-	if (getenv("KCAPI_HASHER_FORCE_FIPS") || just_print) {
+	if (getenv("KCAPI_HASHER_FORCE_FIPS") || mode != SELFCHECK_CHECK) {
 #endif
 		fipsflag[0] = 1;
 	} else {
@@ -659,58 +666,68 @@ static int fipscheck_self(const struct hash_params *params, int just_print)
 	}
 
 	/* Integrity check of our application. */
-	memset(selfname, 0, sizeof(selfname));
-	selfnamesize = readlink("/proc/self/exe", selfname, BUFSIZE);
-	if (selfnamesize >= BUFSIZE || selfnamesize < 0) {
-		fprintf(stderr, "Cannot obtain my filename\n");
-		ret = -EFAULT;
-		goto out;
-	}
+	if (mode == SELFCHECK_CHECK || mode == SELFCHECK_PRINT_SELF) {
+		memset(selfname, 0, sizeof(selfname));
+		selfnamesize = readlink("/proc/self/exe", selfname, BUFSIZE);
+		if (selfnamesize >= BUFSIZE || selfnamesize < 0) {
+			fprintf(stderr, "Cannot obtain my filename\n");
+			ret = -EFAULT;
+			goto out;
+		}
 
-	if (just_print) {
-		ret = hash_files(params, names, 1, 0, 1);
-		goto out;
-	}
+		if (mode == SELFCHECK_PRINT_SELF) {
+			ret = hash_files(params_bin, names, 1, 0, 1);
+			goto out;
+		}
 
-	checkfile = get_hmac_file(selfname);
-	if (!checkfile) {
-		ret = -ENOMEM;
-		goto out;
-	}
+		checkfile = get_hmac_file(selfname);
+		if (!checkfile) {
+			ret = -ENOMEM;
+			goto out;
+		}
 
-	ret = process_checkfile(params, checkfile, selfname, CHK_STATUS);
-	if (ret)
-		goto out;
+		ret = process_checkfile(params_bin, checkfile, selfname, CHK_STATUS);
+		if (ret)
+			goto out;
+	}
 
 	/* Integrity check of shared libkcapi.so file. */
-	memset(selfname, 0, sizeof(selfname));
-	snprintf(selfname, (sizeof(selfname) - 1), "libkcapi.so.%u",
-		 KCAPI_MAJVERSION);
-	dl = dlopen(selfname, RTLD_NODELETE|RTLD_NOLOAD|RTLD_LAZY);
-	if (dl == NULL) {
-		fprintf(stderr, "dlopen of file %s failed\n", selfname);
-		ret = -EFAULT;
-		goto out;
+	if (mode == SELFCHECK_CHECK || mode == SELFCHECK_PRINT_LIB) {
+		memset(selfname, 0, sizeof(selfname));
+		snprintf(selfname, (sizeof(selfname) - 1), "libkcapi.so.%u",
+		         KCAPI_MAJVERSION);
+		dl = dlopen(selfname, RTLD_NODELETE|RTLD_NOLOAD|RTLD_LAZY);
+		if (dl == NULL) {
+			fprintf(stderr, "dlopen of file %s failed\n", selfname);
+			ret = -EFAULT;
+			goto out;
+		}
+
+		memset(selfname, 0, sizeof(selfname));
+		sym = dlsym(dl, "kcapi_md_init");
+		if (sym == NULL || !dladdr(sym, &info)) {
+			fprintf(stderr, "finding symbol kcapi_md_init failed\n");
+			ret = -EFAULT;
+			goto out;
+		}
+
+		strncpy(selfname, info.dli_fname, (sizeof(selfname) - 1));
+
+		if (mode == SELFCHECK_PRINT_LIB) {
+			ret = hash_files(params_lib, names, 1, 0, 1);
+			goto out;
+		}
+
+		if (checkfile)
+			free(checkfile);
+		checkfile = get_hmac_file(selfname);
+		if (!checkfile) {
+			ret = -ENOMEM;
+			goto out;
+		}
+
+		ret = process_checkfile(params_lib, checkfile, selfname, CHK_STATUS);
 	}
-
-	memset(selfname, 0, sizeof(selfname));
-	sym = dlsym(dl, "kcapi_md_init");
-	if (sym == NULL || !dladdr(sym, &info)) {
-		fprintf(stderr, "finding symbol kcapi_md_init failed\n");
-		ret = -EFAULT;
-		goto out;
-	}
-
-	strncpy(selfname, info.dli_fname, (sizeof(selfname) - 1));
-
-	free(checkfile);
-	checkfile = get_hmac_file(selfname);
-	if (!checkfile) {
-		ret = -ENOMEM;
-		goto out;
-	}
-
-	ret = process_checkfile(params, checkfile, selfname, CHK_STATUS);
 
 out:
 	if (checkfile)
@@ -752,9 +769,9 @@ int main(int argc, char *argv[])
 	int hmac = 0;
 	int fipscheck = 0;
 	int fipshmac = 0;
-	int print_self_hash = 0;
+	int selfcheck_mode = SELFCHECK_CHECK;
 
-	static const char *opts_short = "c:uh:t:Sqk:K:vbd:P";
+	static const char *opts_short = "c:uh:t:SLqk:K:vbd:P";
 	static const struct option opts[] = {
 		{"help", 0, 0, 0},
 		{"tag", 0, 0, 0},
@@ -764,6 +781,7 @@ int main(int argc, char *argv[])
 		{"hash", 1, 0, 'h'},
 		{"truncate", 1, 0, 't'},
 		{"self-sum", 0, 0, 'S'},
+		{"self-sum-lib", 0, 0, 'L'},
 		{"status", 0, 0, 'q'},
 		{"key-file", 1, 0, 'k'},
 		{"key", 1, 0, 'K'},
@@ -931,7 +949,10 @@ int main(int argc, char *argv[])
 				params.hashlen /= 8;
 				break;
 			case 'S':
-				print_self_hash = 1;
+				selfcheck_mode = SELFCHECK_PRINT_SELF;
+				break;
+			case 'L':
+				selfcheck_mode = SELFCHECK_PRINT_LIB;
 				break;
 			case 'q':
 				loglevel = CHK_STATUS;
@@ -997,27 +1018,28 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (print_self_hash) {
+	if (selfcheck_mode != SELFCHECK_CHECK) {
 		if (checkfile) {
-			fprintf(stderr, "-S and -c cannot be combined\n");
+			fprintf(stderr, "-S/-L and -c cannot be combined\n");
 			ret = 1;
 			goto out;
 		}
 		if (optind != argc) {
-			fprintf(stderr, "-S cannot be used with input files\n");
+			fprintf(stderr, "-S/-L cannot be used with input files\n");
 			ret = 1;
 			goto out;
 		}
 	}
 
-	if (fipscheck_self(params_self, print_self_hash)) {
+	/* library self-check must be consistent across apps: */
+	if (fipscheck_self(params_self, &PARAMS_SELF_FIPSCHECK, selfcheck_mode)) {
 		fprintf(stderr, "Integrity check of application %s failed\n",
 			basen);
 		ret = 1;
 		goto out;
 	}
 
-	if (print_self_hash) {
+	if (selfcheck_mode != SELFCHECK_CHECK) {
 		ret = 0;
 		goto out;
 	}
