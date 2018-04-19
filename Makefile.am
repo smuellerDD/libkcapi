@@ -150,6 +150,7 @@ CHECKSUM_CMD_HC = $(OPENSSL) sha512 -r -hmac FIPS-FTW-RHT2009
 install-exec-hook:
 	(cd $(DESTDIR)$(bindir) && \
 	($(foreach link, $(hasher_links), $(LN) -f kcapi-hasher $(link);)))
+	-rm -f $(DESTDIR)$(bindir)/kcapi-hasher
 if HAVE_OPENSSL
 	(cd $(DESTDIR)$(bindir) && \
 	($(foreach link, $(hasher_links_fc), \
