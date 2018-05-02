@@ -18,6 +18,8 @@
  * DAMAGE.
  */
 
+#define _GNU_SOURCE
+#include <unistd.h>
 #include <linux/random.h>
 #ifdef HAVE_GETRANDOM
 #include <sys/random.h>
