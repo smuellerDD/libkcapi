@@ -351,7 +351,7 @@ static char *paste(char *dst, const char *src, size_t size)
  */
 static char *get_hmac_file(const char *filename)
 {
-	size_t i, filelen, basenamestart = 0;
+	size_t i, filelen, pathlen, namelen, basenamestart = 0;
 	size_t prefixlen = strlen(CHECK_PREFIX);
 	size_t suffixlen = strlen(CHECK_SUFFIX);
 	char *cursor, *checkfile = NULL;
@@ -361,20 +361,32 @@ static char *get_hmac_file(const char *filename)
 		fprintf(stderr, "File too long\n");
 		return NULL;
 	}
-	checkfile = malloc(filelen + prefixlen + 1 + suffixlen + 1);
-	if (!checkfile)
-		return NULL;
-
 	for (i = 0; i < filelen; i++) {
 		if (!strncmp(filename + i, "/", 1))
 			basenamestart = i + 1;
 	}
 
+	namelen = filelen - basenamestart;
+#ifdef CHECK_DIR
+	pathlen = strlen(CHECK_DIR"/");
+#else
+	pathlen = basenamestart;
+#endif
+
+	checkfile = malloc(pathlen + namelen + prefixlen + 1 /* "." */ +
+		suffixlen + 1 /* null character */);
+	if (!checkfile)
+		return NULL;
+
 	cursor = checkfile;
-	if (basenamestart > 0)
-		cursor = paste(cursor, filename, basenamestart);
+#ifdef CHECK_DIR
+	cursor = paste(cursor, CHECK_DIR"/", pathlen);
+#else
+	if (pathlen > 0)
+		cursor = paste(cursor, filename, pathlen);
+#endif
 	cursor = paste(cursor, CHECK_PREFIX, prefixlen);
-	cursor = paste(cursor, filename + basenamestart, filelen - basenamestart);
+	cursor = paste(cursor, filename + basenamestart, namelen);
 	cursor = paste(cursor, "."CHECK_SUFFIX, 1 + suffixlen);
 	strncpy(cursor, "\0", 1);
 	return checkfile;
@@ -559,6 +571,14 @@ static int process_checkfile(const struct hash_params *params,
 			goto out;
 		}
 
+		/* fipscheck does not have the filename in the check file */
+		if (targetfile) {
+			ret = hasher(handle, params, targetfile,
+			             hexhash, hexhashlen, stdout);
+			checked_any = 1;
+			goto out;
+		}
+
 		if (filename) {
 			int r;
 
@@ -585,17 +605,6 @@ static int process_checkfile(const struct hash_params *params,
 					ret++;
 			}
 			checked_any = 1;
-		} else {
-			/*
-			 * fipscheck does not have the filename in the check
-			 * file
-			 */
-			if (targetfile) {
-				ret = hasher(handle, params, targetfile,
-				             hexhash, hexhashlen + 1, stdout);
-				checked_any = 1;
-				goto out;
-			}
 		}
 	}
 

@@ -130,7 +130,7 @@ AC_ARG_ENABLE([sum-prefix],
 	      fi
 	      ,CHECK_PREFIX=)
 
-AC_ARG_ENABLE(sum-suffix,
+AC_ARG_ENABLE([sum-suffix],
 	      AS_HELP_STRING([--enable-sum-suffix=EXT],[suffix to add to filenames when deriving the binary's checksum file's name (default "hmac")]),
 	      if test x$enableval != xno ; then
 		  CHECK_SUFFIX="$enableval"
@@ -139,11 +139,24 @@ AC_ARG_ENABLE(sum-suffix,
 	      fi
 	      ,CHECK_SUFFIX=hmac)
 
+AC_ARG_ENABLE([sum-dir],
+	      AS_HELP_STRING([--enable-sum-dir=DIR],[directory where HMAC checksum files will be placed (default: place alongside binaries)]),
+	      if test x$enableval != xno ; then
+		  CHECK_DIR="$enableval"
+	      else
+		  CHECK_DIR=
+	      fi
+	      ,CHECK_DIR=)
+
 AC_SUBST(CHECK_PREFIX)
 AC_SUBST(CHECK_SUFFIX)
+AC_SUBST(CHECK_DIR)
 
 AC_DEFINE_UNQUOTED(CHECK_PREFIX,"$CHECK_PREFIX",[Define to the prefix which contains the hmac for a binary.])
 AC_DEFINE_UNQUOTED(CHECK_SUFFIX,"$CHECK_SUFFIX",[Define to the suffix which contains the hmac for a binary.])
+AS_IF([test "x$CHECK_DIR" != "x"], [
+	AC_DEFINE_UNQUOTED(CHECK_DIR,"$CHECK_DIR",[Define to the directory which contains the hmac for a binary.])
+])
 
 PKG_INSTALLDIR
 if test "x$pkgconfigdir" = "x"; then
