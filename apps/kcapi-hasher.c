@@ -67,6 +67,7 @@ struct hash_name {
 };
 
 struct hash_key {
+	const char *subdir;
 	const uint8_t *data;
 	uint32_t len;
 };
@@ -103,10 +104,12 @@ static const char hmaccalc_hmackey[] = "FIPS-FTW-RHT2009";
 static const struct hash_key KEY_FIPSCHECK = {
 	.data = (const uint8_t *)fipscheck_hmackey,
 	.len = sizeof(fipscheck_hmackey) - 1,
+	.subdir = "fipscheck",
 };
 static const struct hash_key KEY_HMACCALC = {
 	.data = (const uint8_t *)hmaccalc_hmackey,
 	.len = sizeof(hmaccalc_hmackey) - 1,
+	.subdir = "hmaccalc",
 };
 
 static void usage(char *name, int fipscheck)
@@ -349,7 +352,7 @@ static char *paste(char *dst, const char *src, size_t size)
  * return: NULL when malloc failed, a pointer that the caller must free
  * otherwise.
  */
-static char *get_hmac_file(const char *filename)
+static char *get_hmac_file(const char *filename, const char *subdir)
 {
 	size_t i, filelen, pathlen, namelen, basenamestart = 0;
 	size_t prefixlen = strlen(CHECK_PREFIX);
@@ -368,8 +371,9 @@ static char *get_hmac_file(const char *filename)
 
 	namelen = filelen - basenamestart;
 #ifdef CHECK_DIR
-	pathlen = strlen(CHECK_DIR"/");
+	pathlen = strlen(CHECK_DIR"/") + strlen(subdir) + 1;
 #else
+	(void)subdir; // avoid parameter unused warning
 	pathlen = basenamestart;
 #endif
 
@@ -380,7 +384,9 @@ static char *get_hmac_file(const char *filename)
 
 	cursor = checkfile;
 #ifdef CHECK_DIR
-	cursor = paste(cursor, CHECK_DIR"/", pathlen);
+	cursor = paste(cursor, CHECK_DIR"/", strlen(CHECK_DIR"/"));
+	cursor = paste(cursor, subdir, strlen(subdir));
+	cursor = paste(cursor, "/", 1);
 #else
 	if (pathlen > 0)
 		cursor = paste(cursor, filename, pathlen);
@@ -423,7 +429,8 @@ static int hash_files(const struct hash_params *params,
 			const char *filename = filenames[i];
 
 			if (fipshmac) {
-				char *outfile = get_hmac_file(filenames[i]);
+				char *outfile = get_hmac_file(filenames[i],
+				                              params->key.subdir);
 
 				if (!outfile) {
 					fprintf(stderr,
@@ -689,7 +696,7 @@ static int fipscheck_self(const struct hash_params *params_bin,
 			goto out;
 		}
 
-		checkfile = get_hmac_file(selfname);
+		checkfile = get_hmac_file(selfname, params_bin->key.subdir);
 		if (!checkfile) {
 			ret = -ENOMEM;
 			goto out;
@@ -729,7 +736,7 @@ static int fipscheck_self(const struct hash_params *params_bin,
 
 		if (checkfile)
 			free(checkfile);
-		checkfile = get_hmac_file(selfname);
+		checkfile = get_hmac_file(selfname, params_lib->key.subdir);
 		if (!checkfile) {
 			ret = -ENOMEM;
 			goto out;
@@ -761,7 +768,7 @@ int main(int argc, char *argv[])
 	const struct hash_name *names;
 	struct hash_params params = {
 		.name = { NULL, NULL },
-		.key = { NULL, 0 },
+		.key = { NULL, NULL, 0 },
 		.hashlen = 0,
 		.bsd_style = 0,
 	};
@@ -1053,6 +1060,8 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+	params.name = names[hmac];
+
 	if (fipscheck) {
 		if (optind >= argc) {
 			fprintf(stderr, "No file to check given for fipscheck\n");
@@ -1068,15 +1077,13 @@ int main(int argc, char *argv[])
 		targetfile = argv[optind];
 		if (checkfile)
 			free(checkfile);
-		checkfile = get_hmac_file(targetfile);
+		checkfile = get_hmac_file(targetfile, params.key.subdir);
 		if (!checkfile) {
 			ret = 1;
 			goto out;
 		}
 		optind++;
 	}
-
-	params.name = names[hmac];
 
 	if (!checkfile)
 		ret = hash_files(&params, argv + optind, (argc - optind),
