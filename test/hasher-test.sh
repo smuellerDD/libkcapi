@@ -22,15 +22,18 @@
 
 HASHERBIN="${APPDIR}/kcapi-hasher"
 find_platform $HASHERBIN
-HASHERBIN=$(get_binlocation $HASHERBIN)
 
-SUMHASHER="${TMPDIR}/md5sum ${TMPDIR}/sha1sum ${TMPDIR}/sha256sum ${TMPDIR}/sha384sum ${TMPDIR}/sha512sum"
-HMACHASHER="${TMPDIR}/sha1hmac ${TMPDIR}/sha256hmac ${TMPDIR}/sha384hmac ${TMPDIR}/sha512hmac"
+function run_hasher() {
+	"$HASHERBIN" -n "$@"
+}
+
+SUMHASHER="md5sum sha1sum sha256sum sha384sum sha512sum"
+HMACHASHER="sha1hmac sha256hmac sha384hmac sha512hmac"
 CHKFILE="${TMPDIR}/chk.$$"
 ANOTHER="${TMPDIR}/test.$$"
 
 touch $ANOTHER
-trap "rm -f $ANOTHER $CHKFILE $SUMHASHER $HMACHASHER" 0 1 2 3 15
+trap "rm -f $ANOTHER $CHKFILE" 0 1 2 3 15
 
 if [ ! -e $HASHERBIN ]
 then
@@ -38,20 +41,10 @@ then
 	exit 1
 fi
 
-#although a hard link suffices, we need to copy it
-for i in $SUMHASHER $HMACHASHER
-do
-	#ln $HASHERBIN $i
-	cp -f $HASHERBIN $i
-done
-
-libdir=$(dirname $(realpath ../.libs/libkcapi.so))
-libname=$(realpath ../.libs/libkcapi.so)
-
 for hasher in $SUMHASHER $HMACHASHER
 do
 	>$CHKFILE
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -c $CHKFILE
+	run_hasher $hasher -c $CHKFILE
 	if [ $? -eq 0 ]
 	then
 		echo_fail "Verification of empty checker file with hasher $hasher did not fail"
@@ -60,7 +53,7 @@ do
 	fi
 
 	echo >$CHKFILE
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -c $CHKFILE
+	run_hasher $hasher -c $CHKFILE
 	if [ $? -eq 0 ]
 	then
 		echo_fail "Verification of empty line checker file with hasher $hasher did not fail"
@@ -68,9 +61,8 @@ do
 		echo_pass "Failure on empty line checker file for $hasher"
 	fi
 
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher $0 $ANOTHER | \
-		sed -E 's/(\w+\s)\s/\1*/' >$CHKFILE
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -q -c $CHKFILE
+	run_hasher $hasher $0 $ANOTHER | sed -E 's/(\w+\s)\s/\1*/' >$CHKFILE
+	run_hasher $hasher -q -c $CHKFILE
 	if [ $? -eq 0 ]
 	then
 		echo_pass "Parsing checker file with asterisk with $hasher"
@@ -78,8 +70,7 @@ do
 		echo_fail "Parsing checker file with asterisk (binary mode) with $hasher failed"
 	fi
 
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher $0 $ANOTHER | \
-		LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -q -c -
+	run_hasher $hasher $0 $ANOTHER | run_hasher $hasher -q -c -
 	if [ $? -eq 0 ]
 	then
 		echo_pass "Checker file '-' interpretation with $hasher"
@@ -87,7 +78,7 @@ do
 		echo_fail "Checker file '-' interpretation with $hasher failed"
 	fi
 
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher $0 - <$ANOTHER >/dev/null
+	run_hasher $hasher $0 - <$ANOTHER >/dev/null
 	if [ $? -eq 0 ]
 	then
 		echo_pass "Input file '-' interpretation with $hasher"
@@ -100,16 +91,16 @@ done
 
 for i in $SUMHASHER
 do
-	hash=$(basename $i)
-	hash=${hash%%sum}
 	hasher=$i
-	i=$(basename $i)
-	[ ! -e "$hasher" ] && {
-		echo_deact "Hasher $hasher does not exist"
+	hash=${hasher%%sum}
+	i=$(command -v $i)
+
+	[ -z "$i" ] && {
+		echo_deact "reference application $hasher missing"
 		continue
 	}
 
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher $0 $ANOTHER > $CHKFILE
+	run_hasher $hasher $0 $ANOTHER > $CHKFILE
 	[ $? -ne 0 ] && {
 		echo_fail "Generation of hashes with hasher $hasher failed"
 		continue
@@ -131,14 +122,14 @@ do
 		continue
 	}
 
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher --status -c $CHKFILE
+	run_hasher $hasher --status -c $CHKFILE
 	[ $? -ne 0 ] && echo_fail "Verification of checker file $CHKFILE with hasher $hasher failed"
 
 	echo -n 123 >$CHKFILE
 
 	a=$(openssl dgst -$hash -hmac 123 $0 | cut -f 2 -d" ")
-	b=$(LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -K 123 $0 | cut -f 1 -d" ")
-	c=$(LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -k $CHKFILE $0 | cut -f 1 -d" ")
+	b=$(run_hasher $hasher -K 123 $0 | cut -f 1 -d" ")
+	c=$(run_hasher $hasher -k $CHKFILE $0 | cut -f 1 -d" ")
 	[ x"$a" != x"$b" ] && {
 		echo_fail "HMAC calculation for $hasher failed (cmdline key)"
 		continue
@@ -153,23 +144,16 @@ done
 
 for i in $HMACHASHER
 do
-	hash=$(basename $i)
-	hash=${hash%%hmac}
 	hasher=$i
-	t=$(basename $i)
-	i=$(command -v $t)
+	hash=${hasher%%hmac}
+	i=$(command -v $i)
 
 	[ -z "$i" ] && {
-		echo_deact "hmaccalc reference application $t missing"
+		echo_deact "hmaccalc reference application $hasher missing"
 		continue
 	}
 
-	[ ! -e "$hasher" ] && {
-		echo_fail "Hasher $hasher does not exist"
-		continue
-	}
-
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher $0 $ANOTHER > $CHKFILE
+	run_hasher $hasher $0 $ANOTHER > $CHKFILE
 	[ $? -ne 0 ] && {
 		echo_fail "Generation of hashes with hasher $hasher failed"
 		continue
@@ -191,7 +175,7 @@ do
 		continue
 	}
 
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -q -c $CHKFILE
+	run_hasher $hasher -q -c $CHKFILE
 	if [ $? -ne 0 ]
 	then
 		echo_fail "Verification of checker file $CHKFILE with hasher $hasher failed"
@@ -210,13 +194,8 @@ do
 	ref=${i%%hmac}sum
 	hasher=$i
 
-	[ ! -e "$hasher" ] && {
-		echo_fail "Hasher $hasher does not exist"
-		continue
-	}
-
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $ref $0 $ANOTHER > $CHKFILE
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -u -q -c $CHKFILE
+	run_hasher $ref $0 $ANOTHER > $CHKFILE
+	run_hasher $hasher -u -q -c $CHKFILE
 	if [ $? -ne 0 ]
 	then
 		echo_fail "Unkeyed verification with hasher $hasher failed"
@@ -224,8 +203,8 @@ do
 		echo_pass "Unkeyed verification with hasher $hasher"
 	fi
 
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -u $0 $ANOTHER > $CHKFILE
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $ref --status -c $CHKFILE
+	run_hasher $hasher -u $0 $ANOTHER > $CHKFILE
+	run_hasher $ref --status -c $CHKFILE
 	if [ $? -ne 0 ]
 	then
 		echo_fail "Unkeyed generation of checker file with hasher $hasher failed"
@@ -239,12 +218,10 @@ done
 #
 # Test hmaccalc's ignored compatibility options:
 #
-for i in $HMACHASHER
+for hasher in $HMACHASHER
 do
-	hasher=$i
-
 	compat="-d -P -b"
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher $compat $0 $ANOTHER > /dev/null
+	run_hasher $hasher $compat $0 $ANOTHER > /dev/null
 	if [ $? -ne 0 ]
 	then
 		echo_fail "Hasher $hasher does not accept compatiblity options: $compat"
@@ -256,11 +233,9 @@ done
 #
 # Test hmaccalc's -S option:
 #
-for i in $HMACHASHER
+for hasher in $HMACHASHER
 do
-	hasher=$i
-
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -S >$CHKFILE
+	run_hasher $hasher -S >$CHKFILE
 	if [ $? -ne 0 ]
 	then
 		echo_fail "Hasher $hasher does not accept the -S option"
@@ -277,11 +252,9 @@ done
 #
 # Test hmaccalc's -h option:
 #
-for i in $HMACHASHER
+for hasher in $HMACHASHER
 do
-	hasher=$i
-
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $hasher -h sha1 $0 $ANOTHER >$CHKFILE
+	run_hasher $hasher -h sha1 $0 $ANOTHER >$CHKFILE
 	if [ $? -ne 0 ]
 	then
 		echo_fail "Hasher $hasher does not accept the -h option"
@@ -289,8 +262,7 @@ do
 		continue
 	fi
 
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname $TMPDIR/sha1hmac $0 $ANOTHER | \
-		diff $CHKFILE -
+	run_hasher sha1hmac $0 $ANOTHER | diff $CHKFILE -
 	if  [ $? -ne 0 ]
 	then
 		echo_fail "Hasher $hasher does not work correctly with the -h option"
@@ -328,7 +300,7 @@ function run_kat() {
 	expand_string "$data" >"$ANOTHER"
 	echo "${result#0x}  $ANOTHER" >"$CHKFILE"
 
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname "${TMPDIR}/$hasher" -q \
+	run_hasher $hasher -q \
 		-k <(expand_string "$key") -c "$CHKFILE" $truncate_opt
 	if [ $? -ne 0 ]
 	then
@@ -337,7 +309,7 @@ function run_kat() {
 		echo_pass "Verification of hasher $hasher -c ... with KAT '$id'"
 	fi
 
-	LD_LIBRARY_PATH=$libdir LD_PRELOAD=$libname "${TMPDIR}/$hasher" -q \
+	run_hasher $hasher -q \
 		-k <(expand_string "$key") "$ANOTHER" $truncate_opt \
 		| diff - "$CHKFILE"
 	if [ $? -ne 0 ]
