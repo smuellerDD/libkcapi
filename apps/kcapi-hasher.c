@@ -117,14 +117,15 @@ static void usage(char *name, int fipscheck)
 	const char *base = basename(name);
 	fprintf(stderr, "\n%s - calculation of hash sum (Using Linux Kernel Crypto API)\n", basename(name));
 	fprintf(stderr, "\nUsage:\n");
-	fprintf(stderr, "\t%s [OPTION]... -S|-L\n", base);
+	fprintf(stderr, "\t%s [-n BASENAME] [OPTION]... -S|-L\n", base);
 	if (fipscheck)
-		fprintf(stderr, "\t%s [OPTION]... FILE\n", base);
+		fprintf(stderr, "\t%s [-n BASENAME] [OPTION]... FILE\n", base);
 	else {
-		fprintf(stderr, "\t%s [OPTION]... -c FILE\n", base);
-		fprintf(stderr, "\t%s [OPTION]... FILE...\n", base);
+		fprintf(stderr, "\t%s [-n BASENAME] [OPTION]... -c FILE\n", base);
+		fprintf(stderr, "\t%s [-n BASENAME] [OPTION]... FILE...\n", base);
 	}
 	fprintf(stderr, "\nOptions:\n");
+	fprintf(stderr, "\t-n --name\t\tForce given application name (sha512hmac/...)\n");
 	fprintf(stderr, "\t-S --self-sum\t\tPrint checksum of this binary and exit\n");
 	fprintf(stderr, "\t-L --self-sum-lib\tPrint checksum of the libkcapi library and exit\n");
 	if (!fipscheck)
@@ -781,11 +782,18 @@ int main(int argc, char *argv[])
 	const char *targetfile = NULL;
 	uint8_t *hmackey_alloc = NULL;
 	uint8_t *hmackey_mmap = NULL;
+	int opt_index = 0;
 	int loglevel = 0;
 	int hmac = 0;
 	int fipscheck = 0;
 	int fipshmac = 0;
 	int selfcheck_mode = SELFCHECK_CHECK;
+
+	static const char *opts_name_short = "n:";
+	static const struct option opts_name[] = {
+		{"name", 1, 0, 'n'},
+		{0, 0, 0, 0}
+	};
 
 	static const char *opts_short = "c:uh:t:SLqk:K:vbd:P";
 	static const struct option opts[] = {
@@ -832,6 +840,11 @@ int main(int argc, char *argv[])
 		return 255;
 	}
 	basen = basename(basec);
+
+	if (getopt_long(argc, argv, opts_name_short, opts_name, &opt_index) == 'n')
+		basen = optarg;
+	else
+		opt_index = 0;
 
 	params_self = &PARAMS_SELF_FIPSCHECK;
 	if (0 == strncmp(basen, "sha256sum", 9)) {
@@ -888,7 +901,6 @@ int main(int argc, char *argv[])
 	}
 
 	while (1) {
-		int opt_index = 0;
 		int c = getopt_long(argc, argv, opts_short, opts, &opt_index);
 		
 		if (-1 == c)
