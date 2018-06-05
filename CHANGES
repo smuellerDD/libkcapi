@@ -1,8 +1,10 @@
+Changes 1.1.1
+ * Fix: Bug fixes for kcapi_hasher by Ondrej Mosnáček
+
 Changes 1.1.0
  * API Enhancement: Addition of kcapi_handle_reinit
  * Fix: simplify code by removing the internal *_fd functions from
    kcapi-kernel-if.c
- * Test enhancement: add IIV speed testing
  * Fix: add a loop around the read system call to always obtain all generated
    data
  * Fix: use host compiler for compiling docproc (reported by Christophe LEROY,
