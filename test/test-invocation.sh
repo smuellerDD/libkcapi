@@ -88,16 +88,6 @@ exec_test()
 			exit $ret
 		fi
 	fi
-
-	if ! mount | grep -q "9p2000"
-	then
-		${DIR}/compile-test.sh
-		ret=$?
-		if [ $ret -ne 0 ]
-		then
-			exit $ret
-		fi
-	fi
 }
 
 # Only execute tests without compilation on virtual environment
@@ -119,6 +109,14 @@ then
 fi
 cd $CWD
 exec_test
+
+${DIR}/compile-test.sh
+ret=$?
+if [ $ret -ne 0 ]
+then
+	exit $ret
+fi
+
 cd ..
 
 make distclean > /dev/null 2>&1
