@@ -81,7 +81,7 @@ bin_PROGRAMS =
 if ENABLE_KCAPI_TEST
 bin_PROGRAMS += bin/kcapi
 
-bin_kcapi_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-overlength-strings -g -Ilib/
+bin_kcapi_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-overlength-strings -g -I$(top_srcdir)/lib/
 bin_kcapi_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_LDADD = libkcapi.la
 bin_kcapi_SOURCES = test/kcapi-main.c
@@ -91,7 +91,7 @@ SCAN_FILES += $(bin_kcapi_SOURCES)
 
 bin_PROGRAMS += bin/kcapi-enc-test-large
 
-bin_kcapi_enc_test_large_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-overlength-strings -g -Ilib/
+bin_kcapi_enc_test_large_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-overlength-strings -g -I$(top_srcdir)/lib/
 bin_kcapi_enc_test_large_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_enc_test_large_LDADD = libkcapi.la
 bin_kcapi_enc_test_large_SOURCES = test/kcapi-enc-test-large.c
@@ -101,7 +101,7 @@ SCAN_FILES += $(bin_kcapi_enc_test_large_SOURCES)
 
 bin_PROGRAMS += bin/kcapi-convenience
 
-bin_kcapi_convenience_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-overlength-strings -g -Ilib/
+bin_kcapi_convenience_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-overlength-strings -g -I$(top_srcdir)/lib/
 bin_kcapi_convenience_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_convenience_LDADD = libkcapi.la
 bin_kcapi_convenience_SOURCES = test/kcapi-convenience.c
@@ -113,7 +113,7 @@ endif
 if ENABLE_KCAPI_SPEED
 bin_PROGRAMS += bin/kcapi-speed
 
-bin_kcapi_speed_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-variadic-macros -Ilib/
+bin_kcapi_speed_CPPFLAGS = $(COMMON_CPPFLAGS) -Wno-variadic-macros -I$(top_srcdir)/lib/
 bin_kcapi_speed_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_speed_LDADD = libkcapi.la
 bin_kcapi_speed_SOURCES = speed-test/cryptoperf.h \
@@ -131,7 +131,7 @@ endif
 if ENABLE_KCAPI_HASHER
 bin_PROGRAMS += bin/kcapi-hasher
 
-bin_kcapi_hasher_CPPFLAGS = $(COMMON_CPPFLAGS) -Ilib/
+bin_kcapi_hasher_CPPFLAGS = $(COMMON_CPPFLAGS) -I$(top_srcdir)/lib/
 bin_kcapi_hasher_LDFLAGS = $(COMMON_LDFLAGS) -ldl
 bin_kcapi_hasher_LDADD = libkcapi.la
 bin_kcapi_hasher_SOURCES = apps/kcapi-hasher.c apps/app-internal.c
@@ -171,7 +171,7 @@ endif
 if ENABLE_KCAPI_RNGAPP
 bin_PROGRAMS += bin/kcapi-rng
 
-bin_kcapi_rng_CPPFLAGS = $(COMMON_CPPFLAGS) -Ilib/
+bin_kcapi_rng_CPPFLAGS = $(COMMON_CPPFLAGS) -I$(top_srcdir)/lib/
 bin_kcapi_rng_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_rng_LDADD = libkcapi.la
 bin_kcapi_rng_SOURCES = apps/kcapi-rng.c apps/app-internal.c
@@ -184,7 +184,7 @@ endif
 if ENABLE_KCAPI_ENCAPP
 bin_PROGRAMS += bin/kcapi-enc
 
-bin_kcapi_enc_CPPFLAGS = $(COMMON_CPPFLAGS) -Ilib/
+bin_kcapi_enc_CPPFLAGS = $(COMMON_CPPFLAGS) -I$(top_srcdir)/lib/
 bin_kcapi_enc_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_enc_LDADD = libkcapi.la
 bin_kcapi_enc_SOURCES = apps/kcapi-enc.c apps/app-internal.c
@@ -197,7 +197,7 @@ endif
 if ENABLE_KCAPI_DGSTAPP
 bin_PROGRAMS += bin/kcapi-dgst
 
-bin_kcapi_dgst_CPPFLAGS = $(COMMON_CPPFLAGS) -Ilib/
+bin_kcapi_dgst_CPPFLAGS = $(COMMON_CPPFLAGS) -I$(top_srcdir)/lib/
 bin_kcapi_dgst_LDFLAGS = $(COMMON_LDFLAGS)
 bin_kcapi_dgst_LDADD = libkcapi.la
 bin_kcapi_dgst_SOURCES = apps/kcapi-dgst.c apps/app-internal.c
@@ -215,7 +215,7 @@ MOSTLYCLEANFILES = $(analyze_plists)
 
 $(analyze_plists): %.plist: %.c
 	@echo "  CCSA  " $@
-	@$(CLANG) --analyze $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) -Ilib/	$< -o $@
+	@$(CLANG) --analyze $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) -I$(top_srcdir)/lib/	$< -o $@
 
 scan: $(analyze_plists)
 
