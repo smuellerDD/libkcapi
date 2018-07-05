@@ -242,7 +242,7 @@ lib/doc/bin/docproc${EXEEXT}: $(lib_doc_bin_docproc_OBJECTS)
 
 %.xml: %.tmpl lib/doc/bin/docproc$(EXEEXT)
 	$(SED) "s/@@LIBVERSION@@/$(VERSION)/" < $< > $(DOCPROC_TEMP)
-	LIBVERSION=$(VERSION) SRCTREE=lib/ $(abs_top_builddir)/lib/doc/bin/docproc$(EXEEXT) doc $(DOCPROC_TEMP) > $@
+	LIBVERSION=$(VERSION) SRCTREE=$(top_srcdir)/lib/ $(abs_top_builddir)/lib/doc/bin/docproc$(EXEEXT) doc $(DOCPROC_TEMP) > $@
 	-rm $(DOCPROC_TEMP)
 
 if HAVE_DB2PDF
@@ -275,7 +275,7 @@ DOC_TARGETS += html
 html: html-stamp
 html-stamp: lib/doc/libkcapi.xml
 	$(MKDIR_P) lib/doc/html
-	$(XMLTO) html -m lib/doc/stylesheet.xsl --skip-validation -o lib/doc/html/ $< 2>/dev/null
+	$(XMLTO) html -m $(top_srcdir)/lib/doc/stylesheet.xsl --skip-validation -o lib/doc/html/ $< 2>/dev/null
 	$(TOUCH) $@
 
 DOC_TARGETS += man
@@ -283,7 +283,7 @@ DOC_TARGETS += man
 man: man-stamp
 man-stamp: lib/doc/libkcapi.xml
 	$(MKDIR_P) lib/doc/man
-	$(XMLTO) man -m lib/doc/stylesheet.xsl --skip-validation -o lib/doc/man/ $< 2>/dev/null
+	$(XMLTO) man -m $(top_srcdir)/lib/doc/stylesheet.xsl --skip-validation -o lib/doc/man/ $< 2>/dev/null
 	$(TOUCH) $@
 
 devel_manpages = lib/doc/man/*.3
