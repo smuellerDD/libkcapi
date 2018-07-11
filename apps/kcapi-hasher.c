@@ -514,8 +514,11 @@ static int process_checkfile(const struct hash_params *params,
 		uint32_t i;
 		uint32_t bsd_style = 0; // >0 if --tag formatted style
 
+		if (linelen == 0)
+			break;
+
 		/* remove trailing CR and reduce buffer length */
-		for (i = linelen; i > 0; i--) {
+		for (i = linelen - 1; i > 0; i--) {
 			if (!isprint(buf[i])) {
 				buf[i] = '\0';
 				linelen--;
