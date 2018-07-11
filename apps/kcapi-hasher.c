@@ -841,10 +841,12 @@ int main(int argc, char *argv[])
 	}
 	basen = basename(basec);
 
+	opterr = 0;
 	if (getopt_long(argc, argv, opts_name_short, opts_name, &opt_index) == 'n')
 		basen = optarg;
 	else
-		opt_index = 0;
+		optind = 1;
+	opterr = 1;
 
 	params_self = &PARAMS_SELF_FIPSCHECK;
 	if (0 == strncmp(basen, "sha256sum", 9)) {
