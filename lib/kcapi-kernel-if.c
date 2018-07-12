@@ -627,9 +627,9 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 
 	if (drivername)
 		strncpy(req.cru.cru_driver_name, ciphername,
-			strlen(ciphername));
+			sizeof(req.cru.cru_driver_name) - 1);
 	else
-		strncpy(req.cru.cru_name, ciphername, strlen(ciphername));
+		strncpy(req.cru.cru_name, ciphername, sizeof(req.cru.cru_name) - 1);
 
 	/* talk to netlink socket */
 	sd =  socket(AF_NETLINK, SOCK_RAW, NETLINK_CRYPTO);
