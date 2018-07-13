@@ -3121,7 +3121,7 @@ int main(int argc, char *argv[])
 				break;
 			case 'c':
 				strncpy(cavs_test.cipher, optarg,
-					CIPHERMAXNAME);
+					CIPHERMAXNAME - 1);
 				break;
 			case 'p':
 				len = strlen(optarg);
