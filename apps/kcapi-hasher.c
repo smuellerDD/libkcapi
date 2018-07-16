@@ -71,7 +71,7 @@ struct hash_name {
 };
 
 struct hash_key {
-	const char *subdir;
+	const char *checkdir;
 	const uint8_t *data;
 	uint32_t len;
 };
@@ -108,12 +108,20 @@ static const char hmaccalc_hmackey[] = "FIPS-FTW-RHT2009";
 static const struct hash_key KEY_FIPSCHECK = {
 	.data = (const uint8_t *)fipscheck_hmackey,
 	.len = sizeof(fipscheck_hmackey) - 1,
-	.subdir = "fipscheck",
+#ifdef CHECK_DIR
+	.checkdir = CHECK_DIR"/fipscheck",
+#else
+	.checkdir = NULL,
+#endif
 };
 static const struct hash_key KEY_HMACCALC = {
 	.data = (const uint8_t *)hmaccalc_hmackey,
 	.len = sizeof(hmaccalc_hmackey) - 1,
-	.subdir = "hmaccalc",
+#ifdef CHECK_DIR
+	.checkdir = CHECK_DIR"/hmaccalc",
+#else
+	.checkdir = NULL,
+#endif
 };
 
 static void usage(char *name, int fipscheck)
@@ -142,7 +150,8 @@ static void usage(char *name, int fipscheck)
 	fprintf(stderr, "\t-k --key-file FILE\tUse HMAC key from given file\n");
 	fprintf(stderr, "\t-K --key KEY\t\tUse KEY as the HMAC key\n");
 	fprintf(stderr, "\t   --tag\t\tCreate a BSD-style checksum\n");
-	fprintf(stderr, "\t-b, -d, -P\t\tCompatibility hmaccalc options; ignored\n");
+	fprintf(stderr, "\t-d\t\t\tCheck directory for fipshmac; otherwise ignored\n");
+	fprintf(stderr, "\t-b, -P\t\t\tCompatibility hmaccalc options; ignored\n");
 	fprintf(stderr, "\t   --help\t\tPrint this help text\n");
 	fprintf(stderr, "\t-v --version\t\tShow version\n");
 }
@@ -368,7 +377,7 @@ static char *paste(char *dst, const char *src, size_t size)
  * return: NULL when malloc failed, a pointer that the caller must free
  * otherwise.
  */
-static char *get_hmac_file(const char *filename, const char *subdir)
+static char *get_hmac_file(const char *filename, const char *checkdir)
 {
 	size_t i, filelen, pathlen, namelen, basenamestart = 0;
 	size_t prefixlen = strlen(CHECK_PREFIX);
@@ -386,12 +395,7 @@ static char *get_hmac_file(const char *filename, const char *subdir)
 	}
 
 	namelen = filelen - basenamestart;
-#ifdef CHECK_DIR
-	pathlen = strlen(CHECK_DIR"/") + strlen(subdir) + 1;
-#else
-	(void)subdir; // avoid parameter unused warning
-	pathlen = basenamestart;
-#endif
+	pathlen = checkdir ? strlen(checkdir) + 1 : basenamestart;
 
 	checkfile = malloc(pathlen + namelen + prefixlen + 1 /* "." */ +
 		suffixlen + 1 /* null character */);
@@ -399,14 +403,12 @@ static char *get_hmac_file(const char *filename, const char *subdir)
 		return NULL;
 
 	cursor = checkfile;
-#ifdef CHECK_DIR
-	cursor = paste(cursor, CHECK_DIR"/", strlen(CHECK_DIR"/"));
-	cursor = paste(cursor, subdir, strlen(subdir));
-	cursor = paste(cursor, "/", 1);
-#else
-	if (pathlen > 0)
+	if (checkdir) {
+		cursor = paste(cursor, checkdir, strlen(checkdir));
+		cursor = paste(cursor, "/", 1);
+	} else if (pathlen > 0)
 		cursor = paste(cursor, filename, pathlen);
-#endif
+
 	cursor = paste(cursor, CHECK_PREFIX, prefixlen);
 	cursor = paste(cursor, filename + basenamestart, namelen);
 	cursor = paste(cursor, "."CHECK_SUFFIX, 1 + suffixlen);
@@ -417,7 +419,7 @@ static char *get_hmac_file(const char *filename, const char *subdir)
 
 static int hash_files(const struct hash_params *params,
 		      char *filenames[], uint32_t files,
-		      int fipshmac, int just_print)
+		      int fipshmac, const char *checkdir, int just_print)
 {
 	struct kcapi_handle *handle;
 	const char *hashname = params->name.kcapiname;
@@ -446,9 +448,7 @@ static int hash_files(const struct hash_params *params,
 			const char *filename = filenames[i];
 
 			if (fipshmac) {
-				char *outfile = get_hmac_file(filenames[i],
-				                              params->key.subdir);
-
+				char *outfile = get_hmac_file(filenames[i], checkdir);
 				if (!outfile) {
 					fprintf(stderr,
 						"Cannot create HMAC file name\n");
@@ -712,11 +712,11 @@ static int fipscheck_self(const struct hash_params *params_bin,
 		}
 
 		if (mode == SELFCHECK_PRINT_SELF) {
-			ret = hash_files(params_bin, names, 1, 0, 1);
+			ret = hash_files(params_bin, names, 1, 0, NULL, 1);
 			goto out;
 		}
 
-		checkfile = get_hmac_file(selfname, params_bin->key.subdir);
+		checkfile = get_hmac_file(selfname, params_bin->key.checkdir);
 		if (!checkfile) {
 			ret = -ENOMEM;
 			goto out;
@@ -750,13 +750,13 @@ static int fipscheck_self(const struct hash_params *params_bin,
 		strncpy(selfname, info.dli_fname, (sizeof(selfname) - 1));
 
 		if (mode == SELFCHECK_PRINT_LIB) {
-			ret = hash_files(params_lib, names, 1, 0, 1);
+			ret = hash_files(params_lib, names, 1, 0, NULL, 1);
 			goto out;
 		}
 
 		if (checkfile)
 			free(checkfile);
-		checkfile = get_hmac_file(selfname, params_lib->key.subdir);
+		checkfile = get_hmac_file(selfname, params_lib->key.checkdir);
 		if (!checkfile) {
 			ret = -ENOMEM;
 			goto out;
@@ -799,6 +799,7 @@ int main(int argc, char *argv[])
 
 	char *checkfile = NULL;
 	const char *targetfile = NULL;
+	const char *checkdir = NULL;
 	uint8_t *hmackey_alloc = NULL;
 	uint8_t *hmackey_mmap = NULL;
 	int opt_index = 0;
@@ -1055,8 +1056,10 @@ int main(int argc, char *argv[])
 				version(argv[0]);
 				ret = 0;
 				goto out;
-			case 'b':
 			case 'd':
+				checkdir = optarg;
+				break;
+			case 'b':
 			case 'P':
 				/* Compatibility options, just ignore */
 				break;
@@ -1110,7 +1113,7 @@ int main(int argc, char *argv[])
 		targetfile = argv[optind];
 		if (checkfile)
 			free(checkfile);
-		checkfile = get_hmac_file(targetfile, params.key.subdir);
+		checkfile = get_hmac_file(targetfile, params.key.checkdir);
 		if (!checkfile) {
 			ret = 1;
 			goto out;
@@ -1120,7 +1123,7 @@ int main(int argc, char *argv[])
 
 	if (!checkfile)
 		ret = hash_files(&params, argv + optind, (argc - optind),
-		                 fipshmac, 0);
+		                 fipshmac, checkdir, 0);
 	else if (optind == argc)
 		ret = process_checkfile(&params, checkfile, targetfile, loglevel);
 	else {
