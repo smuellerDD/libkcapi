@@ -227,7 +227,7 @@ static int load_file(const char *filename, uint8_t **memory, uint32_t *size)
 	while ((rdbytes = read(fd, buffer + offset, buffer_size - offset)) != 0) {
 		if (rdbytes < 0) {
 			fprintf(stderr, "Error reading file %s: %s\n", filename,
-			        strerror((int)rdbytes));
+			        strerror(errno));
 			ret = -EIO;
 			goto out;
 		}
