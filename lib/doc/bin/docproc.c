@@ -156,6 +156,10 @@ static void add_new_symbol(struct symfile *sym, char * symname)
 	sym->symbollist =
 		realloc(sym->symbollist,
 			(sym->symbolcnt + 1) * sizeof(struct symbols));
+	if (!sym->symbollist) {
+		perror("realloc");
+		exit(1);
+	}
 	sym->symbollist[sym->symbolcnt++].name = strdup(symname);
 }
 
@@ -391,12 +395,20 @@ static void find_all_symbols(char *filename)
 		default:
 			close(pipefd[1]);
 			data = malloc(4096);
+			if (!data) {
+				perror("malloc");
+				exit(1);
+			}
 			do {
 				while ((ret = read(pipefd[0],
 						   data + data_len,
 						   4096)) > 0) {
 					data_len += ret;
 					data = realloc(data, data_len + 4096);
+					if (!data) {
+						perror("realloc");
+						exit(1);
+					}
 				}
 			} while (ret == -EAGAIN);
 			if (ret != 0) {
@@ -421,6 +433,10 @@ static void find_all_symbols(char *filename)
 	start = all_list_len;
 	all_list_len += count;
 	all_list = realloc(all_list, sizeof(char *) * all_list_len);
+	if (!all_list) {
+		perror("realloc");
+		exit(1);
+	}
 	str = data;
 	for (i = 0; i < (int)data_len && start != all_list_len; i++) {
 		if (data[i] == '\0') {
