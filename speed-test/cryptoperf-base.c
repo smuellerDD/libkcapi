@@ -179,7 +179,7 @@ int cp_read_random(unsigned char *buf, size_t buflen)
 	size_t len = 0;
 
 	fd = open("/dev/urandom", O_RDONLY|O_CLOEXEC);
-	if(0 >= fd)
+	if(0 > fd)
 		return fd;
 	do {
 		ret = read(fd, (buf + len), (buflen - len));
