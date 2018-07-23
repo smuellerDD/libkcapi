@@ -258,6 +258,8 @@ static int load_file(const char *filename, uint8_t **memory, uint32_t *size)
 
 	*memory = buffer;
 	*size = (uint32_t)offset;
+
+	close(fd);
 	return 0;
 
 out:
