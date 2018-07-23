@@ -34,6 +34,12 @@ static int cp_skcipher_init_test(struct cp_test *test)
 	unsigned char *ivdata = NULL;
 	unsigned int bs;
 	int err;
+	long pagesize = sysconf(_SC_PAGESIZE);
+
+	if (pagesize < 0) {
+		printf(DRIVER_NAME": unable to determine the page size\n");
+		return -errno;
+	}
 
 	dbg("Initializing symmetric test %s\n", test->testname);
 	if (!test->driver_name) {
@@ -75,7 +81,7 @@ static int cp_skcipher_init_test(struct cp_test *test)
 	cp_read_random(ivdata, kcapi_cipher_blocksize(test->u.skcipher.handle));
 	test->u.skcipher.iv = ivdata;
 
-	err = posix_memalign((void *)&scratchpad, sysconf(_SC_PAGESIZE),
+	err = posix_memalign((void *)&scratchpad, pagesize,
 		kcapi_cipher_blocksize(test->u.skcipher.handle) * params->len *
 				       (params->aio ? params->aio : 1));
 	if (err) {
