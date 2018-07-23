@@ -36,6 +36,12 @@ static int cp_aead_init_test(struct cp_test *test, int enc, int ccm)
 	unsigned char ivrand[MAX_KEYLEN];
 	unsigned char *ivdata = NULL;
 	uint32_t ivlen = 0;
+	long pagesize = sysconf(_SC_PAGESIZE);
+
+	if (pagesize < 0) {
+		printf(DRIVER_NAME": unable to determine the page size\n");
+		return -errno;
+	}
 
 	dbg("Initializing AEAD test %s\n", test->testname);
 	if (!test->driver_name) {
@@ -97,14 +103,14 @@ static int cp_aead_init_test(struct cp_test *test, int enc, int ccm)
 			test->u.aead.assoclen, TAGLEN);
 	}
 
-	if (posix_memalign((void *)&input, sysconf(_SC_PAGESIZE),
+	if (posix_memalign((void *)&input, pagesize,
 			   test->u.aead.indatalen *
 					(params->aio ? params->aio : 1))) {
 		printf(DRIVER_NAME": could not allocate input buffer for "
 		       "%s\n", test->driver_name);
 		goto out;
 	}
-	if (posix_memalign((void *)&output, sysconf(_SC_PAGESIZE),
+	if (posix_memalign((void *)&output, pagesize,
 			   test->u.aead.outdatalen *
 					(params->aio ? params->aio : 1))) {
 		printf(DRIVER_NAME": could not allocate output buffer for "
