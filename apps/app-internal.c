@@ -255,7 +255,12 @@ int read_complete(int fd, uint8_t *buf, uint32_t buflen)
 
 int check_filetype(int fd, struct stat *sb, const char *filename)
 {
-	fstat(fd, sb);
+	int ret = fstat(fd, sb);
+	if (ret) {
+		dolog(KCAPI_LOG_ERR,
+		      "fstat() failed: %s", strerror(errno));
+		return -errno;
+	}
 
 	/* Do not return an error in case we cannot validate the data. */
 	if ((sb->st_mode & S_IFMT) != S_IFREG &&
