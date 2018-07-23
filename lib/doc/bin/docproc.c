@@ -154,7 +154,8 @@ int symfilecnt = 0;
 static void add_new_symbol(struct symfile *sym, char * symname)
 {
 	sym->symbollist =
-          realloc(sym->symbollist, (sym->symbolcnt + 1) * sizeof(char *));
+		realloc(sym->symbollist,
+			(sym->symbolcnt + 1) * sizeof(struct symbols));
 	sym->symbollist[sym->symbolcnt++].name = strdup(symname);
 }
 
