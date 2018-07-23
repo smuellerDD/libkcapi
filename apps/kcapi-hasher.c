@@ -544,7 +544,7 @@ static int process_checkfile(const struct hash_params *params,
 				break;
 		}
 
-		for (i = 0; i < linelen; i++) {
+		for (i = 1; i < linelen; i++) {
 			/*
 			 * Check for BSD-style separator between file name and
 			 * hash value.
