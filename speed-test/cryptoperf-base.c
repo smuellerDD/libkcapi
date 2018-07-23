@@ -159,7 +159,7 @@ char *cp_print_status(struct cp_test *test, int raw)
 
 		memset(byteseconds, 0, sizeof(byteseconds));
 		cp_bytes2string((processed_bytes / totaltime), byteseconds,
-				(VALLEN + 1));
+				VALLEN);
 		snprintf(str, 120, "%-24s|%s|%8lu bytes|%*s/s|%lu ops/s",
 			test->testname,
 			test->enc ? "e" : "d",
