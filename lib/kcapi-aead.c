@@ -249,8 +249,6 @@ int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 
 	return _kcapi_aead_encrypt_aio_fallback(handle, iniov, outiov, iovlen,
 						iv);
-
-	return ret;
 }
 
 DSO_PUBLIC
