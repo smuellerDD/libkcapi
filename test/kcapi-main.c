@@ -271,14 +271,12 @@ static int fuzz_init_test(unsigned int size)
 {
 	struct kcapi_handle *handle;
 	int ret = 0;
-	uint8_t *name = NULL;
+	uint8_t *name = calloc(1, size + 1);
 
 	kcapi_set_verbosity(KCAPI_LOG_NONE);
 
-	name = calloc(1, size + 1);
-
 	if (!name) {
-		printf("Allocation of %u bytes failed", size);
+		printf("Allocation of %u bytes failed", size + 1);
 		return 1;
 	}
 
@@ -317,10 +315,10 @@ static int fuzz_init_test(unsigned int size)
 
 fail:
 	fprintf(stdout, "allocation success of nonsense string ");
-	if (name)
+	if (size)
 		bin2print(name, size);
 	else
-		fprintf(stdout, "NULL\n");
+		fprintf(stdout, "EMPTY\n");
 	free(name);
 	return 1;
 }
