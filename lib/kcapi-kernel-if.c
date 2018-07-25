@@ -257,11 +257,11 @@ int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 	uint32_t inlen = 0;
 	unsigned long i;
 
-	for (i = 0; i < iovlen; i++) {
-		if (!(iov + i))
-			return -EINVAL;
+	if (iovlen && !iov)
+		return -EINVAL;
+
+	for (i = 0; i < iovlen; i++)
 		inlen += iov[i].iov_len;
-	}
 
 	/* kernel processes input data with max size of one page */
 	handle->processed_sg += ((inlen + sysconf(_SC_PAGESIZE) - 1) /
