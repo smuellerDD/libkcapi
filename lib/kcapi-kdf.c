@@ -110,7 +110,7 @@ int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
 
 	memset(Ai, 0, h);
 
-	while (dlen) {
+	while (dlen - offset) {
 		uint32_t ibe = be_bswap32(i);
 
 		/* Calculate A(i) */
@@ -138,13 +138,13 @@ int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
 				goto err;
 		}
 
-		if (dlen < h) {
+		if (dlen - offset < h) {
 			uint8_t tmpbuffer[h];
 
 			err = kcapi_md_final(handle, tmpbuffer, h);
 			if (err < 0)
 				goto err;
-			memcpy(dst + offset, tmpbuffer, dlen);
+			memcpy(dst + offset, tmpbuffer, dlen - offset);
 			kcapi_memset_secure(tmpbuffer, 0, h);
 			break;
 		}
@@ -152,7 +152,6 @@ int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
 		err = kcapi_md_final(handle, dst + offset, h);
 		if (err < 0)
 			goto err;
-		dlen -= h;
 		offset += h;
 		i++;
 	}
@@ -192,7 +191,7 @@ int32_t kcapi_kdf_fb(struct kcapi_handle *handle,
 	label = src + h;
 	labellen = slen - h;
 
-	while (dlen) {
+	while (dlen - offset) {
 		uint32_t ibe = be_bswap32(i);
 
 		/*
@@ -216,13 +215,13 @@ int32_t kcapi_kdf_fb(struct kcapi_handle *handle,
 				goto err;
 		}
 
-		if (dlen < h) {
+		if (dlen - offset < h) {
 			uint8_t tmpbuffer[h];
 
 			err = kcapi_md_final(handle, tmpbuffer, h);
 			if (err < 0)
 				goto err;
-			memcpy(dst + offset, tmpbuffer, dlen);
+			memcpy(dst + offset, tmpbuffer, dlen - offset);
 			kcapi_memset_secure(tmpbuffer, 0, h);
 			break;
 		}
@@ -230,7 +229,6 @@ int32_t kcapi_kdf_fb(struct kcapi_handle *handle,
 		err = kcapi_md_final(handle, dst + offset, h);
 		if (err < 0)
 			goto err;
-		dlen -= h;
 		offset += h;
 		i++;
 	}
@@ -258,7 +256,7 @@ int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
 	if (!h)
 		return -EFAULT;
 
-	while (dlen) {
+	while (dlen - offset) {
 		uint32_t ibe = be_bswap32(i);
 
 		err = kcapi_md_update(handle, (uint8_t *)&ibe,
@@ -272,13 +270,13 @@ int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
 				goto err;
 		}
 
-		if (dlen < h) {
+		if (dlen - offset < h) {
 			uint8_t tmpbuffer[h];
 
 			err = kcapi_md_final(handle, tmpbuffer, h);
 			if (err < 0)
 				goto err;
-			memcpy(dst + offset, tmpbuffer, dlen);
+			memcpy(dst + offset, tmpbuffer, dlen - offset);
 			kcapi_memset_secure(tmpbuffer, 0, h);
 			break;
 		}
@@ -287,7 +285,6 @@ int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
 		if (err < 0)
 			goto err;
 
-		dlen -= h;
 		offset += h;
 		i++;
 	}
@@ -313,7 +310,6 @@ int32_t kcapi_hkdf(const char *hashname,
 	uint32_t h, offset = 0;
 	const uint8_t null_salt[HKDF_MAXHASH] = { 0 };
 	uint8_t prk_tmp[HKDF_MAXHASH];
-	uint8_t *prev = NULL;
 	int32_t err = 0;
 	uint8_t ctr = 0x01;
 	struct kcapi_handle *handle = NULL;
@@ -369,9 +365,9 @@ int32_t kcapi_hkdf(const char *hashname,
 		goto err;
 
 	/* T(1) and following */
-	while (dlen) {
-		if (prev) {
-			err = kcapi_md_update(handle, prev, h);
+	while (dlen - offset) {
+		if (offset > 0) {
+			err = kcapi_md_update(handle, dst + offset - h, h);
 			if (err)
 				goto err;
 		}
@@ -386,12 +382,12 @@ int32_t kcapi_hkdf(const char *hashname,
 		if (err)
 			goto err;
 
-		if (dlen < h) {
+		if (dlen - offset < h) {
 			err = kcapi_md_final(handle, prk_tmp, h);
 			if (err < 0)
 				goto err;
 
-			memcpy(dst + offset, prk_tmp, dlen);
+			memcpy(dst + offset, prk_tmp, dlen - offset);
 			break;
 		}
 
@@ -399,9 +395,7 @@ int32_t kcapi_hkdf(const char *hashname,
 		if (err < 0)
 			goto err;
 
-		prev = dst + offset;
 		offset += h;
-		dlen -= h;
 		ctr++;
 	}
 
@@ -581,7 +575,7 @@ int32_t kcapi_pbkdf(const char *hashname,
 
 	memset(key, 0, keylen);
 
-	while (keylen) {
+	while (keylen - offset) {
 		uint32_t j;
 		uint32_t ibe = be_bswap32(i);
 
@@ -605,19 +599,18 @@ int32_t kcapi_pbkdf(const char *hashname,
 			if (err < 0)
 				goto err;
 
-			if (keylen < h)
+			if (keylen - offset < h)
 				kcapi_xor_64_aligned(T, u, h);
 			else
 				kcapi_xor_64(key + offset, u, h);
 		}
 
-		if (keylen < h) {
-			memcpy(key + offset, T, keylen);
-			kcapi_memset_secure(T, 0, keylen);
+		if (keylen - offset < h) {
+			memcpy(key + offset, T, keylen - offset);
+			kcapi_memset_secure(T, 0, keylen - offset);
 			break;
 		}
 
-		keylen -= h;
 		offset += h;
 		i++;
 	}
