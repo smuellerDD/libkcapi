@@ -275,13 +275,11 @@ static int fuzz_init_test(unsigned int size)
 
 	kcapi_set_verbosity(KCAPI_LOG_NONE);
 
-	if (size) {
-		name = calloc(1, size + 1);
+	name = calloc(1, size + 1);
 
-		if (!name) {
-			printf("Allocation of %u bytes failed", size);
-			return 1;
-		}
+	if (!name) {
+		printf("Allocation of %u bytes failed", size);
+		return 1;
 	}
 
 	if (get_random(name, size, 0)) {
