@@ -352,11 +352,11 @@ static int fuzz_cipher(struct kcapi_cavs *cavs_test, unsigned long flags,
 	uint8_t indata[4096];
 	uint8_t outdata[4096];
 	unsigned int i;
-	int ret = 0;
+	int ret = 1;
 
 	if (kcapi_cipher_init(&handle, cavs_test->cipher, 0)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
-		return -EFAULT;
+		return 1;
 	}
 
 	/* Set key */
@@ -366,7 +366,7 @@ static int fuzz_cipher(struct kcapi_cavs *cavs_test, unsigned long flags,
 		for (i = 0; i < sizeof(key); i++) {
 			if (get_random(key, i, 0)) {
 				printf("get_random call failed\n");
-				return 1;
+				goto out;
 			}
 			kcapi_cipher_setkey(handle, key, i);
 		}
@@ -388,7 +388,7 @@ static int fuzz_cipher(struct kcapi_cavs *cavs_test, unsigned long flags,
 
 		if (get_random(indata, i, 0)) {
 			printf("get_random call failed\n");
-			return 1;
+			goto out;
 		}
 
 		if (flags & FUZZ_LESSOUT)
@@ -429,11 +429,11 @@ static int fuzz_aead(struct kcapi_cavs *cavs_test, unsigned long flags,
 	uint8_t indata[4096];
 	uint8_t outdata[4096];
 	unsigned int i;
-	int ret = 0;
+	int ret = 1;
 
 	if (kcapi_aead_init(&handle, cavs_test->cipher, 0)) {
 		printf("Allocation of %s cipher failed\n", cavs_test->cipher);
-		return -EFAULT;
+		return 1;
 	}
 
 	/* Set key */
@@ -443,7 +443,7 @@ static int fuzz_aead(struct kcapi_cavs *cavs_test, unsigned long flags,
 		for (i = 0; i < sizeof(key); i++) {
 			if (get_random(key, i, 0)) {
 				printf("get_random call failed\n");
-				return 1;
+				goto out;
 			}
 			kcapi_aead_setkey(handle, key, i);
 		}
@@ -479,7 +479,7 @@ static int fuzz_aead(struct kcapi_cavs *cavs_test, unsigned long flags,
 
 		if (get_random(indata, i, 0)) {
 			printf("get_random call failed\n");
-			return 1;
+			goto out;
 		}
 
 		if (flags & FUZZ_LESSOUT)
