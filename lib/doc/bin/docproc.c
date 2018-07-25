@@ -445,6 +445,7 @@ static void find_all_symbols(char *filename)
 			start++;
 		}
 	}
+	free(data);
 }
 
 /*
