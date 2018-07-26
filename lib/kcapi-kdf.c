@@ -97,8 +97,8 @@ int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
 		      uint8_t *dst, uint32_t dlen)
 {
 	uint32_t h = kcapi_md_digestsize(handle);
+	uint32_t offset = 0;
 	int32_t err = 0;
-	uint8_t *dst_orig = dst;
 	uint8_t Ai[h];
 	uint32_t i = 1;
 
@@ -110,11 +110,11 @@ int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
 
 	memset(Ai, 0, h);
 
-	while (dlen) {
+	while (dlen - offset) {
 		uint32_t ibe = be_bswap32(i);
 
 		/* Calculate A(i) */
-		if (dst == dst_orig && src && slen)
+		if (offset == 0 && src && slen)
 			/* 5.3 step 4 and 5.a */
 			err = kcapi_md_digest(handle, src, slen, Ai, h);
 		else
@@ -138,30 +138,29 @@ int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
 				goto err;
 		}
 
-		if (dlen < h) {
+		if (dlen - offset < h) {
 			uint8_t tmpbuffer[h];
 
 			err = kcapi_md_final(handle, tmpbuffer, h);
 			if (err < 0)
 				goto err;
-			memcpy(dst, tmpbuffer, dlen);
+			memcpy(dst + offset, tmpbuffer, dlen - offset);
 			kcapi_memset_secure(tmpbuffer, 0, h);
-			dlen = 0;
-		} else {
-			err = kcapi_md_final(handle, dst, h);
-			if (err < 0)
-				goto err;
-			dlen -= h;
-			dst += h;
-			i++;
+			break;
 		}
+
+		err = kcapi_md_final(handle, dst + offset, h);
+		if (err < 0)
+			goto err;
+		offset += h;
+		i++;
 	}
 
 	kcapi_memset_secure(Ai, 0, h);
 	return 0;
 
 err:
-	kcapi_memset_secure(dst_orig, 0, dlen);
+	kcapi_memset_secure(dst, 0, dlen);
 	kcapi_memset_secure(Ai, 0, h);
 	return err;
 }
@@ -172,8 +171,8 @@ int32_t kcapi_kdf_fb(struct kcapi_handle *handle,
 		     uint8_t *dst, uint32_t dlen)
 {
 	uint32_t h = kcapi_md_digestsize(handle);
+	uint32_t offset = 0;
 	int32_t err = 0;
-	uint8_t *dst_orig = dst;
 	const uint8_t *label;
 	uint32_t labellen = 0;
 	uint32_t i = 1;
@@ -192,17 +191,17 @@ int32_t kcapi_kdf_fb(struct kcapi_handle *handle,
 	label = src + h;
 	labellen = slen - h;
 
-	while (dlen) {
+	while (dlen - offset) {
 		uint32_t ibe = be_bswap32(i);
 
 		/*
 		 * Feedback mode applies to all rounds except first which uses
 		 * the IV.
 		 */
-		if (dst_orig == dst)
+		if (offset == 0)
 			err = kcapi_md_update(handle, src, h);
 		else
-			err = kcapi_md_update(handle, dst - h, h);
+			err = kcapi_md_update(handle, dst + offset - h, h);
 		if (err)
 			goto err;
 
@@ -216,29 +215,28 @@ int32_t kcapi_kdf_fb(struct kcapi_handle *handle,
 				goto err;
 		}
 
-		if (dlen < h) {
+		if (dlen - offset < h) {
 			uint8_t tmpbuffer[h];
 
 			err = kcapi_md_final(handle, tmpbuffer, h);
 			if (err < 0)
 				goto err;
-			memcpy(dst, tmpbuffer, dlen);
+			memcpy(dst + offset, tmpbuffer, dlen - offset);
 			kcapi_memset_secure(tmpbuffer, 0, h);
-			return 0;
-		} else {
-			err = kcapi_md_final(handle, dst, h);
-			if (err < 0)
-				goto err;
-			dlen -= h;
-			dst += h;
-			i++;
+			break;
 		}
+
+		err = kcapi_md_final(handle, dst + offset, h);
+		if (err < 0)
+			goto err;
+		offset += h;
+		i++;
 	}
 
 	return 0;
 
 err:
-	kcapi_memset_secure(dst_orig, 0, dlen);
+	kcapi_memset_secure(dst, 0, dlen);
 	return err;
 }
 
@@ -248,8 +246,8 @@ int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
 		      uint8_t *dst, uint32_t dlen)
 {
 	uint32_t h = kcapi_md_digestsize(handle);
+	uint32_t offset = 0;
 	int32_t err = 0;
-	uint8_t *dst_orig = dst;
 	uint32_t i = 1;
 
 	if (dlen > INT_MAX)
@@ -258,7 +256,7 @@ int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
 	if (!h)
 		return -EFAULT;
 
-	while (dlen) {
+	while (dlen - offset) {
 		uint32_t ibe = be_bswap32(i);
 
 		err = kcapi_md_update(handle, (uint8_t *)&ibe,
@@ -272,30 +270,29 @@ int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
 				goto err;
 		}
 
-		if (dlen < h) {
+		if (dlen - offset < h) {
 			uint8_t tmpbuffer[h];
 
 			err = kcapi_md_final(handle, tmpbuffer, h);
 			if (err < 0)
 				goto err;
-			memcpy(dst, tmpbuffer, dlen);
+			memcpy(dst + offset, tmpbuffer, dlen - offset);
 			kcapi_memset_secure(tmpbuffer, 0, h);
-			return 0;
-		} else {
-			err = kcapi_md_final(handle, dst, h);
-			if (err < 0)
-				goto err;
-
-			dlen -= h;
-			dst += h;
-			i++;
+			break;
 		}
+
+		err = kcapi_md_final(handle, dst + offset, h);
+		if (err < 0)
+			goto err;
+
+		offset += h;
+		i++;
 	}
 
 	return 0;
 
 err:
-	kcapi_memset_secure(dst_orig, 0, dlen);
+	kcapi_memset_secure(dst, 0, dlen);
 	return err;
 }
 
@@ -310,12 +307,10 @@ int32_t kcapi_hkdf(const char *hashname,
 		   uint8_t *dst, uint32_t dlen)
 {
 #define HKDF_MAXHASH 64
-	uint32_t h;
+	uint32_t h, offset = 0;
 	const uint8_t null_salt[HKDF_MAXHASH] = { 0 };
 	uint8_t prk_tmp[HKDF_MAXHASH];
-	uint8_t *prev = NULL;
 	int32_t err = 0;
-	uint8_t *dst_orig = dst;
 	uint8_t ctr = 0x01;
 	struct kcapi_handle *handle = NULL;
 
@@ -370,9 +365,9 @@ int32_t kcapi_hkdf(const char *hashname,
 		goto err;
 
 	/* T(1) and following */
-	while (dlen) {
-		if (prev) {
-			err = kcapi_md_update(handle, prev, h);
+	while (dlen - offset) {
+		if (offset > 0) {
+			err = kcapi_md_update(handle, dst + offset - h, h);
 			if (err)
 				goto err;
 		}
@@ -387,35 +382,28 @@ int32_t kcapi_hkdf(const char *hashname,
 		if (err)
 			goto err;
 
-		if (dlen < h) {
+		if (dlen - offset < h) {
 			err = kcapi_md_final(handle, prk_tmp, h);
 			if (err < 0)
 				goto err;
 
-			/* Shut up Clang */
-			if (!dst) {
-				err = -EFAULT;
-				goto err;
-			}
-			memcpy(dst, prk_tmp, dlen);
-			dlen = 0;
-		} else {
-			err = kcapi_md_final(handle, dst, h);
-			if (err < 0)
-				goto err;
-
-			prev = dst;
-			dst += h;
-			dlen -= h;
-			ctr++;
+			memcpy(dst + offset, prk_tmp, dlen - offset);
+			break;
 		}
+
+		err = kcapi_md_final(handle, dst + offset, h);
+		if (err < 0)
+			goto err;
+
+		offset += h;
+		ctr++;
 	}
 
 	err = 0;
 	goto out;
 
 err:
-	kcapi_memset_secure(dst_orig, 0, dlen);
+	kcapi_memset_secure(dst, 0, dlen);
 out:
 	kcapi_memset_secure(prk_tmp, 0, h);
 	kcapi_md_destroy(handle);
@@ -552,7 +540,7 @@ int32_t kcapi_pbkdf(const char *hashname,
 		    uint8_t *key, uint32_t keylen)
 {
 	struct kcapi_handle *handle;
-	uint32_t h, i = 1;
+	uint32_t h, offset = 0, i = 1;
 #define MAX_DIGESTSIZE 64
 	uint8_t u[MAX_DIGESTSIZE] __attribute__ ((aligned (sizeof(uint64_t))));
 	uint8_t T[MAX_DIGESTSIZE] __attribute__ ((aligned (sizeof(uint64_t)))) =
@@ -587,7 +575,7 @@ int32_t kcapi_pbkdf(const char *hashname,
 
 	memset(key, 0, keylen);
 
-	while (keylen) {
+	while (keylen - offset) {
 		uint32_t j;
 		uint32_t ibe = be_bswap32(i);
 
@@ -611,21 +599,20 @@ int32_t kcapi_pbkdf(const char *hashname,
 			if (err < 0)
 				goto err;
 
-			if (keylen < h)
+			if (keylen - offset < h)
 				kcapi_xor_64_aligned(T, u, h);
 			else
-				kcapi_xor_64(key, u, h);
+				kcapi_xor_64(key + offset, u, h);
 		}
 
-		if (keylen < h) {
-			memcpy(key, T, keylen);
-			kcapi_memset_secure(T, 0, keylen);
-			keylen = 0;
-		} else {
-			keylen -= h;
-			key += h;
-			i++;
+		if (keylen - offset < h) {
+			memcpy(key + offset, T, keylen - offset);
+			kcapi_memset_secure(T, 0, keylen - offset);
+			break;
 		}
+
+		offset += h;
+		i++;
 	}
 
 	err = 0;
