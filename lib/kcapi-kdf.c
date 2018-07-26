@@ -140,13 +140,9 @@ int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
 		}
 
 		if (dlen < h) {
-			uint8_t tmpbuffer[h];
-
-			err = kcapi_md_final(handle, tmpbuffer, h);
+			err = kcapi_md_final(handle, dst, dlen);
 			if (err < 0)
 				goto err;
-			memcpy(dst, tmpbuffer, dlen);
-			kcapi_memset_secure(tmpbuffer, 0, h);
 			dlen = 0;
 		} else {
 			err = kcapi_md_final(handle, dst, h);
@@ -219,14 +215,10 @@ int32_t kcapi_kdf_fb(struct kcapi_handle *handle,
 		}
 
 		if (dlen < h) {
-			uint8_t tmpbuffer[h];
-
-			err = kcapi_md_final(handle, tmpbuffer, h);
+			err = kcapi_md_final(handle, dst, dlen);
 			if (err < 0)
 				goto err;
-			memcpy(dst, tmpbuffer, dlen);
-			kcapi_memset_secure(tmpbuffer, 0, h);
-			return 0;
+			dlen = 0;
 		} else {
 			err = kcapi_md_final(handle, dst, h);
 			if (err < 0)
@@ -276,14 +268,10 @@ int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
 		}
 
 		if (dlen < h) {
-			uint8_t tmpbuffer[h];
-
-			err = kcapi_md_final(handle, tmpbuffer, h);
+			err = kcapi_md_final(handle, dst, dlen);
 			if (err < 0)
 				goto err;
-			memcpy(dst, tmpbuffer, dlen);
-			kcapi_memset_secure(tmpbuffer, 0, h);
-			return 0;
+			dlen = 0;
 		} else {
 			err = kcapi_md_final(handle, dst, h);
 			if (err < 0)
@@ -392,16 +380,10 @@ int32_t kcapi_hkdf(const char *hashname,
 			goto err;
 
 		if (dlen < h) {
-			err = kcapi_md_final(handle, prk_tmp, h);
+			err = kcapi_md_final(handle, dst, dlen);
 			if (err < 0)
 				goto err;
 
-			/* Shut up Clang */
-			if (!dst) {
-				err = -EFAULT;
-				goto err;
-			}
-			memcpy(dst, prk_tmp, dlen);
 			dlen = 0;
 		} else {
 			err = kcapi_md_final(handle, dst, h);
@@ -561,8 +543,6 @@ int32_t kcapi_pbkdf(const char *hashname,
 	uint32_t h, i = 1;
 #define MAX_DIGESTSIZE 64
 	uint8_t u[MAX_DIGESTSIZE] __attribute__ ((aligned (sizeof(uint64_t))));
-	uint8_t T[MAX_DIGESTSIZE] __attribute__ ((aligned (sizeof(uint64_t)))) =
-									{ 0 };
 	int32_t err = 0;
 
 	if (keylen > INT_MAX)
@@ -617,17 +597,12 @@ int32_t kcapi_pbkdf(const char *hashname,
 			if (err < 0)
 				goto err;
 
-			if (keylen < h)
-				kcapi_xor_64_aligned(T, u, h);
-			else
-				kcapi_xor_64(key, u, h);
+			kcapi_xor_64(key, u, keylen < h ? keylen : h);
 		}
 
-		if (keylen < h) {
-			memcpy(key, T, keylen);
-			kcapi_memset_secure(T, 0, keylen);
+		if (keylen < h)
 			keylen = 0;
-		} else {
+		else {
 			keylen -= h;
 			key += h;
 			i++;
