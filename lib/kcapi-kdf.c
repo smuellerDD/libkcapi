@@ -99,6 +99,7 @@ int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
 	uint32_t h = kcapi_md_digestsize(handle);
 	int32_t err = 0;
 	uint8_t *dst_orig = dst;
+	uint32_t dlen_orig = dlen;
 	uint8_t Ai[h];
 	uint32_t i = 1;
 
@@ -161,7 +162,7 @@ int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
 	return 0;
 
 err:
-	kcapi_memset_secure(dst_orig, 0, dlen);
+	kcapi_memset_secure(dst_orig, 0, dlen_orig);
 	kcapi_memset_secure(Ai, 0, h);
 	return err;
 }
@@ -174,6 +175,7 @@ int32_t kcapi_kdf_fb(struct kcapi_handle *handle,
 	uint32_t h = kcapi_md_digestsize(handle);
 	int32_t err = 0;
 	uint8_t *dst_orig = dst;
+	uint32_t dlen_orig = dlen;
 	const uint8_t *label;
 	uint32_t labellen = 0;
 	uint32_t i = 1;
@@ -238,7 +240,7 @@ int32_t kcapi_kdf_fb(struct kcapi_handle *handle,
 	return 0;
 
 err:
-	kcapi_memset_secure(dst_orig, 0, dlen);
+	kcapi_memset_secure(dst_orig, 0, dlen_orig);
 	return err;
 }
 
@@ -250,6 +252,7 @@ int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
 	uint32_t h = kcapi_md_digestsize(handle);
 	int32_t err = 0;
 	uint8_t *dst_orig = dst;
+	uint32_t dlen_orig = dlen;
 	uint32_t i = 1;
 
 	if (dlen > INT_MAX)
@@ -295,7 +298,7 @@ int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
 	return 0;
 
 err:
-	kcapi_memset_secure(dst_orig, 0, dlen);
+	kcapi_memset_secure(dst_orig, 0, dlen_orig);
 	return err;
 }
 
@@ -316,6 +319,7 @@ int32_t kcapi_hkdf(const char *hashname,
 	uint8_t *prev = NULL;
 	int32_t err = 0;
 	uint8_t *dst_orig = dst;
+	uint32_t dlen_orig = dlen;
 	uint8_t ctr = 0x01;
 	struct kcapi_handle *handle = NULL;
 
@@ -415,7 +419,7 @@ int32_t kcapi_hkdf(const char *hashname,
 	goto out;
 
 err:
-	kcapi_memset_secure(dst_orig, 0, dlen);
+	kcapi_memset_secure(dst_orig, 0, dlen_orig);
 out:
 	kcapi_memset_secure(prk_tmp, 0, h);
 	kcapi_md_destroy(handle);
@@ -552,6 +556,8 @@ int32_t kcapi_pbkdf(const char *hashname,
 		    uint8_t *key, uint32_t keylen)
 {
 	struct kcapi_handle *handle;
+	uint8_t *key_orig = key;
+	uint32_t keylen_orig = keylen;
 	uint32_t h, i = 1;
 #define MAX_DIGESTSIZE 64
 	uint8_t u[MAX_DIGESTSIZE] __attribute__ ((aligned (sizeof(uint64_t))));
@@ -633,7 +639,7 @@ int32_t kcapi_pbkdf(const char *hashname,
 err:
 	kcapi_memset_secure(u, 0, h);
 	if (err)
-		kcapi_memset_secure(key, 0, keylen);
+		kcapi_memset_secure(key_orig, 0, keylen_orig);
 	kcapi_md_destroy(handle);
 
 	return err;
