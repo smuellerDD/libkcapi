@@ -451,14 +451,17 @@ static int fuzz_aead(struct kcapi_cavs *cavs_test, unsigned long flags,
 
 		if (kcapi_aead_setkey(handle, key, 16)) {
 			if (!strncmp(cavs_test->cipher, "authenc", 7)) {
-				uint8_t *k = (uint8_t *)
-					"\x08\x00\x01\x00\x00\x00\x00\x10"
-					"\x00\x00\x00\x00\x00\x00\x00\x00"
-					"\x00\x00\x00\x00\x00\x00\x00\x00"
-					"\x00\x00\x00\x00\x06\xa9\x21\x40"
-					"\x36\xb8\xa1\x5b\x51\x2e\x03\xd5"
-					"\x34\x12\x00\x06";
-				if (kcapi_aead_setkey(handle, k, 44)) {
+				uint16_t k[44 / sizeof(uint16_t)];
+				memcpy(k, "\x00\x00\x00\x00\x00\x00\x00\x10"
+					  "\x00\x00\x00\x00\x00\x00\x00\x00"
+					  "\x00\x00\x00\x00\x00\x00\x00\x00"
+					  "\x00\x00\x00\x00\x06\xa9\x21\x40"
+					  "\x36\xb8\xa1\x5b\x51\x2e\x03\xd5"
+					  "\x34\x12\x00\x06", sizeof(k));
+				/* These need to be in machine's endianity: */
+				k[0] = 8;
+				k[1] = 1;
+				if (kcapi_aead_setkey(handle, (uint8_t *)k, sizeof(k))) {
 					printf("AEAD setkey failed\n");
 					goto out;
 				}
