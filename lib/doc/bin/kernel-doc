@@ -1736,13 +1736,13 @@ sub dump_struct($$) {
     my $file = shift;
     my $nested;
 
-    if ($x =~ /(struct|union)\s+(\w+)\s*{(.*)}/) {
+    if ($x =~ /(struct|union)\s+(\w+)\s*\{(.*)\}/) {
 	#my $decl_type = $1;
 	$declaration_name = $2;
 	my $members = $3;
 
 	# ignore embedded structs or unions
-	$members =~ s/({.*})//g;
+	$members =~ s/(\{.*\})//g;
 	$nested = $1;
 
 	# ignore members marked private:
@@ -1785,7 +1785,7 @@ sub dump_enum($$) {
     $x =~ s@/\*.*?\*/@@gos;	# strip comments.
     $x =~ s/^#\s*define\s+.*$//; # strip #define macros inside enums
 
-    if ($x =~ /enum\s+(\w+)\s*{(.*)}/) {
+    if ($x =~ /enum\s+(\w+)\s*\{(.*)\}/) {
 	$declaration_name = $1;
 	my $members = $2;
 
@@ -2279,7 +2279,7 @@ sub process_state3_type($$) {
     }
 
     while (1) {
-	if ( $x =~ /([^{};]*)([{};])(.*)/ ) {
+	if ( $x =~ /([^\{\};]*)([\{\};])(.*)/ ) {
 	    $prototype .= $1 . $2;
 	    ($2 eq '{') && $brcount++;
 	    ($2 eq '}') && $brcount--;
