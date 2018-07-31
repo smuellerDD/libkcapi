@@ -554,6 +554,24 @@ KPP_exp_2="78fbd4d1ed7ea6fc8f1e1a6f8a5c750845401589ad3c135088b4ec78f54c57b436d1a
 ###########################################################################
 ###########################################################################
 
+# Test required for test with multiple IOVECs on i686
+check_memory() {
+	if [ $(cat /proc/sys/net/core/optmem_max) -lt $1 ]
+	then
+		echo "Socket memory size too small for test, set to 20480" 1>&2
+		echo "echo 20480 > /proc/sys/net/core/optmem_max" 1>&2
+		return 1
+	fi
+}
+
+check_memory_hard() {
+	check_memory 20480
+}
+
+check_memory_soft() {
+	check_memory 10240
+}
+
 hashfunc()
 {
 	stream=$1
@@ -620,6 +638,43 @@ symfunc()
 		aligned=""
 	fi
 
+	if [ $impl -eq 9 ]
+	then
+		impl_type="asynchronous"
+	else
+		impl_type="synchronous"
+	fi
+
+	if [ -n "$aiofallback" ]
+	then
+		impl_type="$impl_type (AIO fallback)"
+	fi
+
+	if [ x"$stream" = x"-s" ]
+	then
+		sout="stream"
+	elif [ x"$stream" = x"-v" ]
+	then
+		sout="vmsplice"
+	elif [ x"$stream" = x"-j" ] || [ x"$stream" = x"-s -j" ]
+	then
+		sout="multithreaded"
+		stream="-s -j"
+	else
+		sout="one shot"
+	fi
+
+	if [ x"$aligned" = x"-m" ]
+	then
+		aout="aligned"
+	else
+		aout="non-aligned"
+	fi
+
+	if [ x"$sout" = x"stream" ] && ! check_memory_hard; then
+		echo_deact "Symmetric $impl_type $sout $aout tests"
+		return 0
+	fi
 
 	SYMEXEC="1 2 3 4 5 6 7 8 9 10 11 12"
 	for i in $SYMEXEC
@@ -644,38 +699,6 @@ symfunc()
 		fi
 		result=$($cmd 2>/dev/null)
 
-		impl_type="synchronous"
-		sout="one shot"
-		aout="non-aligned"
-		if [ $impl -eq 9 ]
-		then
-			impl_type="asynchronous"
-		fi
-		if [ -n "$aiofallback" ]
-		then
-			impl_type="$impl_type (AIO fallback)"
-		fi
-		if [ x"$stream" = x"-s" ]
-		then
-			sout="stream"
-		fi
-		if [ x"$stream" = x"-v" ]
-		then
-			sout="vmsplice"
-		fi
-		if [ x"$aligned" = x"-m" ]
-		then
-			aout="aligned"
-		fi
-		if [ x"$stream" = x"-j" ]
-		then
-			sout="multithreaded"
-			stream="-s -j"
-		fi
-		if [ x"$stream" = x"-s -j" ]
-		then
-			sout="multithreaded"
-		fi
 		if [ x"$result" = x"$SYM_exp" ]
 		then
 			echo_pass "Symmetric $impl_type $sout $aout test $i"
@@ -705,6 +728,40 @@ asymfunc()
 		aligned=""
 	fi
 
+	if [ $impl -eq 11 ]
+	then
+		impl_type="asynchronous"
+	else
+		impl_type="synchronous"
+	fi
+
+	if [ -n "$aiofallback" ]
+	then
+		impl_type="$impl_type (AIO fallback)"
+	fi
+
+	if [ x"$stream" = x"-s" ]
+	then
+		sout="stream"
+	elif [ x"$stream" = x"-v" ]
+	then
+		sout="vmsplice"
+	else
+		sout="one shot"
+	fi
+
+	if [ x"$aligned" = x"-m" ]
+	then
+		aout="aligned"
+	else
+		aout="non-aligned"
+	fi
+
+	if [ x"$sout" = x"stream" ] && ! check_memory_hard; then
+		echo_deact "Asymmetric $impl_type $sout $aout tests"
+		return 0
+	fi
+
 	ASYMEXEC="1 2 3 4 5"
 	for i in $ASYMEXEC
 	do
@@ -730,29 +787,6 @@ asymfunc()
 		cmd="$KCAPI $aioaligned -x $impl $stream $aligned $enc -c $ASYM_name $keyopt -p $ASYM_msg"
 		result=$($cmd 2>/dev/null)
 
-		impl_type="synchronous"
-		sout="one shot"
-		aout="non-aligned"
-		if [ $impl -eq 11 ]
-		then
-			impl_type="asynchronous"
-		fi
-		if [ -n "$aiofallback" ]
-		then
-			impl_type="$impl_type (AIO fallback)"
-		fi
-		if [ x"$stream" = x"-s" ]
-		then
-			sout="stream"
-		fi
-		if [ x"$stream" = x"-v" ]
-		then
-			sout="vmsplice"
-		fi
-		if [ x"$aligned" = x"-m" ]
-		then
-			aout="aligned"
-		fi
 		if [ x"$result" = x"$ASYM_exp" ]
 		then
 			echo_pass "Asymmetric $impl_type $sout $aout test $i"
@@ -780,6 +814,49 @@ kppfunc()
 	if [ x"$aligned" = x"X" ]
 	then
 		aligned=""
+	fi
+
+	if [ x"$stream" = x"X" ]
+	then
+		stream=""
+	fi
+	if [ x"$aligned" = x"X" ]
+	then
+		aligned=""
+	fi
+
+	if [ $impl -eq 14 ]
+	then
+		impl_type="asynchronous"
+	else
+		impl_type="synchronous"
+	fi
+
+	if [ -n "$aiofallback" ]
+	then
+		impl_type="$impl_type (AIO fallback)"
+	fi
+
+	if [ x"$stream" = x"-s" ]
+	then
+		sout="stream"
+	elif [ x"$stream" = x"-v" ]
+	then
+		sout="vmsplice"
+	else
+		sout="one shot"
+	fi
+
+	if [ x"$aligned" = x"-m" ]
+	then
+		aout="aligned"
+	else
+		aout="non-aligned"
+	fi
+
+	if [ x"$sout" = x"stream" ] && ! check_memory_hard; then
+		echo_deact "KPP $impl_type $sout $aout tests"
+		return 0
 	fi
 
 	KPPEXEC="1 2"
@@ -813,29 +890,6 @@ kppfunc()
 		cmd="$KCAPI -x $impl $stream $aligned -c $KPP_name $opt"
 		result=$($cmd 2>/dev/null)
 
-		impl_type="synchronous"
-		sout="one shot"
-		aout="non-aligned"
-		if [ $impl -eq 14 ]
-		then
-			impl_type="asynchronous"
-		fi
-		if [ -n "$aiofallback" ]
-		then
-			impl_type="$impl_type (AIO fallback)"
-		fi
-		if [ x"$stream" = x"-s" ]
-		then
-			sout="stream"
-		fi
-		if [ x"$stream" = x"-v" ]
-		then
-			sout="vmsplice"
-		fi
-		if [ x"$aligned" = x"-m" ]
-		then
-			aout="aligned"
-		fi
 		if [ x"$result" = x"$KPP_exp" ]
 		then
 			echo_pass "KPP $impl_type $sout $aout test $i"
@@ -883,6 +937,45 @@ aeadfunc()
 		aiofallback=""
 	fi
 
+	if [ $impl -eq 10 ]
+	then
+		impl_type="asynchronous"
+	else
+		impl_type="synchronous"
+	fi
+
+	if [ -n "$aiofallback" ]
+	then
+		impl_type="$impl_type (AIO fallback)"
+	fi
+
+	if [ x"$stream" = x"-s" ]
+	then
+		sout="stream"
+	elif [ x"$stream" = x"-v" ]
+	then
+		sout="vmsplice"
+	else
+		sout="one shot"
+	fi
+
+	if [ x"$aligned" = x"-m" ]
+	then
+		aout="aligned"
+	else
+		aout="non-aligned"
+	fi
+
+	if [ x"$printaad" != x"" ]
+	then
+		impl_type="$impl_type (AAD copy)"
+	fi
+
+	if [ x"$sout" = x"stream" ] && ! check_memory_hard; then
+		echo_deact "AEAD $impl_type $sout $aout tests"
+		return 0
+	fi
+
 	AEADEXEC="1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17"
 	for i in $AEADEXEC
 	do
@@ -927,36 +1020,9 @@ aeadfunc()
 			#expected2="${null_assoc}${AEAD_exp}"
 		fi
 
-		impl_type="synchronous"
-		sout="one shot"
-		aout="non-aligned"
-		if [ $impl -eq 10 ]
+		if [ x"$printaad" != x"" ] && [ x"$expected1" != x"EBADMSG" ]
 		then
-			impl_type="asynchronous"
-		fi
-		if [ -n "$aiofallback" ]
-		then
-			impl_type="$impl_type (AIO fallback)"
-		fi
-		if [ x"$printaad" != x"" ]
-		then
-			impl_type="$impl_type (AAD copy)"
-			if [ x"$expected1" != x"EBADMSG" ]
-			then
-				expected1="${AEAD_assoc}${expected1}"
-			fi
-		fi
-		if [ x"$stream" = x"-s" ]
-		then
-			sout="stream"
-		fi
-		if [ x"$stream" = x"-v" ]
-		then
-			sout="vmsplice"
-		fi
-		if [ x"$aligned" = x"-m" ]
-		then
-			aout="aligned"
+			expected1="${AEAD_assoc}${expected1}"
 		fi
 
 		if [ x"$result" = x"$expected1" ]
@@ -1011,6 +1077,10 @@ aeadfunc()
 
 auxtest()
 {
+	if ! check_memory_hard; then
+		echo_deact "Auxiliary test deactivated"
+	fi
+
 	$KCAPI -z > /dev/null
 	if [ $? -ne 0 ]
 	then
@@ -1368,18 +1438,7 @@ d780ec569fe689a0f7778eab625bd0ccb13d7e3f63e19083c739ddcbd4b1a825"
 	fi
 }
 
-# Test required for test with multiple IOVECs on i686
-check_memory() {
-	if [ $(cat /proc/sys/net/core/optmem_max) -lt 20480 ];
-	then
-		echo "Socket memory size too small for test, set to 20480"
-		echo "echo 20480 > /proc/sys/net/core/optmem_max"
-
-		exit 1
-	fi
-}
-
-check_memory
+check_memory_soft || exit 1
 
 hashfunc
 hashfunc -s
@@ -1460,7 +1519,7 @@ else
 	echo_deact "All AEAD tests deactivated"
 fi
 
-if $(check_min_kernelver 4 14); then
+if $(check_min_kernelver 4 14) && check_memory_hard; then
 	aeadfunc 2 X X X -u
 	aeadfunc 2 -s X X -u
 	aeadfunc 2 -v X X -u
