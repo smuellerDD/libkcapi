@@ -1158,6 +1158,12 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 
 	handle->tfm = tfm;
 
+	/* Initialize all fd vars to -1 to avoid unwanted close(0) */
+	handle->pipes[0] = -1;
+	handle->pipes[1] = -1;
+	handle->opfd = -1;
+	handle->aio.efd = -1;
+
 	ret = _kcapi_handle_init_tfm(handle, type, ciphername);
 	if (ret)
 		goto err;
