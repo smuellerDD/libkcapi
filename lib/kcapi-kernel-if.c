@@ -1033,14 +1033,26 @@ static void _kcapi_handle_flags(struct kcapi_handle *handle)
 				      UINT_MAX : ALG_MAX_PAGES;
 }
 
-static int _kcapi_handle_init_op(struct kcapi_handle *handle, uint32_t flags)
+static int _kcapi_handle_alloc(struct kcapi_handle **caller)
 {
-	int ret;
+	struct kcapi_handle *handle = calloc(1, sizeof(struct kcapi_handle));
+
+	if (!handle)
+		return -ENOMEM;
 
 	*_kcapi_get_opfd(handle) = -1;
 	handle->pipes[0] = -1;
 	handle->pipes[1] = -1;
 	handle->aio.efd = -1;
+
+	*caller = handle;
+
+	return 0;
+}
+
+static int _kcapi_handle_init_op(struct kcapi_handle *handle, uint32_t flags)
+{
+	int ret;
 
 	ret = pipe(handle->pipes);
 	if (ret) {
@@ -1134,9 +1146,9 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 	struct kcapi_handle_tfm *tfm;
 	int ret;
 
-	handle = calloc(1, sizeof(struct kcapi_handle));
-	if (!handle)
-		return -ENOMEM;
+	ret = _kcapi_handle_alloc(&handle);
+	if (ret)
+		return ret;
 
 	tfm = calloc(1, sizeof(struct kcapi_handle_tfm));
 	if (!tfm) {
@@ -1174,9 +1186,9 @@ int kcapi_handle_reinit(struct kcapi_handle **newhandle,
 	struct kcapi_handle *handle;
 	int ret;
 
-	handle = calloc(1, sizeof(struct kcapi_handle));
-	if (!handle)
-		return -ENOMEM;
+	ret = _kcapi_handle_alloc(&handle);
+	if (ret)
+		return ret;
 
 	if (!existing || !existing->tfm) {
 		ret = -EINVAL;
