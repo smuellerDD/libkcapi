@@ -34,11 +34,15 @@ else
 fi
 
 if [ "$KCAPI_TEST_LOCAL" -eq 1 ]; then
+	get_app_path()
+	{
+		echo -n "$DIRNAME/../bin/$1"
+	}
 	run_app()
 	{
 		local appname="$1"; shift
 
-		"$DIRNAME/../bin/$appname" "$@"
+		"$(get_app_path "$appname")" "$@"
 	}
 	find_app_binary()
 	{
@@ -46,6 +50,10 @@ if [ "$KCAPI_TEST_LOCAL" -eq 1 ]; then
 	}
 	KCAPI_TEST_BIN_DIR="$DIRNAME/../bin"
 else
+	get_app_path()
+	{
+		command -v "$1"
+	}
 	run_app()
 	{
 		"$@"
@@ -105,7 +113,7 @@ echo_deact()
 
 find_platform()
 {
-	local app=$1
+	local app="$(get_app_path "$1")"
 	local binlocation="$(find_app_binary $app)"
 	if ! [ -x "$binlocation" ]
 	then
