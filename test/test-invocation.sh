@@ -18,49 +18,49 @@
 # DAMAGE.
 #
 
-DIR=$(dirname $0)
-cd $DIR
+DIRNAME="$(dirname "$0")"
+. "$DIRNAME/libtest.sh"
 
 COMPILE_OPTS="--enable-kcapi-test --enable-kcapi-encapp --enable-kcapi-hasher --enable-kcapi-dgstapp --enable-kcapi-rngapp --enable-lib-kpp --enable-lib-asym"
 
 exec_test()
 {
-	${DIR}/test.sh
+	"$DIRNAME/test.sh"
 	ret=$?
 	if [ $ret -ne 0 ]
 	then
 		exit $ret
 	fi
 
-	${DIR}/kcapi-enc-test.sh
+	"$DIRNAME/kcapi-enc-test.sh"
 	ret=$?
 	if [ $ret -ne 0 ]
 	then
 		exit $ret
 	fi
 
-	${DIR}/kcapi-dgst-test.sh
+	"$DIRNAME/kcapi-dgst-test.sh"
 	ret=$?
 	if [ $ret -ne 0 ]
 	then
 		exit $ret
 	fi
 
-	${DIR}/hasher-test.sh
+	"$DIRNAME/hasher-test.sh"
 	ret=$?
 	if [ $ret -ne 0 ]
 	then
 		exit $ret
 	fi
 
-	${DIR}/kcapi-enc-test-large.sh
+	"$DIRNAME/kcapi-enc-test-large.sh"
 	ret=$?
 	if [ $ret -ne 0 ]
 	then
 		exit $ret
 	fi
 
-	${DIR}/kcapi-convenience.sh
+	"$DIRNAME/kcapi-convenience.sh"
 	ret=$?
 	if [ $ret -ne 0 ]
 	then
@@ -70,7 +70,7 @@ exec_test()
 	# Run optionally.
 	if [ ! -z "$ENABLE_FUZZ_TEST" ]
 	then
-		${DIR}/kcapi-fuzz-test.sh
+		"$DIRNAME/kcapi-fuzz-test.sh"
 		ret=$?
 		if [ $ret -ne 0 ]
 		then
@@ -81,7 +81,7 @@ exec_test()
 	# Only execute on bare metal
 	if ! dmesg | grep -i Hypervisor | grep -q -i detected
 	then
-		${DIR}/virttest.sh
+		"$DIRNAME/virttest.sh"
 		ret=$?
 		if [ $ret -ne 0 ]
 		then
@@ -91,51 +91,46 @@ exec_test()
 }
 
 # Only execute tests without compilation on virtual environment
-if mount | grep -q "9p2000"
+if [ "$KCAPI_TEST_LOCAL" -ne 1 ] || mount | grep -q "9p2000"
 then
 	exec_test
 	exit 0
 fi
 
 # default invocation
-CWD=$(pwd)
-cd ..
-./configure $COMPILE_OPTS
-make
+(cd "$DIRNAME/.." && ./configure $COMPILE_OPTS && make)
 if [ $? -ne 0 ]
 then
 	echo "Compilation failure"
 	exit 1
 fi
-cd $CWD
 exec_test
 
-${DIR}/compile-test.sh
+"$DIRNAME/compile-test.sh"
 ret=$?
 if [ $ret -ne 0 ]
 then
 	exit $ret
 fi
 
-cd ..
-
-make distclean > /dev/null 2>&1
+(cd "$DIRNAME/.." && make distclean > /dev/null 2>&1)
 
 # if we are on 64 bit system, test 32 bit alternative mode,
 # except is has been disabled explicitly.
 if $(uname -m | grep -q "x86_64") && [ -z "$NO_32BIT_TEST" ]
 then
-	LDFLAGS=-m32 CFLAGS=-m32 ./configure $COMPILE_OPTS
-	make
+	(
+		cd "$DIRNAME/.." && \
+		LDFLAGS=-m32 CFLAGS=-m32 ./configure $COMPILE_OPTS && \
+		make
+	)
 	if [ $? -ne 0 ]
 	then
 		echo "32 bit compilation failure"
 		exit 1
 	fi
-	cd $CWD
 	exec_test
-	cd ..
-	make distclean > /dev/null 2>&1
+	(cd "$DIRNAME/.." && make distclean > /dev/null 2>&1)
 fi
 
 exit 0
