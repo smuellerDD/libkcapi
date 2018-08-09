@@ -286,6 +286,20 @@ do
 done
 
 #
+# Test FIPS self-check:
+#
+[ "$KCAPI_TEST_LOCAL" -ne 1 ] && for hasher in $SUMHASHER $HMACHASHER
+do
+	KCAPI_HASHER_FORCE_FIPS=1 run_hasher $hasher $0 >/dev/null
+	if  [ $? -ne 0 ]
+	then
+		echo_fail "FIPS self-check of hasher $hasher failed"
+	else
+		echo_pass "FIPS self-check of hasher $hasher"
+	fi
+done
+
+#
 # hmaccalc known-answer tests from RFC 2202 and 4231
 #
 
