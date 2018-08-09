@@ -117,6 +117,7 @@ pkglibexec_SCRIPTS = test/libtest.sh \
                      test/kcapi-enc-test-large.sh \
                      test/kcapi-dgst-test.sh \
                      test/kcapi-convenience.sh \
+                     test/kcapi-fuzz-test.sh \
                      test/hasher-test.sh \
                      test/compile-test.sh \
                      test/virttest.sh \
