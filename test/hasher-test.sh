@@ -42,8 +42,8 @@ else
 		binary="$(find_app_binary $hasher)"
 		if [ ! -x "$(command -v "$binary")" ]
 		then
-			echo "Hasher binary $hasher missing"
-			exit 1
+			echo_deact "Hasher binary $hasher missing, tests deactivated"
+			exit 0
 		fi
 	done
 fi
