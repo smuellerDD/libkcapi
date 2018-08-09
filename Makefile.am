@@ -108,6 +108,20 @@ bin_kcapi_convenience_SOURCES = test/kcapi-convenience.c
 EXTRA_bin_kcapi_convenience_DEPENDENCIES = libtool
 
 SCAN_FILES += $(bin_kcapi_convenience_SOURCES)
+
+pkglibexec_PROGRAMS = bin/kcapi bin/kcapi-enc-test-large bin/kcapi-convenience
+
+pkglibexec_SCRIPTS = test/libtest.sh \
+                     test/test.sh \
+                     test/kcapi-enc-test.sh \
+                     test/kcapi-enc-test-large.sh \
+                     test/kcapi-dgst-test.sh \
+                     test/kcapi-convenience.sh \
+                     test/kcapi-fuzz-test.sh \
+                     test/hasher-test.sh \
+                     test/compile-test.sh \
+                     test/virttest.sh \
+                     test/test-invocation.sh
 endif
 
 if ENABLE_KCAPI_SPEED

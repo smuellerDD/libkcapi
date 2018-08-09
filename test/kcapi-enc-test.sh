@@ -18,10 +18,10 @@
 # DAMAGE.
 #
 
-. libtest.sh
+DIRNAME="$(dirname "$0")"
+. "$DIRNAME/libtest.sh"
 
-APP="${APPDIR}/kcapi-enc"
-find_platform $APP
+find_platform kcapi-enc
 TSTPREFIX="${TMPDIR}/kcapi-enc-testfiles."
 KEYFILE_AES128="${TSTPREFIX}aes128key"
 KEYFILE_AES256="${TSTPREFIX}aes256key"
@@ -151,8 +151,8 @@ test_stdin_stdout()
 	local keysize=$(stat -c %s $keyfile)
 	keysize=$((keysize*8))
 
-	exec 10<$keyfile; $APP --keyfd 10 -e -c "ctr(aes)" --iv $IV < $ORIGPT  > $GENCT
-	exec 10<$keyfile; $APP --keyfd 10 -d -c "ctr(aes)" --iv $IV < $GENCT > $GENPT
+	exec 10<$keyfile; run_app kcapi-enc --keyfd 10 -e -c "ctr(aes)" --iv $IV < $ORIGPT  > $GENCT
+	exec 10<$keyfile; run_app kcapi-enc --keyfd 10 -d -c "ctr(aes)" --iv $IV < $GENCT > $GENPT
 
 	diff_file $ORIGPT $GENPT "STDIN / STDOUT enc test ($keysize bits)"
 
@@ -163,8 +163,8 @@ test_stdin_stdout()
 	diff_file $GENCT $GENCT.openssl "STDIN / STDOUT enc test ($keysize bits) (openssl generated CT)"
 	diff_file $GENPT $GENPT.openssl "STDIN / STDOUT enc test ($keysize bits) (openssl generated PT)"
 
-	$APP -q --pbkdfiter 1000 -p "passwd" -s $IV -e -c "ctr(aes)" --iv $IV < $ORIGPT > $GENCT
-	$APP -q --pbkdfiter 1000 -p "passwd" -s $IV -d -c "ctr(aes)" --iv $IV < $GENCT > $GENPT
+	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwd" -s $IV -e -c "ctr(aes)" --iv $IV < $ORIGPT > $GENCT
+	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwd" -s $IV -d -c "ctr(aes)" --iv $IV < $GENCT > $GENPT
 
 	diff_file $ORIGPT $GENPT "STDIN / STDOUT enc test (password)"
 }
@@ -183,8 +183,8 @@ test_stdin_fileout()
 	local keysize=$(stat -c %s $keyfile)
 	keysize=$((keysize*8))
 
-	exec 10<$keyfile; $APP --keyfd 10 -e -c "ctr(aes)" --iv $IV -o $GENCT < $ORIGPT
-	exec 10<$keyfile; $APP --keyfd 10 -d -c "ctr(aes)" --iv $IV -o $GENPT < $GENCT
+	exec 10<$keyfile; run_app kcapi-enc --keyfd 10 -e -c "ctr(aes)" --iv $IV -o $GENCT < $ORIGPT
+	exec 10<$keyfile; run_app kcapi-enc --keyfd 10 -d -c "ctr(aes)" --iv $IV -o $GENPT < $GENCT
 
 	diff_file $ORIGPT $GENPT "STDIN / FILEOUT test ($keysize bits)"
 
@@ -195,8 +195,8 @@ test_stdin_fileout()
 	diff_file $GENCT $GENCT.openssl "STDIN / FILEOUT enc test ($keysize bits) (openssl generated CT)"
 	diff_file $GENPT $GENPT.openssl "STDIN / FILEOUT enc test ($keysize bits) (openssl generated PT)"
 
-	$APP -q --pbkdfiter 1000 -p "passwd" -s $IV -e -c "ctr(aes)" --iv $IV -o $GENCT < $ORIGPT
-	$APP -q --pbkdfiter 1000 -p "passwd" -s $IV -d -c "ctr(aes)" --iv $IV -o $GENPT < $GENCT
+	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwd" -s $IV -e -c "ctr(aes)" --iv $IV -o $GENCT < $ORIGPT
+	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwd" -s $IV -d -c "ctr(aes)" --iv $IV -o $GENPT < $GENCT
 
 	diff_file $ORIGPT $GENPT "STDIN / FILEOUT enc test (password)"
 }
@@ -215,8 +215,8 @@ test_filein_stdout()
 	local keysize=$(stat -c %s $keyfile)
 	keysize=$((keysize*8))
 
-	exec 10<$keyfile; $APP --keyfd 10 -e -c "ctr(aes)" --iv $IV -i $ORIGPT > $GENCT
-	exec 10<$keyfile; $APP --keyfd 10 -d -c "ctr(aes)" --iv $IV -i $GENCT > $GENPT
+	exec 10<$keyfile; run_app kcapi-enc --keyfd 10 -e -c "ctr(aes)" --iv $IV -i $ORIGPT > $GENCT
+	exec 10<$keyfile; run_app kcapi-enc --keyfd 10 -d -c "ctr(aes)" --iv $IV -i $GENCT > $GENPT
 
 	diff_file $ORIGPT $GENPT "FILEIN / STDOUT enc test ($keysize bits)"
 
@@ -227,8 +227,8 @@ test_filein_stdout()
 	diff_file $GENCT $GENCT.openssl "FILEIN / STDOUT enc test ($keysize bits) (openssl generated CT)"
 	diff_file $GENPT $GENPT.openssl "FILEIN / STDOUT enc test ($keysize bits) (openssl generated PT)"
 
-	$APP -q --pbkdfiter 1000 -p "passwd" -s $IV -e -c "ctr(aes)" --iv $IV -i $ORIGPT > $GENCT
-	$APP -q --pbkdfiter 1000 -p "passwd" -s $IV -d -c "ctr(aes)" --iv $IV -i $GENCT > $GENPT
+	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwd" -s $IV -e -c "ctr(aes)" --iv $IV -i $ORIGPT > $GENCT
+	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwd" -s $IV -d -c "ctr(aes)" --iv $IV -i $GENCT > $GENPT
 
 	diff_file $ORIGPT $GENPT "FILEIN / STDOUT enc test (password)"
 }
@@ -248,8 +248,8 @@ test_filein_fileout()
 	keysize=$((keysize*8))
 
 
-	exec 10<$keyfile; $APP --keyfd 10 -e -c "cbc(aes)" --iv $IV -i $ORIGPT -o $GENCT
-	exec 10<$keyfile; $APP --keyfd 10 -d -c "cbc(aes)" --iv $IV -i $GENCT -o $GENPT
+	exec 10<$keyfile; run_app kcapi-enc --keyfd 10 -e -c "cbc(aes)" --iv $IV -i $ORIGPT -o $GENCT
+	exec 10<$keyfile; run_app kcapi-enc --keyfd 10 -d -c "cbc(aes)" --iv $IV -i $GENCT -o $GENPT
 
 	diff_file $ORIGPT $GENPT "FILEIN / FILEOUT enc test ($keysize bits)"
 
@@ -269,8 +269,8 @@ test_filein_fileout()
 	diff_file $GENCT $GENCT.openssl "FILEIN / FILEOUT enc test ($keysize bits) (openssl generated CT)"
 	diff_file $GENPT $GENPT.openssl "FILEIN / FILEOUT enc test ($keysize bits) (openssl generated PT)"
 
-	$APP -q --pbkdfiter 1000 -p "passwd" -s "123" -e -c "cbc(aes)" --iv $IV -i $ORIGPT -o $GENCT
-	$APP -q --pbkdfiter 1000 -p "passwd" -s "123" -d -c "cbc(aes)" --iv $IV -i $GENCT -o $GENPT
+	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwd" -s "123" -e -c "cbc(aes)" --iv $IV -i $ORIGPT -o $GENCT
+	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwd" -s "123" -d -c "cbc(aes)" --iv $IV -i $GENCT -o $GENPT
 
 	diff_file $ORIGPT $GENPT "FILEIN / FILEOUT enc test (password)"
 }
@@ -281,7 +281,7 @@ test_ccm_dec()
 
 	aadlen=$(($aadlen/2))
 
-	exec 10<${TSTPREFIX}ccm_key; $APP --keyfd 10 -d -c "ccm(aes)" -i ${TSTPREFIX}ccm_msg -o ${TSTPREFIX}ccm_out --ccm-nonce $CCM_NONCE --aad $CCM_AAD --tag $CCM_TAG
+	exec 10<${TSTPREFIX}ccm_key; run_app kcapi-enc --keyfd 10 -d -c "ccm(aes)" -i ${TSTPREFIX}ccm_msg -o ${TSTPREFIX}ccm_out --ccm-nonce $CCM_NONCE --aad $CCM_AAD --tag $CCM_TAG
 	local hexret=$(bin2hex_noaad ${TSTPREFIX}ccm_out $aadlen)
 
 	if [ x"$hexret" != x"$CCM_EXP" ]
@@ -291,7 +291,7 @@ test_ccm_dec()
 		echo_pass_local "FILEIN / FILEOUT CCM decrypt"
 	fi
 
-	exec 10<${TSTPREFIX}ccm_key; $APP --keyfd 10 -d -c "ccm(aes)" -i ${TSTPREFIX}ccm_msg -o ${TSTPREFIX}ccm_out --ccm-nonce $CCM_NONCE --aad $CCM_AAD --tag $CCM_TAG_FAIL -q
+	exec 10<${TSTPREFIX}ccm_key; run_app kcapi-enc --keyfd 10 -d -c "ccm(aes)" -i ${TSTPREFIX}ccm_msg -o ${TSTPREFIX}ccm_out --ccm-nonce $CCM_NONCE --aad $CCM_AAD --tag $CCM_TAG_FAIL -q
 
 	# 182 == -EBADMSG
 	if [ $? -eq 182 ]
@@ -308,7 +308,7 @@ test_gcm_enc()
 
 	aadlen=$(($aadlen/2))
 
-	exec 10<${TSTPREFIX}gcm_key; $APP --keyfd 10 -e -c "gcm(aes)" -i ${TSTPREFIX}gcm_msg -o ${TSTPREFIX}gcm_out --iv $GCM_IV --aad $GCM_AAD --taglen $GCM_TAGLEN
+	exec 10<${TSTPREFIX}gcm_key; run_app kcapi-enc --keyfd 10 -e -c "gcm(aes)" -i ${TSTPREFIX}gcm_msg -o ${TSTPREFIX}gcm_out --iv $GCM_IV --aad $GCM_AAD --taglen $GCM_TAGLEN
 	local hexret=$(bin2hex_noaad ${TSTPREFIX}gcm_out $aadlen)
 
 	if [ x"$hexret" != x"$GCM_EXP" ]

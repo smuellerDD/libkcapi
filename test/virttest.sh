@@ -18,7 +18,8 @@
 # DAMAGE.
 #
 
-. libtest.sh
+DIRNAME="$(dirname "$0")"
+. "$DIRNAME/libtest.sh"
 
 ###################################################################
 # Test configuration - may be changed
@@ -48,8 +49,8 @@ TESTKERNELS="linux-4.17 linux-4.13 linux-4.12 linux-4.10 linux-4.7 linux-4.5 lin
 ###################################################################
 # General variables - do not change
 ###################################################################
-SCRIPT="$(pwd)/test-invocation.sh"
-EUDYPTULA="${HOME}/bin/eudyptula-boot"
+SCRIPT="$DIRNAME/test-invocation.sh"
+EUDYPTULA="${EUDYPTULA:-"${HOME}/bin/eudyptula-boot"}"
 
 ###################################################################
 # Code - do not change

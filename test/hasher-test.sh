@@ -18,28 +18,38 @@
 # DAMAGE.
 #
 
-. libtest.sh
-
-HASHERBIN="${APPDIR}/kcapi-hasher"
-find_platform $HASHERBIN
-
-function run_hasher() {
-	"$HASHERBIN" -n "$@"
-}
+DIRNAME="$(dirname "$0")"
+. "$DIRNAME/libtest.sh"
 
 SUMHASHER="md5sum sha1sum sha256sum sha384sum sha512sum"
 HMACHASHER="sha1hmac sha256hmac sha384hmac sha512hmac"
 CHKFILE="${TMPDIR}/chk.$$"
 ANOTHER="${TMPDIR}/test.$$"
 
+if [ "$KCAPI_TEST_LOCAL" -eq 1 ]; then
+	find_platform kcapi-hasher
+	function run_hasher() {
+		run_app kcapi-hasher -n "$@"
+	}
+else
+	find_platform sha1hmac
+	function run_hasher() {
+		"$@"
+	}
+
+	for hasher in $SUMHASHER $HMACHASHER
+	do
+		binary="$(find_app_binary $hasher)"
+		if [ ! -x "$(command -v "$binary")" ]
+		then
+			echo_deact "Hasher binary $hasher missing, tests deactivated"
+			exit 0
+		fi
+	done
+fi
+
 touch $ANOTHER
 trap "rm -f $ANOTHER $CHKFILE" 0 1 2 3 15
-
-if [ ! -e $HASHERBIN ]
-then
-	echo "Hasher binary missing"
-	exit 1
-fi
 
 for hasher in $SUMHASHER $HMACHASHER
 do
@@ -62,7 +72,7 @@ do
 	fi
 
 	run_hasher $hasher $0 $ANOTHER | sed -E 's/(\w+\s)\s/\1*/' >$CHKFILE
-	run_hasher $hasher -q -c $CHKFILE
+	run_hasher $hasher --status -c $CHKFILE
 	if [ $? -eq 0 ]
 	then
 		echo_pass "Parsing checker file with asterisk with $hasher"
@@ -70,7 +80,7 @@ do
 		echo_fail "Parsing checker file with asterisk (binary mode) with $hasher failed"
 	fi
 
-	run_hasher $hasher $0 $ANOTHER | run_hasher $hasher -q -c -
+	run_hasher $hasher $0 $ANOTHER | run_hasher $hasher --status -c -
 	if [ $? -eq 0 ]
 	then
 		echo_pass "Checker file '-' interpretation with $hasher"
@@ -125,24 +135,26 @@ do
 	run_hasher $hasher --status -c $CHKFILE
 	[ $? -ne 0 ] && echo_fail "Verification of checker file $CHKFILE with hasher $hasher failed"
 
-	echo -n 123 >$CHKFILE
+	if [ "$KCAPI_TEST_LOCAL" -eq 1 ]; then
+		echo -n 123 >$CHKFILE
 
-	a=$(openssl dgst -$hash -hmac 123 $0 | cut -f 2 -d" ")
-	b=$(run_hasher $hasher -K 123 $0 | cut -f 1 -d" ")
-	c=$(run_hasher $hasher -k $CHKFILE $0 | cut -f 1 -d" ")
-	[ x"$a" != x"$b" ] && {
-		echo_fail "HMAC calculation for $hasher failed (cmdline key)"
-		continue
-	}
-	[ x"$a" != x"$b" ] && {
-		echo_fail "HMAC calculation for $hasher failed (key in regular file)"
-		continue
-	}
-	echo_pass "HMAC calculation for $hasher"
+		a=$(openssl dgst -$hash -hmac 123 $0 | cut -f 2 -d" ")
+		b=$(run_hasher $hasher -K 123 $0 | cut -f 1 -d" ")
+		c=$(run_hasher $hasher -k $CHKFILE $0 | cut -f 1 -d" ")
+		[ x"$a" != x"$b" ] && {
+			echo_fail "HMAC calculation for $hasher failed (cmdline key)"
+			continue
+		}
+		[ x"$a" != x"$b" ] && {
+			echo_fail "HMAC calculation for $hasher failed (key in regular file)"
+			continue
+		}
+		echo_pass "HMAC calculation for $hasher"
+	fi
 	rm -f $CHKFILE
 done
 
-for i in $HMACHASHER
+[ "$KCAPI_TEST_LOCAL" -eq 1 ] && for i in $HMACHASHER
 do
 	hasher=$i
 	hash=${hasher%%hmac}
@@ -274,6 +286,20 @@ do
 done
 
 #
+# Test FIPS self-check:
+#
+[ "$KCAPI_TEST_LOCAL" -ne 1 ] && for hasher in $SUMHASHER $HMACHASHER
+do
+	KCAPI_HASHER_FORCE_FIPS=1 run_hasher $hasher $0 >/dev/null
+	if  [ $? -ne 0 ]
+	then
+		echo_fail "FIPS self-check of hasher $hasher failed"
+	else
+		echo_pass "FIPS self-check of hasher $hasher"
+	fi
+done
+
+#
 # hmaccalc known-answer tests from RFC 2202 and 4231
 #
 
@@ -320,7 +346,13 @@ function run_kat() {
 	fi
 }
 
-for suffix in sum hmac
+if [ "$KCAPI_TEST_LOCAL" -eq 1 ]; then
+	KAT_SUFFIXES="sum hmac"
+else
+	KAT_SUFFIXES="hmac"
+fi
+
+for suffix in $KAT_SUFFIXES
 do
 	run_kat sha1$suffix   "RFC 2202, section 3, #1"   0x0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b "Hi There" 0xb617318655057264e28bc0b6fb378c8ef146be00
 	run_kat sha1$suffix   "RFC 2202, section 3, #2"   "Jefe" "what do ya want for nothing?" 0xeffcdf6ae5eb2fa2d27416d5f184df9c259a7c79

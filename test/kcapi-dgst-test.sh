@@ -18,10 +18,10 @@
 # DAMAGE.
 #
 
-. libtest.sh
+DIRNAME="$(dirname "$0")"
+. "$DIRNAME/libtest.sh"
 
-APP="${APPDIR}/kcapi-dgst"
-find_platform $APP
+find_platform kcapi-dgst
 TSTPREFIX="${TMPDIR}/kcapi-dgst-testfiles."
 KEYFILE_128="${TSTPREFIX}128key"
 KEYFILE_256="${TSTPREFIX}256key"
@@ -91,7 +91,7 @@ test_stdin_stdout()
 		exit 1
 	fi
 
-	$APP -c "sha256" --hex < $ORIGPT > $GENDGST
+	run_app kcapi-dgst -c "sha256" --hex < $ORIGPT > $GENDGST
 	echo >> $GENDGST
 	openssl dgst -sha256 $ORIGPT  | awk 'BEGIN {FS="= "} {print $2}' > $GENDGST.openssl
 	diff_file $GENDGST $GENDGST.openssl "STDIN / STDOUT test (hash)"
@@ -100,13 +100,13 @@ test_stdin_stdout()
 	keysize=$((keysize*8))
 	eval opensslkey=\$OPENSSLKEY${keysize}
 
-	exec 10<$keyfile; $APP --keyfd 10 -c "hmac(sha256)" --hex < $ORIGPT  > $GENDGST
+	exec 10<$keyfile; run_app kcapi-dgst --keyfd 10 -c "hmac(sha256)" --hex < $ORIGPT  > $GENDGST
 	echo >> $GENDGST
 	openssl dgst -sha256 -hmac $opensslkey $ORIGPT  | awk 'BEGIN {FS="= "} {print $2}' > $GENDGST.openssl
 	diff_file $GENDGST $GENDGST.openssl "STDIN / STDOUT test (keyed MD $keysize bits)"
 
-	$APP -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" < $ORIGPT > $GENDGST
-	$APP -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" < $ORIGPT > $GENDGST.2
+	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" < $ORIGPT > $GENDGST
+	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" < $ORIGPT > $GENDGST.2
 
 	diff_file $GENDGST $GENDGST.2 "STDIN / STDOUT test (password)"
 }
@@ -121,7 +121,7 @@ test_stdin_fileout()
 		exit 1
 	fi
 
-	$APP -c "sha256" --hex -o $GENDGST < $ORIGPT
+	run_app kcapi-dgst -c "sha256" --hex -o $GENDGST < $ORIGPT
 	echo >> $GENDGST
 	openssl dgst -sha256 $ORIGPT  | awk 'BEGIN {FS="= "} {print $2}' > $GENDGST.openssl
 	diff_file $GENDGST $GENDGST.openssl "STDIN / FILEOUT test (hash)"
@@ -130,13 +130,13 @@ test_stdin_fileout()
 	keysize=$((keysize*8))
 	eval opensslkey=\$OPENSSLKEY${keysize}
 
-	exec 10<$keyfile; $APP --keyfd 10 -c "hmac(sha256)" --hex -o $GENDGST < $ORIGPT
+	exec 10<$keyfile; run_app kcapi-dgst --keyfd 10 -c "hmac(sha256)" --hex -o $GENDGST < $ORIGPT
 	echo >> $GENDGST
 	openssl dgst -sha256 -hmac $opensslkey $ORIGPT  | awk 'BEGIN {FS="= "} {print $2}' > $GENDGST.openssl
 	diff_file $GENDGST $GENDGST.openssl "STDIN / FILEOUT test (keyed MD $keysize bits)"
 
-	$APP -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" -o $GENDGST < $ORIGPT
-	$APP -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" -o $GENDGST.2 < $ORIGPT
+	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" -o $GENDGST < $ORIGPT
+	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" -o $GENDGST.2 < $ORIGPT
 
 	diff_file $GENDGST $GENDGST.2 "STDIN / FILEOUT test (password)"
 }
@@ -151,7 +151,7 @@ test_filein_stdout()
 		exit 1
 	fi
 
-	$APP -c "sha256" --hex -i $ORIGPT > $GENDGST
+	run_app kcapi-dgst -c "sha256" --hex -i $ORIGPT > $GENDGST
 	echo >> $GENDGST
 	openssl dgst -sha256 $ORIGPT  | awk 'BEGIN {FS="= "} {print $2}' > $GENDGST.openssl
 	diff_file $GENDGST $GENDGST.openssl "FILEIN / STDOUT test (hash)"
@@ -160,13 +160,13 @@ test_filein_stdout()
 	keysize=$((keysize*8))
 	eval opensslkey=\$OPENSSLKEY${keysize}
 
-	exec 10<$keyfile; $APP --keyfd 10 -c "hmac(sha256)" --hex -i $ORIGPT > $GENDGST
+	exec 10<$keyfile; run_app kcapi-dgst --keyfd 10 -c "hmac(sha256)" --hex -i $ORIGPT > $GENDGST
 	echo >> $GENDGST
 	openssl dgst -sha256 -hmac $opensslkey $ORIGPT  | awk 'BEGIN {FS="= "} {print $2}' > $GENDGST.openssl
 	diff_file $GENDGST $GENDGST.openssl "FILEIN / STDOUT test (keyed MD $keysize bits)"
 
-	$APP -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" -i $ORIGPT > $GENDGST
-	$APP -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)"  -i $ORIGPT > $GENDGST.2
+	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" -i $ORIGPT > $GENDGST
+	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)"  -i $ORIGPT > $GENDGST.2
 
 	diff_file $GENDGST $GENDGST.2 "FILEIN / STDOUT test (password)"
 }
@@ -183,7 +183,7 @@ test_filein_fileout()
 		exit 1
 	fi
 
-	$APP -c "sha256" --hex -i $ORIGPT -o $GENDGST
+	run_app kcapi-dgst -c "sha256" --hex -i $ORIGPT -o $GENDGST
 	echo >> $GENDGST
 	openssl dgst -sha256 $ORIGPT  | awk 'BEGIN {FS="= "} {print $2}' > $GENDGST.openssl
 	diff_file $GENDGST $GENDGST.openssl "FILEIN / FILEOUT test (hash)"
@@ -192,13 +192,13 @@ test_filein_fileout()
 	keysize=$((keysize*8))
 	eval opensslkey=\$OPENSSLKEY${keysize}
 
-	exec 10<$keyfile; $APP --keyfd 10 -c "hmac(sha256)" --hex -i $ORIGPT -o $GENDGST
+	exec 10<$keyfile; run_app kcapi-dgst --keyfd 10 -c "hmac(sha256)" --hex -i $ORIGPT -o $GENDGST
 	echo >> $GENDGST
 	openssl dgst -sha256 -hmac $opensslkey $ORIGPT  | awk 'BEGIN {FS="= "} {print $2}' > $GENDGST.openssl
 	diff_file $GENDGST $GENDGST.openssl "FILEIN / FILEOUT test (keyed MD $keysize bits)"
 
-	$APP -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" -i $ORIGPT -o $GENDGST
-	$APP -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)"  -i $ORIGPT -o $GENDGST.2
+	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" -i $ORIGPT -o $GENDGST
+	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)"  -i $ORIGPT -o $GENDGST.2
 
 	diff_file $GENDGST $GENDGST.2 "FILEIN / FILEOUT test (password)"
 }

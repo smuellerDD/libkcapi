@@ -18,17 +18,18 @@
 # DAMAGE.
 #
 
-. libtest.sh
+DIRNAME="$(dirname "$0")"
+. "$DIRNAME/libtest.sh"
 
 if ! $(check_min_kernelver 4 14); then
 	echo_deact "Large encryption operation"
 	exit 0
 fi
 
-APP="${APPDIR}/kcapi-enc-test-large"
-find_platform $APP
+APP="$KCAPI_TEST_BIN_DIR/kcapi-enc-test-large"
+find_platform "$APP"
 
-$APP
+"$APP"
 if [ $? -eq 0 ]
 then
 	echo_pass "Large encryption operation"

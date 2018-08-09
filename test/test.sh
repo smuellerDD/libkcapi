@@ -18,9 +18,10 @@
 # DAMAGE.
 #
 
-. ./libtest.sh
+DIRNAME="$(dirname "$0")"
+. "$DIRNAME/libtest.sh"
 
-KCAPI="${APPDIR}/kcapi"
+KCAPI="$KCAPI_TEST_BIN_DIR/kcapi"
 find_platform $KCAPI
 
 HASH_name_1="cmac(des3_ede)"

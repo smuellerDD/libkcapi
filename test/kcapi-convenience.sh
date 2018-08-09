@@ -18,17 +18,17 @@
 # DAMAGE.
 #
 
-. libtest.sh
+DIRNAME="$(dirname "$0")"
+. "$DIRNAME/libtest.sh"
 
-APP="${APPDIR}/kcapi-convenience"
-find_platform $APP
+find_platform "$KCAPI_TEST_BIN_DIR/kcapi-convenience"
 
-$APP
+"$KCAPI_TEST_BIN_DIR/kcapi-convenience"
 if [ $? -eq 0 ]
 then
-	echo_pass "Convenience essage digest operation"
+	echo_pass "Convenience message digest operation"
 else
-	echo_fail "Convenience essage digest operation"
+	echo_fail "Convenience message digest operation"
 fi
 
 echo "==================================================================="

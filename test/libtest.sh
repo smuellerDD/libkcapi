@@ -20,17 +20,56 @@
 # Common code for test cases
 #
 
-export PATH=$PATH:.
-
 #####################################################################
 # Common functions
 #####################################################################
-# color -- emit ansi color codes
+
+DIRNAME="$(dirname "$0")"
+
+# Allow overriding default value:
+if [ -e "$DIRNAME/test-is-local" ]; then
+	KCAPI_TEST_LOCAL=${KCAPI_TEST_LOCAL:-1}
+else
+	KCAPI_TEST_LOCAL=${KCAPI_TEST_LOCAL:-0}
+fi
+
+if [ "$KCAPI_TEST_LOCAL" -eq 1 ]; then
+	get_app_path()
+	{
+		echo -n "$DIRNAME/../bin/$1"
+	}
+	run_app()
+	{
+		local appname="$1"; shift
+
+		"$(get_app_path "$appname")" "$@"
+	}
+	find_app_binary()
+	{
+		echo -n "$(dirname "$1")/.libs/$(basename "$1")"
+	}
+	KCAPI_TEST_BIN_DIR="$DIRNAME/../bin"
+else
+	get_app_path()
+	{
+		command -v "$1"
+	}
+	run_app()
+	{
+		"$@"
+	}
+	find_app_binary()
+	{
+		echo -n "$1"
+	}
+	KCAPI_TEST_BIN_DIR="$DIRNAME"
+fi
 
 failures=0
 PLATFORM="unknown wordsize"
 KERNVER=$(uname -r)
 
+# color -- emit ansi color codes
 color()
 {
 	bg=0
@@ -72,30 +111,15 @@ echo_deact()
 	echo $(color "yellow")[DEACTIVATED: $PLATFORM - $KERNVER]$(color off) $@
 }
 
-get_binlocation()
-{
-	local app=$1
-	local binlocation="$(dirname $app)/.libs/$(basename $app)"
-	echo $binlocation
-}
-
 find_platform()
 {
-	local app=$1
-
-	if [ ! -x "$app" ]
+	local app="$(get_app_path "$1")"
+	local binlocation="$(find_app_binary $app)"
+	if ! [ -x "$binlocation" ]
 	then
-		echo_fail "Application binary $app not found"
-		exit 1
+		binlocation="$app"
 	fi
-
-	local binlocation=$(get_binlocation $app)
-	if [ -x "$binlocation" ]
-	then
-		PLATFORM=$(file $binlocation | cut -d" " -f 3)
-	else
-		PLATFORM=$(file $app | cut -d" " -f 3)
-	fi
+	PLATFORM=$(file "$binlocation" | cut -d" " -f 3)
 }
 
 # check whether a given kernel version is present
@@ -115,21 +139,10 @@ check_min_kernelver() {
 #####################################################################
 # Common variables
 #####################################################################
-# Location of apps
-APPDIR="../bin"
-if [ ! -d $APPDIR ]
-then
-	APPDIR="../bin"
-fi
-if [ ! -d $APPDIR ]
-then
-	echo_fail "No appdir found"
-	exit 1
-fi
 
 # Storage location of temp files
 TMPDIR="/var/tmp"
 if [ ! -d $TMPDIR ]
 then
-	TMPD="."
+	TMPDIR="."
 fi
