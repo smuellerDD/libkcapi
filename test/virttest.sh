@@ -49,7 +49,14 @@ TESTKERNELS="linux-4.17 linux-4.13 linux-4.12 linux-4.10 linux-4.7 linux-4.5 lin
 ###################################################################
 # General variables - do not change
 ###################################################################
-SCRIPT="$DIRNAME/test-invocation.sh"
+
+# We need to provide an absolute path name
+if [ x"${a:0:1}" = x"/" ]
+then
+	SCRIPT="$DIRNAME/test-invocation.sh"
+else
+	SCRIPT="$(pwd)/$DIRNAME/test-invocation.sh"
+fi
 EUDYPTULA="${EUDYPTULA:-"${HOME}/bin/eudyptula-boot"}"
 
 ###################################################################
