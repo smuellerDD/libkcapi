@@ -1,3 +1,13 @@
+Changes 1.1.2
+ * Fix: Bug fixes for GCC 8.1.0 regarding string length checks by
+	Krzysztof Kozlowski
+ * Enhancement: ensure that tests execute on architectures other than X86
+	by Ondrej Mosnáček
+ * Fix: Bug fix to initialize FDs at the correct time in kcapi-kernel-if.c
+	by Ondrej Mosnáček
+ * Test fix: Support test execution outside build environment by
+	Ondrej Mosnáček
+
 Changes 1.1.1
  * Fix: Bug fixes for kcapi_hasher by Ondrej Mosnáček
 
