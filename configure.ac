@@ -11,7 +11,7 @@ dnl 		     enhancements, bug fixes only. Versions with
 dnl		     a decimal point are pre-releases.
 m4_define([__KCAPI_MAJVERSION], [1])
 m4_define([__KCAPI_MINVERSION], [1])
-m4_define([__KCAPI_PATCHLEVEL], [2])
+m4_define([__KCAPI_PATCHLEVEL], [3])
 m4_define([KCAPI_VERSION], [__KCAPI_MAJVERSION.__KCAPI_MINVERSION.__KCAPI_PATCHLEVEL])
 
 AC_INIT([libkcapi], [KCAPI_VERSION])
@@ -122,13 +122,13 @@ if test "$with_lib_kpp" = "yes"; then
 fi
 
 AC_ARG_ENABLE([sum-prefix],
-	      AS_HELP_STRING([--enable-sum-prefix=PRE],[prefix to add to filenames when deriving the binary's checksum file's name (no default)]),
+	      AS_HELP_STRING([--enable-sum-prefix=PRE],[prefix to add to filenames when deriving the binary's checksum file's name (default ".")]),
 	      if test x$enableval != xno ; then
 		  CHECK_PREFIX="$enableval"
 	      else
 		  CHECK_PREFIX=
 	      fi
-	      ,CHECK_PREFIX=)
+	      ,CHECK_PREFIX=.)
 
 AC_ARG_ENABLE([sum-suffix],
 	      AS_HELP_STRING([--enable-sum-suffix=EXT],[suffix to add to filenames when deriving the binary's checksum file's name (default "hmac")]),
