@@ -160,7 +160,7 @@ AS_IF([test "x$CHECK_DIR" != "x"], [
 
 PKG_INSTALLDIR
 if test "x$pkgconfigdir" = "x"; then
-  pkgconfigdir = "${libdir}/pkgconfig"
+  pkgconfigdir="${libdir}/pkgconfig"
 fi
 AC_SUBST([pkgconfigdir], [$pkgconfigdir])
 
