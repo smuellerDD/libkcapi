@@ -2,12 +2,25 @@ language: c
 
 sudo: required
 
-compiler:
-    - clang
-    - gcc
+matrix:
+    include:
+        -
+            os: linux
+            compiler: clang
+        -
+            os: linux
+            compiler: gcc
+        -
+            os: linux
+            compiler: gcc-8
+            env:
+                - CC=gcc-8 AR=gcc-ar-8 NM=gcc-nm-8 RANLIB=gcc-ranlib-8
+                - NO_32BIT_TEST=1
 
 addons:
     apt:
+        sources:
+            - ubuntu-toolchain-r-test
         packages:
             - pkg-config
             - realpath
@@ -16,6 +29,7 @@ addons:
             - cppcheck
             - xmlto
             - docbook-utils
+            - gcc-8
 
 install:
     # We need a recent cppcheck because the one shipped with trusty has bugs:
