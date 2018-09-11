@@ -2,12 +2,25 @@ language: c
 
 sudo: required
 
-compiler:
-    - clang
-    - gcc
+matrix:
+    include:
+        -
+            os: linux
+            compiler: clang
+        -
+            os: linux
+            compiler: gcc
+        -
+            os: linux
+            compiler: gcc-8
+            env:
+                - CC=gcc-8 AR=gcc-ar-8 NM=gcc-nm-8 RANLIB=gcc-ranlib-8
+                - NO_32BIT_TEST=1
 
 addons:
     apt:
+        sources:
+            - ubuntu-toolchain-r-test
         packages:
             - pkg-config
             - realpath
@@ -16,13 +29,14 @@ addons:
             - cppcheck
             - xmlto
             - docbook-utils
+            - gcc-8
 
 install:
     # We need a recent cppcheck because the one shipped with trusty has bugs:
     - mkdir deps
     - git clone 'https://github.com/danmar/cppcheck/' deps/cppcheck
     - cd deps/cppcheck
-    - git checkout 1.82
+    - git checkout 1.84
     - CPPCHECK_CONFIG="SRCDIR=build CFGDIR=/usr/local/share/cppcheck/cfg HAVE_RULES=yes CXXFLAGS='-O2 -DNDEBUG -Wall -Wno-sign-compare -Wno-unused-function'"
     - eval make -j`nproc --all` $CPPCHECK_CONFIG
     - eval sudo make install $CPPCHECK_CONFIG
