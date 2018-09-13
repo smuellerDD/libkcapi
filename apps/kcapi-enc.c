@@ -1134,7 +1134,7 @@ int main(int argc, char *argv[])
 	/* Perform cipher operation. */
 	ret = cipher_op(handle, &opts);
 
-	if (ret > 0) {
+	if (ret >= 0) {
 		dolog(KCAPI_LOG_VERBOSE, "%d bytes of %stext created",
 		      ret, opts.decrypt ? "plain" : "cipher");
 		ret = 0;
