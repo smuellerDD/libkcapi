@@ -581,7 +581,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			/* padding */
 			ret = add_padding(handle, opts, padbuf,
 					  outsize, iniov.iov_len);
-			if (ret)
+			if (ret < 0)
 				goto out;
 
 			ret = return_data(handle, opts, outfd, outsize,
