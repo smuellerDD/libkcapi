@@ -581,7 +581,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			/* padding */
 			ret = add_padding(handle, opts, padbuf,
 					  outsize, iniov.iov_len);
-			if (ret)
+			if (ret < 0)
 				goto out;
 
 			ret = return_data(handle, opts, outfd, outsize,
@@ -1134,7 +1134,7 @@ int main(int argc, char *argv[])
 	/* Perform cipher operation. */
 	ret = cipher_op(handle, &opts);
 
-	if (ret > 0) {
+	if (ret >= 0) {
 		dolog(KCAPI_LOG_VERBOSE, "%d bytes of %stext created",
 		      ret, opts.decrypt ? "plain" : "cipher");
 		ret = 0;
