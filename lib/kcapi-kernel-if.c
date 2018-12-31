@@ -323,7 +323,15 @@ int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 		iov.iov_base = (void*)(uintptr_t)(in + processed);
 		iov.iov_len = inlen;
 
-		if ((handle->processed_sg++) > handle->flags.alg_max_pages) {
+		/*
+		 * vmsplice will only process 1<<16 bytes in one go. sendmsg
+		 * will process much more. Thus, if we have much larger
+		 * requests than 1<<16 bytes, the overhead of system calls
+		 * is higher than the memory copy operation. Thus we use
+		 * sendmsg if we have more than 1<<16 bytes to process.
+		 */
+		if ((handle->processed_sg++) > handle->flags.alg_max_pages ||
+		    (inlen > (1<<16))) {
 			ret = _kcapi_common_send_data(handle, &iov, 1, sflags);
 			if (ret < 0)
 				return ret;
