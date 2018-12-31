@@ -185,10 +185,9 @@ static struct symfile * filename_exist(char * filename)
  * Files are separated by tabs.
  */
 static void adddep(char * file)		   { printf("\t%s", file); }
-static void adddep2(char * file, char * line)     { line = line; adddep(file); }
-static void noaction(char * line)		   { line = line; }
-static void noaction2(char * file, char * line)   { file = file; line = line; }
-
+static void adddep2(char * file, char * line)     { (void)line; adddep(file); }
+static void noaction(char * line)		   { (void)line; }
+static void noaction2(char * file, char * line)   { (void)file; (void)line; }
 /* Echo the line without further action */
 static void printline(char * line)               { printf("%s", line); }
 
