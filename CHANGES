@@ -1,3 +1,7 @@
+Changes 1.1.4
+ * Fix: use sendmsg when processing more than 1<<16 bytes input data which
+   improves performance on some architectures
+
 Changes 1.1.3
  * Fix: default location of FIPS 140-2 HMAC control file is .<orig file>.hmac
    (was accidentally moved to <orig file>.hmac with 1.1.2)
