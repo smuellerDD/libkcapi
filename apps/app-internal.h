@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017, Stephan Mueller <smueller@chronox.de>
+ * Copyright (C) 2017 - 2019, Stephan Mueller <smueller@chronox.de>
  *
  * License: see COPYING file in root directory
  *

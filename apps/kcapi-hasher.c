@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2015 - 2018, Stephan Mueller <smueller@chronox.de>
- * Copyright (C) 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (C) 2015 - 2019, Stephan Mueller <smueller@chronox.de>
+ * Copyright (C) 2019, Red Hat, Inc. All rights reserved.
  *
  * License: see LICENSE file in root directory
  *
