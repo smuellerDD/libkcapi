@@ -357,15 +357,19 @@ out:
 }
 
 /*
- * GCC v8.1.0 introduced -Wstringop-truncation but it is not smart enough to
- * find that cursor string will be NULL-terminated after all paste() calls and
- * warns with:
+ * GCC v8.1.0 introduced -Wstringop-truncation and GCC v8.2.0 introduced
+ * -Wstringop-overflow but it is not smart enough to find that cursor string
+ * will be NULL-terminated after all paste() calls and warns with:
  * error: 'strncpy' destination unchanged after copying no bytes [-Werror=stringop-truncation]
  * error: 'strncpy' output truncated before terminating nul copying 5 bytes from a string of the same length [-Werror=stringop-truncation]
+ * error: 'strncpy' specified bound depends on the length of the source argument [-Werror=stringop-overflow=]
  */
 #pragma GCC diagnostic push
 #if GCC_VERSION >= 80100
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
+#endif
+#if GCC_VERSION >= 80200
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
 #endif
 static char *paste(char *dst, const char *src, size_t size)
 {
@@ -417,7 +421,7 @@ static char *get_hmac_file(const char *filename, const char *checkdir)
 	strncpy(cursor, "\0", 1);
 	return checkfile;
 }
-#pragma GCC diagnostic pop /* -Wstringop-truncation */
+#pragma GCC diagnostic pop /* -Wstringop-truncation -Wstringop-overflow */
 
 static int hash_files(const struct hash_params *params,
 		      char *filenames[], uint32_t files,
