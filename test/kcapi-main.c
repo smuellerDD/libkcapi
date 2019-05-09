@@ -596,7 +596,7 @@ static int fuzz_tests(struct kcapi_cavs *cavs_test, uint32_t loops)
 	return ret;
 }
 
-static int aux_test_rng(char *name, uint8_t *seed, uint32_t seedlen)
+static int aux_test_rng(const char *name, uint8_t *seed, uint32_t seedlen)
 {
 	struct kcapi_handle *handle;
 #define RNGOUTBUF 150
@@ -636,9 +636,23 @@ static int aux_test_rng(char *name, uint8_t *seed, uint32_t seedlen)
 	return 0;
 }
 
+static int is_fips_mode(void)
+{
+	char c;
+	FILE *f = fopen("/proc/sys/crypto/fips_enabled", "r");
+	if (!f)
+		return 0;
+	if (fread(&c, 1, 1, f) < 1)
+		c = '0';
+	fclose(f);
+	return c == '1';
+}
+
 static int auxiliary_tests(void)
 {
 	struct kcapi_handle *handle = NULL;
+	const char *ansi_cprng_name = is_fips_mode() ? "fips(ansi_cprng)"
+	                                             : "ansi_cprng";
 	int ret = 0;
 
         if (kcapi_aead_init(&handle, "ccm(aes)", 0)) {
@@ -698,23 +712,24 @@ static int auxiliary_tests(void)
 
 	/* X9.31 RNG must require seed */
 	printf("X9.31 missing seeding: ");
-	if (!aux_test_rng("ansi_cprng", NULL, 0))
+	if (!aux_test_rng(ansi_cprng_name, NULL, 0))
 		ret++;
 	/* X9.31 seed too short */
 	printf("X9.31 insufficient seeding: ");
-	if (!aux_test_rng("ansi_cprng",
+	if (!aux_test_rng(ansi_cprng_name,
 			  (uint8_t *)
 			  "\x00\x01\x02\x03\x04\x05\x06\x07\x08"
 			  "\x00\x01\x02\x03\x04\x05\x06\x07\x08", 16))
 		ret++;
 	/* X9.31 seed right sized short */
-	if (aux_test_rng("ansi_cprng",
+	if (aux_test_rng(ansi_cprng_name,
 			 (uint8_t *)
 			 "\x00\x01\x02\x03\x04\x05\x06\x07\x08"
 			 "\x00\x01\x02\x03\x04\x05\x06\x07\x08"
 			 "\x00\x01\x02\x03\x04\x05\x06\x07\x08"
 			 "\x00\x01\x02\x03\x04\x05\x06\x07\x08", 32)) {
-		printf("Error for ansi_cprng: kernel module ansi_cprng present?\n");
+		printf("Error for %s: kernel module ansi_cprng present?\n",
+		       ansi_cprng_name);
 		ret++;
 	}
 
