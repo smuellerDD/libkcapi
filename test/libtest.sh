@@ -128,7 +128,11 @@ check_min_kernelver() {
 	major=$1
 	minor=$2
 
-	if [ $(uname -r | cut -d"." -f1) -ge $major ]; then
+	if [ $(uname -r | cut -d"." -f1) -gt $major ]; then
+		return 0
+	fi
+
+	if [ $(uname -r | cut -d"." -f1) -eq $major ]; then
 		if [ $(uname -r | cut -d"." -f2) -ge $minor ]; then
 			return 0
 		fi

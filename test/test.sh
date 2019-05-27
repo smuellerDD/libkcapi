@@ -907,8 +907,13 @@ kppfunc()
 rfc4106_aad_iv() {
 	assoc=$1
 	iv=$2
+
 	# New name with 4.2
-	if [ $(uname -r | cut -d"." -f1) -ge 4 ]; then
+	if [ $(uname -r | cut -d"." -f1) -gt 4 ]; then
+		assoc="${assoc}${iv}"
+	fi
+
+	if [ $(uname -r | cut -d"." -f1) -eq 4 ]; then
 		if [ $(uname -r | cut -d"." -f2) -ge 2 ]; then
 			assoc="${assoc}${iv}"
 		fi
@@ -1549,7 +1554,7 @@ else
 	echo_deact "AEAD tests of copied AAD deactivated"
 fi
 
-if $(check_min_kernelver 4 99); then
+if $(check_min_kernelver 5 99); then
 	asymfunc 4
 	asymfunc 4 -s
 	asymfunc 4 -v
@@ -1572,7 +1577,7 @@ else
 	echo_deact "All asymmetric tests deactivated"
 fi
 
-if $(check_min_kernelver 4 99); then
+if $(check_min_kernelver 5 99); then
 	kppfunc 13
 	kppfunc 13 X -m
 	kppfunc 13 -v
