@@ -282,6 +282,7 @@ static int fuzz_init_test(unsigned int size)
 
 	if (get_random(name, size, 0)) {
 		printf("get_random call failed\n");
+		free(name);
 		return 1;
 	}
 
@@ -1016,7 +1017,7 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 			}
 
 			outiov.iov_base = (uint8_t *)outiov.iov_base + ret;
-			outiov.iov_len += ret;
+			outiov.iov_len -= ret;
 			outptr += ret;
 		}
 
