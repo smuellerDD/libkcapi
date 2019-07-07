@@ -300,6 +300,8 @@ int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 	return ret;
 }
 
+static uint32_t vmsplice_limit;
+
 int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 				     const uint8_t *in, uint32_t inlen,
 				     uint32_t flags)
@@ -324,14 +326,14 @@ int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 		iov.iov_len = inlen;
 
 		/*
-		 * vmsplice will only process 1<<16 bytes in one go. sendmsg
+		 * vmsplice will only process 16 pages in one go. sendmsg
 		 * will process much more. Thus, if we have much larger
-		 * requests than 1<<16 bytes, the overhead of system calls
+		 * requests than 16 pages, the overhead of system calls
 		 * is higher than the memory copy operation. Thus we use
-		 * sendmsg if we have more than 1<<16 bytes to process.
+		 * sendmsg if we have more than 16 pages to process.
 		 */
 		if ((handle->processed_sg++) > handle->flags.alg_max_pages ||
-		    (inlen > (1<<16))) {
+		    inlen > vmsplice_limit) {
 			ret = _kcapi_common_send_data(handle, &iov, 1, sflags);
 			if (ret < 0)
 				return ret;
@@ -1386,6 +1388,8 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 
 void __attribute__ ((constructor)) kcapi_library_init(void)
 {
+	vmsplice_limit = getpagesize() * 16;
+
 	/* Disable the dumping of this process as we handle with keys */
 	if (prctl(PR_SET_DUMPABLE, 0) < 0)
 		kcapi_dolog(KCAPI_LOG_ERR,
