@@ -203,6 +203,7 @@ int main(int argc, char *argv[])
 					print_tests(&tests[i], 1);
 				return 0;
 			case 'c':
+				free(cipher);
 				cipher = strndup(optarg, 50);
 				break;
 			case 't':
@@ -244,7 +245,6 @@ int main(int argc, char *argv[])
 	ret = exec_subset_test(cipher, raw, &test_params);
 
 out:
-	if (cipher)
-		free(cipher);
+	free(cipher);
 	return ret;
 }
