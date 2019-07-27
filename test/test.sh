@@ -909,17 +909,10 @@ rfc4106_aad_iv() {
 	iv=$2
 
 	# New name with 4.2
-	if [ $(uname -r | cut -d"." -f1) -gt 4 ]; then
-		assoc="${assoc}${iv}"
+	echo -n "$assoc"
+	if check_min_kernelver 4 2; then
+		echo -n "$iv"
 	fi
-
-	if [ $(uname -r | cut -d"." -f1) -eq 4 ]; then
-		if [ $(uname -r | cut -d"." -f2) -ge 2 ]; then
-			assoc="${assoc}${iv}"
-		fi
-	fi
-
-	echo $assoc
 }
 
 aeadfunc()
