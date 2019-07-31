@@ -1,3 +1,11 @@
+Changes 1.1.5
+ * Fix invocation of ansi_cprng in FIPS mode during testing
+ * Fix testing on kernels >= 5.0
+ * Add virtualization test for kernel 5.1
+ * Fix the limit between vmsplice() and sendmsg() by Christophe Leroy
+ * Fix remove code duplication by Ondrej Mosnáček
+ * Fix potential memleak in speed-test
+
 Changes 1.1.4
  * Fix: use sendmsg when processing more than 1<<16 bytes input data which
    improves performance on some architectures

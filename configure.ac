@@ -11,7 +11,7 @@ dnl 		     enhancements, bug fixes only. Versions with
 dnl		     a decimal point are pre-releases.
 m4_define([__KCAPI_MAJVERSION], [1])
 m4_define([__KCAPI_MINVERSION], [1])
-m4_define([__KCAPI_PATCHLEVEL], [4])
+m4_define([__KCAPI_PATCHLEVEL], [5])
 m4_define([KCAPI_VERSION], [__KCAPI_MAJVERSION.__KCAPI_MINVERSION.__KCAPI_PATCHLEVEL])
 
 AC_INIT([libkcapi], [KCAPI_VERSION])
