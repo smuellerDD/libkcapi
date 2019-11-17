@@ -54,6 +54,20 @@
 #include "kcapi.h"
 #include "internal.h"
 
+#define GCC_VERSION (__GNUC__ * 10000		\
+		     + __GNUC_MINOR__ * 100	\
+		     + __GNUC_PATCHLEVEL__)
+#if GCC_VERSION >= 40400
+# define __HAVE_BUILTIN_BSWAP32__
+#endif
+
+/* Endian dependent byte swap operations.  */
+#if  __BYTE_ORDER__ ==  __ORDER_BIG_ENDIAN__
+# define be_bswap32(x) ((uint32_t)(x))
+#elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+# ifdef __HAVE_BUILTIN_BSWAP32__
+#  define be_bswap32(x) (uint32_t)__builtin_bswap32((uint32_t)(x))
+# else
 static inline uint32_t rol32(uint32_t x, int n)
 {
 	return ( (x << (n&(32-1))) | (x >> ((32-n)&(32-1))) );
@@ -68,27 +82,10 @@ static inline uint32_t _bswap32(uint32_t x)
 {
 	return ((rol32(x, 8) & 0x00ff00ffL) | (ror32(x, 8) & 0xff00ff00L));
 }
-
-#define GCC_VERSION (__GNUC__ * 10000		\
-		     + __GNUC_MINOR__ * 100	\
-		     + __GNUC_PATCHLEVEL__)
-#if GCC_VERSION >= 40400
-# define __HAVE_BUILTIN_BSWAP32__
-#endif
-
-#ifdef __HAVE_BUILTIN_BSWAP32__
-# define _swap32(x) (uint32_t)__builtin_bswap32((uint32_t)(x))
+#  define be_bswap32(x) _bswap32(x)
+# endif
 #else
-# define _swap32(x) _bswap32(x)
-#endif
-
-/* Endian dependent byte swap operations.  */
-#if __BYTE_ORDER__ ==  __ORDER_BIG_ENDIAN__
-# define be_bswap32(x) ((uint32_t)(x))
-#elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-# define be_bswap32(x) _swap32(x)
-#else
-#error "Endianess not defined"
+# error "Endianess not defined"
 #endif
 
 DSO_PUBLIC
