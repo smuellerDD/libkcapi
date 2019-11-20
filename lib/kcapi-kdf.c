@@ -54,10 +54,14 @@
 #include "kcapi.h"
 #include "internal.h"
 
+#ifndef __has_builtin
+# define __has_builtin(x) 0
+#endif
+
 #define GCC_VERSION (__GNUC__ * 10000		\
 		     + __GNUC_MINOR__ * 100	\
 		     + __GNUC_PATCHLEVEL__)
-#if GCC_VERSION >= 40400
+#if GCC_VERSION >= 40400 || (defined(__clang__) && __has_builtin(__builtin_bswap32))
 # define __HAVE_BUILTIN_BSWAP32__
 #endif
 
