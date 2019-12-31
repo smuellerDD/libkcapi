@@ -759,7 +759,7 @@ static void usage(void)
 	fprintf(stderr, "\t\t0 for encryption\n");
 	fprintf(stderr, "\t\t1 for decryption\n");
 	fprintf(stderr, "\t\t2 for signing\n");
-	fprintf(stderr, "\t\t2 for verification\n");
+	fprintf(stderr, "\t\t3 for verification\n");
 	fprintf(stderr, "\t-c --cipher\tKernel Crypto API cipher name to be used for operation\n");
 	fprintf(stderr, "\t-p --pt\t\tPlaintext used during encryption / message digest\n");
 	fprintf(stderr, "\t-q --ct\t\tCiphertext used during decryption\n");
