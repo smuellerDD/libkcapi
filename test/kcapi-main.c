@@ -894,9 +894,11 @@ static void mt_sym_writer(struct kcapi_handle *handle, struct iovec *iov,
 		pid_t pid;
 
 		pid = fork();
-		if (!pid)
+		if (pid)
+			/* parent - return and continue */
 			return;
 
+		/* child - write the data and exit */
 		sleep(1);
 	}
 
