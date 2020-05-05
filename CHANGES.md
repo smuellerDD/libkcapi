@@ -1,3 +1,12 @@
+Changes 1.2.0
+ * enhancement: kcapi-hasher: add madvise and 64 bit support by Brandur Simonsen
+ * fix: fix clang warnding in KDF implementation by Khem Raj
+ * fix: fix inverted logic in kcapi-main test logic reported by Ondrej Mosnáček
+ * fix: return error when iteration count is zero for PBKDF as reported by
+   Guido Vranken
+ * enhancement: add function kcapi_cipher_stream_update_last to indicate the
+   last block of a symmetric cipher stream operation
+
 Changes 1.1.5
  * Fix invocation of ansi_cprng in FIPS mode during testing
  * Fix testing on kernels >= 5.0
