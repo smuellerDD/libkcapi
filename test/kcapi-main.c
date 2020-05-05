@@ -897,6 +897,9 @@ static void mt_sym_writer(struct kcapi_handle *handle, struct iovec *iov,
 		if (pid)
 			/* parent - return and continue */
 			return;
+
+		/* child - write the data and exit */
+		sleep(1);
 	}
 
 	ret = kcapi_cipher_stream_update_last(handle, iov, 1);
