@@ -382,6 +382,37 @@ int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
 				   struct iovec *iov, uint32_t iovlen);
 
 /**
+ * kcapi_cipher_stream_update_last() - send last data for processing (stream)
+ *
+ * @handle: [in] cipher handle
+ * @iov: [in] scatter/gather list with data to be processed by the cipher
+ *	 operation.
+ * @iovlen: [in] number of scatter/gather list elements.
+ *
+ * Using this function call, more plaintext for encryption or ciphertext for
+ * decryption can be submitted to the kernel.
+ *
+ * This call is identical to the kcapi_cipher_stream_update() call with the
+ * exception that it marks the last data buffer before the cipher operation
+ * is triggered. This is call is important for stream ciphers like CTR or CTS
+ * mode when providing the last block. It is permissible to provide a zero
+ * buffer if all data including the last block is already provided by
+ * kcapi_cipher_stream_update.
+ *
+ * WARNING: If this call is not made for stream ciphers with input data
+ * that is not a multiple of the block size of the block cipher, the kernel
+ * will not return the last block that contains less data than the block
+ * size of the block cipher. For example, sending 257 bytes of data to be
+ * encrypted with ctr(aes), the kernel will return only 256 bytes without
+ * this call.
+ *
+ * @return number of bytes sent to the kernel upon success;
+ *	   a negative errno-style error code if an error occurred
+ */
+int32_t kcapi_cipher_stream_update_last(struct kcapi_handle *handle,
+					struct iovec *iov, uint32_t iovlen);
+
+/**
  * kcapi_cipher_stream_op() - obtain processed data (stream)
  *
  * @handle: [in] cipher handle

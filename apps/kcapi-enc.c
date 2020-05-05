@@ -67,6 +67,8 @@ struct opt_data {
 					struct iovec *iov, uint32_t iovlen);
 	int32_t (*func_stream_update)(struct kcapi_handle *handle,
 				      struct iovec *iov, uint32_t iovlen);
+	int32_t (*func_stream_update_last)(struct kcapi_handle *handle,
+					   struct iovec *iov, uint32_t iovlen);
 	int32_t (*func_stream_op)(struct kcapi_handle *handle,
 				  struct iovec *iov, uint32_t iovlen);
 	uint32_t (*func_blocksize)(struct kcapi_handle *handle);
@@ -225,13 +227,10 @@ static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
 		       int outfd, uint32_t outsize, uint32_t offset,
 		       uint32_t unpad)
 {
-	if (opts->aad) {
-		/* Tell kernel that we have sent all data */
-		int ret = kcapi_aead_stream_update_last(handle, NULL, 0);
-
-		if (ret < 0)
-			return ret;
-	}
+	/* Tell kernel that we have sent all data */
+	int ret = opts->func_stream_update_last(handle, NULL, 0);
+	if (ret < 0)
+		return ret;
 
 	/* send generated data to stdout */
 	if (outfd == STDOUT_FD)
@@ -1108,6 +1107,7 @@ int main(int argc, char *argv[])
 		opts.func_stream_init_enc = kcapi_aead_stream_init_enc;
 		opts.func_stream_init_dec = kcapi_aead_stream_init_dec;
 		opts.func_stream_update = kcapi_aead_stream_update;
+		opts.func_stream_update_last = kcapi_aead_stream_update_last;
 		opts.func_stream_op = kcapi_aead_stream_op;
 		opts.func_blocksize = kcapi_aead_blocksize;
 	} else {
@@ -1117,6 +1117,7 @@ int main(int argc, char *argv[])
 		opts.func_stream_init_enc = kcapi_cipher_stream_init_enc;
 		opts.func_stream_init_dec = kcapi_cipher_stream_init_dec;
 		opts.func_stream_update = kcapi_cipher_stream_update;
+		opts.func_stream_update_last = kcapi_cipher_stream_update_last;
 		opts.func_stream_op = kcapi_cipher_stream_op;
 		opts.func_blocksize = kcapi_cipher_blocksize;
 	}

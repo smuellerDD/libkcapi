@@ -10,8 +10,8 @@ dnl KCAPI_PATCHLEVEL API / ABI compatible, no functional changes, no
 dnl 		     enhancements, bug fixes only. Versions with
 dnl		     a decimal point are pre-releases.
 m4_define([__KCAPI_MAJVERSION], [1])
-m4_define([__KCAPI_MINVERSION], [1])
-m4_define([__KCAPI_PATCHLEVEL], [5])
+m4_define([__KCAPI_MINVERSION], [2])
+m4_define([__KCAPI_PATCHLEVEL], [0])
 m4_define([KCAPI_VERSION], [__KCAPI_MAJVERSION.__KCAPI_MINVERSION.__KCAPI_PATCHLEVEL])
 
 AC_INIT([libkcapi], [KCAPI_VERSION])
@@ -157,6 +157,10 @@ AC_DEFINE_UNQUOTED(CHECK_SUFFIX,"$CHECK_SUFFIX",[Define to the suffix which cont
 AS_IF([test "x$CHECK_DIR" != "x"], [
 	AC_DEFINE_UNQUOTED(CHECK_DIR,"$CHECK_DIR",[Define to the directory which contains the hmac for a binary.])
 ])
+
+AC_SYS_LARGEFILE
+AC_TYPE_OFF_T
+AC_FUNC_FSEEKO
 
 PKG_INSTALLDIR
 if test "x$pkgconfigdir" = "x"; then

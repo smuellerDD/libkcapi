@@ -148,3 +148,7 @@ LIBKCAPI_1.1.4 {
 
 LIBKCAPI_1.1.5 {
 } LIBKCAPI_1.1.4;
+
+LIBKCAPI_1.2.0 {
+	kcapi_cipher_stream_update_last;
+} LIBKCAPI_1.1.5;

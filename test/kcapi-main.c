@@ -902,7 +902,7 @@ static void mt_sym_writer(struct kcapi_handle *handle, struct iovec *iov,
 		sleep(1);
 	}
 
-	ret = kcapi_cipher_stream_update(handle, iov, 1);
+	ret = kcapi_cipher_stream_update_last(handle, iov, 1);
 	if (0 > ret)
 		printf("Sending of data failed\n");
 

@@ -185,6 +185,16 @@ int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
+int32_t kcapi_cipher_stream_update_last(struct kcapi_handle *handle,
+					struct iovec *iov, uint32_t iovlen)
+{
+	if (handle->processed_sg <= handle->flags.alg_max_pages)
+		return _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
+	else
+		return _kcapi_common_send_data(handle, iov, iovlen, 0);
+}
+
+DSO_PUBLIC
 int32_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
 			       struct iovec *iov, uint32_t iovlen)
 {
