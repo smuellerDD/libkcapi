@@ -35,11 +35,11 @@
 static unsigned int verbosity = KCAPI_LOG_NONE;
 static char appname[16];
 
-static uint8_t hex_char(unsigned int bin, int u)
+static char hex_char(unsigned int bin, int u)
 {
-	uint8_t hex_char_map_l[] = { '0', '1', '2', '3', '4', '5', '6', '7',
+	char hex_char_map_l[] = { '0', '1', '2', '3', '4', '5', '6', '7',
 				     '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
-	uint8_t hex_char_map_u[] = { '0', '1', '2', '3', '4', '5', '6', '7',
+	char hex_char_map_u[] = { '0', '1', '2', '3', '4', '5', '6', '7',
 				     '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 	if (bin < sizeof(hex_char_map_l))
 		return (u) ? hex_char_map_u[bin] : hex_char_map_l[bin];
@@ -55,11 +55,11 @@ static uint8_t hex_char(unsigned int bin, int u)
  *	   twice binlen -- if not, only a fraction of binlen is converted)
  * @u [in] case of hex characters (0=>lower case, 1=>upper case)
  */
-void bin2hex(const uint8_t *bin, uint32_t binlen,
-	     char *hex, uint32_t hexlen, int u)
+void bin2hex(const uint8_t *bin, size_t binlen,
+	     char *hex, size_t hexlen, int u)
 {
 	uint32_t i = 0;
-	uint32_t chars = (binlen > (hexlen / 2)) ? (hexlen / 2) : binlen;
+	size_t chars = (binlen > (hexlen / 2)) ? (hexlen / 2) : binlen;
 
 	for (i = 0; i < chars; i++) {
 		hex[(i*2)] = hex_char((bin[i] >> 4), u);
@@ -67,35 +67,30 @@ void bin2hex(const uint8_t *bin, uint32_t binlen,
 	}
 }
 
-void bin2print(const uint8_t *bin, uint32_t binlen,
+void bin2print(const uint8_t *bin, size_t binlen,
 	       const char *filename, FILE *outfile, uint32_t lfcr)
 {
 	char *hex;
-	uint32_t hexlen = binlen * 2 + 1;
+	size_t hexlen = binlen * 2 + 1;
 
 	hex = calloc(1, hexlen);
 	if (!hex)
 		return;
 	bin2hex(bin, binlen, hex, hexlen - 1 , 0);
 	/* fipshmac does not want the file name :-( */
-	if (outfile != stdout) {
-		if (lfcr)
-			fprintf(outfile, "%s\n", hex);
+	if (outfile != stdout)
+		fprintf(outfile, "%s", hex);
+	else
+		if (filename)
+			fprintf(outfile, "%s  %s", hex, filename);
 		else
 			fprintf(outfile, "%s", hex);
-	} else {
-		if (filename) {
-			if (lfcr)
-				fprintf(outfile, "%s  %s\n", hex, filename);
-			else
-				fprintf(outfile, "%s  %s", hex, filename);
-		} else {
-			if (lfcr)
-				fprintf(outfile, "%s\n", hex);
-			else
-				fprintf(outfile, "%s", hex);
-		}
-	}
+
+	if (lfcr == 1)
+		fputc(0x0a, outfile);
+	if (lfcr == 2)
+		fputc(0x00, outfile);
+
 	free(hex);
 }
 
@@ -156,14 +151,14 @@ void set_verbosity(const char *name, enum kcapi_verbosity level)
 	verbosity = level;
 }
 
-static int bin_char(char hex)
+static uint8_t bin_char(char hex)
 {
 	if (48 <= hex && 57 >= hex)
-		return (hex - 48);
+		return (uint8_t)(hex - 48);
 	if (65 <= hex && 70 >= hex)
-		return (hex - 55);
+		return (uint8_t)(hex - 55);
 	if (97 <= hex && 102 >= hex)
-		return (hex - 87);
+		return (uint8_t)(hex - 87);
 	return 0;
 }
 
@@ -191,7 +186,7 @@ void hex2bin(const char *hex, uint32_t hexlen, uint8_t *bin, uint32_t binlen)
 	}
 
 	for (i = 0; i < chars; i++) {
-		bin[i] = bin_char(hex[(i*2)]) << 4;
+		bin[i] = (uint8_t)(bin_char(hex[(i*2)]) << 4);
 		bin[i] |= bin_char(hex[((i*2)+1)]);
 	}
 }
