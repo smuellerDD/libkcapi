@@ -547,6 +547,9 @@ int32_t kcapi_pbkdf(const char *hashname,
 	if (keylen > INT_MAX)
 		return -EMSGSIZE;
 
+	if (count == 0)
+		return -EINVAL;
+
 	err = kcapi_md_init(&handle, hashname, 0);
 	if (err)
 		return err;
