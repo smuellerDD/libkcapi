@@ -677,7 +677,15 @@ symfunc()
 		return 0
 	fi
 
-	SYMEXEC="1 2 3 4 5 6 7 8 9 10 11 12"
+    # Disable xts(aes) tests for multithreading due to the
+    # issue in https://github.com/smuellerDD/libkcapi/issues/92
+    if [ "$stream" = "-s -j" ]
+    then
+        SYMEXEC="1 2 3 4 5 6 7"
+    else
+        SYMEXEC="1 2 3 4 5 6 7 8 9 10 11 12"
+    fi
+
 	for i in $SYMEXEC
 	do
 		eval SYM_name=\$SYM_name_$i
