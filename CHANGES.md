@@ -1,4 +1,4 @@
-Changes 1.2.0
+Changes 1.1.6
  * enhancement: kcapi-hasher: add madvise and 64 bit support by Brandur Simonsen
  * fix: fix clang warnding in KDF implementation by Khem Raj
  * fix: fix inverted logic in kcapi-main test logic reported by Ondrej Mosnáček
@@ -6,6 +6,9 @@ Changes 1.2.0
    Guido Vranken
  * enhancement: add function kcapi_cipher_stream_update_last to indicate the
    last block of a symmetric cipher stream operation
+ * Test disable: Temporarily disable mutithreaded tests causing a race condition
+   when run with long XTS test vectors.
+   See issue: https://github.com/smuellerDD/libkcapi/issues/92
 
 Changes 1.1.5
  * Fix invocation of ansi_cprng in FIPS mode during testing
