@@ -386,9 +386,15 @@ static char *paste(char *dst, const char *src, size_t size)
 static char *get_hmac_file(const char *filename, const char *checkdir)
 {
 	size_t i, filelen, pathlen, namelen, basenamestart = 0;
-	size_t prefixlen = strlen(CHECK_PREFIX);
+	const char *check_prefix = CHECK_PREFIX;
+	size_t prefixlen = strlen(check_prefix);
 	size_t suffixlen = strlen(CHECK_SUFFIX);
 	char *cursor, *checkfile = NULL;
+
+	if (prefixlen == 0 && checkdir == NULL) {
+		check_prefix = ".";
+		prefixlen = 1;
+	}
 
 	filelen = strlen(filename);
 	if (filelen > 4096) {
@@ -415,7 +421,7 @@ static char *get_hmac_file(const char *filename, const char *checkdir)
 	} else if (pathlen > 0)
 		cursor = paste(cursor, filename, pathlen);
 
-	cursor = paste(cursor, CHECK_PREFIX, prefixlen);
+	cursor = paste(cursor, check_prefix, prefixlen);
 	cursor = paste(cursor, filename + basenamestart, namelen);
 	cursor = paste(cursor, "."CHECK_SUFFIX, 1 + suffixlen);
 	strncpy(cursor, "\0", 1);
