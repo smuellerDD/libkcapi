@@ -6,6 +6,21 @@ Changes 1.2.0
    Guido Vranken
  * enhancement: add function kcapi_cipher_stream_update_last to indicate the
    last block of a symmetric cipher stream operation
+ * disable XTS multithreaded tests as it triggers a race discussed in
+   https://github.com/smuellerDD/libkcapi/issues/92. The conclusion is
+   the following: xts(aes) doesn't support chaining requests like for other
+   ciphers such as CBC (at least as implemented in the kernel Crypto API).
+   That can be seen in `crypto/testmgr.h` - the ciphers that are expected to
+   return IVs usable for chaining have the `.iv_out` entries filled in in their
+   test vectors (and those that don't support it do not). One can see that only
+   CTR and CBC test vectors have them, not XTS.
+   Looking again at how XTS is defined, it seems one could implement
+   transparent chaining by simply decrypting the final tweak using the tweak
+   key and return it as the output IV... but I believe this has never been
+   mandated nor implemented in the Crypto API (likely because of the overhead
+   of the final tweak decryption, which would be pointless if you're not going
+   to use the output IV - and there is currently no way to signal to the driver
+   that you are going to need it).
 
 Changes 1.1.5
  * Fix invocation of ansi_cprng in FIPS mode during testing

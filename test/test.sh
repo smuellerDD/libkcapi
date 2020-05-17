@@ -630,6 +630,8 @@ symfunc()
 	aligned=$3
 	aiofallback=$4
 
+	SYMEXEC="1 2 3 4 5 6 7 8 9 10 11 12"
+
 	if [ x"$stream" = x"X" ]
 	then
 		stream=""
@@ -661,6 +663,10 @@ symfunc()
 	then
 		sout="multithreaded"
 		stream="-s -j"
+
+		# Disable XTS tests for multi-threading due to the issue
+		# discussed in https://github.com/smuellerDD/libkcapi/issues/92
+		SYMEXEC="1 2 3 4 5 6 7"
 	else
 		sout="one shot"
 	fi
@@ -677,7 +683,6 @@ symfunc()
 		return 0
 	fi
 
-	SYMEXEC="1 2 3 4 5 6 7 8 9 10 11 12"
 	for i in $SYMEXEC
 	do
 		eval SYM_name=\$SYM_name_$i
