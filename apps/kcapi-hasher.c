@@ -838,6 +838,8 @@ int main(int argc, char *argv[])
 	char *basec = NULL;
 	const char *basen = NULL;
 	int ret = -EFAULT;
+	/* File memory-mapping size limit set at 64MB in 32bit and 1GB in 64bit virtual memory space */
+	size_t mapped = (sizeof(void*) == 4) ? 64<<20 : 1<<30;
 
 	char *checkfile = NULL;
 	const char *targetfile = NULL;
@@ -1059,9 +1061,10 @@ int main(int argc, char *argv[])
 					munmap(hmackey_mmap, params.key.len);
 					hmackey_mmap = NULL;
 				}
+				params.key.len = 0;
 				ret = mmap_file(optarg, &hmackey_mmap,
 						&params.key.len,
-						0, 0);
+						&mapped, 0);
 				if (!ret) {
 					params.key.data = hmackey_mmap;
 					hmac = 1;
