@@ -237,7 +237,7 @@ static inline uint64_t _time_delta(struct timespec *start, struct timespec *end)
 
 static int get_random(uint8_t *buf, uint32_t buflen, unsigned int flags)
 {
-	int ret;
+	int ret = 0;
 
 	if (buflen > INT_MAX)
 		return 1;

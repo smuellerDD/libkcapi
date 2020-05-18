@@ -298,7 +298,7 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 					offset);
 			if (ret) {
 				fprintf(stderr,
-					"Use of mmap failed mapping %zu bytes at offset %jd of file %s (%d)\n",
+					"Use of mmap failed mapping %zu bytes at offset %ld of file %s (%d)\n",
 					mapped, (int64_t)offset, filename, ret);
 				goto out;
 			}
