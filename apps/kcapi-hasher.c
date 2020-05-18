@@ -56,6 +56,7 @@
 #include <dlfcn.h>
 #include <libgen.h>
 #include <limits.h>
+#include <inttypes.h>
 
 #include <kcapi.h>
 
@@ -298,7 +299,7 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 					offset);
 			if (ret) {
 				fprintf(stderr,
-					"Use of mmap failed mapping %zu bytes at offset %ld of file %s (%d)\n",
+					"Use of mmap failed mapping %zu bytes at offset %" PRId64 " of file %s (%d)\n",
 					mapped, (int64_t)offset, filename, ret);
 				goto out;
 			}
