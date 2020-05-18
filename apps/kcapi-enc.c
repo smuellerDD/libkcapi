@@ -603,7 +603,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			goto out;
 		}
 
-		if (outfd != STDOUT_FD) {
+		if (outfd != STDOUT_FD && insb.st_size) {
 			uint8_t padbyte;
 
 			outsize = outbufsize(handle, opts, insb.st_size);
