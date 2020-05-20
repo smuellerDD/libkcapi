@@ -1,7 +1,7 @@
 language: c
 
 sudo: required
-dist: xenial
+dist: bionic
 
 matrix:
     include:
@@ -24,24 +24,12 @@ addons:
             - ubuntu-toolchain-r-test
         packages:
             - pkg-config
-            - realpath
             - gcc-multilib
             - openssl
             - cppcheck
             - xmlto
             - docbook-utils
             - gcc-8
-
-install:
-    # We need a recent cppcheck because the one shipped with trusty has bugs:
-    - mkdir deps
-    - git clone 'https://github.com/danmar/cppcheck/' deps/cppcheck
-    - cd deps/cppcheck
-    - git checkout 1.84
-    - CPPCHECK_CONFIG="SRCDIR=build CFGDIR=/usr/local/share/cppcheck/cfg HAVE_RULES=yes CXXFLAGS='-O2 -DNDEBUG -Wall -Wno-sign-compare -Wno-unused-function'"
-    - eval make -j`nproc --all` $CPPCHECK_CONFIG
-    - eval sudo make install $CPPCHECK_CONFIG
-    - cd -
 
 script:
     - autoreconf -i && OK_AUTOCONF=y
