@@ -17,6 +17,18 @@ matrix:
             env:
                 - CC=gcc-8 AR=gcc-ar-8 NM=gcc-nm-8 RANLIB=gcc-ranlib-8
                 - NO_32BIT_TEST=1
+        -
+            os: linux
+            compiler: gcc-9
+            env:
+                - CC=gcc-9 AR=gcc-ar-9 NM=gcc-nm-9 RANLIB=gcc-ranlib-9
+                - NO_32BIT_TEST=1
+        -
+            os: linux
+            compiler: gcc-10
+            env:
+                - CC=gcc-10 AR=gcc-ar-10 NM=gcc-nm-10 RANLIB=gcc-ranlib-10
+                - NO_32BIT_TEST=1
 
 addons:
     apt:
@@ -30,6 +42,8 @@ addons:
             - xmlto
             - docbook-utils
             - gcc-8
+            - gcc-9
+            - gcc-10
 
 script:
     - autoreconf -i && OK_AUTOCONF=y
