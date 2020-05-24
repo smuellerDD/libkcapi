@@ -284,8 +284,8 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 		  const char *filename, const char *comphash, uint32_t comphashlen,
 		  FILE *outfile)
 {
-	/* File memory-mapping size limit set at 64MB in 32bit and 1GB in 64bit virtual memory space */
-	size_t mapped = (sizeof(void*) == 4) ? 64<<20 : 1<<30;
+	/* Mapping file in 16M segments */
+	size_t mapped = 16<<20;
 	off_t offset = 0, size = 0;
 	uint32_t hashlen = params->hashlen;
 	int ret = 0;
