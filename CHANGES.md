@@ -21,6 +21,7 @@ Changes 1.2.0
    of the final tweak decryption, which would be pointless if you're not going
    to use the output IV - and there is currently no way to signal to the driver
    that you are going to need it).
+ * disable AIO parallel tests due to undefined behavior
 
 Changes 1.1.5
  * Fix invocation of ansi_cprng in FIPS mode during testing
