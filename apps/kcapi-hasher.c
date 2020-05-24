@@ -963,6 +963,7 @@ int main(int argc, char *argv[])
 		params_self = &PARAMS_SELF_HMACCALC;
 	} else {
 		fprintf(stderr, "Unknown invocation name: %s\n", basen);
+		usage(argv[0], fipscheck);
 		ret = 1;
 		goto out;
 	}
