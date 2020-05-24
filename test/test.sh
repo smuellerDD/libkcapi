@@ -1469,9 +1469,13 @@ auxtest
 multipletest_sym 1		# sync, no splice, one shot sendmsg
 multipletest_sym 1 -s		# sync, no splice, stream sendmsg
 multipletest_sym 1 -v		# sync, splice
-multipletest_sym 9 X -g		# async, AIO fallback, no splice, one shot sendmsg
-multipletest_sym 9 -s -g	# async, AIO fallback, no splice, stream sendmsg
-multipletest_sym 9 -v -g	# async, AIO fallback, splice
+
+# Parallel AIO requests are undefined - it may be the case that such parallel
+# requests are serialized by the driver or that they are processed independently
+# of each other.
+#multipletest_sym 9 X -g		# async, AIO fallback, no splice, one shot sendmsg
+#multipletest_sym 9 -s -g	# async, AIO fallback, no splice, stream sendmsg
+#multipletest_sym 9 -v -g	# async, AIO fallback, splice
 
 if $(check_min_kernelver 4 14); then
 	symfunc 9
