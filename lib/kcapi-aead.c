@@ -1,6 +1,6 @@
 /* Kernel crypto API AF_ALG AEAD API
  *
- * Copyright (C) 2016 - 2019, Stephan Mueller <smueller@chronox.de>
+ * Copyright (C) 2016 - 2020, Stephan Mueller <smueller@chronox.de>
  *
  * License: see COPYING file in root directory
  *
