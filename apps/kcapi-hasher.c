@@ -301,7 +301,7 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 				fprintf(stderr,
 					"Use of mmap failed mapping %zu bytes at offset %" PRId64 " of file %s (%d)\n",
 					mapped, (int64_t)offset, filename, ret);
-				goto out;
+				return ret;
 			}
 			/* Compute hash */
 			memblock_p = memblock;
@@ -311,8 +311,10 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 						 INT_MAX : (uint32_t)left;
 
 				ret = kcapi_md_update(handle, memblock_p, todo);
-				if (ret < 0)
-					goto out;
+				if (ret < 0) {
+					munmap(memblock, mapped);
+					return ret;
+				}
 				left -= todo;
 				memblock_p += todo;
 			} while (left);
@@ -329,7 +331,7 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 
 			ret = kcapi_md_update(handle, tmpbuf, bufsize);
 			if (ret < 0)
-				goto out;
+				return ret;
 		}
 		kcapi_memset_secure(tmpbuf, 0, sizeof(tmpbuf));
 	}
@@ -340,7 +342,7 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 		if (hashlen > (uint32_t)ret) {
 			fprintf(stderr, "Invalid truncated hash size: %lu > %i\n",
 			        (unsigned long)hashlen, ret);
-			goto out;
+			return ret;
 		}
 
 		if (!hashlen)
@@ -376,11 +378,6 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 		fprintf(stderr, "Generation of hash for file %s failed (%d)\n",
 			filename ? filename : "stdin", ret);
 	}
-
-out:
-	if (memblock)
-		munmap(memblock, mapped);
-
 	return ret;
 }
 
