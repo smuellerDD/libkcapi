@@ -1256,8 +1256,11 @@ multipletest_sym() {
 	result=$($cmd 2>/dev/null)
 	if [ $symimpl -eq 9 ]
 	then
-		#block chaining
+		#This test results in an undefined behavior as it is not
+		#defined by the kernel crypto API. Yet, only one of these
+		#two results are allowed to be returned.
 		expected="8b19050f66582cb7f7e4b6c873819b7108afa0eaa7de29bac7d903576b674c32"
+		expected2="8b19050f66582cb7f7e4b6c873819b718b19050f66582cb7f7e4b6c873819b71"
 	elif [ x"$stream" = x"-s" ]
 	then
 		#block chaining
@@ -1267,7 +1270,7 @@ multipletest_sym() {
 		expected="8b19050f66582cb7f7e4b6c873819b71
 8b19050f66582cb7f7e4b6c873819b71"
 	fi
-	if [ x"$expected" = x"$result" ]
+	if [ x"$expected" = x"$result" -o x"$expected2" = x"$result" ]
 	then
 		echo_pass "Symmetric $impl_type cipher $sout multiple test"
 	else
@@ -1472,10 +1475,11 @@ multipletest_sym 1 -v		# sync, splice
 
 # Parallel AIO requests are undefined - it may be the case that such parallel
 # requests are serialized by the driver or that they are processed independently
-# of each other.
-#multipletest_sym 9 X -g		# async, AIO fallback, no splice, one shot sendmsg
-#multipletest_sym 9 -s -g	# async, AIO fallback, no splice, stream sendmsg
-#multipletest_sym 9 -v -g	# async, AIO fallback, splice
+# of each other. Yet, we perform testing to verify that the kernel code
+# gracefully handles that scenario
+multipletest_sym 9 X -g		# async, AIO fallback, no splice, one shot sendmsg
+multipletest_sym 9 -s -g	# async, AIO fallback, no splice, stream sendmsg
+multipletest_sym 9 -v -g	# async, AIO fallback, splice
 
 if $(check_min_kernelver 4 14); then
 	symfunc 9
