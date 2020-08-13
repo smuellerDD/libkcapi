@@ -210,13 +210,15 @@ _kcapi_aead_encrypt_aio_fallback(struct kcapi_handle *handle,
 				 uint32_t iovlen, const uint8_t *iv)
 {
 	uint32_t i;
-	int32_t ret = kcapi_aead_stream_init_enc(handle, iv, NULL, 0);
-
-	if (ret < 0)
-		return ret;
+	int32_t ret = 0;
 
 	for (i = 0; i < iovlen; i++) {
-		int rc = kcapi_aead_stream_update_last(handle, iniov, 1);
+		int rc = kcapi_aead_stream_init_enc(handle, iv, NULL, 0);
+
+		if (rc < 0)
+			return rc;
+
+		rc = kcapi_aead_stream_update_last(handle, iniov, 1);
 		if (rc < 0)
 			return rc;
 
@@ -271,13 +273,15 @@ _kcapi_aead_decrypt_aio_fallback(struct kcapi_handle *handle,
 				 uint32_t iovlen, const uint8_t *iv)
 {
 	uint32_t i;
-	int32_t ret = kcapi_aead_stream_init_dec(handle, iv, NULL, 0);
-
-	if (ret < 0)
-		return ret;
+	int32_t ret = 0;
 
 	for (i = 0; i < iovlen; i++) {
-		int rc = kcapi_aead_stream_update_last(handle, iniov, 1);
+		int rc = kcapi_aead_stream_init_dec(handle, iv, NULL, 0);
+
+		if (rc < 0)
+			return rc;
+
+		rc = kcapi_aead_stream_update_last(handle, iniov, 1);
 		if (rc < 0)
 			return rc;
 

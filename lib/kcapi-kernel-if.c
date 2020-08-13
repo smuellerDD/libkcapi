@@ -439,8 +439,7 @@ int _kcapi_aio_send_iov(struct kcapi_handle *handle, struct iovec *iov,
 		if (0 > ret)
 			return ret;
 	} else {
-		ret = _kcapi_common_send_meta(handle, NULL, 0, enc,
-					      len ? MSG_MORE : 0);
+		ret = _kcapi_common_send_meta(handle, NULL, 0, enc, MSG_MORE);
 		if (0 > ret)
 			return ret;
 		ret = _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
@@ -1246,8 +1245,7 @@ int32_t _kcapi_cipher_crypt(struct kcapi_handle *handle, const uint8_t *in,
 		if (0 > ret)
 			return ret;
 	} else {
-		ret = _kcapi_common_send_meta(handle, NULL, 0, enc,
-					      inlen ? MSG_MORE : 0);
+		ret = _kcapi_common_send_meta(handle, NULL, 0, enc, MSG_MORE);
 		if (0 > ret)
 			return ret;
 		ret = _kcapi_common_vmsplice_chunk(handle, in, inlen, 0);

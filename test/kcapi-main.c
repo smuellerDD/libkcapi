@@ -846,7 +846,7 @@ static int cavs_sym(struct kcapi_cavs *cavs_test, uint32_t loops,
 		goto out;
 	}
 
-	for(i = 0; i < loops; i++) {
+	for (i = 0; i < loops; i++) {
 		_get_time(&begin);
 		if (cavs_test->enc) {
 			ret = kcapi_cipher_encrypt(handle,
@@ -886,7 +886,7 @@ out:
 }
 
 static void mt_sym_writer(struct kcapi_handle *handle, struct iovec *iov,
-			  int forking)
+			  int forking, int last)
 {
 	int ret;
 
@@ -899,7 +899,10 @@ static void mt_sym_writer(struct kcapi_handle *handle, struct iovec *iov,
 			return;
 	}
 
-	ret = kcapi_cipher_stream_update_last(handle, iov, 1);
+	if (last)
+		ret = kcapi_cipher_stream_update_last(handle, iov, 1);
+	else
+		ret = kcapi_cipher_stream_update(handle, iov, 1);
 	if (0 > ret)
 		printf("Sending of data failed\n");
 
@@ -1004,7 +1007,7 @@ static int cavs_sym_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 			iov.iov_len = cavs_test->ctlen;
 		}
 
-		mt_sym_writer(handle_ptr, &iov, forking);
+		mt_sym_writer(handle_ptr, &iov, forking, i == (loops * 2 - 1));
 
 		outiov.iov_base = outbuf_ptr;
 		outiov.iov_len = outbuflen;
@@ -1636,20 +1639,20 @@ static int cavs_aead_stream(struct kcapi_cavs *cavs_test, uint32_t loops,
 	if (ret)
 		goto out;
 
-	if (cavs_test->enc)
-		ret = kcapi_aead_stream_init_enc(handle, newiv, NULL, 0);
-
-	else
-		ret = kcapi_aead_stream_init_dec(handle, newiv, NULL, 0);
-	if (0 > ret) {
-		printf("Initialization of cipher buffer failed\n");
-		goto out;
-	}
-
 	for (i = 0; i < loops; i++) {
 		int errsv = 0;
 
 		memset(outbuf, 0, outbuflen);
+
+		if (cavs_test->enc)
+			ret = kcapi_aead_stream_init_enc(handle, newiv, NULL, 0);
+		else
+			ret = kcapi_aead_stream_init_dec(handle, newiv, NULL, 0);
+		if (0 > ret) {
+			printf("Initialization of cipher buffer failed\n");
+			goto out;
+		}
+
 
 		iov.iov_base = cavs_test->assoc;
 		iov.iov_len = cavs_test->assoclen;
