@@ -1,3 +1,10 @@
+Changes 1.2.1:
+ * fix: MSG_MORE usage: With kernel 5.9, a precise use of MSG_MORE is mandatory
+   to support a stream cipher approach (init -> update -> update -> ... ->
+   final). All but the last update operations must use MSG_MORE, the last
+   update operation must not use MSG_MORE.
+ * add automated test for Linux kernel 5.8 and 5.9
+
 Changes 1.2.0
  * enhancement: kcapi-hasher: add madvise and 64 bit support by Brandur Simonsen
  * fix: fix clang warnding in KDF implementation by Khem Raj
