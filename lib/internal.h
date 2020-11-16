@@ -325,10 +325,17 @@ static inline int io_submit(aio_context_t ctx, long n,  struct iocb **iocb)
     return syscall(__NR_io_submit, ctx, n, iocb);
 }
 
-static inline int io_getevents(aio_context_t ctx, long min, long max,
-            struct io_event *events, struct timespec *timeout)
+static inline int io_getevents(__attribute__((unused)) aio_context_t ctx,
+            __attribute__((unused)) long min,
+            __attribute__((unused)) long max,
+            __attribute__((unused)) struct io_event *events,
+            __attribute__((unused)) struct timespec *timeout)
 {
+#ifdef __NR_io_getevents
     return syscall(__NR_io_getevents, ctx, min, max, events, timeout);
+#else
+    return -ENOSYS;
+#endif
 }
 
 /************************************************************
