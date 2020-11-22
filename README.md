@@ -1,4 +1,5 @@
 libkcapi -- Linux Kernel Crypto API User Space Interface Library [![Build Status](https://travis-ci.org/smuellerDD/libkcapi.svg?branch=master)](https://travis-ci.org/smuellerDD/libkcapi)
+[![Code Quality: Cpp](https://img.shields.io/lgtm/grade/cpp/github/smuellerDD/libkcapi.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/smuellerDD/libkcapi/context:cpp)
 ================================================================
 
 libkcapi allows user-space to access the Linux kernel crypto API.
