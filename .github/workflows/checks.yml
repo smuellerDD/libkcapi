@@ -1,0 +1,65 @@
+name: checks
+on: [push, pull_request]
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                compiler:
+                - { cc: clang, env: '' }
+                - { cc: gcc,   env: '' }
+                -
+                    cc: gcc-8
+                    env: |
+                        NO_32BIT_TEST=1
+                        AR=gcc-ar-8
+                        NM=gcc-nm-8
+                        RANLIB=gcc-ranlib-8
+                -
+                    cc: gcc-9
+                    env: |
+                        NO_32BIT_TEST=1
+                        AR=gcc-ar-9
+                        NM=gcc-nm-9
+                        RANLIB=gcc-ranlib-9
+                -
+                    cc: gcc-10
+                    env: |
+                        NO_32BIT_TEST=1
+                        AR=gcc-ar-10
+                        NM=gcc-nm-10
+                        RANLIB=gcc-ranlib-10
+        steps:
+        - uses: actions/checkout@v2
+        - name: Install dependencies
+          run: |
+            sudo apt-get update -y
+            sudo apt-get install -y \
+                pkg-config \
+                openssl \
+                cppcheck \
+                xmlto \
+                docbook-utils \
+                gcc-multilib \
+                ${{ matrix.compiler.cc }}
+            echo "CC=${{ matrix.compiler.cc }}" >> $GITHUB_ENV
+            echo "${{ matrix.compiler.env }}" >> $GITHUB_ENV
+        - name: Configure build
+          run: |
+            autoreconf -i
+            ./configure \
+                --enable-kcapi-hasher \
+                --enable-kcapi-test \
+                --enable-kcapi-rngapp \
+                --enable-kcapi-encapp \
+                --enable-kcapi-dgstapp \
+                --enable-lib-asym \
+                --enable-lib-kpp
+        - name: Run build
+          run: make -j$(nproc)
+        - name: Run cppcheck
+          run: make cppcheck
+        - name: Run CLang static analysis
+          run: make scan
+        - name: Run tests
+          run: cd test && bash ./test-invocation.sh
