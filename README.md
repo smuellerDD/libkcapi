@@ -1,4 +1,4 @@
-libkcapi -- Linux Kernel Crypto API User Space Interface Library [![Build Status](https://github.com/smuellerDD/libkcapi/workflows/build/badge.svg)](https://github.com/smuellerDD/libkcapi/actions?query=branch%3Amaster)
+libkcapi -- Linux Kernel Crypto API User Space Interface Library [![Build Status](https://github.com/smuellerDD/libkcapi/workflows/checks/badge.svg)](https://github.com/smuellerDD/libkcapi/actions?query=branch%3Amaster)
 [![Code Quality: Cpp](https://img.shields.io/lgtm/grade/cpp/github/smuellerDD/libkcapi.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/smuellerDD/libkcapi/context:cpp)
 ================================================================
 
