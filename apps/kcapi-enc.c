@@ -138,7 +138,7 @@ static int return_data_fd(struct kcapi_handle *handle, struct opt_data *opts,
 {
 	struct iovec outiov;
 	uint32_t off_outsize = outsize + offset;
-	uint8_t *outmem = NULL;
+	uint8_t *outmem;
 	int ret = 0;
 	int generated_bytes = 0;
 	uint8_t *off_ptr;
@@ -216,8 +216,7 @@ static int return_data_fd(struct kcapi_handle *handle, struct opt_data *opts,
 	}
 
 out:
-	if (outmem && outmem != MAP_FAILED)
-		munmap(outmem, outsize);
+	munmap(outmem, outsize);
 	return (ret < 0) ? ret : generated_bytes;
 }
 
