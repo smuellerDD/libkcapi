@@ -114,14 +114,12 @@ static int return_data_stdout(struct kcapi_handle *handle,
 		}
 
 		/* write the data */
-		if ((outlen = fwrite(tmpbufptr, sizeof(char), outlen,
-				     stdout)) != 0) {
-			outsize -= inlen;
-		} else {
+		if (fwrite(tmpbufptr, sizeof(char), outlen, stdout) != outlen) {
 			dolog(KCAPI_LOG_ERR, "Write failed %d", -errno);
 			ret = -errno;
 			goto out;
 		}
+		outsize -= inlen;
 	}
 
 	/*
