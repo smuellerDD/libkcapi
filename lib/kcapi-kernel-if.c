@@ -1387,9 +1387,4 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 void __attribute__ ((constructor)) kcapi_library_init(void)
 {
 	vmsplice_limit = getpagesize() * 16;
-
-	/* Disable the dumping of this process as we handle with keys */
-	if (prctl(PR_SET_DUMPABLE, 0) < 0)
-		kcapi_dolog(KCAPI_LOG_ERR,
-			    "Cannot set prctl(PR_SET_DUMPABLE)");
 }
