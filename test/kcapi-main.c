@@ -380,7 +380,7 @@ static int fuzz_cipher(struct kcapi_cavs *cavs_test, unsigned long flags,
 	}
 
 	for (i = 0; i < sizeof(indata); i++) {
-		unsigned int outlen = sizeof(outdata);
+		unsigned int outlen = i;
 		uint8_t *out = outdata;
 		uint8_t *iv = indata;
 		uint8_t *in = indata;
@@ -474,7 +474,7 @@ static int fuzz_aead(struct kcapi_cavs *cavs_test, unsigned long flags,
 	}
 
 	for (i = 0; i < sizeof(indata); i++) {
-		unsigned int outlen = sizeof(outdata);
+		unsigned int outlen = i;
 		uint8_t *out = outdata;
 		uint8_t *iv = indata;
 		uint8_t *in = indata;
