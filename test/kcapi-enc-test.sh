@@ -253,18 +253,20 @@ test_filein_fileout()
 
 	diff_file $ORIGPT $GENPT "FILEIN / FILEOUT enc test ($keysize bits)"
 
-	# FIXME: error in openssl?
 	local ptsize=$(stat -c %s $ORIGPT)
 	local fullblock=$((ptsize%16))
+	local extra_openssl_opts=""
 
 	if [ $fullblock -eq 0 ]
 	then
-		return
+		# OpenSSL uses PKCS#7 padding which adds an extra pad block in this case
+		# Disable PKCS#7 padding when input length is a multiple of block size
+		extra_openssl_opts="$extra_openssl_opts -nopad"
 	fi
 
 	eval opensslkey=\$OPENSSLKEY${keysize}
-	openssl enc -aes-$keysize-cbc -in $ORIGPT -out $GENCT.openssl -K $opensslkey -iv $IV
-	openssl enc -d -aes-$keysize-cbc -in $GENCT -out $GENPT.openssl -K $opensslkey -iv $IV
+	openssl enc -aes-$keysize-cbc -in $ORIGPT -out $GENCT.openssl -K $opensslkey -iv $IV $extra_openssl_opts
+	openssl enc -d -aes-$keysize-cbc -in $GENCT -out $GENPT.openssl -K $opensslkey -iv $IV $extra_openssl_opts
 
 	diff_file $GENCT $GENCT.openssl "FILEIN / FILEOUT enc test ($keysize bits) (openssl generated CT)"
 	diff_file $GENPT $GENPT.openssl "FILEIN / FILEOUT enc test ($keysize bits) (openssl generated PT)"
