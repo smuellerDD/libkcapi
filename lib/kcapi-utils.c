@@ -71,3 +71,61 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
 
 	return 0;
 }
+
+DSO_PUBLIC
+int kcapi_set_maxsplicesize(struct kcapi_handle *handle, unsigned int size)
+{
+	int ret;
+
+	if (!handle)
+		return -EINVAL;
+
+	ret = fcntl(handle->pipes[0], F_SETPIPE_SZ, size);
+	if (ret < 0)
+		goto err;
+
+	ret = fcntl(handle->pipes[1], F_SETPIPE_SZ, size);
+	if (ret < 0)
+		goto err;
+
+	handle->pipesize = (unsigned int)ret;
+
+	return 0;
+
+err:
+	ret = -errno;
+	if (ret == -EBUSY) {
+		kcapi_dolog(KCAPI_LOG_WARN,
+			    "AF_ALG: setting maximum splice pipe size to %u failed - it would exceed maximum quota",
+			    size);
+	} else {
+		kcapi_dolog(KCAPI_LOG_WARN,
+			    "AF_ALG: setting maximum splice pipe size to %u failed: %s",
+			    size, strerror(ret));
+	}
+	return ret;
+}
+
+DSO_PUBLIC
+int kcapi_get_maxsplicesize(struct kcapi_handle *handle)
+{
+	unsigned int pagesize = (unsigned int)sysconf(_SC_PAGESIZE);
+
+	if (!handle)
+		return -EINVAL;
+
+	/* Both pipe endpoints should have the same pipe size */
+	handle->pipesize = (unsigned int)fcntl(handle->pipes[0], F_GETPIPE_SZ);
+
+	/*
+	 * For vmsplice to allow the maximum number of 16 pages, we need to
+	 * increase the pipe buffer by one more page - it seems the kernel
+	 * uses some parts of the pipe for some house-keeping?!
+	 */
+	if (handle->pipesize > pagesize)
+		handle->pipesize -= pagesize;
+
+	/* TODO: what do we do for pipesize < pagesize? Can that even happen? */
+
+	return ((int)handle->pipesize);
+}

@@ -237,6 +237,8 @@ struct kcapi_handle_tfm {
  * @tfm: kernel crypto API TFM
  * @opfd: FD to open kernel crypto API TFM
  * @pipes: vmplice/splice pipe pair
+ * @pagesize: Page size of the system
+ * @pipesize: Maximum amount of data that the pipe can handle
  * @processed_sg: number of scatter/gather entries sent to the kernel
  * @ciper: Common data for all ciphers
  * @aead: AEAD cipher specific data
@@ -246,6 +248,8 @@ struct kcapi_handle {
 	struct kcapi_handle_tfm *tfm;
 	int pipes[2];
 	int opfd;
+	unsigned int pagesize;
+	unsigned int pipesize;
 	uint32_t processed_sg;
 	struct kcapi_cipher_data cipher;
 	struct kcapi_aead_data aead;

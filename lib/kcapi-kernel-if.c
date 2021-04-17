@@ -263,13 +263,32 @@ int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 	for (i = 0; i < iovlen; i++)
 		inlen += iov[i].iov_len;
 
-	/* kernel processes input data with max size of one page */
-	handle->processed_sg += ((inlen + sysconf(_SC_PAGESIZE) - 1) /
-				 sysconf(_SC_PAGESIZE));
-	if (handle->processed_sg > handle->flags.alg_max_pages || !inlen)
+	/*
+	 * The kernel has the following limits for vmsplice / splice:
+	 *
+	 * 1. At most only 16 pages are allowed to be sent to the kernel -
+	 *    this is a hard limit in the vmsplice system call.
+	 * 2. At most, the entire buffer size must not be larger than the
+	 *    buffer size of the pipe used for the splice. If desired, this
+	 *    buffer size can be enlarged with kcapi_set_maxsplicesize().
+	 *    On the other side, the maximum buffer size can be obtained via
+	 *    kcapi_get_maxsplicesize().
+	 * 3. vmsplice cannot be used for a zero buffer.
+	 *
+	 * If any of the aforementioned conditions is not satisfied, the
+	 * sendmsg() system call is used which copies the data into the
+	 * kernel.
+	 */
+	handle->processed_sg += iovlen;
+	if (handle->processed_sg > handle->flags.alg_max_pages ||
+	    !inlen ||
+	    inlen > handle->pipesize) {
+		kcapi_dolog(KCAPI_LOG_DEBUG,
+			    "AF_ALG: Using fallback of sendmsg instead of splice");
 		return _kcapi_common_send_data(handle, iov, iovlen,
 					       (flags & SPLICE_F_MORE) ?
 					        MSG_MORE : 0);
+	}
 
 	ret = _kcapi_common_accept(handle);
 	if (ret)
@@ -300,8 +319,6 @@ int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 	return ret;
 }
 
-static uint32_t vmsplice_limit;
-
 int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 				     const uint8_t *in, uint32_t inlen,
 				     uint32_t flags)
@@ -326,14 +343,14 @@ int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 		iov.iov_len = inlen;
 
 		/*
-		 * vmsplice will only process 16 pages in one go. sendmsg
-		 * will process much more. Thus, if we have much larger
-		 * requests than 16 pages, the overhead of system calls
-		 * is higher than the memory copy operation. Thus we use
-		 * sendmsg if we have more than 16 pages to process.
+		 * See comment in _kcapi_common_vmsplice_iov for the explanation
+		 * of this check.
 		 */
 		if ((handle->processed_sg++) > handle->flags.alg_max_pages ||
-		    inlen > vmsplice_limit) {
+		    !inlen ||
+		    inlen > handle->pipesize) {
+			kcapi_dolog(KCAPI_LOG_DEBUG,
+				    "AF_ALG: Using fallback of sendmsg instead of splice");
 			ret = _kcapi_common_send_data(handle, &iov, 1, sflags);
 			if (ret < 0)
 				return ret;
@@ -1038,8 +1055,7 @@ static void _kcapi_handle_flags(struct kcapi_handle *handle)
 	handle->flags.ge_v4_9 = _kcapi_kernver_ge(handle, 4, 9, 0);
 
 	/* older interfaces only processed 16 pages in a row */
-	handle->flags.alg_max_pages = _kcapi_kernver_ge(handle, 4, 11, 0) ?
-				      UINT_MAX : ALG_MAX_PAGES;
+	handle->flags.alg_max_pages = ALG_MAX_PAGES;
 }
 
 static int _kcapi_handle_alloc(struct kcapi_handle **caller)
@@ -1053,6 +1069,7 @@ static int _kcapi_handle_alloc(struct kcapi_handle **caller)
 	handle->pipes[0] = -1;
 	handle->pipes[1] = -1;
 	handle->aio.efd = -1;
+	handle->pagesize = (unsigned int)sysconf(_SC_PAGESIZE);
 
 	*caller = handle;
 
@@ -1071,6 +1088,24 @@ static int _kcapi_handle_init_op(struct kcapi_handle *handle, uint32_t flags)
 			    ret);
 		return ret;
 	}
+
+	/*
+	 * For vmsplice to allow the maximum number of 16 pages, we need to
+	 * increase the pipe buffer by one more page - it seems the kernel
+	 * uses some parts of the pipe for some house-keeping?!
+	 */
+	ret = kcapi_set_maxsplicesize(handle,
+				      handle->pagesize * (ALG_MAX_PAGES + 1));
+	if (ret < 0) {
+		kcapi_dolog(KCAPI_LOG_WARN,
+			    "AF_ALG: setting maximum buffer size failed: %d)",
+			    ret);
+		ret = kcapi_get_maxsplicesize(handle);
+		if (ret < 0)
+			return ret;
+
+	}
+	ret = 0;
 	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: pipe syscall passed");
 
 	if (flags & KCAPI_INIT_AIO) {
@@ -1262,7 +1297,7 @@ int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
 				  int access, int enc)
 {
 	int32_t totallen = 0;
-	uint32_t maxprocess = sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES;
+	uint32_t maxprocess = handle->pagesize * ALG_MAX_PAGES;
 	int32_t ret;
 
 	if (outlen > INT_MAX)
@@ -1382,9 +1417,4 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 		}
 	}
 	return processed;
-}
-
-void __attribute__ ((constructor)) kcapi_library_init(void)
-{
-	vmsplice_limit = getpagesize() * 16;
 }

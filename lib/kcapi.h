@@ -1033,10 +1033,6 @@ int32_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
  * where one thread sends data to be processed and one thread picks up data
  * processed by the cipher operation.
  *
- * IMPORTANT NOTE: The kernel will only process
- * sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES at one time. Longer input data cannot
- * be handled by the kernel.
- *
  * WARNING: The memory referenced by @iov is not accessed by the kernel
  * during this call. The memory is first accessed when kcapi_cipher_stream_op()
  * is called. Thus, you MUST make sure that the referenced memory is still
@@ -2642,6 +2638,40 @@ int32_t kcapi_hkdf(const char *hashname,
 		   const uint8_t *salt, uint32_t saltlen,
 		   const uint8_t *info, uint32_t infolen,
 		   uint8_t *dst, uint32_t dlen);
+
+/**
+ * kcapi_set_maxsplicesize - Set maximum buffer size for splice
+ *
+ * @handle: [in] cipher handle allocated by caller.
+ * @size: [in] New maximum buffer size in bytes
+ *
+ * When using vmsplice/splice to avoid copying of data into the kernel,
+ * the kernel enforces a maximum number of bytes which can be spliced.
+ * If larger data is to be processed, sendmsg will be used.
+ *
+ * Using this call, the buffer size can be increased.
+ *
+ * NOTE: Splice uses a pipe pair. Therefore, the maximum number of bytes that
+ * can be stored with the pipe governs the maximum data size to be spliced.
+ * Increasing the pipe buffer size is only allowed up to the maximum
+ * specified with /proc/sys/fs/pipe-max-size.
+ *
+ * @return 0 upon success;
+ *	   a negative errno-style error code if an error occurred
+ */
+int kcapi_set_maxsplicesize(struct kcapi_handle *handle, unsigned int size);
+
+/**
+ * kcapi_get_maxsplicesize - Get maximum buffer size for splice
+ *
+ * @handle: [in] cipher handle allocated by caller.
+ *
+ * The call returns the maximum number of bytes that can be handled
+ * with splice.
+ *
+ * @return Maximum buffer size in bytes
+ */
+int kcapi_get_maxsplicesize(struct kcapi_handle *handle);
 
 #ifdef __cplusplus
 }

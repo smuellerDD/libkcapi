@@ -155,3 +155,8 @@ LIBKCAPI_1.2.0 {
 
 LIBKCAPI_1.2.1 {
 } LIBKCAPI_1.2.0;
+
+LIBKCAPI_1.3.0 {
+	kcapi_get_maxsplicesize;
+	kcapi_set_maxsplicesize;
+} LIBKCAPI_1.2.1;

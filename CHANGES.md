@@ -1,6 +1,8 @@
-Changes 1.2.2:
- * disable io_getevents on systems that do not support it (by Khem Raj)
- * remove prctl PR_SET_DUMPABLE to allow library to be debugged - as the library does not store any sensitive data in data structures it owns, such security precautions may not be necessary considering the benefit of allowing regular debugging
+Changes 1.3.0:
+ * fix: disable io_getevents on systems that do not support it (by Khem Raj)
+ * fix: remove prctl PR_SET_DUMPABLE to allow library to be debugged - as the library does not store any sensitive data in data structures it owns, such security precautions may not be necessary considering the benefit of allowing regular debugging
+ * fix: ensure that sendmsg is always used as fallback when vmsplice cannot be used
+ * enhancement: add kcapi_set_maxsplicesize and kcapi_get_maxsplicesize
 
 Changes 1.2.1:
  * fix: MSG_MORE usage: With kernel 5.9, a precise use of MSG_MORE is mandatory
