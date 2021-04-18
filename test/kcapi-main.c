@@ -666,7 +666,7 @@ static int auxiliary_tests(void)
 		if (iv == 16 && bs == 1 && au == 16) {
 			printf("AEAD obtained information passed\n");
 		} else {
-			printf("AEAD obtained information failed -- sizes: IV %d BS %d AUTH %d\n", iv, bs, au);
+			printf("AEAD obtained information failed -- sizes: IV %u BS %u AUTH %u\n", iv, bs, au);
 			ret++;
 		}
 	}
@@ -682,7 +682,7 @@ static int auxiliary_tests(void)
 		if (iv == 16 && bs == 16) {
 			printf("Symmetric cipher obtained information passed\n");
 		} else {
-			printf("Symmetric cipher obtained information failed --sizes: IV %d BS %d\n", iv, bs);
+			printf("Symmetric cipher obtained information failed --sizes: IV %u BS %u\n", iv, bs);
 			ret++;
 		}
 	}
@@ -697,7 +697,7 @@ static int auxiliary_tests(void)
 		if (ds == 32) {
 			printf("Message digest obtained information passed\n");
 		} else {
-			printf("Message digest obtained information failed -- sizes: digestsize %d\n", ds);
+			printf("Message digest obtained information failed -- sizes: digestsize %u\n", ds);
 			ret++;
 		}
 	}
