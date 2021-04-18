@@ -320,10 +320,9 @@ function run_kat() {
 	result="$1"; shift
 	truncate="$1"; shift
 
-	# The following tests only work on bare metal - within the Hypervisor
-	# tests, a file descriptor device file cannot be created.
+	# The following tests do not work on eudyptula
 	# See below for the offending invocation
-	if dmesg | grep -i Hypervisor | grep -q -i detected
+	if uname -n | grep -q eudyptula
 	then
 		echo_deact "Hasher test deactivated"
 		return
@@ -336,7 +335,7 @@ function run_kat() {
 	echo "${result#0x}  $ANOTHER" >"$CHKFILE"
 
 	# The -k requires a file descriptor which cannot be created in the
-	# Hypervsior test environment
+	# eudyptula Hypervsior test environment
 	run_hasher $hasher -q \
 		-k <(expand_string "$key") -c "$CHKFILE" $truncate_opt
 	if [ $? -ne 0 ]
