@@ -18,6 +18,7 @@
  */
 
 #include "cryptoperf.h"
+#include <limits.h>
 #include <stdlib.h>
 #include <sys/user.h>
 
@@ -34,9 +35,9 @@ static int cp_skcipher_init_test(struct cp_test *test)
 	unsigned char *ivdata = NULL;
 	unsigned int bs;
 	int err;
-	long pagesize = sysconf(_SC_PAGESIZE);
+	size_t pagesize = (size_t)sysconf(_SC_PAGESIZE);
 
-	if (pagesize < 0) {
+	if (pagesize > ULONG_MAX) {
 		printf(DRIVER_NAME": unable to determine the page size\n");
 		return -errno;
 	}
@@ -139,7 +140,7 @@ static void cp_skcipher_fini_test(struct cp_test *test)
 	kcapi_cipher_destroy(test->u.skcipher.handle);
 }
 
-static unsigned int cp_skcipher_enc_test(struct cp_test *test)
+static size_t cp_skcipher_enc_test(struct cp_test *test)
 {
 	struct cp_test_param *params = test->test_params;
 
@@ -161,7 +162,7 @@ static unsigned int cp_skcipher_enc_test(struct cp_test *test)
 	return test->u.skcipher.inputlen;
 }
 
-static unsigned int cp_skcipher_dec_test(struct cp_test *test)
+static size_t cp_skcipher_dec_test(struct cp_test *test)
 {
 	struct cp_test_param *params = test->test_params;
 
@@ -467,7 +468,7 @@ void cp_skcipher_register(struct cp_test **skcipher_test, size_t *entries)
 	     i++, j++) {
 		int enc = 0;
 		for (enc = 0; enc < 2; enc++) {
-			j += enc;
+			j += (size_t)enc;
 			cp_skcipher_testdef[j].enc = enc;
 			cp_skcipher_testdef[j].testname = testcases[i].testname;
 			cp_skcipher_testdef[j].driver_name =

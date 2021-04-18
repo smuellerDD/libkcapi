@@ -180,10 +180,10 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
  * @return number of bytes encrypted upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
-			     const uint8_t *in, uint32_t inlen,
+ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
+			     const uint8_t *in, size_t inlen,
 			     const uint8_t *iv,
-			     uint8_t *out, uint32_t outlen, int access);
+			     uint8_t *out, size_t outlen, int access);
 
 /**
  * kcapi_cipher_encrypt_aio() - encrypt data (asynchronous one shot)
@@ -210,9 +210,9 @@ int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
  * @return number of bytes encrypted upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
+ssize_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
 				 struct iovec *iniov, struct iovec *outiov,
-				 uint32_t iovlen, const uint8_t *iv,
+				 size_t iovlen, const uint8_t *iv,
 				 int access);
 
 /**
@@ -241,10 +241,10 @@ int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
  * @return number of bytes decrypted upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
-			     const uint8_t *in, uint32_t inlen,
+ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
+			     const uint8_t *in, size_t inlen,
 			     const uint8_t *iv,
-			     uint8_t *out, uint32_t outlen, int access);
+			     uint8_t *out, size_t outlen, int access);
 
 /**
  * kcapi_cipher_decrypt_aio() - decrypt data (asynchronous one shot)
@@ -271,9 +271,9 @@ int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
  * @return number of bytes decrypted upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
+ssize_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
 				 struct iovec *iniov, struct iovec *outiov,
-				 uint32_t iovlen, const uint8_t *iv,
+				 size_t iovlen, const uint8_t *iv,
 				 int access);
 
 /**
@@ -305,9 +305,9 @@ int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
+ssize_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
 				     const uint8_t *iv,
-				     struct iovec *iov, uint32_t iovlen);
+				     struct iovec *iov, size_t iovlen);
 /**
  * kcapi_cipher_stream_init_dec() - start a decryption operation (stream)
  *
@@ -337,9 +337,9 @@ int32_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
+ssize_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
 				     const uint8_t *iv,
-				     struct iovec *iov, uint32_t iovlen);
+				     struct iovec *iov, size_t iovlen);
 
 /**
  * kcapi_cipher_stream_update() - send more data for processing (stream)
@@ -378,8 +378,8 @@ int32_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
-				   struct iovec *iov, uint32_t iovlen);
+ssize_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
+				   struct iovec *iov, size_t iovlen);
 
 /**
  * kcapi_cipher_stream_update_last() - send last data for processing (stream)
@@ -409,8 +409,8 @@ int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_cipher_stream_update_last(struct kcapi_handle *handle,
-					struct iovec *iov, uint32_t iovlen);
+ssize_t kcapi_cipher_stream_update_last(struct kcapi_handle *handle,
+					struct iovec *iov, size_t iovlen);
 
 /**
  * kcapi_cipher_stream_op() - obtain processed data (stream)
@@ -446,8 +446,8 @@ int32_t kcapi_cipher_stream_update_last(struct kcapi_handle *handle,
  * @return number of bytes obtained from the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
-			       struct iovec *iov, uint32_t iovlen);
+ssize_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
+			       struct iovec *iov, size_t iovlen);
 
 /**
  * kcapi_cipher_enc_aes_cbc - Convenience function for AES CBC encryption
@@ -480,10 +480,10 @@ int32_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
  * @return number of bytes generated upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_cipher_enc_aes_cbc(const uint8_t *key, uint32_t keylen,
-				 const uint8_t *in, uint32_t inlen,
+ssize_t kcapi_cipher_enc_aes_cbc(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, size_t inlen,
 				 const uint8_t *iv,
-				 uint8_t *out, uint32_t outlen);
+				 uint8_t *out, size_t outlen);
 
 /**
  * kcapi_cipher_dec_aes_cbc - Convenience function for AES CBC decryption
@@ -516,10 +516,10 @@ int32_t kcapi_cipher_enc_aes_cbc(const uint8_t *key, uint32_t keylen,
  * @return number of bytes generated upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_cipher_dec_aes_cbc(const uint8_t *key, uint32_t keylen,
-				 const uint8_t *in, uint32_t inlen,
+ssize_t kcapi_cipher_dec_aes_cbc(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, size_t inlen,
 				 const uint8_t *iv,
-				 uint8_t *out, uint32_t outlen);
+				 uint8_t *out, size_t outlen);
 
 /**
  * kcapi_cipher_enc_aes_ctr - Convenience function for AES CTR encryption
@@ -550,10 +550,10 @@ int32_t kcapi_cipher_dec_aes_cbc(const uint8_t *key, uint32_t keylen,
  * @return number of bytes generated upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_cipher_enc_aes_ctr(const uint8_t *key, uint32_t keylen,
-				 const uint8_t *in, uint32_t inlen,
+ssize_t kcapi_cipher_enc_aes_ctr(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, size_t inlen,
 				 const uint8_t *ctr,
-				 uint8_t *out, uint32_t outlen);
+				 uint8_t *out, size_t outlen);
 
 /**
  * kcapi_cipher_dec_aes_ctr - Convenience function for AES CTR decryption
@@ -584,10 +584,10 @@ int32_t kcapi_cipher_enc_aes_ctr(const uint8_t *key, uint32_t keylen,
  * @return number of bytes generated upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_cipher_dec_aes_ctr(const uint8_t *key, uint32_t keylen,
-				 const uint8_t *in, uint32_t inlen,
+ssize_t kcapi_cipher_dec_aes_ctr(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, size_t inlen,
 				 const uint8_t *ctr,
-				 uint8_t *out, uint32_t outlen);
+				 uint8_t *out, size_t outlen);
 
 /**
  * kcapi_cipher_ivsize() - return size of IV required for cipher
@@ -692,7 +692,7 @@ int kcapi_aead_settaglen(struct kcapi_handle *handle, uint32_t taglen);
  * data size and may return an error during initialization if the
  * authentication size is not considered appropriate.
  */
-void kcapi_aead_setassoclen(struct kcapi_handle *handle, uint32_t assoclen);
+void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen);
 
 /**
  * kcapi_aead_encrypt() - synchronously encrypt AEAD data (one shot)
@@ -732,10 +732,10 @@ void kcapi_aead_setassoclen(struct kcapi_handle *handle, uint32_t assoclen);
  * @return number of bytes encrypted upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
-			   const uint8_t *in, uint32_t inlen,
+ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
+			   const uint8_t *in, size_t inlen,
 			   const uint8_t *iv,
-			   uint8_t *out, uint32_t outlen,
+			   uint8_t *out, size_t outlen,
 			   int access);
 
 /**
@@ -774,8 +774,8 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
  * @return number of bytes encrypted upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
-			       struct iovec *outiov, uint32_t iovlen,
+ssize_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
+			       struct iovec *outiov, size_t iovlen,
 			       const uint8_t *iv, int access);
 
 /**
@@ -804,10 +804,10 @@ int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
  * ciphertext.
  */
 void kcapi_aead_getdata_input(struct kcapi_handle *handle,
-			      uint8_t *encdata, uint32_t encdatalen, int enc,
-			      uint8_t **aad, uint32_t *aadlen,
-			      uint8_t **data, uint32_t *datalen,
-			      uint8_t **tag, uint32_t *taglen);
+			      uint8_t *encdata, size_t encdatalen, int enc,
+			      uint8_t **aad, size_t *aadlen,
+			      uint8_t **data, size_t *datalen,
+			      uint8_t **tag, size_t *taglen);
 
 /**
  * kcapi_aead_getdata_output() - get the pointers into output buffer
@@ -835,10 +835,10 @@ void kcapi_aead_getdata_input(struct kcapi_handle *handle,
  * ciphertext.
  */
 void kcapi_aead_getdata_output(struct kcapi_handle *handle,
-			       uint8_t *encdata, uint32_t encdatalen, int enc,
-			       uint8_t **aad, uint32_t *aadlen,
-			       uint8_t **data, uint32_t *datalen,
-			       uint8_t **tag, uint32_t *taglen);
+			       uint8_t *encdata, size_t encdatalen, int enc,
+			       uint8_t **aad, size_t *aadlen,
+			       uint8_t **data, size_t *datalen,
+			       uint8_t **tag, size_t *taglen);
 
 /**
  * kcapi_aead_decrypt() - synchronously decrypt AEAD data (one shot)
@@ -879,10 +879,10 @@ void kcapi_aead_getdata_output(struct kcapi_handle *handle,
  * @return number of bytes decrypted upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
-			   const uint8_t *in, uint32_t inlen,
+ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
+			   const uint8_t *in, size_t inlen,
 			   const uint8_t *iv,
-			   uint8_t *out, uint32_t outlen, int access);
+			   uint8_t *out, size_t outlen, int access);
 
 /**
  * kcapi_aead_decrypt_aio() - asynchronously decrypt AEAD data (one shot)
@@ -921,8 +921,8 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
  * @return number of bytes encrypted upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
-			       struct iovec *outiov, uint32_t iovlen,
+ssize_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
+			       struct iovec *outiov, size_t iovlen,
 			       const uint8_t *iv, int access);
 
 /**
@@ -962,9 +962,9 @@ int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
+ssize_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
 				   const uint8_t *iv,
-				   struct iovec *iov, uint32_t iovlen);
+				   struct iovec *iov, size_t iovlen);
 
 /**
  * kcapi_aead_stream_init_dec() - start a decryption operation (stream)
@@ -1002,9 +1002,9 @@ int32_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
+ssize_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
 				   const uint8_t *iv,
-				   struct iovec *iov, uint32_t iovlen);
+				   struct iovec *iov, size_t iovlen);
 
 /**
  * kcapi_aead_stream_update() - send more data for processing (stream)
@@ -1041,8 +1041,8 @@ int32_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_aead_stream_update(struct kcapi_handle *handle,
-				 struct iovec *iov, uint32_t iovlen);
+ssize_t kcapi_aead_stream_update(struct kcapi_handle *handle,
+				 struct iovec *iov, size_t iovlen);
 
 /**
  * kcapi_aead_stream_update_last() - send last data for processing (stream)
@@ -1067,8 +1067,8 @@ int32_t kcapi_aead_stream_update(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
-				      struct iovec *iov, uint32_t iovlen);
+ssize_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
+				      struct iovec *iov, size_t iovlen);
 
 /**
  * kcapi_aead_stream_op() - obtain processed data (stream)
@@ -1089,8 +1089,8 @@ int32_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
  * @return number of bytes obtained from the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_aead_stream_op(struct kcapi_handle *handle,
-			     struct iovec *iov, uint32_t iovlen);
+ssize_t kcapi_aead_stream_op(struct kcapi_handle *handle,
+			     struct iovec *iov, size_t iovlen);
 
 /**
  * kcapi_aead_ivsize() - return size of IV required for cipher
@@ -1136,9 +1136,8 @@ uint32_t kcapi_aead_authsize(struct kcapi_handle *handle);
  *
  * @return minimum size of input data length in bytes
  */
-uint32_t kcapi_aead_inbuflen_enc(struct kcapi_handle *handle,
-				 uint32_t inlen, uint32_t assoclen,
-				 uint32_t taglen);
+size_t kcapi_aead_inbuflen_enc(struct kcapi_handle *handle,
+			       size_t inlen, size_t assoclen, size_t taglen);
 
 /**
  * kcapi_aead_inbuflen_dec() - return minimum decryption input buffer length
@@ -1150,9 +1149,8 @@ uint32_t kcapi_aead_inbuflen_enc(struct kcapi_handle *handle,
  *
  * @return minimum size of output data length in bytes
  */
-uint32_t kcapi_aead_inbuflen_dec(struct kcapi_handle *handle,
-				 uint32_t inlen, uint32_t assoclen,
-				 uint32_t taglen);
+size_t kcapi_aead_inbuflen_dec(struct kcapi_handle *handle,
+			       size_t inlen, size_t assoclen, size_t taglen);
 
 /**
  * kcapi_aead_outbuflen_enc() - return minimum encryption output buffer length
@@ -1164,9 +1162,8 @@ uint32_t kcapi_aead_inbuflen_dec(struct kcapi_handle *handle,
  *
  * @return minimum size of output data length in bytes
  */
-uint32_t kcapi_aead_outbuflen_enc(struct kcapi_handle *handle,
-				  uint32_t inlen, uint32_t assoclen,
-				  uint32_t taglen);
+size_t kcapi_aead_outbuflen_enc(struct kcapi_handle *handle,
+				size_t inlen, size_t assoclen, size_t taglen);
 
 /**
  * kcapi_aead_outbuflen_dec() - return minimum decryption output buffer length
@@ -1178,9 +1175,8 @@ uint32_t kcapi_aead_outbuflen_enc(struct kcapi_handle *handle,
  *
  * @return minimum size of output data length in bytes
  */
-uint32_t kcapi_aead_outbuflen_dec(struct kcapi_handle *handle,
-				  uint32_t inlen, uint32_t assoclen,
-				  uint32_t taglen);
+size_t kcapi_aead_outbuflen_dec(struct kcapi_handle *handle,
+				size_t inlen, size_t assoclen, size_t taglen);
 
 /**
  * kcapi_aead_ccm_nonce_to_iv() - convert CCM nonce into IV
@@ -1266,8 +1262,8 @@ int kcapi_md_setkey(struct kcapi_handle *handle,
  * @return 0 upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_md_update(struct kcapi_handle *handle,
-			const uint8_t *buffer, uint32_t len);
+ssize_t kcapi_md_update(struct kcapi_handle *handle,
+			const uint8_t *buffer, size_t len);
 
 /**
  * kcapi_md_final() - message digest finalization function (stream)
@@ -1281,8 +1277,8 @@ int32_t kcapi_md_update(struct kcapi_handle *handle,
  * 	    -ENOMEM - buffer is too small for the complete message digest,
  * 	    the buffer is filled with the truncated message digest
  */
-int32_t kcapi_md_final(struct kcapi_handle *handle,
-		       uint8_t *buffer, uint32_t len);
+ssize_t kcapi_md_final(struct kcapi_handle *handle,
+		       uint8_t *buffer, size_t len);
 
 /**
  * kcapi_md_digest() - calculate message digest on buffer (one-shot)
@@ -1307,9 +1303,9 @@ int32_t kcapi_md_final(struct kcapi_handle *handle,
  * 	    -ENOMEM - buffer is too small for the complete message digest,
  * 	    the buffer is filled with the truncated message digest
  */
-int32_t kcapi_md_digest(struct kcapi_handle *handle,
-		       const uint8_t *in, uint32_t inlen,
-		       uint8_t *out, uint32_t outlen);
+ssize_t kcapi_md_digest(struct kcapi_handle *handle,
+		       const uint8_t *in, size_t inlen,
+		       uint8_t *out, size_t outlen);
 
 /**
  * kcapi_md_sha1 - SHA-1 message digest on one buffer
@@ -1328,8 +1324,8 @@ int32_t kcapi_md_digest(struct kcapi_handle *handle,
  * 	    -ENOMEM - buffer is too small for the complete message digest,
  * 	    the buffer is filled with the truncated message digest
  */
-int32_t kcapi_md_sha1(const uint8_t *in, uint32_t inlen,
-		      uint8_t *out, uint32_t outlen);
+ssize_t kcapi_md_sha1(const uint8_t *in, size_t inlen,
+		      uint8_t *out, size_t outlen);
 
 /**
  * kcapi_md_sha224 - SHA-224 message digest on one buffer
@@ -1348,8 +1344,8 @@ int32_t kcapi_md_sha1(const uint8_t *in, uint32_t inlen,
  * 	    -ENOMEM - buffer is too small for the complete message digest,
  * 	    the buffer is filled with the truncated message digest
  */
-int32_t kcapi_md_sha224(const uint8_t *in, uint32_t inlen,
-			uint8_t *out, uint32_t outlen);
+ssize_t kcapi_md_sha224(const uint8_t *in, size_t inlen,
+			uint8_t *out, size_t outlen);
 
 /**
  * kcapi_md_sha256 - SHA-256 message digest on one buffer
@@ -1368,8 +1364,8 @@ int32_t kcapi_md_sha224(const uint8_t *in, uint32_t inlen,
  * 	    -ENOMEM - buffer is too small for the complete message digest,
  * 	    the buffer is filled with the truncated message digest
  */
-int32_t kcapi_md_sha256(const uint8_t *in, uint32_t inlen,
-			uint8_t *out, uint32_t outlen);
+ssize_t kcapi_md_sha256(const uint8_t *in, size_t inlen,
+			uint8_t *out, size_t outlen);
 
 /**
  * kcapi_md_sha384 - SHA-384 message digest on one buffer
@@ -1388,8 +1384,8 @@ int32_t kcapi_md_sha256(const uint8_t *in, uint32_t inlen,
  * 	    -ENOMEM - buffer is too small for the complete message digest,
  * 	    the buffer is filled with the truncated message digest
  */
-int32_t kcapi_md_sha384(const uint8_t *in, uint32_t inlen,
-			uint8_t *out, uint32_t outlen);
+ssize_t kcapi_md_sha384(const uint8_t *in, size_t inlen,
+			uint8_t *out, size_t outlen);
 
 /**
  * kcapi_md_sha512 - SHA-512 message digest on one buffer
@@ -1408,8 +1404,8 @@ int32_t kcapi_md_sha384(const uint8_t *in, uint32_t inlen,
  * 	    -ENOMEM - buffer is too small for the complete message digest,
  * 	    the buffer is filled with the truncated message digest
  */
-int32_t kcapi_md_sha512(const uint8_t *in, uint32_t inlen,
-			uint8_t *out, uint32_t outlen);
+ssize_t kcapi_md_sha512(const uint8_t *in, size_t inlen,
+			uint8_t *out, size_t outlen);
 
 /**
  * kcapi_md_hmac_sha1 - HMAC SHA-1 keyed message digest on one buffer
@@ -1431,9 +1427,9 @@ int32_t kcapi_md_sha512(const uint8_t *in, uint32_t inlen,
  * 	    -ENOMEM - buffer is too small for the complete message digest,
  * 	    the buffer is filled with the truncated message digest
  */
-int32_t kcapi_md_hmac_sha1(const uint8_t *key, uint32_t keylen,
-			   const uint8_t *in, uint32_t inlen,
-			   uint8_t *out, uint32_t outlen);
+ssize_t kcapi_md_hmac_sha1(const uint8_t *key, uint32_t keylen,
+			   const uint8_t *in, size_t inlen,
+			   uint8_t *out, size_t outlen);
 
 /**
  * kcapi_md_hmac_sha224 - HMAC SHA-224 keyed message digest on one buffer
@@ -1455,9 +1451,9 @@ int32_t kcapi_md_hmac_sha1(const uint8_t *key, uint32_t keylen,
  * 	    -ENOMEM - buffer is too small for the complete message digest,
  * 	    the buffer is filled with the truncated message digest
  */
-int32_t kcapi_md_hmac_sha224(const uint8_t *key, uint32_t keylen,
-			     const uint8_t *in, uint32_t inlen,
-			     uint8_t *out, uint32_t outlen);
+ssize_t kcapi_md_hmac_sha224(const uint8_t *key, uint32_t keylen,
+			     const uint8_t *in, size_t inlen,
+			     uint8_t *out, size_t outlen);
 
 /**
  * kcapi_md_hmac_sha256 - HMAC SHA-256 keyed message digest on one buffer
@@ -1479,9 +1475,9 @@ int32_t kcapi_md_hmac_sha224(const uint8_t *key, uint32_t keylen,
  * 	    -ENOMEM - buffer is too small for the complete message digest,
  * 	    the buffer is filled with the truncated message digest
  */
-int32_t kcapi_md_hmac_sha256(const uint8_t *key, uint32_t keylen,
-			     const uint8_t *in, uint32_t inlen,
-			     uint8_t *out, uint32_t outlen);
+ssize_t kcapi_md_hmac_sha256(const uint8_t *key, uint32_t keylen,
+			     const uint8_t *in, size_t inlen,
+			     uint8_t *out, size_t outlen);
 
 /**
  * kcapi_md_hmac_sha384 - HMAC SHA-384 keyed message digest on one buffer
@@ -1503,9 +1499,9 @@ int32_t kcapi_md_hmac_sha256(const uint8_t *key, uint32_t keylen,
  * 	    -ENOMEM - buffer is too small for the complete message digest,
  * 	    the buffer is filled with the truncated message digest
  */
-int32_t kcapi_md_hmac_sha384(const uint8_t *key, uint32_t keylen,
-			     const uint8_t *in, uint32_t inlen,
-			     uint8_t *out, uint32_t outlen);
+ssize_t kcapi_md_hmac_sha384(const uint8_t *key, uint32_t keylen,
+			     const uint8_t *in, size_t inlen,
+			     uint8_t *out, size_t outlen);
 
 /**
  * kcapi_md_hmac_sha512 - HMAC SHA-512 keyed message digest on one buffer
@@ -1527,9 +1523,9 @@ int32_t kcapi_md_hmac_sha384(const uint8_t *key, uint32_t keylen,
  * 	    -ENOMEM - buffer is too small for the complete message digest,
  * 	    the buffer is filled with the truncated message digest
  */
-int32_t kcapi_md_hmac_sha512(const uint8_t *key, uint32_t keylen,
-			     const uint8_t *in, uint32_t inlen,
-			     uint8_t *out, uint32_t outlen);
+ssize_t kcapi_md_hmac_sha512(const uint8_t *key, uint32_t keylen,
+			     const uint8_t *in, size_t inlen,
+			     uint8_t *out, size_t outlen);
 
 /**
  * kcapi_md_digestsize() - return the size of the message digest
@@ -1621,8 +1617,8 @@ int kcapi_rng_seed(struct kcapi_handle *handle, uint8_t *seed,
  * @return size of random number generated upon success;
  *	   -EIO - data cannot be obtained
  */
-int32_t kcapi_rng_generate(struct kcapi_handle *handle,
-			   uint8_t *buffer, uint32_t len);
+ssize_t kcapi_rng_generate(struct kcapi_handle *handle,
+			   uint8_t *buffer, size_t len);
 
 /**
  * kcapi_rng_get_bytes - Convenience function to generate random bytes
@@ -1636,7 +1632,7 @@ int32_t kcapi_rng_generate(struct kcapi_handle *handle,
  * @return size of random number generated upon success;
  *	   -EIO - data cannot be obtained
  */
-int32_t kcapi_rng_get_bytes(uint8_t *buffer, uint32_t outlen);
+ssize_t kcapi_rng_get_bytes(uint8_t *buffer, size_t outlen);
 
 /**
  * kcapi_rng_seedsize() - return required seed size of DRNG
@@ -1729,7 +1725,7 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
  *
  * The parameters, he logic and the return code is identical to memset(3).
  */
-void kcapi_memset_secure(void *s, int c, uint32_t n);
+void kcapi_memset_secure(void *s, int c, size_t n);
 
 /**
  * DOC: Asymmetric Cipher API
@@ -1853,9 +1849,9 @@ int kcapi_akcipher_setpubkey(struct kcapi_handle *handle,
  * @return number of bytes returned by the encryption operation upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
-			       const uint8_t *in, uint32_t inlen,
-			       uint8_t *out, uint32_t outlen, int access);
+ssize_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
+			       const uint8_t *in, size_t inlen,
+			       uint8_t *out, size_t outlen, int access);
 
 /**
  * kcapi_akcipher_encrypt_aio() - encrypt data (asynchronous one shot)
@@ -1879,9 +1875,9 @@ int32_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
  * @return number of bytes encrypted upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_akcipher_encrypt_aio(struct kcapi_handle *handle,
+ssize_t kcapi_akcipher_encrypt_aio(struct kcapi_handle *handle,
 				   struct iovec *iniov, struct iovec *outiov,
-				   uint32_t iovlen, int access);
+				   size_t iovlen, int access);
 
 /**
  * kcapi_akcipher_decrypt() - decrypt data
@@ -1909,9 +1905,9 @@ int32_t kcapi_akcipher_encrypt_aio(struct kcapi_handle *handle,
  * @return number of bytes returned by the decryption operation upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
-			       const uint8_t *in, uint32_t inlen,
-			       uint8_t *out, uint32_t outlen, int access);
+ssize_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
+			       const uint8_t *in, size_t inlen,
+			       uint8_t *out, size_t outlen, int access);
 
 /**
  * kcapi_akcipher_decrypt_aio() - decrypt data (asynchronous one shot)
@@ -1935,9 +1931,9 @@ int32_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
  * @return number of bytes decrypted upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_akcipher_decrypt_aio(struct kcapi_handle *handle,
+ssize_t kcapi_akcipher_decrypt_aio(struct kcapi_handle *handle,
 				   struct iovec *iniov, struct iovec *outiov,
-				   uint32_t iovlen, int access);
+				   size_t iovlen, int access);
 
 /**
  * kcapi_akcipher_sign() - signature generation
@@ -1965,9 +1961,9 @@ int32_t kcapi_akcipher_decrypt_aio(struct kcapi_handle *handle,
  * @return number of bytes returned by the signature gen operation upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_akcipher_sign(struct kcapi_handle *handle,
-			    const uint8_t *in, uint32_t inlen,
-			    uint8_t *out, uint32_t outlen, int access);
+ssize_t kcapi_akcipher_sign(struct kcapi_handle *handle,
+			    const uint8_t *in, size_t inlen,
+			    uint8_t *out, size_t outlen, int access);
 
 /**
  * kcapi_akcipher_sign_aio() - sign data (asynchronous one shot)
@@ -1991,9 +1987,9 @@ int32_t kcapi_akcipher_sign(struct kcapi_handle *handle,
  * @return number of bytes signed upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_akcipher_sign_aio(struct kcapi_handle *handle,
+ssize_t kcapi_akcipher_sign_aio(struct kcapi_handle *handle,
 				struct iovec *iniov, struct iovec *outiov,
-				uint32_t iovlen, int access);
+				size_t iovlen, int access);
 
 /**
  * kcapi_akcipher_verify() - signature verification
@@ -2025,9 +2021,9 @@ int32_t kcapi_akcipher_sign_aio(struct kcapi_handle *handle,
  * @return number of bytes returned by the signature ver operation upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_akcipher_verify(struct kcapi_handle *handle,
-			      const uint8_t *in, uint32_t inlen,
-			      uint8_t *out, uint32_t outlen, int access);
+ssize_t kcapi_akcipher_verify(struct kcapi_handle *handle,
+			      const uint8_t *in, size_t inlen,
+			      uint8_t *out, size_t outlen, int access);
 
 /**
  * kcapi_akcipher_verify_aio() - verify data (asynchronous one shot)
@@ -2051,9 +2047,9 @@ int32_t kcapi_akcipher_verify(struct kcapi_handle *handle,
  * @return number of bytes verify upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_akcipher_verify_aio(struct kcapi_handle *handle,
+ssize_t kcapi_akcipher_verify_aio(struct kcapi_handle *handle,
 				  struct iovec *iniov, struct iovec *outiov,
-				  uint32_t iovlen, int access);
+				  size_t iovlen, int access);
 
 /**
  * kcapi_akcipher_stream_init_enc() - start an encryption operation (stream)
@@ -2081,8 +2077,8 @@ int32_t kcapi_akcipher_verify_aio(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_akcipher_stream_init_enc(struct kcapi_handle *handle,
-				       struct iovec *iov, uint32_t iovlen);
+ssize_t kcapi_akcipher_stream_init_enc(struct kcapi_handle *handle,
+				       struct iovec *iov, size_t iovlen);
 
 /**
  * kcapi_akcipher_stream_init_dec() - start an decryption operation (stream)
@@ -2109,8 +2105,8 @@ int32_t kcapi_akcipher_stream_init_enc(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_akcipher_stream_init_dec(struct kcapi_handle *handle,
-				       struct iovec *iov, uint32_t iovlen);
+ssize_t kcapi_akcipher_stream_init_dec(struct kcapi_handle *handle,
+				       struct iovec *iov, size_t iovlen);
 
 /**
  * kcapi_akcipher_stream_init_sgn() - start an signing operation (stream)
@@ -2138,8 +2134,8 @@ int32_t kcapi_akcipher_stream_init_dec(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_akcipher_stream_init_sgn(struct kcapi_handle *handle,
-				       struct iovec *iov, uint32_t iovlen);
+ssize_t kcapi_akcipher_stream_init_sgn(struct kcapi_handle *handle,
+				       struct iovec *iov, size_t iovlen);
 
 /**
  * kcapi_akcipher_stream_init_vfy() - start an signature verification operation
@@ -2168,8 +2164,8 @@ int32_t kcapi_akcipher_stream_init_sgn(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_akcipher_stream_init_vfy(struct kcapi_handle *handle,
-				       struct iovec *iov, uint32_t iovlen);
+ssize_t kcapi_akcipher_stream_init_vfy(struct kcapi_handle *handle,
+				       struct iovec *iov, size_t iovlen);
 
 
 /**
@@ -2199,8 +2195,8 @@ int32_t kcapi_akcipher_stream_init_vfy(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
-				     struct iovec *iov, uint32_t iovlen);
+ssize_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
+				     struct iovec *iov, size_t iovlen);
 
 /**
  * kcapi_akcipher_stream_update_last() - send last data for processing (stream)
@@ -2228,8 +2224,8 @@ int32_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
  * @return number of bytes sent to the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
-					  struct iovec *iov, uint32_t iovlen);
+ssize_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
+					  struct iovec *iov, size_t iovlen);
 
 
 /**
@@ -2254,8 +2250,8 @@ int32_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
  * @return number of bytes obtained from the kernel upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
-			         struct iovec *iov, uint32_t iovlen);
+ssize_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
+			         struct iovec *iov, size_t iovlen);
 
 /**
  * DOC: Key-Agreement Protocol Primitives
@@ -2398,8 +2394,8 @@ int kcapi_kpp_setkey(struct kcapi_handle *handle,
  * @return number of bytes returned by the key generation operation upon
  *	   success; a negative errno-style error code if an error occurred
  */
-int32_t kcapi_kpp_keygen(struct kcapi_handle *handle,
-			 uint8_t *pubkey, uint32_t pubkeylen, int access);
+ssize_t kcapi_kpp_keygen(struct kcapi_handle *handle,
+			 uint8_t *pubkey, size_t pubkeylen, int access);
 
 /**
  * kcapi_kpp_ssgen - generate a shared secret
@@ -2417,9 +2413,9 @@ int32_t kcapi_kpp_keygen(struct kcapi_handle *handle,
  * @return number of bytes returned by the shared secret generation operation
  *	   upon success; a negative errno-style error code if an error occurred
  */
-int32_t kcapi_kpp_ssgen(struct kcapi_handle *handle,
-			const uint8_t *pubkey, uint32_t pubkeylen,
-			uint8_t *ss, uint32_t sslen, int access);
+ssize_t kcapi_kpp_ssgen(struct kcapi_handle *handle,
+			const uint8_t *pubkey, size_t pubkeylen,
+			uint8_t *ss, size_t sslen, int access);
 
 /**
  * kcapi_kpp_keygen_aio() - generate a public key (asynchronous one shot)
@@ -2442,8 +2438,8 @@ int32_t kcapi_kpp_ssgen(struct kcapi_handle *handle,
  * @return number of bytes verify upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_kpp_keygen_aio(struct kcapi_handle *handle, struct iovec *outiov,
-			     uint32_t iovlen, int access);
+ssize_t kcapi_kpp_keygen_aio(struct kcapi_handle *handle, struct iovec *outiov,
+			     size_t iovlen, int access);
 
 /**
  * kcapi_kpp_ssgen_aio() - generate a shared secret (asynchronous one shot)
@@ -2468,9 +2464,9 @@ int32_t kcapi_kpp_keygen_aio(struct kcapi_handle *handle, struct iovec *outiov,
  * @return number of bytes verify upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_kpp_ssgen_aio(struct kcapi_handle *handle,
+ssize_t kcapi_kpp_ssgen_aio(struct kcapi_handle *handle,
 			    struct iovec *iniov, struct iovec *outiov,
-			    uint32_t iovlen, int access);
+			    size_t iovlen, int access);
 
 /**
  * DOC: Key Derivation Functions
@@ -2504,9 +2500,9 @@ int32_t kcapi_kpp_ssgen_aio(struct kcapi_handle *handle,
  * @return 0 upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
-		      const uint8_t *src, uint32_t slen,
-		      uint8_t *dst, uint32_t dlen);
+ssize_t kcapi_kdf_dpi(struct kcapi_handle *handle,
+		      const uint8_t *src, size_t slen,
+		      uint8_t *dst, size_t dlen);
 
 /**
  * kcapi_kdf_fb() - Feedback Mode Key Derivation Function
@@ -2534,9 +2530,9 @@ int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
  * @return 0 upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_kdf_fb(struct kcapi_handle *handle,
-		     const uint8_t *src, uint32_t slen,
-		     uint8_t *dst, uint32_t dlen);
+ssize_t kcapi_kdf_fb(struct kcapi_handle *handle,
+		     const uint8_t *src, size_t slen,
+		     uint8_t *dst, size_t dlen);
 
 /**
  * kcapi_kdf_ctr() - Counter Mode Key Derivation Function
@@ -2567,9 +2563,9 @@ int32_t kcapi_kdf_fb(struct kcapi_handle *handle,
  * @return 0 upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
-		      const uint8_t *src, uint32_t slen,
-		      uint8_t *dst, uint32_t dlen);
+ssize_t kcapi_kdf_ctr(struct kcapi_handle *handle,
+		      const uint8_t *src, size_t slen,
+		      uint8_t *dst, size_t dlen);
 
 /**
  * kcapi_pbkdf() - Password-based Key Derivation Function
@@ -2588,11 +2584,11 @@ int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
  * @return 0 upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_pbkdf(const char *hashname,
+ssize_t kcapi_pbkdf(const char *hashname,
 		    const uint8_t *pw, uint32_t pwlen,
-		    const uint8_t *salt, uint32_t saltlen,
+		    const uint8_t *salt, size_t saltlen,
 		    uint32_t count,
-		    uint8_t *key, uint32_t keylen);
+		    uint8_t *key, size_t keylen);
 
 /**
  * kcapi_pbkdf_iteration_count() - Calculate numbers of iterations for a PBKDF
@@ -2633,11 +2629,11 @@ uint32_t kcapi_pbkdf_iteration_count(const char *hashname, uint64_t timeshresh);
  * @return 0 upon success;
  *	   a negative errno-style error code if an error occurred
  */
-int32_t kcapi_hkdf(const char *hashname,
-		   const uint8_t *ikm, uint32_t ikmlen,
+ssize_t kcapi_hkdf(const char *hashname,
+		   const uint8_t *ikm, size_t ikmlen,
 		   const uint8_t *salt, uint32_t saltlen,
-		   const uint8_t *info, uint32_t infolen,
-		   uint8_t *dst, uint32_t dlen);
+		   const uint8_t *info, size_t infolen,
+		   uint8_t *dst, size_t dlen);
 
 /**
  * kcapi_set_maxsplicesize - Set maximum buffer size for splice

@@ -50,7 +50,7 @@ struct opt_data {
 static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 {
 	int infd = -1, outfd = -1;
-	int ret = 0;
+	ssize_t ret = 0;
 	struct stat insb, outsb;
 	uint8_t *inmem = NULL;
 	uint8_t *outmem = NULL;
@@ -95,7 +95,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		outfd = STDOUT_FD;
 
 	if (infd == STDIN_FD) {
-		uint32_t tmpbuflen;
+		size_t tmpbuflen;
 
 		while ((tmpbuflen =
 		        fread(tmpbuf, sizeof(uint8_t), TMPBUFLEN, stdin))) {
@@ -107,7 +107,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 	} else if (insb.st_size) {
 		uint8_t *inmem_p;
 
-		inmem = mmap(NULL, insb.st_size, PROT_READ, MAP_SHARED,
+		inmem = mmap(NULL, (size_t)insb.st_size, PROT_READ, MAP_SHARED,
 			     infd, 0);
 		if (inmem == MAP_FAILED) {
 			dolog(KCAPI_LOG_ERR, "Use of mmap for infd failed");
@@ -117,13 +117,13 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 
 		inmem_p = inmem;
 		while (insb.st_size) {
-			uint32_t todo = (insb.st_size > INT_MAX) ? INT_MAX :
-			       					   insb.st_size;
+			size_t todo = (insb.st_size > INT_MAX) ? INT_MAX :
+							(size_t)insb.st_size;
 			ret = kcapi_md_update(handle, inmem_p, todo);
 			if (ret < 0)
 				goto out;
 			inmem_p += todo;
-			insb.st_size -= todo;
+			insb.st_size -= (off_t)todo;
 		}
 	}
 
@@ -201,14 +201,14 @@ out:
 		munmap(outmem, outlen);
 
 	if (inmem && inmem != MAP_FAILED)
-		munmap(inmem, insb.st_size);
+		munmap(inmem, (size_t)insb.st_size);
 
 	if (infd >= 0 && infd != STDIN_FD)
 		close(infd);
 	if (outfd >= 0 && outfd != STDOUT_FD)
 		close(outfd);
 
-	return (ret < 0) ? ret : (int32_t)kcapi_md_digestsize(handle);
+	return (ret < 0) ? (int)ret : (int)kcapi_md_digestsize(handle);
 }
 
 static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
@@ -219,7 +219,7 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 	uint32_t keybuflen = 0;
 	int have_key = 0;
 	const uint8_t *passwdptr = NULL;
-	int ret;
+	ssize_t ret;
 
 	/* Only set keys when needed */
 	if (!opts->keyed_md)
@@ -228,7 +228,7 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 	/* Get password from command line */
 	if (opts->passwd) {
 		passwdptr = (uint8_t *)opts->passwd;
-		passwdlen = strlen(opts->passwd);
+		passwdlen = (uint32_t)strlen(opts->passwd);
 	}
 
 	/* Get password from password FD */
@@ -240,7 +240,7 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 
 		passwdbuf[sizeof(passwdbuf) - 1] = '\0';
 		passwdptr = passwdbuf;
-		passwdlen = ret;
+		passwdlen = (uint32_t)ret;
 	}
 
 	if (passwdptr && passwdlen) {
@@ -258,7 +258,8 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 		}
 
 		if (opts->salt) {
-			ret = hex2bin_alloc(opts->salt, strlen(opts->salt),
+			ret = hex2bin_alloc(opts->salt,
+					    (uint32_t)strlen(opts->salt),
 					    &saltbuf, &saltbuflen);
 			if (ret)
 				goto out;
@@ -285,7 +286,7 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 
 			while (j < saltbuflen) {
 				ret = kcapi_rng_generate(rng, saltbuf,
-							 saltbuflen);
+							 (size_t)saltbuflen);
 				if (ret < 0) {
 					kcapi_rng_destroy(rng);
 					free(saltbuf);
@@ -319,10 +320,10 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 	if (opts->key_fd != -1) {
 		ret = read_complete(opts->key_fd, keybuf, sizeof(keybuf));
 		if (ret < 0)
-			return ret;
+			return (int)ret;
 
 		have_key = 1;
-		keybuflen = ret;
+		keybuflen = (uint32_t)ret;
 	}
 
 	if (!have_key) {
@@ -340,7 +341,7 @@ out:
 	kcapi_memset_secure(passwdbuf, 0, sizeof(passwdbuf));
 	kcapi_memset_secure(keybuf, 0, sizeof(keybuf));
 
-	return ret;
+	return (int)ret;
 }
 
 static void usage(void)
@@ -446,7 +447,7 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 					      "PBKDF2 iteration value too big");
 					usage();
 				}
-				opts->pbkdf_iterations = val;
+				opts->pbkdf_iterations = (uint32_t)val;
 				break;
 			case 7:
 				opts->pbkdf_hash = optarg;

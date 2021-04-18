@@ -42,10 +42,10 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
-			     const uint8_t *in, uint32_t inlen,
+ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
+			     const uint8_t *in, size_t inlen,
 			     const uint8_t *iv,
-			     uint8_t *out, uint32_t outlen, int access)
+			     uint8_t *out, size_t outlen, int access)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
 	uint32_t bs = tfm->info.blocksize;
@@ -64,12 +64,12 @@ int32_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 /*
  * Fallback function if AIO is not present, but caller requested AIO operation.
  */
-static int32_t
+static ssize_t
 _kcapi_cipher_encrypt_aio_fallback(struct kcapi_handle *handle,
 				 struct iovec *iniov, struct iovec *outiov,
-				 uint32_t iovlen, const uint8_t *iv)
+				 size_t iovlen, const uint8_t *iv)
 {
-	int32_t rc = kcapi_cipher_stream_init_enc(handle, iv, iniov, iovlen);
+	ssize_t rc = kcapi_cipher_stream_init_enc(handle, iv, iniov, iovlen);
 
 	if (rc < 0)
 		return rc;
@@ -78,11 +78,11 @@ _kcapi_cipher_encrypt_aio_fallback(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
+ssize_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
 				 struct iovec *iniov, struct iovec *outiov,
-				 uint32_t iovlen, const uint8_t *iv, int access)
+				 size_t iovlen, const uint8_t *iv, int access)
 {
-	int32_t ret;
+	ssize_t ret;
 
 	handle->cipher.iv = iv;
 
@@ -96,10 +96,10 @@ int32_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
-			     const uint8_t *in, uint32_t inlen,
+ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
+			     const uint8_t *in, size_t inlen,
 			     const uint8_t *iv,
-			     uint8_t *out, uint32_t outlen, int access)
+			     uint8_t *out, size_t outlen, int access)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
 
@@ -122,12 +122,12 @@ int32_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 /*
  * Fallback function if AIO is not present, but caller requested AIO operation.
  */
-static int32_t
+static ssize_t
 _kcapi_cipher_decrypt_aio_fallback(struct kcapi_handle *handle,
 				   struct iovec *iniov, struct iovec *outiov,
-				   uint32_t iovlen, const uint8_t *iv)
+				   size_t iovlen, const uint8_t *iv)
 {
-	int32_t rc = kcapi_cipher_stream_init_dec(handle, iv, iniov, iovlen);
+	ssize_t rc = kcapi_cipher_stream_init_dec(handle, iv, iniov, iovlen);
 
 	if (rc < 0)
 		return rc;
@@ -136,11 +136,11 @@ _kcapi_cipher_decrypt_aio_fallback(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
+ssize_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
 				 struct iovec *iniov, struct iovec *outiov,
-				 uint32_t iovlen, const uint8_t *iv, int access)
+				 size_t iovlen, const uint8_t *iv, int access)
 {
-	int32_t ret;
+	ssize_t ret;
 
 	handle->cipher.iv = iv;
 
@@ -154,9 +154,9 @@ int32_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
+ssize_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
 				     const uint8_t *iv,
-				     struct iovec *iov, uint32_t iovlen)
+				     struct iovec *iov, size_t iovlen)
 {
 	handle->cipher.iv = iv;
 	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_ENCRYPT,
@@ -164,9 +164,9 @@ int32_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
+ssize_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
 				     const uint8_t *iv,
-				     struct iovec *iov, uint32_t iovlen)
+				     struct iovec *iov, size_t iovlen)
 {
 	handle->cipher.iv = iv;
 	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_DECRYPT,
@@ -174,8 +174,8 @@ int32_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
-				   struct iovec *iov, uint32_t iovlen)
+ssize_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
+				   struct iovec *iov, size_t iovlen)
 {
 	if (handle->processed_sg <= handle->flags.alg_max_pages)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen,
@@ -185,8 +185,8 @@ int32_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_cipher_stream_update_last(struct kcapi_handle *handle,
-					struct iovec *iov, uint32_t iovlen)
+ssize_t kcapi_cipher_stream_update_last(struct kcapi_handle *handle,
+					struct iovec *iov, size_t iovlen)
 {
 	if (handle->processed_sg <= handle->flags.alg_max_pages)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
@@ -195,8 +195,8 @@ int32_t kcapi_cipher_stream_update_last(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
-			       struct iovec *iov, uint32_t iovlen)
+ssize_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
+			       struct iovec *iov, size_t iovlen)
 {
 	if (!iov || !iovlen) {
 		kcapi_dolog(KCAPI_LOG_ERR,
@@ -222,14 +222,14 @@ uint32_t kcapi_cipher_blocksize(struct kcapi_handle *handle)
 	return tfm->info.blocksize;
 }
 
-static inline int32_t kcapi_cipher_conv_enc_common(const char *name,
+static inline ssize_t kcapi_cipher_conv_enc_common(const char *name,
 					const uint8_t *key, uint32_t keylen,
-					const uint8_t *in, uint32_t inlen,
+					const uint8_t *in, size_t inlen,
 					const uint8_t *iv,
-					uint8_t *out, uint32_t outlen)
+					uint8_t *out, size_t outlen)
 {
 	struct kcapi_handle *handle;
-	int32_t ret = _kcapi_handle_init(&handle, "skcipher", name, 0);
+	ssize_t ret = _kcapi_handle_init(&handle, "skcipher", name, 0);
 	if (ret)
 		return ret;
 
@@ -244,14 +244,14 @@ out:
 	return ret;
 }
 
-static inline int32_t kcapi_cipher_conv_dec_common(const char *name,
+static inline ssize_t kcapi_cipher_conv_dec_common(const char *name,
 					const uint8_t *key, uint32_t keylen,
-					const uint8_t *in, uint32_t inlen,
+					const uint8_t *in, size_t inlen,
 					const uint8_t *iv,
-					uint8_t *out, uint32_t outlen)
+					uint8_t *out, size_t outlen)
 {
 	struct kcapi_handle *handle;
-	int32_t ret = _kcapi_handle_init(&handle, "skcipher", name, 0);
+	ssize_t ret = _kcapi_handle_init(&handle, "skcipher", name, 0);
 
 	if (ret)
 		return ret;
@@ -268,40 +268,40 @@ out:
 }
 
 DSO_PUBLIC
-int32_t kcapi_cipher_enc_aes_cbc(const uint8_t *key, uint32_t keylen,
-				 const uint8_t *in, uint32_t inlen,
+ssize_t kcapi_cipher_enc_aes_cbc(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, size_t inlen,
 				 const uint8_t *iv,
-				 uint8_t *out, uint32_t outlen)
+				 uint8_t *out, size_t outlen)
 {
 	return kcapi_cipher_conv_enc_common("cbc(aes)", key, keylen, in, inlen,
 					    iv, out, outlen);
 }
 
 DSO_PUBLIC
-int32_t kcapi_cipher_enc_aes_ctr(const uint8_t *key, uint32_t keylen,
-				 const uint8_t *in, uint32_t inlen,
+ssize_t kcapi_cipher_enc_aes_ctr(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, size_t inlen,
 				 const uint8_t *ctr,
-				 uint8_t *out, uint32_t outlen)
+				 uint8_t *out, size_t outlen)
 {
 	return kcapi_cipher_conv_enc_common("ctr(aes)", key, keylen, in, inlen,
 					    ctr, out, outlen);
 }
 
 DSO_PUBLIC
-int32_t kcapi_cipher_dec_aes_cbc(const uint8_t *key, uint32_t keylen,
-				 const uint8_t *in, uint32_t inlen,
+ssize_t kcapi_cipher_dec_aes_cbc(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, size_t inlen,
 				 const uint8_t *iv,
-				 uint8_t *out, uint32_t outlen)
+				 uint8_t *out, size_t outlen)
 {
 	return kcapi_cipher_conv_dec_common("cbc(aes)", key, keylen, in, inlen,
 					    iv, out, outlen);
 }
 
 DSO_PUBLIC
-int32_t kcapi_cipher_dec_aes_ctr(const uint8_t *key, uint32_t keylen,
-				 const uint8_t *in, uint32_t inlen,
+ssize_t kcapi_cipher_dec_aes_ctr(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, size_t inlen,
 				 const uint8_t *ctr,
-				 uint8_t *out, uint32_t outlen)
+				 uint8_t *out, size_t outlen)
 {
 	return kcapi_cipher_conv_dec_common("ctr(aes)", key, keylen, in, inlen,
 					    ctr, out, outlen);

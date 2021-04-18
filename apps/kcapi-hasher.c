@@ -217,7 +217,7 @@ static int load_file(const char *filename, uint8_t **memory, off_t *size)
 	int fd = -1;
 	int ret = 0;
 	uint8_t *buffer = NULL;
-	uint32_t buffer_size = 4096;
+	off_t buffer_size = 4096;
 	off_t offset = 0;
 	ssize_t rdbytes;
 
@@ -235,7 +235,7 @@ static int load_file(const char *filename, uint8_t **memory, off_t *size)
 		goto out;
 	}
 
-	while ((rdbytes = read(fd, buffer + offset, buffer_size - offset)) != 0) {
+	while ((rdbytes = read(fd, buffer + offset, (size_t)(buffer_size - offset))) != 0) {
 		if (rdbytes < 0) {
 			fprintf(stderr, "Error reading file %s: %s\n", filename,
 			        strerror(errno));
@@ -244,7 +244,7 @@ static int load_file(const char *filename, uint8_t **memory, off_t *size)
 		}
 
 		offset += (off_t)rdbytes;
-		if (offset == (off_t)buffer_size) {
+		if (offset == buffer_size) {
 			uint8_t *new_buffer;
 
 			if (buffer_size == UINT32_MAX) {
@@ -256,7 +256,7 @@ static int load_file(const char *filename, uint8_t **memory, off_t *size)
 			else
 				buffer_size *= 2;
 
-			new_buffer = realloc(buffer, buffer_size);
+			new_buffer = realloc(buffer, (size_t)buffer_size);
 			if (new_buffer == NULL) {
 				fprintf(stderr, "Key memory allocation failed\n");
 				ret = -ENOMEM;
@@ -288,7 +288,7 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 	size_t mapped = 16<<20;
 	off_t offset = 0, size = 0;
 	uint32_t hashlen = params->hashlen;
-	int ret = 0;
+	ssize_t ret = 0;
 	uint8_t *memblock = NULL;
 	uint8_t *memblock_p;
 	uint8_t md[64];
@@ -299,9 +299,9 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 					offset);
 			if (ret) {
 				fprintf(stderr,
-					"Use of mmap failed mapping %zu bytes at offset %" PRId64 " of file %s (%d)\n",
+					"Use of mmap failed mapping %zu bytes at offset %" PRId64 " of file %s (%zd)\n",
 					mapped, (int64_t)offset, filename, ret);
-				return ret;
+				return (int)ret;
 			}
 			/* Compute hash */
 			memblock_p = memblock;
@@ -313,13 +313,13 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 				ret = kcapi_md_update(handle, memblock_p, todo);
 				if (ret < 0) {
 					munmap(memblock, mapped);
-					return ret;
+					return (int)ret;
 				}
 				left -= todo;
 				memblock_p += todo;
 			} while (left);
 			munmap(memblock, mapped);
-			offset = offset + mapped;
+			offset = offset + (off_t)mapped;
 		} while (offset ^ size);
 	} else {
 		uint8_t tmpbuf[TMPBUFLEN] __aligned(KCAPI_APP_ALIGN);
@@ -331,7 +331,7 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 
 			ret = kcapi_md_update(handle, tmpbuf, bufsize);
 			if (ret < 0)
-				return ret;
+				return (int)ret;
 		}
 		kcapi_memset_secure(tmpbuf, 0, sizeof(tmpbuf));
 	}
@@ -340,9 +340,9 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 
 	if (ret > 0) {
 		if (hashlen > (uint32_t)ret) {
-			fprintf(stderr, "Invalid truncated hash size: %lu > %i\n",
+			fprintf(stderr, "Invalid truncated hash size: %lu > %zd\n",
 			        (unsigned long)hashlen, ret);
-			return ret;
+			return (int)ret;
 		}
 
 		if (!hashlen)
@@ -375,10 +375,10 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 			ret = 0;
 		}
 	} else {
-		fprintf(stderr, "Generation of hash for file %s failed (%d)\n",
+		fprintf(stderr, "Generation of hash for file %s failed (%zd)\n",
 			filename ? filename : "stdin", ret);
 	}
-	return ret;
+	return (int)ret;
 }
 
 /*
@@ -1003,7 +1003,8 @@ int main(int argc, char *argv[])
 					free(hmackey_alloc);
 					hmackey_alloc = NULL;
 				} else if (hmackey_mmap) {
-					munmap(hmackey_mmap, params.key.len);
+					munmap(hmackey_mmap,
+					       (size_t)params.key.len);
 					hmackey_mmap = NULL;
 				}
 				params.key.data = NULL;
@@ -1057,7 +1058,8 @@ int main(int argc, char *argv[])
 					free(hmackey_alloc);
 					hmackey_alloc = NULL;
 				} else if (hmackey_mmap) {
-					munmap(hmackey_mmap, params.key.len);
+					munmap(hmackey_mmap,
+					       (size_t)params.key.len);
 					hmackey_mmap = NULL;
 				}
 				params.key.len = 0;
@@ -1086,7 +1088,8 @@ int main(int argc, char *argv[])
 					free(hmackey_alloc);
 					hmackey_alloc = NULL;
 				} else if (hmackey_mmap) {
-					munmap(hmackey_mmap, params.key.len);
+					munmap(hmackey_mmap,
+					       (size_t)params.key.len);
 					hmackey_mmap = NULL;
 				}
 				hmackey_alloc = (uint8_t *)strdup(optarg);
@@ -1096,7 +1099,7 @@ int main(int argc, char *argv[])
 					goto out;
 				}
 				params.key.data = hmackey_alloc;
-				params.key.len = strlen(optarg);
+				params.key.len = (off_t)strlen(optarg);
 				hmac = 1;
 				break;
 			case 'v':
@@ -1192,7 +1195,7 @@ out:
 		kcapi_memset_secure(hmackey_alloc, 0, (uint32_t)params.key.len);
 		free(hmackey_alloc);
 	} else if (hmackey_mmap) {
-		munmap(hmackey_mmap, params.key.len);
+		munmap(hmackey_mmap, (size_t)params.key.len);
 	}
 
 	return ret;

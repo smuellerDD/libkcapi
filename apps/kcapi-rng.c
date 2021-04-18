@@ -67,7 +67,7 @@ static void close_random(void)
 }
 #endif
 
-static int get_random(uint8_t *buf, uint32_t buflen)
+static ssize_t get_random(uint8_t *buf, size_t buflen)
 {
 	ssize_t ret;
 
@@ -95,8 +95,8 @@ static int get_random(uint8_t *buf, uint32_t buflen)
 		      "Accessed /dev/urandom for %u bytes", buflen);
 #endif
 		if (0 < ret) {
-			buflen -= ret;
-			buf += ret;
+			buflen -= (size_t)ret;
+			buf += (size_t)ret;
 		}
 	} while ((0 < ret || EINTR == errno || ERESTART == errno)
 		 && buflen > 0);
@@ -136,11 +136,11 @@ static void usage(void)
 	exit(1);
 }
 
-static int parse_opts(int argc, char *argv[], unsigned long *outlen)
+static int parse_opts(int argc, char *argv[], size_t *outlen)
 {
 	int c = 0;
 	char version[30];
-	unsigned long bytes = 0;
+	size_t bytes = 0;
 
 	while (1) {
 		int opt_index = 0;
@@ -219,21 +219,21 @@ static int parse_opts(int argc, char *argv[], unsigned long *outlen)
 	if (!bytes)
 		usage();
 
-	*outlen = bytes;
+	*outlen = (size_t)bytes;
 	return 0;
 }
 
 int main(int argc, char *argv[])
 {
-	int ret;
+	ssize_t ret;
 	uint8_t buf[KCAPI_RNG_BUFSIZE] __aligned(KCAPI_APP_ALIGN);
 	uint8_t *seedbuf = buf;
 	uint32_t seedsize = 0;
-	unsigned long outlen;
+	size_t outlen;
 
 	ret = parse_opts(argc, argv, &outlen);
 	if (ret)
-		return ret;
+		return (int)ret;
 
 	set_verbosity("kcapi-rng", Verbosity);
 
@@ -242,7 +242,7 @@ int main(int argc, char *argv[])
 	else
 		ret = kcapi_rng_init(&rng, "stdrng", 0);
 	if (ret)
-		return ret;
+		return (int)ret;
 
 	seedsize = kcapi_rng_seedsize(rng);
 	if (seedsize) {
@@ -282,7 +282,7 @@ int main(int argc, char *argv[])
 	      seedsize);
 
 	if (!isatty(0) && (errno == EINVAL || errno == ENOTTY)) {
-		while (fgets((char *)seedbuf, seedsize, stdin)) {
+		while (fgets((char *)seedbuf, (int)seedsize, stdin)) {
 			ret = kcapi_rng_seed(rng, seedbuf, seedsize);
 			if (ret)
 				dolog(KCAPI_LOG_WARN,
@@ -296,7 +296,7 @@ int main(int argc, char *argv[])
 	}
 
 	while (outlen) {
-		uint32_t todo = (outlen < KCAPI_RNG_BUFSIZE) ?
+		size_t todo = (outlen < KCAPI_RNG_BUFSIZE) ?
 					outlen : KCAPI_RNG_BUFSIZE;
 
 		ret = kcapi_rng_generate(rng, buf, todo);
@@ -311,13 +311,13 @@ int main(int argc, char *argv[])
 		if (hexout) {
 			char hexbuf[2 * KCAPI_RNG_BUFSIZE];
 
-			bin2hex(buf, ret, hexbuf, sizeof(hexbuf), 0);
-			fwrite(hexbuf, 2 * ret, 1, stdout);
+			bin2hex(buf, (size_t)ret, hexbuf, sizeof(hexbuf), 0);
+			fwrite(hexbuf, 2 * (size_t)ret, 1, stdout);
 		} else {
-			fwrite(buf, ret, 1, stdout);
+			fwrite(buf, (size_t)ret, 1, stdout);
 		}
 
-		outlen -= ret;
+		outlen -= (size_t)ret;
 	}
 
 	ret = 0;
@@ -333,5 +333,5 @@ out:
 		free(seedbuf);
 	}
 
-	return ret;
+	return (int)ret;
 }

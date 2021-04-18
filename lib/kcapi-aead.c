@@ -56,20 +56,20 @@ int kcapi_aead_settaglen(struct kcapi_handle *handle, uint32_t taglen)
 }
 
 DSO_PUBLIC
-void kcapi_aead_setassoclen(struct kcapi_handle *handle, uint32_t assoclen)
+void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen)
 {
 	handle->aead.assoclen = assoclen;
 }
 
 DSO_PUBLIC
 void kcapi_aead_getdata_input(struct kcapi_handle *handle,
-			      uint8_t *encdata, uint32_t encdatalen, int enc,
-			      uint8_t **aad, uint32_t *aadlen,
-			      uint8_t **data, uint32_t *datalen,
-			      uint8_t **tag, uint32_t *taglen)
+			      uint8_t *encdata, size_t encdatalen, int enc,
+			      uint8_t **aad, size_t *aadlen,
+			      uint8_t **data, size_t *datalen,
+			      uint8_t **tag, size_t *taglen)
 {
 	uint8_t *l_aad, *l_data, *l_tag;
-	uint32_t l_aadlen, l_datalen, l_taglen;
+	size_t l_aadlen, l_datalen, l_taglen;
 
 	if (encdatalen < handle->aead.assoclen) {
 		kcapi_dolog(KCAPI_LOG_DEBUG, "AAD data not found");
@@ -118,13 +118,13 @@ void kcapi_aead_getdata_input(struct kcapi_handle *handle,
 
 DSO_PUBLIC
 void kcapi_aead_getdata_output(struct kcapi_handle *handle,
-			       uint8_t *encdata, uint32_t encdatalen, int enc,
-			       uint8_t **aad, uint32_t *aadlen,
-			       uint8_t **data, uint32_t *datalen,
-			       uint8_t **tag, uint32_t *taglen)
+			       uint8_t *encdata, size_t encdatalen, int enc,
+			       uint8_t **aad, size_t *aadlen,
+			       uint8_t **data, size_t *datalen,
+			       uint8_t **tag, size_t *taglen)
 {
 	uint8_t *l_aad, *l_data, *l_tag;
-	uint32_t l_aadlen, l_datalen, l_taglen;
+	size_t l_aadlen, l_datalen, l_taglen;
 
 	if (encdatalen < handle->aead.assoclen) {
 		kcapi_dolog(KCAPI_LOG_ERR, "AAD data not found");
@@ -183,12 +183,12 @@ void kcapi_aead_getdata_output(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
-			   const uint8_t *in, uint32_t inlen,
+ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
+			   const uint8_t *in, size_t inlen,
 			   const uint8_t *iv,
-			   uint8_t *out, uint32_t outlen, int access)
+			   uint8_t *out, size_t outlen, int access)
 {
-	int32_t ret = 0;
+	ssize_t ret = 0;
 
 	handle->cipher.iv = iv;
 	ret = _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
@@ -204,16 +204,16 @@ int32_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 /*
  * Fallback function if AIO is not present, but caller requested AIO operation.
  */
-static int32_t
+static ssize_t
 _kcapi_aead_encrypt_aio_fallback(struct kcapi_handle *handle,
 				 struct iovec *iniov, struct iovec *outiov,
-				 uint32_t iovlen, const uint8_t *iv)
+				 size_t iovlen, const uint8_t *iv)
 {
-	uint32_t i;
-	int32_t ret = 0;
+	size_t i;
+	ssize_t ret = 0;
 
 	for (i = 0; i < iovlen; i++) {
-		int rc = kcapi_aead_stream_init_enc(handle, iv, NULL, 0);
+		ssize_t rc = kcapi_aead_stream_init_enc(handle, iv, NULL, 0);
 
 		if (rc < 0)
 			return rc;
@@ -236,11 +236,11 @@ _kcapi_aead_encrypt_aio_fallback(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
-			       struct iovec *outiov, uint32_t iovlen,
+ssize_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
+			       struct iovec *outiov, size_t iovlen,
 			       const uint8_t *iv, int access)
 {
-	int32_t ret = 0;
+	ssize_t ret = 0;
 
 	handle->cipher.iv = iv;
 
@@ -254,10 +254,10 @@ int32_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 }
 
 DSO_PUBLIC
-int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
-			   const uint8_t *in, uint32_t inlen,
+ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
+			   const uint8_t *in, size_t inlen,
 			   const uint8_t *iv,
-			   uint8_t *out, uint32_t outlen, int access)
+			   uint8_t *out, size_t outlen, int access)
 {
 	handle->cipher.iv = iv;
 	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
@@ -267,16 +267,16 @@ int32_t kcapi_aead_decrypt(struct kcapi_handle *handle,
 /*
  * Fallback function if AIO is not present, but caller requested AIO operation.
  */
-static int32_t
+static ssize_t
 _kcapi_aead_decrypt_aio_fallback(struct kcapi_handle *handle,
 				 struct iovec *iniov, struct iovec *outiov,
-				 uint32_t iovlen, const uint8_t *iv)
+				 size_t iovlen, const uint8_t *iv)
 {
-	uint32_t i;
-	int32_t ret = 0;
+	size_t i;
+	ssize_t ret = 0;
 
 	for (i = 0; i < iovlen; i++) {
-		int rc = kcapi_aead_stream_init_dec(handle, iv, NULL, 0);
+		ssize_t rc = kcapi_aead_stream_init_dec(handle, iv, NULL, 0);
 
 		if (rc < 0)
 			return rc;
@@ -299,11 +299,11 @@ _kcapi_aead_decrypt_aio_fallback(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
-			       struct iovec *outiov, uint32_t iovlen,
+ssize_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
+			       struct iovec *outiov, size_t iovlen,
 			       const uint8_t *iv, int access)
 {
-	int32_t ret = 0;
+	ssize_t ret = 0;
 
 	handle->cipher.iv = iv;
 
@@ -318,9 +318,9 @@ int32_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 }
 
 DSO_PUBLIC
-int32_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
+ssize_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
 				   const uint8_t *iv,
-				   struct iovec *iov, uint32_t iovlen)
+				   struct iovec *iov, size_t iovlen)
 {
 	handle->cipher.iv = iv;
 	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_ENCRYPT,
@@ -328,9 +328,9 @@ int32_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
+ssize_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
 				   const uint8_t *iv,
-				   struct iovec *iov, uint32_t iovlen)
+				   struct iovec *iov, size_t iovlen)
 {
 	handle->cipher.iv = iv;
 	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_DECRYPT,
@@ -338,8 +338,8 @@ int32_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_aead_stream_update(struct kcapi_handle *handle,
-				 struct iovec *iov, uint32_t iovlen)
+ssize_t kcapi_aead_stream_update(struct kcapi_handle *handle,
+				 struct iovec *iov, size_t iovlen)
 {
 	if (handle->processed_sg <= handle->flags.alg_max_pages)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen,
@@ -349,8 +349,8 @@ int32_t kcapi_aead_stream_update(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
-				      struct iovec *iov, uint32_t iovlen)
+ssize_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
+				      struct iovec *iov, size_t iovlen)
 {
 	if (handle->processed_sg <= handle->flags.alg_max_pages)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
@@ -359,8 +359,8 @@ int32_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_aead_stream_op(struct kcapi_handle *handle,
-			     struct iovec *iov, uint32_t iovlen)
+ssize_t kcapi_aead_stream_op(struct kcapi_handle *handle,
+			     struct iovec *iov, size_t iovlen)
 {
 	if (!iov) {
 		kcapi_dolog(KCAPI_LOG_ERR,
@@ -396,11 +396,10 @@ uint32_t kcapi_aead_authsize(struct kcapi_handle *handle)
 }
 
 DSO_PUBLIC
-uint32_t kcapi_aead_inbuflen_enc(struct kcapi_handle *handle,
-				 uint32_t inlen, uint32_t assoclen,
-				 uint32_t taglen)
+size_t kcapi_aead_inbuflen_enc(struct kcapi_handle *handle,
+			       size_t inlen, size_t assoclen, size_t taglen)
 {
-	uint32_t len = inlen + assoclen;
+	size_t len = inlen + assoclen;
 
 	if (!handle->flags.ge_v4_9 == true)
 		len += taglen;
@@ -409,22 +408,21 @@ uint32_t kcapi_aead_inbuflen_enc(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-uint32_t kcapi_aead_inbuflen_dec(struct kcapi_handle *handle,
-				 uint32_t inlen, uint32_t assoclen,
-				 uint32_t taglen)
+size_t kcapi_aead_inbuflen_dec(struct kcapi_handle *handle,
+			        size_t inlen, size_t assoclen, size_t taglen)
 {
 	(void)handle;
 	return (inlen + assoclen + taglen);
 }
 
 DSO_PUBLIC
-uint32_t kcapi_aead_outbuflen_enc(struct kcapi_handle *handle,
-				  uint32_t inlen, uint32_t assoclen,
-				  uint32_t taglen)
+size_t kcapi_aead_outbuflen_enc(struct kcapi_handle *handle,
+				  size_t inlen, size_t assoclen,
+				  size_t taglen)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
-	int bs = tfm->info.blocksize;
-	uint32_t outlen = (inlen + bs - 1) / bs * bs + taglen + assoclen;
+	uint32_t bs = tfm->info.blocksize;
+	size_t outlen = (inlen + bs - 1) / bs * bs + taglen + assoclen;
 
 	/* the kernel does not like zero length output buffers */
 	if (!outlen)
@@ -434,13 +432,13 @@ uint32_t kcapi_aead_outbuflen_enc(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-uint32_t kcapi_aead_outbuflen_dec(struct kcapi_handle *handle,
-				  uint32_t inlen, uint32_t assoclen,
-				  uint32_t taglen)
+size_t kcapi_aead_outbuflen_dec(struct kcapi_handle *handle,
+				size_t inlen, size_t assoclen,
+				size_t taglen)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
-	int bs = tfm->info.blocksize;
-	uint32_t outlen = (inlen + bs - 1) / bs * bs + assoclen;
+	uint32_t bs = tfm->info.blocksize;
+	size_t outlen = (inlen + bs - 1) / bs * bs + assoclen;
 
 	if (!handle->flags.ge_v4_9 == true)
 		outlen += taglen;
@@ -457,7 +455,7 @@ int kcapi_aead_ccm_nonce_to_iv(const uint8_t *nonce, uint32_t noncelen,
 			       uint8_t **iv, uint32_t *ivlen)
 {
 	uint8_t *newiv = NULL;
-	uint8_t l = 16 - 2 - noncelen;
+	uint8_t l = 16 - 2 - (uint8_t)noncelen;
 	int ret = 0;
 
 	if (noncelen > 16 - 2)

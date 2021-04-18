@@ -53,7 +53,7 @@ void bin2hex(const uint8_t *bin, size_t binlen,
 	     char *hex, size_t hexlen, int u);
 void bin2print(const uint8_t *bin, size_t binlen,
 	       const char *filename, FILE *outfile, uint32_t lfcr);
-int read_complete(int fd, uint8_t *buf, uint32_t buflen);
+ssize_t read_complete(int fd, uint8_t *buf, size_t buflen);
 int check_filetype(int fd, struct stat *sb, const char *filename);
 
 #ifdef __cplusplus

@@ -76,7 +76,7 @@ static void cp_rng_fini_test(struct cp_test *test)
 	free(test->u.rng.scratchpad);
 }
 
-static unsigned int cp_rng_exec_test(struct cp_test *test)
+static size_t cp_rng_exec_test(struct cp_test *test)
 {
 	kcapi_rng_generate(test->u.rng.handle,
 			   test->u.rng.scratchpad,

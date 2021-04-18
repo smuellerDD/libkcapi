@@ -41,10 +41,10 @@ int kcapi_md_setkey(struct kcapi_handle *handle,
 	return _kcapi_common_setkey(handle, key, keylen);
 }
 
-static inline int32_t _kcapi_md_update(struct kcapi_handle *handle,
-				       const uint8_t *buffer, uint32_t len)
+static inline ssize_t _kcapi_md_update(struct kcapi_handle *handle,
+				       const uint8_t *buffer, size_t len)
 {
-	int32_t ret = 0;
+	ssize_t ret = 0;
 
 	if (len > INT_MAX)
 		return -EMSGSIZE;
@@ -70,14 +70,14 @@ static inline int32_t _kcapi_md_update(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_md_update(struct kcapi_handle *handle,
-			const uint8_t *buffer, uint32_t len)
+ssize_t kcapi_md_update(struct kcapi_handle *handle,
+			const uint8_t *buffer, size_t len)
 {
 	return _kcapi_md_update(handle, buffer, len);
 }
 
-static int32_t _kcapi_md_final(struct kcapi_handle *handle,
-			       uint8_t *buffer, uint32_t len)
+static ssize_t _kcapi_md_final(struct kcapi_handle *handle,
+			       uint8_t *buffer, size_t len)
 {
 	struct iovec iov;
 	struct kcapi_handle_tfm *tfm = handle->tfm;
@@ -99,18 +99,18 @@ static int32_t _kcapi_md_final(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_md_final(struct kcapi_handle *handle,
-		       uint8_t *buffer, uint32_t len)
+ssize_t kcapi_md_final(struct kcapi_handle *handle,
+		       uint8_t *buffer, size_t len)
 {
 	return _kcapi_md_final(handle, buffer, len);
 }
 
 DSO_PUBLIC
-int32_t kcapi_md_digest(struct kcapi_handle *handle,
-		       const uint8_t *in, uint32_t inlen,
-		       uint8_t *out, uint32_t outlen)
+ssize_t kcapi_md_digest(struct kcapi_handle *handle,
+		       const uint8_t *in, size_t inlen,
+		       uint8_t *out, size_t outlen)
 {
-	int32_t ret = 0;
+	ssize_t ret = 0;
 
 	ret = _kcapi_md_update(handle, in, inlen);
 	if (0 > ret)
@@ -134,12 +134,12 @@ uint32_t kcapi_md_blocksize(struct kcapi_handle *handle)
 	return tfm->info.blocksize;
 }
 
-static inline int32_t kcapi_md_conv_common(const char *name,
-					   const uint8_t *in, uint32_t inlen,
-					   uint8_t *out, uint32_t outlen)
+static inline ssize_t kcapi_md_conv_common(const char *name,
+					   const uint8_t *in, size_t inlen,
+					   uint8_t *out, size_t outlen)
 {
 	struct kcapi_handle *handle;
-	int32_t ret = _kcapi_handle_init(&handle, "hash", name, 0);
+	ssize_t ret = _kcapi_handle_init(&handle, "hash", name, 0);
 
 	if (ret)
 		return ret;
@@ -152,46 +152,46 @@ static inline int32_t kcapi_md_conv_common(const char *name,
 }
 
 DSO_PUBLIC
-int32_t kcapi_md_sha1(const uint8_t *in, uint32_t inlen,
-		      uint8_t *out, uint32_t outlen)
+ssize_t kcapi_md_sha1(const uint8_t *in, size_t inlen,
+		      uint8_t *out, size_t outlen)
 {
 	return kcapi_md_conv_common("sha1", in, inlen, out, outlen);
 }
 
 DSO_PUBLIC
-int32_t kcapi_md_sha224(const uint8_t *in, uint32_t inlen,
-			uint8_t *out, uint32_t outlen)
+ssize_t kcapi_md_sha224(const uint8_t *in, size_t inlen,
+			uint8_t *out, size_t outlen)
 {
 	return kcapi_md_conv_common("sha224", in, inlen, out, outlen);
 }
 
 DSO_PUBLIC
-int32_t kcapi_md_sha256(const uint8_t *in, uint32_t inlen,
-			uint8_t *out, uint32_t outlen)
+ssize_t kcapi_md_sha256(const uint8_t *in, size_t inlen,
+			uint8_t *out, size_t outlen)
 {
 	return kcapi_md_conv_common("sha256", in, inlen, out, outlen);
 }
 
 DSO_PUBLIC
-int32_t kcapi_md_sha384(const uint8_t *in, uint32_t inlen,
-			uint8_t *out, uint32_t outlen)
+ssize_t kcapi_md_sha384(const uint8_t *in, size_t inlen,
+			uint8_t *out, size_t outlen)
 {
 	return kcapi_md_conv_common("sha384", in, inlen, out, outlen);
 }
 
 DSO_PUBLIC
-int32_t kcapi_md_sha512(const uint8_t *in, uint32_t inlen,
-			uint8_t *out, uint32_t outlen)
+ssize_t kcapi_md_sha512(const uint8_t *in, size_t inlen,
+			uint8_t *out, size_t outlen)
 {
 	return kcapi_md_conv_common("sha512", in, inlen, out, outlen);
 }
 
-static inline int32_t kcapi_md_mac_conv_common(const char *name,
+static inline ssize_t kcapi_md_mac_conv_common(const char *name,
 	const uint8_t *key, uint32_t keylen,
-	const uint8_t *in, uint32_t inlen, uint8_t *out, uint32_t outlen)
+	const uint8_t *in, size_t inlen, uint8_t *out, size_t outlen)
 {
 	struct kcapi_handle *handle;
-	int32_t ret = _kcapi_handle_init(&handle, "hash", name, 0);
+	ssize_t ret = _kcapi_handle_init(&handle, "hash", name, 0);
 
 	if (ret)
 		return ret;
@@ -208,45 +208,45 @@ out:
 }
 
 DSO_PUBLIC
-int32_t kcapi_md_hmac_sha1(const uint8_t *key, uint32_t keylen,
-			   const uint8_t *in, uint32_t inlen,
-			   uint8_t *out, uint32_t outlen)
+ssize_t kcapi_md_hmac_sha1(const uint8_t *key, uint32_t keylen,
+			   const uint8_t *in, size_t inlen,
+			   uint8_t *out, size_t outlen)
 {
 	return kcapi_md_mac_conv_common("hmac(sha1)", key, keylen, in, inlen,
 					out, outlen);
 }
 
 DSO_PUBLIC
-int32_t kcapi_md_hmac_sha224(const uint8_t *key, uint32_t keylen,
-			     const uint8_t *in, uint32_t inlen,
-			     uint8_t *out, uint32_t outlen)
+ssize_t kcapi_md_hmac_sha224(const uint8_t *key, uint32_t keylen,
+			     const uint8_t *in, size_t inlen,
+			     uint8_t *out, size_t outlen)
 {
 	return kcapi_md_mac_conv_common("hmac(sha224)", key, keylen, in, inlen,
 					out, outlen);
 }
 
 DSO_PUBLIC
-int32_t kcapi_md_hmac_sha256(const uint8_t *key, uint32_t keylen,
-			     const uint8_t *in, uint32_t inlen,
-			     uint8_t *out, uint32_t outlen)
+ssize_t kcapi_md_hmac_sha256(const uint8_t *key, uint32_t keylen,
+			     const uint8_t *in, size_t inlen,
+			     uint8_t *out, size_t outlen)
 {
 	return kcapi_md_mac_conv_common("hmac(sha256)", key, keylen, in, inlen,
 					out, outlen);
 }
 
 DSO_PUBLIC
-int32_t kcapi_md_hmac_sha384(const uint8_t *key, uint32_t keylen,
-			     const uint8_t *in, uint32_t inlen,
-			     uint8_t *out, uint32_t outlen)
+ssize_t kcapi_md_hmac_sha384(const uint8_t *key, uint32_t keylen,
+			     const uint8_t *in, size_t inlen,
+			     uint8_t *out, size_t outlen)
 {
 	return kcapi_md_mac_conv_common("hmac(sha384)", key, keylen, in, inlen,
 					out, outlen);
 }
 
 DSO_PUBLIC
-int32_t kcapi_md_hmac_sha512(const uint8_t *key, uint32_t keylen,
-			     const uint8_t *in, uint32_t inlen,
-			     uint8_t *out, uint32_t outlen)
+ssize_t kcapi_md_hmac_sha512(const uint8_t *key, uint32_t keylen,
+			     const uint8_t *in, size_t inlen,
+			     uint8_t *out, size_t outlen)
 {
 	return kcapi_md_mac_conv_common("hmac(sha512)", key, keylen, in, inlen,
 					out, outlen);

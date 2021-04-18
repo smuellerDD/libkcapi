@@ -73,29 +73,29 @@ int kcapi_kpp_setkey(struct kcapi_handle *handle,
 }
 
 DSO_PUBLIC
-int32_t kcapi_kpp_keygen(struct kcapi_handle *handle,
-			 uint8_t *pubkey, uint32_t pubkeylen, int access)
+ssize_t kcapi_kpp_keygen(struct kcapi_handle *handle,
+			 uint8_t *pubkey, size_t pubkeylen, int access)
 {
 	return _kcapi_cipher_crypt(handle, NULL, 0, pubkey, pubkeylen, access,
 				   ALG_OP_KEYGEN);
 }
 
 DSO_PUBLIC
-int32_t kcapi_kpp_ssgen(struct kcapi_handle *handle,
-			const uint8_t *pubkey, uint32_t pubkeylen,
-			uint8_t *ss, uint32_t sslen, int access)
+ssize_t kcapi_kpp_ssgen(struct kcapi_handle *handle,
+			const uint8_t *pubkey, size_t pubkeylen,
+			uint8_t *ss, size_t sslen, int access)
 {
 	return _kcapi_cipher_crypt(handle, pubkey, pubkeylen, ss, sslen, access,
 				   ALG_OP_SSGEN);
 }
 
-static int32_t
+static ssize_t
 _kcapi_kpp_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
-		     struct iovec *outiov, uint32_t iovlen, int access, int enc)
+		     struct iovec *outiov, size_t iovlen, int access,
+		     unsigned int enc)
 {
 	struct iovec zeroiov;
-	uint32_t processed = 0;
-	int32_t ret;
+	ssize_t processed = 0, ret;
 
 	/* TODO Every IOVEC is processed as its individual cipher operation. */
 	while (iovlen) {
@@ -115,17 +115,17 @@ _kcapi_kpp_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 }
 
 DSO_PUBLIC
-int32_t kcapi_kpp_keygen_aio(struct kcapi_handle *handle, struct iovec *outiov,
-			     uint32_t iovlen, int access)
+ssize_t kcapi_kpp_keygen_aio(struct kcapi_handle *handle, struct iovec *outiov,
+			     size_t iovlen, int access)
 {
 	return _kcapi_kpp_crypt_aio(handle, NULL, outiov, iovlen, access,
 				    ALG_OP_KEYGEN);
 }
 
 DSO_PUBLIC
-int32_t kcapi_kpp_ssgen_aio(struct kcapi_handle *handle,
+ssize_t kcapi_kpp_ssgen_aio(struct kcapi_handle *handle,
 			    struct iovec *iniov, struct iovec *outiov,
-			    uint32_t iovlen, int access)
+			    size_t iovlen, int access)
 {
 	return _kcapi_kpp_crypt_aio(handle, iniov, outiov, iovlen, access,
 				    ALG_OP_SSGEN);

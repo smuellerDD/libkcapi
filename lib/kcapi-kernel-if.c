@@ -40,7 +40,7 @@
  * Common helper used within the lib and as an API
  ************************************************************/
 DSO_PUBLIC
-void kcapi_memset_secure(void *s, int c, uint32_t n)
+void kcapi_memset_secure(void *s, int c, size_t n)
 {
 	memset(s, c, n);
 	__asm__ __volatile__("" : : "r" (s) : "memory");
@@ -49,9 +49,9 @@ void kcapi_memset_secure(void *s, int c, uint32_t n)
 /************************************************************
  * Logging logic
  ************************************************************/
-int kcapi_verbosity_level = KCAPI_LOG_ERR;
+enum kcapi_verbosity kcapi_verbosity_level = KCAPI_LOG_ERR;
 
-void kcapi_dolog(int severity, const char *fmt, ...)
+void kcapi_dolog(enum kcapi_verbosity severity, const char *fmt, ...)
 {
 	va_list args;
 	char msg[128];
@@ -113,33 +113,33 @@ int _kcapi_common_accept(struct kcapi_handle *handle)
 	return 0;
 }
 
-int32_t _kcapi_common_send_meta(struct kcapi_handle *handle,
-				struct iovec *iov, uint32_t iovlen,
-				uint32_t enc, uint32_t flags)
+ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
+				struct iovec *iov, size_t iovlen,
+				unsigned int enc, uint32_t flags)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
-	int32_t ret;
+	ssize_t ret;
 	char buffer_static[80] = { 0 };
 	char *buffer_p = buffer_static;
 	char *buffer_alloc = NULL;
 
 	/* plaintext / ciphertext data */
 	struct cmsghdr *header = NULL;
-	uint32_t *type = NULL;
+	size_t *type = NULL;
 	struct msghdr msg;
 
 	/* IV data */
 	struct af_alg_iv *alg_iv = NULL;
-	uint32_t iv_msg_size = handle->cipher.iv ?
+	size_t iv_msg_size = handle->cipher.iv ?
 			  CMSG_SPACE(sizeof(*alg_iv) + tfm->info.ivsize) :
 			  0;
 
 	/* AEAD data */
-	uint32_t *assoclen = NULL;
-	uint32_t assoc_msg_size = handle->aead.assoclen ?
+	size_t *assoclen = NULL;
+	size_t assoc_msg_size = handle->aead.assoclen ?
 				CMSG_SPACE(sizeof(*assoclen)) : 0;
 
-	uint32_t bufferlen =
+	size_t bufferlen =
 		CMSG_SPACE(sizeof(*type)) + 	/* Encryption / Decryption */
 		iv_msg_size +			/* IV */
 		assoc_msg_size;			/* AEAD associated data size */
@@ -208,7 +208,7 @@ int32_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 		*assoclen = handle->aead.assoclen;
 	}
 
-	ret = sendmsg(*_kcapi_get_opfd(handle), &msg, flags);
+	ret = sendmsg(*_kcapi_get_opfd(handle), &msg, (int)flags);
 	if (ret < 0)
 		ret = -errno;
 	kcapi_dolog(KCAPI_LOG_DEBUG,
@@ -221,12 +221,12 @@ out:
 	return ret;
 }
 
-int32_t _kcapi_common_send_data(struct kcapi_handle *handle,
-				struct iovec *iov, uint32_t iovlen,
+ssize_t _kcapi_common_send_data(struct kcapi_handle *handle,
+				struct iovec *iov, size_t iovlen,
 				uint32_t flags)
 {
 	struct msghdr msg;
-	int32_t ret;
+	ssize_t ret;
 
 	ret = _kcapi_common_accept(handle);
 	if (ret)
@@ -240,7 +240,7 @@ int32_t _kcapi_common_send_data(struct kcapi_handle *handle,
 	msg.msg_iov = iov;
 	msg.msg_iovlen = iovlen;
 
-	ret = sendmsg(*_kcapi_get_opfd(handle), &msg, flags);
+	ret = sendmsg(*_kcapi_get_opfd(handle), &msg, (int)flags);
 	if (ret < 0)
 		ret = -errno;
 	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: sendmsg syscall returned %d",
@@ -249,13 +249,12 @@ int32_t _kcapi_common_send_data(struct kcapi_handle *handle,
 	return ret;
 }
 
-int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
-				   struct iovec *iov, unsigned long iovlen,
+ssize_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
+				   struct iovec *iov, size_t iovlen,
 				   uint32_t flags)
 {
-	int32_t ret = 0;
-	uint32_t inlen = 0;
-	unsigned long i;
+	ssize_t ret = 0;
+	size_t i, inlen = 0;
 
 	if (iovlen && !iov)
 		return -EINVAL;
@@ -280,7 +279,7 @@ int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 	 * kernel.
 	 */
 	handle->processed_sg += iovlen;
-	if (handle->processed_sg > handle->flags.alg_max_pages ||
+	if (handle->processed_sg > (size_t)handle->flags.alg_max_pages ||
 	    !inlen ||
 	    inlen > handle->pipesize) {
 		kcapi_dolog(KCAPI_LOG_DEBUG,
@@ -311,7 +310,7 @@ int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 	}
 
 	ret = splice(handle->pipes[0], NULL, *_kcapi_get_opfd(handle), NULL,
-		     ret, flags);
+		     (size_t)ret, flags);
 	if (ret < 0)
 		ret = -errno;
 	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: splice syscall returned %d", ret);
@@ -319,13 +318,13 @@ int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 	return ret;
 }
 
-int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
-				     const uint8_t *in, uint32_t inlen,
+ssize_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
+				     const uint8_t *in, size_t inlen,
 				     uint32_t flags)
 {
 	struct iovec iov;
-	uint32_t processed = 0;
-	int32_t ret = 0;
+	ssize_t processed = 0;
+	ssize_t ret = 0;
 	uint32_t sflags = (flags & SPLICE_F_MORE) ? MSG_MORE : 0;
 
 	if (inlen > INT_MAX)
@@ -369,8 +368,8 @@ int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 				    ret);
 
 			ret = splice(handle->pipes[0], NULL,
-				     *_kcapi_get_opfd(handle), NULL, ret,
-				     flags);
+				     *_kcapi_get_opfd(handle), NULL,
+				     (size_t)ret, flags);
 			if (ret < 0) {
 				ret = -errno;
 				kcapi_dolog(KCAPI_LOG_DEBUG,
@@ -383,14 +382,14 @@ int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 		}
 
 		processed += ret;
-		inlen -= ret;
+		inlen -= (uint32_t)ret;
 	}
 
 	return processed;
 }
 
 /* Wrapper for io_getevents -- returns < 0 on error, or processed bytes */
-int _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
+int _kcapi_aio_read_all(struct kcapi_handle *handle, size_t toread,
 			struct timespec *timeout)
 {
 	if (toread > KCAPI_AIO_CONCURRENT)
@@ -399,7 +398,7 @@ int _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
 	while (toread) {
 		int i;
 		struct io_event events[KCAPI_AIO_CONCURRENT];
-		int rc = io_getevents(handle->aio.aio_ctx, 1, toread,
+		int rc = io_getevents(handle->aio.aio_ctx, 1, (long)toread,
 				      events, timeout);
 
 		if (rc < 0)
@@ -429,21 +428,21 @@ int _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
 								events[i].res;
 			} else {
 				handle->aio.iocb_ret[events[i].data] =
-								cb->aio_nbytes;
+							(__s64)cb->aio_nbytes;
 			}
 
 			cb->aio_fildes = 0;
 		}
-		toread -= rc;
+		toread -= (uint32_t)rc;
 	}
 
 	return 0;
 }
 
 int _kcapi_aio_send_iov(struct kcapi_handle *handle, struct iovec *iov,
-			uint32_t iovlen, int access, int enc)
+			size_t iovlen, int access, unsigned int enc)
 {
-	int ret;
+	ssize_t ret;
 	size_t len = iov ? iov->iov_len : 0;
 
 	/*
@@ -454,24 +453,24 @@ int _kcapi_aio_send_iov(struct kcapi_handle *handle, struct iovec *iov,
 	    access == KCAPI_ACCESS_SENDMSG) {
 		ret = _kcapi_common_send_meta(handle, iov, iovlen, enc, 0);
 		if (0 > ret)
-			return ret;
+			return (int)ret;
 	} else {
 		ret = _kcapi_common_send_meta(handle, NULL, 0, enc, MSG_MORE);
 		if (0 > ret)
-			return ret;
+			return (int)ret;
 		ret = _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
 		if (0 > ret)
-			return ret;
+			return (int)ret;
 	}
 
 	return 0;
 }
 
 int _kcapi_aio_read_iov(struct kcapi_handle *handle,
-			   struct iovec *iov, uint32_t iovlen)
+			struct iovec *iov, size_t iovlen)
 {
 	struct iocb *cb = handle->aio.cio;
-	uint32_t i;
+	size_t i;
 	int32_t ret;
 
 	if (iovlen > KCAPI_AIO_CONCURRENT)
@@ -489,14 +488,14 @@ int _kcapi_aio_read_iov(struct kcapi_handle *handle,
 		}
 
 		memset(cb, 0, sizeof(*cb));
-		cb->aio_fildes = *_kcapi_get_opfd(handle);
+		cb->aio_fildes = (__u32)*_kcapi_get_opfd(handle);
 		cb->aio_lio_opcode = IOCB_CMD_PREAD;
 		cb->aio_buf = (unsigned long)iov->iov_base;
 		cb->aio_offset = 0;
 		cb->aio_data = i;
 		cb->aio_nbytes = iov->iov_len;
 		cb->aio_flags = IOCB_FLAG_RESFD;
-		cb->aio_resfd = handle->aio.efd;
+		cb->aio_resfd = (__u32)handle->aio.efd;
 
 		handle->aio.iocb_ret[i] = AIO_OUTSTANDING;
 
@@ -504,7 +503,7 @@ int _kcapi_aio_read_iov(struct kcapi_handle *handle,
 		iov++;
 	}
 
-	ret = io_submit(handle->aio.aio_ctx, iovlen, handle->aio.ciopp);
+	ret = io_submit(handle->aio.aio_ctx, (long)iovlen, handle->aio.ciopp);
 	if ((uint32_t)ret != iovlen) {
 		if (ret < 0) {
 			ret = -errno;
@@ -520,11 +519,11 @@ int _kcapi_aio_read_iov(struct kcapi_handle *handle,
 	return _kcapi_aio_read_all(handle, iovlen, NULL);
 }
 
-int32_t _kcapi_common_recv_data(struct kcapi_handle *handle,
-				struct iovec *iov, uint32_t iovlen)
+ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
+				struct iovec *iov, size_t iovlen)
 {
 	struct msghdr msg;
-	int32_t ret;
+	ssize_t ret;
 
 	ret = _kcapi_common_accept(handle);
 	if (ret)
@@ -568,11 +567,11 @@ int32_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 	return ret;
 }
 
-int32_t _kcapi_common_read_data(struct kcapi_handle *handle,
-				   uint8_t *out, uint32_t outlen)
+ssize_t _kcapi_common_read_data(struct kcapi_handle *handle,
+				   uint8_t *out, size_t outlen)
 {
-	int ret;
-	int32_t totallen = 0;
+	ssize_t ret;
+	ssize_t totallen = 0;
 
 	if (outlen > INT_MAX)
 		return -EMSGSIZE;
@@ -587,7 +586,7 @@ int32_t _kcapi_common_read_data(struct kcapi_handle *handle,
 			ret = read(*_kcapi_get_opfd(handle), out, outlen);
 			if (ret > 0) {
 				out += ret;
-				outlen -= ret;
+				outlen -= (uint32_t)ret;
 				totallen += ret;
 			}
 			kcapi_dolog(KCAPI_LOG_DEBUG,
@@ -631,7 +630,7 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 		struct crypto_user_alg cru;
 	} req;
 	struct crypto_user_alg *cru_res = NULL;
-	int res_len = 0;
+	unsigned long res_len = 0;
 	struct rtattr *tb[CRYPTOCFGA_MAX+1];
 	struct rtattr *rta;
 
@@ -649,7 +648,7 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	req.n.nlmsg_len = NLMSG_LENGTH(sizeof(req.cru));
 	req.n.nlmsg_flags = NLM_F_REQUEST;
 	req.n.nlmsg_type = CRYPTO_MSG_GETALG;
-	req.n.nlmsg_seq = time(NULL);
+	req.n.nlmsg_seq = (__u32)time(NULL);
 
 	if (drivername)
 		strncpy(req.cru.cru_driver_name, ciphername,
@@ -710,9 +709,10 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	memset(buf,0,sizeof(buf));
 	iov.iov_base = buf;
 	while (1) {
+		ssize_t rc;
 		iov.iov_len = sizeof(buf);
-		ret = recvmsg(sd, &msg, 0);
-		if (ret < 0) {
+		rc = recvmsg(sd, &msg, 0);
+		if (rc < 0) {
 			if (errno == EINTR || errno == EAGAIN)
 				continue;
 			ret = -errno;
@@ -720,12 +720,12 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 				    "Netlink error: netlink receive error");
 			goto out;
 		}
-		if (ret == 0) {
+		if (rc == 0) {
 			ret = -errno;
 			kcapi_dolog(KCAPI_LOG_ERR, "Netlink error: no data");
 			goto out;
 		}
-		if ((uint32_t)ret > sizeof(buf)) {
+		if (rc > (ssize_t)sizeof(buf)) {
 			ret = -errno;
 			kcapi_dolog(KCAPI_LOG_ERR,
 				    "Netlink error: received too much data");
@@ -748,12 +748,12 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 
 	if (res_n->nlmsg_type == CRYPTO_MSG_GETALG) {
 		cru_res = NLMSG_DATA(res_n);
+		if (res_len < NLMSG_SPACE(sizeof(*cru_res))) {
+			kcapi_dolog(KCAPI_LOG_ERR, "Netlink error: nlmsg len %d",
+				    res_len);
+			goto out;
+		}
 		res_len -= NLMSG_SPACE(sizeof(*cru_res));
-	}
-	if (res_len < 0) {
-		kcapi_dolog(KCAPI_LOG_ERR, "Netlink error: nlmsg len %d",
-			    res_len);
-		goto out;
 	}
 
 	/* parse data */
@@ -1258,12 +1258,12 @@ err:
 	return ret;
 }
 
-int32_t _kcapi_cipher_crypt(struct kcapi_handle *handle, const uint8_t *in,
-			    uint32_t inlen, uint8_t *out, uint32_t outlen,
-			    int access, int enc)
+ssize_t _kcapi_cipher_crypt(struct kcapi_handle *handle, const uint8_t *in,
+			    size_t inlen, uint8_t *out, size_t outlen,
+			    int access, unsigned int enc)
 {
 	struct iovec iov;
-	int32_t ret = 0;
+	ssize_t ret = 0;
 
 	if (outlen > INT_MAX)
 		return -EMSGSIZE;
@@ -1291,21 +1291,21 @@ int32_t _kcapi_cipher_crypt(struct kcapi_handle *handle, const uint8_t *in,
 	return _kcapi_common_read_data(handle, out, outlen);
 }
 
-int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
-				  const uint8_t *in, uint32_t inlen,
-				  uint8_t *out, uint32_t outlen,
-				  int access, int enc)
+ssize_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
+				  const uint8_t *in, size_t inlen,
+				  uint8_t *out, size_t outlen,
+				  int access, unsigned int enc)
 {
-	int32_t totallen = 0;
-	uint32_t maxprocess = handle->pagesize * ALG_MAX_PAGES;
-	int32_t ret;
+	ssize_t totallen = 0;
+	size_t maxprocess = handle->pagesize * ALG_MAX_PAGES;
+	ssize_t ret;
 
 	if (outlen > INT_MAX)
 		return -EMSGSIZE;
 
 	while (inlen && outlen) {
-		uint32_t inprocess = inlen;
-		uint32_t outprocess = outlen;
+		size_t inprocess = inlen;
+		size_t outprocess = outlen;
 
 		/*
 		 * We do not check that sysconf(_SC_PAGESIZE) * ALG_MAX_PAGES is
@@ -1322,22 +1322,22 @@ int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
 		if (ret < 0)
 			return ret;
 
-		totallen += inprocess;
+		totallen += (ssize_t)inprocess;
 		in += inprocess;
 		inlen -= inprocess;
 		out += ret;
-		outlen -= ret;
+		outlen -= (uint32_t)ret;
 	}
 
 	return totallen;
 }
 
-int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
+ssize_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 				struct iovec *iniov, struct iovec *outiov,
-				uint32_t iovlen, int access, int enc)
+				size_t iovlen, int access, unsigned int enc)
 {
-	uint32_t i, outstanding = 0, processed = 0, inflight = 0;
-	int32_t ret;
+	size_t i, outstanding = 0, processed = 0, inflight = 0;
+	ssize_t ret;
 
 	if (handle->aio.disable == true) {
 		kcapi_dolog(KCAPI_LOG_WARN, "AIO support disabled\n");
@@ -1346,8 +1346,8 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 
 	/* Every IOVEC is processed as its individual cipher operation. */
 	while (iovlen) {
-		uint32_t max_process = KCAPI_AIO_CONCURRENT - inflight;
-		uint32_t process = (max_process < iovlen) ?
+		size_t max_process = KCAPI_AIO_CONCURRENT - inflight;
+		size_t process = (max_process < iovlen) ?
 							max_process : iovlen;
 
 		ret = _kcapi_aio_send_iov(handle, iniov, process, access, enc);
@@ -1367,7 +1367,7 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 			if (handle->aio.iocb_ret[i] == AIO_OUTSTANDING) {
 				inflight++;
 			} else if (handle->aio.iocb_ret[i] < 0) {
-				return handle->aio.iocb_ret[i];
+				return (int32_t)handle->aio.iocb_ret[i];
 			} else {
 				if (handle->aio.iocb_ret[i] > INT_MAX)
 					return -EOVERFLOW;
@@ -1405,7 +1405,7 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 		if (handle->aio.iocb_ret[i] == AIO_OUTSTANDING) {
 			return -EBADMSG;
 		} else if (handle->aio.iocb_ret[i] < 0) {
-			return handle->aio.iocb_ret[i];
+			return (int32_t)handle->aio.iocb_ret[i];
 		} else {
 			if (handle->aio.iocb_ret[i] > INT_MAX)
 				return -EOVERFLOW;
@@ -1416,5 +1416,5 @@ int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 			handle->aio.iocb_ret[i] = 0;
 		}
 	}
-	return processed;
+	return (ssize_t)processed;
 }

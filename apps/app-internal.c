@@ -225,10 +225,10 @@ int hex2bin_alloc(const char *hex, uint32_t hexlen,
 	return 0;
 }
 
-int read_complete(int fd, uint8_t *buf, uint32_t buflen)
+ssize_t read_complete(int fd, uint8_t *buf, size_t buflen)
 {
 	ssize_t ret;
-	int rc = 0;
+	ssize_t rc = 0;
 
 	if (buflen > INT_MAX)
 		return -EINVAL;
@@ -236,7 +236,7 @@ int read_complete(int fd, uint8_t *buf, uint32_t buflen)
 	do {
 		ret = read(fd, buf, buflen);
 		if (0 < ret) {
-			buflen -= ret;
+			buflen -= (size_t)ret;
 			buf += ret;
 		}
 		rc += ret;

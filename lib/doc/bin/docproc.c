@@ -77,11 +77,11 @@ FILELINE * docsection;
 static char *srctree, *kernsrctree;
 
 static char **all_list = NULL;
-static int all_list_len = 0;
+static unsigned int all_list_len = 0;
 
 static void consume_symbol(const char *sym)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < all_list_len; i++) {
 		if (!all_list[i])
@@ -145,7 +145,7 @@ struct symfile
 {
 	char *filename;
 	struct symbols *symbollist;
-	int symbolcnt;
+	unsigned int symbolcnt;
 };
 
 struct symfile symfilelist[MAXFILES];
@@ -254,8 +254,9 @@ static void find_export_symbols(char * filename)
  */
 static void docfunctions(char * filename, char * type)
 {
-	int i,j;
-	int symcnt = 0;
+	unsigned int j;
+	int i;
+	unsigned int symcnt = 0;
 	int idx = 0;
 	char **vec;
 
@@ -360,7 +361,7 @@ static void find_all_symbols(char *filename)
 {
 	char *vec[4]; /* kerneldoc -list file NULL */
 	pid_t pid;
-	int ret, i, count, start;
+	ssize_t ret, i, count, start;
 	char real_filename[PATH_MAX + 1];
 	int pipefd[2];
 	char *data, *str;
@@ -402,7 +403,7 @@ static void find_all_symbols(char *filename)
 				while ((ret = read(pipefd[0],
 						   data + data_len,
 						   4096)) > 0) {
-					data_len += ret;
+					data_len += (size_t)ret;
 					data = realloc(data, data_len + 4096);
 					if (!data) {
 						perror("realloc");
@@ -414,10 +415,10 @@ static void find_all_symbols(char *filename)
 				perror("read");
 				exit(1);
 			}
-			waitpid(pid, &ret ,0);
+			waitpid(pid, (int *)&ret ,0);
 	}
 	if (WIFEXITED(ret))
-		exitstatus |= WEXITSTATUS(ret);
+		exitstatus |= (int)WEXITSTATUS(ret);
 	else
 		exitstatus = 0xff;
 
@@ -430,7 +431,7 @@ static void find_all_symbols(char *filename)
 		}
 	}
 	start = all_list_len;
-	all_list_len += count;
+	all_list_len += (unsigned int)count;
 	all_list = realloc(all_list, sizeof(char *) * all_list_len);
 	if (!all_list) {
 		perror("realloc");
@@ -518,7 +519,7 @@ static void parse_file(FILE *infile)
 int main(int argc, char *argv[])
 {
 	FILE * infile;
-	int i;
+	unsigned int i;
 
 	srctree = getenv("SRCTREE");
 	if (!srctree)

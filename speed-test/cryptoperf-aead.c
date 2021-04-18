@@ -18,6 +18,7 @@
  */
 
 #include "cryptoperf.h"
+#include <limits.h>
 #include <sys/user.h>
 
 /****************************************************************************
@@ -36,9 +37,9 @@ static int cp_aead_init_test(struct cp_test *test, int enc, int ccm)
 	unsigned char ivrand[MAX_KEYLEN];
 	unsigned char *ivdata = NULL;
 	uint32_t ivlen = 0;
-	long pagesize = sysconf(_SC_PAGESIZE);
+	size_t pagesize = (size_t)sysconf(_SC_PAGESIZE);
 
-	if (pagesize < 0) {
+	if (pagesize > ULONG_MAX) {
 		printf(DRIVER_NAME": unable to determine the page size\n");
 		return -errno;
 	}
@@ -125,7 +126,7 @@ static int cp_aead_init_test(struct cp_test *test, int enc, int ccm)
 	if (enc) {
 		cp_read_random(input, test->u.aead.indatalen);
 	} else {
-		int ret = 0;
+		ssize_t ret = 0;
 		/* we need good data to avoid testing just the hash */
 		cp_read_random(output, test->u.aead.outdatalen);
 		ret = kcapi_aead_encrypt(test->u.aead.handle,
@@ -136,7 +137,7 @@ static int cp_aead_init_test(struct cp_test *test, int enc, int ccm)
 					 test->u.aead.indatalen, 0);
 		if (ret < 0) {
 			printf(DRIVER_NAME": could not create ciphertext for "
-		       "%s (%d)\n", test->driver_name, ret);
+		       "%s (%zd)\n", test->driver_name, ret);
 			goto out;
 		}
 		/* copy the AAD as this is not copied by the kernel */
@@ -152,7 +153,7 @@ static int cp_aead_init_test(struct cp_test *test, int enc, int ccm)
 					 params->accesstype);
 		if (ret < 0) {
 			printf(DRIVER_NAME": could not decrypt ciphertext for "
-		       "%s (%d)\n", test->driver_name, ret);
+		       "%s (%zd)\n", test->driver_name, ret);
 			goto out;
 		}
 	}
@@ -173,7 +174,7 @@ static int cp_aead_init_test(struct cp_test *test, int enc, int ccm)
 		}
 
 		for (i = 0; i < params->aio; i++) {
-			int ret = 0;
+			ssize_t ret = 0;
 
 			test->u.aead.iniov[i].iov_base = input;
 			test->u.aead.iniov[i].iov_len = test->u.aead.indatalen;
@@ -199,7 +200,7 @@ static int cp_aead_init_test(struct cp_test *test, int enc, int ccm)
 							test->u.aead.indatalen, 0);
 				if (ret < 0) {
 					printf(DRIVER_NAME": could not create ciphertext for "
-				"%s (%d)\n", test->driver_name, ret);
+				"%s (%zd)\n", test->driver_name, ret);
 					goto out;
 				}
 				/* copy the AAD as this is not copied by the kernel */
@@ -214,7 +215,7 @@ static int cp_aead_init_test(struct cp_test *test, int enc, int ccm)
 							params->accesstype);
 				if (ret < 0) {
 					printf(DRIVER_NAME": could not decrypt ciphertext for "
-				"%s (%d)\n", test->driver_name, ret);
+				"%s (%zd)\n", test->driver_name, ret);
 					goto out;
 				}
 			}
@@ -272,7 +273,7 @@ static void cp_aead_fini_test(struct cp_test *test)
 	kcapi_cipher_destroy(test->u.aead.handle);
 }
 
-static unsigned int cp_ablkcipher_enc_test(struct cp_test *test)
+static size_t cp_ablkcipher_enc_test(struct cp_test *test)
 {
 	struct cp_test_param *params = test->test_params;
 
@@ -294,7 +295,7 @@ static unsigned int cp_ablkcipher_enc_test(struct cp_test *test)
 	return test->u.aead.outdatalen;
 }
 
-static unsigned int cp_ablkcipher_dec_test(struct cp_test *test)
+static size_t cp_ablkcipher_dec_test(struct cp_test *test)
 {
 	struct cp_test_param *params = test->test_params;
 
@@ -355,7 +356,7 @@ void cp_aead_register(struct cp_test **aead_test, size_t *entries)
 	     i++, j++) {
 		int enc = 0;
 		for (enc = 0; enc < 2; enc++) {
-			j += enc;
+			j += (size_t)enc;
 			cp_aead_testdef[j].enc = enc;
 			cp_aead_testdef[j].testname = testcases[i].testname;
 			cp_aead_testdef[j].driver_name = testcases[i].driver_name;

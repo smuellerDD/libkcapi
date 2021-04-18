@@ -95,7 +95,7 @@ static void cp_hash_fini_test(struct cp_test *test)
 	free(test->u.hash.scratchpad);
 }
 
-static unsigned int cp_hash_test(struct cp_test *test)
+static size_t cp_hash_test(struct cp_test *test)
 {
 	kcapi_md_digest(test->u.hash.handle,
 			test->u.hash.scratchpad,

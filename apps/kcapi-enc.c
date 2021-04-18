@@ -59,37 +59,37 @@ struct opt_data {
 	void (*func_destroy)(struct kcapi_handle *handle);
 	int (*func_setkey)(struct kcapi_handle *handle,
 			   const uint8_t *key, uint32_t keylen);
-	int32_t (*func_stream_init_enc)(struct kcapi_handle *handle,
+	ssize_t (*func_stream_init_enc)(struct kcapi_handle *handle,
 					const uint8_t *iv,
-					struct iovec *iov, uint32_t iovlen);
-	int32_t (*func_stream_init_dec)(struct kcapi_handle *handle,
+					struct iovec *iov, size_t iovlen);
+	ssize_t (*func_stream_init_dec)(struct kcapi_handle *handle,
 					const uint8_t *iv,
-					struct iovec *iov, uint32_t iovlen);
-	int32_t (*func_stream_update)(struct kcapi_handle *handle,
-				      struct iovec *iov, uint32_t iovlen);
-	int32_t (*func_stream_update_last)(struct kcapi_handle *handle,
-					   struct iovec *iov, uint32_t iovlen);
-	int32_t (*func_stream_op)(struct kcapi_handle *handle,
-				  struct iovec *iov, uint32_t iovlen);
+					struct iovec *iov, size_t iovlen);
+	ssize_t (*func_stream_update)(struct kcapi_handle *handle,
+				      struct iovec *iov, size_t iovlen);
+	ssize_t (*func_stream_update_last)(struct kcapi_handle *handle,
+					   struct iovec *iov, size_t iovlen);
+	ssize_t (*func_stream_op)(struct kcapi_handle *handle,
+				  struct iovec *iov, size_t iovlen);
 	uint32_t (*func_blocksize)(struct kcapi_handle *handle);
 };
 
-static int return_data_stdout(struct kcapi_handle *handle,
-			      struct opt_data *opts, uint32_t outsize)
+static ssize_t return_data_stdout(struct kcapi_handle *handle,
+				  struct opt_data *opts, size_t outsize)
 {
 	struct iovec outiov;
 	uint8_t tmpbuf[TMPBUFLEN] __aligned(KCAPI_APP_ALIGN);
-	int ret = 0;
-	int generated_bytes = 0;
+	ssize_t ret = 0;
+	ssize_t generated_bytes = 0;
 
 	/*
 	 * Generate output data in a tmp buffer and then dump it.
 	 */
 	while (outsize > 0) {
 		/* length of the input data */
-		uint32_t inlen = outsize < TMPBUFLEN ? outsize : TMPBUFLEN;
+		size_t inlen = outsize < TMPBUFLEN ? outsize : TMPBUFLEN;
 		/* length of the output data */
-		uint32_t outlen = inlen;
+		size_t outlen = inlen;
 		uint8_t *tmpbufptr = tmpbuf;
 
 		outiov.iov_base = tmpbuf;
@@ -106,7 +106,7 @@ static int return_data_stdout(struct kcapi_handle *handle,
 			*/
 		if (opts->removetag) {
 			outlen -= opts->taglen;
-			generated_bytes -= opts->taglen;
+			generated_bytes -= (ssize_t)opts->taglen;
 
 			dolog(KCAPI_LOG_DEBUG,
 				"remove %u bytes of unused but generated tag",
@@ -132,15 +132,16 @@ out:
 	return (ret < 0) ? ret : generated_bytes;
 }
 
-static int return_data_fd(struct kcapi_handle *handle, struct opt_data *opts,
-			  int outfd, uint32_t outsize, uint32_t offset,
-			  uint32_t unpad)
+static ssize_t return_data_fd(struct kcapi_handle *handle,
+			      struct opt_data *opts,
+			      int outfd, size_t outsize, size_t offset,
+			      uint32_t unpad)
 {
 	struct iovec outiov;
-	uint32_t off_outsize = outsize + offset;
+	size_t off_outsize = outsize + offset;
 	uint8_t *outmem;
-	int ret = 0;
-	int generated_bytes = 0;
+	ssize_t ret = 0;
+	ssize_t generated_bytes = 0;
 	uint8_t *off_ptr;
 
 	/* Map the file into memory. */
@@ -172,11 +173,11 @@ static int return_data_fd(struct kcapi_handle *handle, struct opt_data *opts,
 		padbyte = *(off_ptr + generated_bytes - 1);
 
 		if ((uint32_t)padbyte < opts->func_blocksize(handle)) {
-			uint32_t i;
+			ssize_t i;
 			uint32_t padded = 1;
 
 			for (i = generated_bytes - 2;
-			     i >= generated_bytes - (uint32_t)padbyte; i--) {
+			     i >= generated_bytes - (ssize_t)padbyte; i--) {
 				if (*(off_ptr + i) != padbyte) {
 					padded = 0;
 					break;
@@ -189,11 +190,11 @@ static int return_data_fd(struct kcapi_handle *handle, struct opt_data *opts,
 
 				off_outsize -= (uint32_t)padbyte;
 
-				ret = ftruncate(outfd, off_outsize);
+				ret = ftruncate(outfd, (off_t)off_outsize);
 				if (ret)
 					goto out;
 
-				generated_bytes -= (uint32_t)padbyte;
+				generated_bytes -= (ssize_t)padbyte;
 			}
 		}
 	} else
@@ -206,10 +207,10 @@ static int return_data_fd(struct kcapi_handle *handle, struct opt_data *opts,
 	 * it will be cleared.
 	 */
 	if (opts->removetag) {
-		ret = ftruncate(outfd, (off_outsize - opts->taglen));
+		ret = ftruncate(outfd, (off_t)(off_outsize - opts->taglen));
 		if (ret)
 			goto out;
-		generated_bytes -= opts->taglen;
+		generated_bytes -= (ssize_t)opts->taglen;
 		dolog(KCAPI_LOG_DEBUG,
 			"remove %u bytes of unused but generated tag",
 			opts->taglen);
@@ -220,14 +221,14 @@ out:
 	return (ret < 0) ? ret : generated_bytes;
 }
 
-static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
-		       int outfd, uint32_t outsize, uint32_t offset,
-		       uint32_t unpad)
+static ssize_t return_data(struct kcapi_handle *handle, struct opt_data *opts,
+			   int outfd, size_t outsize, size_t offset,
+			   uint32_t unpad)
 {
 	/* Tell kernel that we have sent all data */
-	int ret = opts->func_stream_update_last(handle, NULL, 0);
+	ssize_t ret = opts->func_stream_update_last(handle, NULL, 0);
 	if (ret < 0)
-		return ret;
+		return (int)ret;
 
 	/* send generated data to stdout */
 	if (outfd == STDOUT_FD)
@@ -243,10 +244,10 @@ static int return_data(struct kcapi_handle *handle, struct opt_data *opts,
  * Get the output data size to be expected for the cipher operation given
  * the input data size.
  */
-static uint32_t outbufsize(struct kcapi_handle *handle, struct opt_data *opts,
-			   uint32_t datalen)
+static size_t outbufsize(struct kcapi_handle *handle, struct opt_data *opts,
+			 size_t datalen)
 {
-	uint32_t outsize;
+	size_t outsize;
 
 	if (opts->aad) {
 		if (opts->decrypt) {
@@ -282,12 +283,12 @@ static uint32_t outbufsize(struct kcapi_handle *handle, struct opt_data *opts,
  * Send the tag value to the kernel for AEAD operations.
  * This function also handles the interface change between kernels 4.8 and 4.9.
  */
-static uint32_t sendtag(struct kcapi_handle *handle, struct opt_data *opts,
-			uint8_t *tagbuf, uint8_t *tmptagbuf)
+static int sendtag(struct kcapi_handle *handle, struct opt_data *opts,
+		   uint8_t *tagbuf, uint8_t *tmptagbuf)
 {
-	uint32_t outsize;
+	size_t outsize;
 	struct iovec iniov;
-	int ret;
+	ssize_t ret;
 
 	/* If no AEAD operation, return immediately. */
 	if (!opts->aad)
@@ -301,7 +302,7 @@ static uint32_t sendtag(struct kcapi_handle *handle, struct opt_data *opts,
 		ret = opts->func_stream_update(handle, &iniov,
 						1);
 		if (ret < 0)
-			return ret;
+			return (int)ret;
 
 		dolog(KCAPI_LOG_DEBUG, "Sent %u bytes of tag", opts->taglen);
 
@@ -341,7 +342,7 @@ static uint32_t sendtag(struct kcapi_handle *handle, struct opt_data *opts,
 	iniov.iov_len = opts->taglen;
 	ret = opts->func_stream_update(handle, &iniov, 1);
 	if (ret < 0)
-		return ret;
+		return (int)ret;
 
 	dolog(KCAPI_LOG_DEBUG, "Sent %u bytes of null tag", opts->taglen);
 
@@ -353,9 +354,9 @@ static uint32_t sendtag(struct kcapi_handle *handle, struct opt_data *opts,
  * data is multiples of the cipher's block size.
  */
 static int add_padding(struct kcapi_handle *handle, struct opt_data *opts,
-		       uint8_t *padbuf, uint32_t outsize, uint32_t currblock)
+		       uint8_t *padbuf, size_t outsize, size_t currblock)
 {
-	uint32_t padsize = 0;
+	size_t padsize = 0;
 
 	if (opts->aad)
 		return 0;
@@ -365,7 +366,7 @@ static int add_padding(struct kcapi_handle *handle, struct opt_data *opts,
 
 	if (outsize > currblock) {
 		struct iovec iniov;
-		int ret = 0;
+		ssize_t ret = 0;
 
 		padsize = outsize - currblock;
 		memset(padbuf, (uint8_t)padsize, padsize);
@@ -380,15 +381,15 @@ static int add_padding(struct kcapi_handle *handle, struct opt_data *opts,
 		iniov.iov_len = padsize;
 		ret = opts->func_stream_update(handle, &iniov, 1);
 		if (ret < 0)
-			return ret;
+			return (int)ret;
 
-		dolog_bin(KCAPI_LOG_DEBUG, iniov.iov_base, iniov.iov_len,
-			  "Padding contents");
+		dolog_bin(KCAPI_LOG_DEBUG, iniov.iov_base,
+			  (uint32_t)iniov.iov_len, "Padding contents");
 		dolog(KCAPI_LOG_VERBOSE, "Padding of %u bytes applied",
 		      iniov.iov_len);
 	}
 
-	return padsize;
+	return (int)padsize;
 }
 
 /**
@@ -399,11 +400,11 @@ static int add_padding(struct kcapi_handle *handle, struct opt_data *opts,
 static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 {
 	int infd = -1, outfd = -1;
-	int ret = 0;
-	int generated_bytes = 0;
+	ssize_t ret = 0;
+	unsigned int generated_bytes = 0;
 	struct stat insb, outsb;
 	uint8_t *inmem = NULL;
-	uint32_t outsize = 0;
+	size_t outsize = 0;
 	struct iovec iniov;
 	uint8_t *ivbuf = NULL;
 	uint32_t ivbuflen = 0;
@@ -424,7 +425,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		uint8_t *newiv = NULL;
 		uint32_t newivlen;
 
-		ret = hex2bin_alloc(opts->iv, strlen(opts->iv),
+		ret = hex2bin_alloc(opts->iv, (uint32_t)strlen(opts->iv),
 					&ivbuf, &ivbuflen);
 		if (ret)
 			goto out;
@@ -449,7 +450,8 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		uint32_t noncelen;
 
 		/* Convert a CCM nonce into an IV. */
-		ret = hex2bin_alloc(opts->ccmnonce, strlen(opts->ccmnonce),
+		ret = hex2bin_alloc(opts->ccmnonce,
+				    (uint32_t)strlen(opts->ccmnonce),
 				    &nonce, &noncelen);
 		if (ret)
 			goto out;
@@ -469,7 +471,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 
 	/* AEAD specific code */
 	if (opts->aad) {
-		ret = hex2bin_alloc(opts->aad, strlen(opts->aad),
+		ret = hex2bin_alloc(opts->aad, (uint32_t)strlen(opts->aad),
 				    &aadbuf, &opts->aadlen);
 		if (ret)
 			goto out;
@@ -480,7 +482,8 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		      opts->aadlen);
 
 		if (opts->tag) {
-			ret = hex2bin_alloc(opts->tag, strlen(opts->tag),
+			ret = hex2bin_alloc(opts->tag,
+					    (uint32_t)strlen(opts->tag),
 					    &tagbuf, &opts->taglen);
 			if (ret)
 				goto out;
@@ -560,7 +563,8 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			if (ret < 0)
 				goto out;
 
-			outsize = outbufsize(handle, opts, iniov.iov_len);
+			outsize = outbufsize(handle, opts,
+					     (uint32_t)iniov.iov_len);
 
 			/* WARNING: with AEAD, only one loop is possible */
 			ret = sendtag(handle, opts, tagbuf, tagtmpbuf);
@@ -569,14 +573,14 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 
 			if (outfd != STDOUT_FD) {
 				ret = ftruncate(outfd,
-						generated_bytes + outsize);
+					(off_t)(generated_bytes + outsize));
 				if (ret)
 					goto out;
 			}
 
 			/* padding */
 			ret = add_padding(handle, opts, padbuf,
-					  outsize, iniov.iov_len);
+					  outsize, (uint32_t)iniov.iov_len);
 			if (ret < 0)
 				goto out;
 
@@ -584,15 +588,16 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 					  generated_bytes, 0);
 			if (ret < 0)
 				goto out;
-			generated_bytes += ret;
+			generated_bytes += (unsigned int)ret;
 		}
 
 	/* Get data from file. */
 	} else {
-		uint32_t maxdata = sysconf(_SC_PAGESIZE) * MAX_ALG_PAGES;
+		uint32_t maxdata = (uint32_t)(sysconf(_SC_PAGESIZE) *
+					      MAX_ALG_PAGES);
 		uint32_t sent_data = 0;
 
-		inmem = mmap(NULL, insb.st_size, PROT_READ, MAP_SHARED,
+		inmem = mmap(NULL, (size_t)insb.st_size, PROT_READ, MAP_SHARED,
 			     infd, 0);
 		if (inmem == MAP_FAILED) {
 			dolog(KCAPI_LOG_ERR, "Use of mmap for infd failed");
@@ -603,8 +608,9 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		if (outfd != STDOUT_FD && insb.st_size) {
 			uint8_t padbyte;
 
-			outsize = outbufsize(handle, opts, insb.st_size);
-			ret = ftruncate(outfd, outsize);
+			outsize = outbufsize(handle, opts,
+					     (uint32_t)insb.st_size);
+			ret = ftruncate(outfd, (off_t)outsize);
 			if (ret)
 				goto out;
 
@@ -620,7 +626,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 				uint32_t i;
 				uint32_t padded = 1;
 
-				for (i = insb.st_size - 2;
+				for (i = (uint32_t)insb.st_size - 2;
 				     i >=  insb.st_size - (uint32_t)padbyte;
 				     i--) {
 					if (*(inmem + i) != padbyte) {
@@ -639,7 +645,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		}
 
 		while (sent_data < (uint64_t)insb.st_size) {
-			uint32_t avail = insb.st_size - sent_data;
+			uint32_t avail = (uint32_t)insb.st_size - sent_data;
 			uint32_t todo = avail > maxdata ? maxdata : avail;
 
 			iniov.iov_base = inmem + sent_data;
@@ -648,7 +654,8 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			if (ret < 0)
 				goto out;
 
-			outsize = outbufsize(handle, opts, iniov.iov_len);
+			outsize = outbufsize(handle, opts,
+					     (uint32_t)iniov.iov_len);
 
 			/* WARNING: with AEAD, only one loop is possible */
 			ret = sendtag(handle, opts, tagbuf, tagtmpbuf);
@@ -657,7 +664,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 
 			/* padding */
 			ret = add_padding(handle, opts, padbuf,
-					  outsize, iniov.iov_len);
+					  outsize, (uint32_t)iniov.iov_len);
 			if (ret < 0)
 				goto out;
 
@@ -666,14 +673,14 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			if (ret < 0)
 				goto out;
 
-			generated_bytes += ret;
+			generated_bytes += (unsigned int)ret;
 			sent_data += todo;
 		}
 	}
 
 out:
 	if (inmem && inmem != MAP_FAILED)
-		munmap(inmem, insb.st_size);
+		munmap(inmem, (size_t)insb.st_size);
 
 	if (ivbuf)
 		free(ivbuf);
@@ -687,7 +694,7 @@ out:
 	if (outfd >= 0 && outfd != STDOUT_FD)
 		close(outfd);
 
-	return (ret < 0) ? ret : generated_bytes;
+	return (ret < 0) ? (int)ret : (int)generated_bytes;
 }
 
 /**
@@ -702,12 +709,12 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 	uint32_t keybuflen = 0;
 	int have_key = 0;
 	const uint8_t *passwdptr = NULL;
-	int ret;
+	ssize_t ret;
 
 	/* Get password from command line */
 	if (opts->passwd) {
 		passwdptr = (uint8_t *)opts->passwd;
-		passwdlen = strlen(opts->passwd);
+		passwdlen = (uint32_t)strlen(opts->passwd);
 	}
 
 	/* Get password from password FD */
@@ -719,7 +726,7 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 
 		passwdbuf[sizeof(passwdbuf) - 1] = '\0';
 		passwdptr = passwdbuf;
-		passwdlen = ret;
+		passwdlen = (uint32_t)ret;
 	}
 
 	/* Transform password into a key using PBKDF2. */
@@ -740,7 +747,8 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 
 		/* Convert the salt hex representation into binary. */
 		if (opts->salt) {
-			ret = hex2bin_alloc(opts->salt, strlen(opts->salt),
+			ret = hex2bin_alloc(opts->salt,
+					    (uint32_t)strlen(opts->salt),
 					    &saltbuf, &saltbuflen);
 			if (ret)
 				goto out;
@@ -808,7 +816,7 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 			goto out;
 
 		have_key = 1;
-		keybuflen = ret;
+		keybuflen = (uint32_t)ret;
 	}
 
 	if (!have_key) {
@@ -826,7 +834,7 @@ out:
 	kcapi_memset_secure(passwdbuf, 0, sizeof(passwdbuf));
 	kcapi_memset_secure(keybuf, 0, sizeof(keybuf));
 
-	return ret;
+	return (int)ret;
 }
 
 static void usage(void)
@@ -947,7 +955,7 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 					      "Tag length value too big");
 					usage();
 				}
-				opts->taglen = val;
+				opts->taglen = (uint32_t)val;
 				break;
 			case 9:
 				opts->ccmnonce = optarg;
@@ -974,7 +982,7 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 					      "PBKDF2 iteration value too big");
 					usage();
 				}
-				opts->pbkdf_iterations = val;
+				opts->pbkdf_iterations = (uint32_t)val;
 				break;
 			case 14:
 				opts->pbkdf_hash = optarg;

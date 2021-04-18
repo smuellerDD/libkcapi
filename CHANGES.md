@@ -3,6 +3,7 @@ Changes 1.3.0:
  * fix: remove prctl PR_SET_DUMPABLE to allow library to be debugged - as the library does not store any sensitive data in data structures it owns, such security precautions may not be necessary considering the benefit of allowing regular debugging
  * fix: ensure that sendmsg is always used as fallback when vmsplice cannot be used
  * enhancement: add kcapi_set_maxsplicesize and kcapi_get_maxsplicesize
+ * enhancement: the variable types are changed from int32_t to ssize_t and from uint32_t to size_t to match common POSIX and Linux APIs
 
 Changes 1.2.1:
  * fix: MSG_MORE usage: With kernel 5.9, a precise use of MSG_MORE is mandatory

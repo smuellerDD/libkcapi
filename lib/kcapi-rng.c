@@ -51,21 +51,21 @@ int kcapi_rng_seed(struct kcapi_handle *handle, uint8_t *seed,
 }
 
 DSO_PUBLIC
-int32_t kcapi_rng_generate(struct kcapi_handle *handle,
-			   uint8_t *buffer, uint32_t len)
+ssize_t kcapi_rng_generate(struct kcapi_handle *handle,
+			   uint8_t *buffer, size_t len)
 {
-	int32_t out = 0;
+	ssize_t out = 0;
 	struct iovec iov;
 
 	while (len) {
-		int32_t r = 0;
+		ssize_t r = 0;
 
 		iov.iov_base = (void *)(uintptr_t)buffer;
 		iov.iov_len = len;
 		r = _kcapi_common_recv_data(handle, &iov, 1);
 		if (0 >= r)
 			return r;
-		len -= r;
+		len -= (size_t)r;
 		out += r;
 
 		buffer += r;
@@ -99,7 +99,7 @@ static void close_random(void)
 }
 #endif
 
-static int get_random(uint8_t *buf, uint32_t buflen)
+static int get_random(uint8_t *buf, size_t buflen)
 {
 	ssize_t ret;
 
@@ -129,7 +129,7 @@ static int get_random(uint8_t *buf, uint32_t buflen)
 			    "Accessed /dev/urandom for %u bytes", buflen);
 #endif
 		if (0 < ret) {
-			buflen -= ret;
+			buflen -= (size_t)ret;
 			buf += ret;
 		}
 	} while ((0 < ret || EINTR == errno || ERESTART == errno)
@@ -152,13 +152,14 @@ static int get_random(uint8_t *buf, uint32_t buflen)
 #define __aligned(x)	__attribute__((aligned(x)))
 
 DSO_PUBLIC
-int32_t kcapi_rng_get_bytes(uint8_t *buffer, uint32_t outlen)
+ssize_t kcapi_rng_get_bytes(uint8_t *buffer, size_t outlen)
 {
 	struct kcapi_handle *handle;
 	uint8_t buf[KCAPI_RNG_BUFSIZE] __aligned(KCAPI_APP_ALIGN);
 	uint8_t *seedbuf = buf;
-	uint32_t seedsize = 0, orig_outlen = outlen;
-	int32_t ret = _kcapi_handle_init(&handle, "rng", "stdrng", 0);
+	uint32_t seedsize = 0;
+	size_t orig_outlen = outlen;
+	ssize_t ret = _kcapi_handle_init(&handle, "rng", "stdrng", 0);
 	if (ret)
 		return ret;
 
@@ -198,22 +199,22 @@ int32_t kcapi_rng_get_bytes(uint8_t *buffer, uint32_t outlen)
 		goto out;
 
 	while (outlen) {
-		uint32_t todo = (outlen < KCAPI_RNG_BUFSIZE) ?
+		size_t todo = (outlen < KCAPI_RNG_BUFSIZE) ?
 					outlen : KCAPI_RNG_BUFSIZE;
 
 		ret = kcapi_rng_generate(handle, buffer, todo);
 		if (ret < 0)
 			goto out;
 
-		if ((uint32_t)ret == 0) {
+		if (ret == 0) {
 			ret = -EFAULT;
 			goto out;
 		}
-		outlen -= ret;
+		outlen -= (size_t)ret;
 		buffer += ret;
 	}
 
-	ret = orig_outlen;
+	ret = (ssize_t)orig_outlen;
 
 out:
 	/* Free seedbuf if it was allocated. */

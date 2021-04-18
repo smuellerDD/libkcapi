@@ -93,14 +93,14 @@ static inline uint32_t _bswap32(uint32_t x)
 #endif
 
 DSO_PUBLIC
-int32_t kcapi_kdf_dpi(struct kcapi_handle *handle,
-		      const uint8_t *src, uint32_t slen,
-		      uint8_t *dst, uint32_t dlen)
+ssize_t kcapi_kdf_dpi(struct kcapi_handle *handle,
+		      const uint8_t *src, size_t slen,
+		      uint8_t *dst, size_t dlen)
 {
 	uint32_t h = kcapi_md_digestsize(handle);
-	int32_t err = 0;
+	ssize_t err = 0;
 	uint8_t *dst_orig = dst;
-	uint32_t dlen_orig = dlen;
+	size_t dlen_orig = dlen;
 	uint8_t Ai[h];
 	uint32_t i = 1;
 
@@ -165,16 +165,16 @@ err:
 }
 
 DSO_PUBLIC
-int32_t kcapi_kdf_fb(struct kcapi_handle *handle,
-		     const uint8_t *src, uint32_t slen,
-		     uint8_t *dst, uint32_t dlen)
+ssize_t kcapi_kdf_fb(struct kcapi_handle *handle,
+		     const uint8_t *src, size_t slen,
+		     uint8_t *dst, size_t dlen)
 {
 	uint32_t h = kcapi_md_digestsize(handle);
-	int32_t err = 0;
+	ssize_t err = 0;
 	uint8_t *dst_orig = dst;
-	uint32_t dlen_orig = dlen;
+	size_t dlen_orig = dlen;
 	const uint8_t *label;
-	uint32_t labellen = 0;
+	size_t labellen = 0;
 	uint32_t i = 1;
 
 	if (dlen > INT_MAX)
@@ -238,14 +238,14 @@ err:
 }
 
 DSO_PUBLIC
-int32_t kcapi_kdf_ctr(struct kcapi_handle *handle,
-		      const uint8_t *src, uint32_t slen,
-		      uint8_t *dst, uint32_t dlen)
+ssize_t kcapi_kdf_ctr(struct kcapi_handle *handle,
+		      const uint8_t *src, size_t slen,
+		      uint8_t *dst, size_t dlen)
 {
 	uint32_t h = kcapi_md_digestsize(handle);
-	int32_t err = 0;
+	ssize_t err = 0;
 	uint8_t *dst_orig = dst;
-	uint32_t dlen_orig = dlen;
+	size_t dlen_orig = dlen;
 	uint32_t i = 1;
 
 	if (dlen > INT_MAX)
@@ -295,20 +295,20 @@ err:
  * RFC 5869 KDF
  */
 DSO_PUBLIC
-int32_t kcapi_hkdf(const char *hashname,
-		   const uint8_t *ikm, uint32_t ikmlen,
+ssize_t kcapi_hkdf(const char *hashname,
+		   const uint8_t *ikm, size_t ikmlen,
 		   const uint8_t *salt, uint32_t saltlen,
-		   const uint8_t *info, uint32_t infolen,
-		   uint8_t *dst, uint32_t dlen)
+		   const uint8_t *info, size_t infolen,
+		   uint8_t *dst, size_t dlen)
 {
 #define HKDF_MAXHASH 64
 	uint32_t h;
 	const uint8_t null_salt[HKDF_MAXHASH] = { 0 };
 	uint8_t prk_tmp[HKDF_MAXHASH];
 	uint8_t *prev = NULL;
-	int32_t err = 0;
+	ssize_t err = 0;
 	uint8_t *dst_orig = dst;
-	uint32_t dlen_orig = dlen;
+	size_t dlen_orig = dlen;
 	uint8_t ctr = 0x01;
 	struct kcapi_handle *handle = NULL;
 
@@ -414,7 +414,7 @@ static inline uint64_t kcapi_get_time(void)
 	struct timespec time;
 
 	if (clock_gettime(CLOCK_REALTIME, &time) == 0)
-		return time.tv_nsec;
+		return (uint64_t)time.tv_nsec;
 
 	return 0;
 }
@@ -440,7 +440,7 @@ uint32_t kcapi_pbkdf_iteration_count(const char *hashname, uint64_t timeshresh)
 		for (; i < UINT_MAX; i<<=1) {
 			uint64_t end, start = kcapi_get_time();
 			uint8_t outbuf[16];
-			int32_t ret = kcapi_pbkdf(hashname,
+			ssize_t ret = kcapi_pbkdf(hashname,
 						  (uint8_t *)"passwordpassword",
 						  16, (uint8_t *)"salt", 4,
 						  i, outbuf, sizeof(outbuf));
@@ -477,14 +477,14 @@ static inline int kcapi_aligned(const uint8_t *ptr, uint32_t alignmask)
 	return 1;
 }
 
-static inline void kcapi_xor_8(uint8_t *dst, const uint8_t *src, uint32_t size)
+static inline void kcapi_xor_8(uint8_t *dst, const uint8_t *src, size_t size)
 {
 	for (; size; size--)
 		*dst++ ^= *src++;
 }
 
 static inline void kcapi_xor_32_aligned(uint8_t *dst, const uint8_t *src,
-				        uint32_t size)
+				        size_t size)
 {
 	uint32_t *dst_word = (uint32_t *)dst;
 	uint32_t *src_word = (uint32_t *)src;
@@ -495,7 +495,7 @@ static inline void kcapi_xor_32_aligned(uint8_t *dst, const uint8_t *src,
 	kcapi_xor_8((uint8_t *)dst_word, (uint8_t *)src_word, size);
 }
 
-static inline void kcapi_xor_32(uint8_t *dst, const uint8_t *src, uint32_t size)
+static inline void kcapi_xor_32(uint8_t *dst, const uint8_t *src, size_t size)
 {
 	if (kcapi_aligned(src, sizeof(uint32_t) - 1) &&
 	    kcapi_aligned(dst, sizeof(uint32_t) - 1))
@@ -506,7 +506,7 @@ static inline void kcapi_xor_32(uint8_t *dst, const uint8_t *src, uint32_t size)
 
 #ifdef __LP64__
 static inline void kcapi_xor_64_aligned(uint8_t *dst, const uint8_t *src,
-				        uint32_t size)
+				        size_t size)
 {
 	uint64_t *dst_dword = (uint64_t *)dst;
 	uint64_t *src_dword = (uint64_t *)src;
@@ -518,7 +518,7 @@ static inline void kcapi_xor_64_aligned(uint8_t *dst, const uint8_t *src,
 }
 #endif
 
-static inline void kcapi_xor_64(uint8_t *dst, const uint8_t *src, uint32_t size)
+static inline void kcapi_xor_64(uint8_t *dst, const uint8_t *src, size_t size)
 {
 #ifdef __LP64__
 	if (kcapi_aligned(src, sizeof(uint64_t) - 1) &&
@@ -530,19 +530,19 @@ static inline void kcapi_xor_64(uint8_t *dst, const uint8_t *src, uint32_t size)
 }
 
 DSO_PUBLIC
-int32_t kcapi_pbkdf(const char *hashname,
+ssize_t kcapi_pbkdf(const char *hashname,
 		    const uint8_t *pw, uint32_t pwlen,
-		    const uint8_t *salt, uint32_t saltlen,
+		    const uint8_t *salt, size_t saltlen,
 		    uint32_t count,
-		    uint8_t *key, uint32_t keylen)
+		    uint8_t *key, size_t keylen)
 {
 	struct kcapi_handle *handle;
 	uint8_t *key_orig = key;
-	uint32_t keylen_orig = keylen;
+	size_t keylen_orig = keylen;
 	uint32_t h, i = 1;
 #define MAX_DIGESTSIZE 64
 	uint8_t u[MAX_DIGESTSIZE] __attribute__ ((aligned (sizeof(uint64_t))));
-	int32_t err = 0;
+	ssize_t err = 0;
 
 	if (keylen > INT_MAX)
 		return -EMSGSIZE;

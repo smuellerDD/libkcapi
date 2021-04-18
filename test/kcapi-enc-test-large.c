@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
         char buf[8192];
         struct kcapi_handle *handle;
         struct iovec iov;
-        int ret;
+        ssize_t ret;
 	int i;
 
         (void)argc;
@@ -35,15 +35,15 @@ int main(int argc, char *argv[])
 
         ret = kcapi_cipher_init(&handle, "cbc(aes)", 0);
         if (ret)
-                return ret;
+                return (int)ret;
 
         ret = kcapi_cipher_setkey(handle, (unsigned char *)"0123456789abcdef", 16);
         if (ret)
-                return ret;
+                return (int)ret;
 
         ret = kcapi_cipher_stream_init_enc(handle, (unsigned char *)"0123456789abcdef", NULL, 0);
         if (ret < 0)
-                return ret;
+                return (int)ret;
 
 	for (i = 0; i < 100; i++) {
 		//printf("round %d\n", i);
@@ -51,12 +51,12 @@ int main(int argc, char *argv[])
 		iov.iov_len = 6182;
 		ret = kcapi_cipher_stream_update(handle, &iov, 1);
 		if (ret < 0)
-			return ret;
+			return (int)ret;
 
 		iov.iov_len = 6182;
 		ret = kcapi_cipher_stream_op(handle, &iov, 1);
 		if (ret < 0)
-			return ret;
+			return (int)ret;
 	}
 
         kcapi_cipher_destroy(handle);

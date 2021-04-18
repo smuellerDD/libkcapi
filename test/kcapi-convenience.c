@@ -26,7 +26,7 @@ static int hashtest(void)
 {
 	char *in = "teststring";
 	uint8_t out[64];
-	int32_t ret;
+	ssize_t ret;
 
 	ret = kcapi_md_sha1((uint8_t*)in, strlen(in), out, sizeof(out));
 	if (ret != 20) {
@@ -65,37 +65,37 @@ static int hmactest(void)
 {
 	char *in = "teststring";
 	uint8_t out[64];
-	int32_t ret;
+	ssize_t ret;
 
-	ret = kcapi_md_hmac_sha1((uint8_t*)in, strlen(in),
+	ret = kcapi_md_hmac_sha1((uint8_t*)in, (uint32_t)strlen(in),
 				 (uint8_t*)in, strlen(in), out, sizeof(out));
 	if (ret != 20) {
 		printf("HMAC SHA-1 error");
 		return 1;
 	}
 
-	ret = kcapi_md_hmac_sha224((uint8_t*)in, strlen(in),
+	ret = kcapi_md_hmac_sha224((uint8_t*)in, (uint32_t)strlen(in),
 				   (uint8_t*)in, strlen(in), out, sizeof(out));
 	if (ret != 28) {
 		printf("HMAC SHA-224 error");
 		return 1;
 	}
 
-	ret = kcapi_md_hmac_sha256((uint8_t*)in, strlen(in),
+	ret = kcapi_md_hmac_sha256((uint8_t*)in, (uint32_t)strlen(in),
 				   (uint8_t*)in, strlen(in), out, sizeof(out));
 	if (ret != 32) {
 		printf("HMAC SHA-256 error");
 		return 1;
 	}
 
-	ret = kcapi_md_hmac_sha384((uint8_t*)in, strlen(in),
+	ret = kcapi_md_hmac_sha384((uint8_t*)in, (uint32_t)strlen(in),
 				   (uint8_t*)in, strlen(in), out, sizeof(out));
 	if (ret != 48) {
 		printf("HMAC SHA-384 error");
 		return 1;
 	}
 
-	ret = kcapi_md_hmac_sha512((uint8_t*)in, strlen(in),
+	ret = kcapi_md_hmac_sha512((uint8_t*)in, (uint32_t)strlen(in),
 				   (uint8_t*)in, strlen(in), out, sizeof(out));
 	if (ret != 64) {
 		printf("HMAC SHA-512 error");
@@ -110,7 +110,7 @@ static int ciphertest(void)
 	uint8_t *origpt = (uint8_t *)"01234567890123450123456789012345";
 	uint8_t ct[32];
 	uint8_t newpt[32];
-	int32_t ret;
+	ssize_t ret;
 
 	ret = kcapi_cipher_enc_aes_cbc(origpt, 32, origpt, 32, origpt,
 				       ct, sizeof(ct));
@@ -146,7 +146,7 @@ static int ciphertest(void)
 static int rngtest(void)
 {
 	uint8_t out[67];
-	int32_t ret;
+	ssize_t ret;
 
 	ret = kcapi_rng_get_bytes(out, sizeof(out));
 	if (ret != sizeof(out)) {

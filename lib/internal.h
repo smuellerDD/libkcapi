@@ -38,6 +38,7 @@
 #include <linux/if_alg.h>
 
 #include "atomic.h"
+#include "kcapi.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -156,9 +157,9 @@ struct kcapi_cipher_data {
  *	    the read system call
  */
 struct kcapi_aead_data {
-	uint32_t datalen;
-	uint32_t assoclen;
-	uint32_t taglen;
+	size_t datalen;
+	size_t assoclen;
+	size_t taglen;
 	uint8_t *data;
 	uint8_t *assoc;
 	uint8_t *tag;
@@ -250,7 +251,7 @@ struct kcapi_handle {
 	int opfd;
 	unsigned int pagesize;
 	unsigned int pipesize;
-	uint32_t processed_sg;
+	size_t processed_sg;
 	struct kcapi_cipher_data cipher;
 	struct kcapi_aead_data aead;
 	struct kcapi_aio aio;
@@ -261,53 +262,53 @@ struct kcapi_handle {
  * Declarations for internal functions
  ************************************************************/
 
-extern int kcapi_verbosity_level;
-void kcapi_dolog(int severity, const char *fmt, ...);
+extern enum kcapi_verbosity kcapi_verbosity_level;
+void kcapi_dolog(enum kcapi_verbosity severity, const char *fmt, ...);
 
 static inline int *_kcapi_get_opfd(struct kcapi_handle *handle)
 {
 	return &handle->opfd;
 }
 
-int32_t _kcapi_common_send_meta(struct kcapi_handle *handle,
-				struct iovec *iov, uint32_t iovlen,
+ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
+				struct iovec *iov, size_t iovlen,
 				uint32_t enc, uint32_t flags);
-int32_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
-				   struct iovec *iov, unsigned long iovlen,
+ssize_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
+				   struct iovec *iov, size_t iovlen,
 				   uint32_t flags);
-int32_t _kcapi_common_send_data(struct kcapi_handle *handle,
-				struct iovec *iov, uint32_t iovlen,
+ssize_t _kcapi_common_send_data(struct kcapi_handle *handle,
+				struct iovec *iov, size_t iovlen,
 				uint32_t flags);
-int32_t _kcapi_common_recv_data(struct kcapi_handle *handle,
-				struct iovec *iov, uint32_t iovlen);
-int32_t _kcapi_common_read_data(struct kcapi_handle *handle,
-				uint8_t *out, uint32_t outlen);
+ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
+				struct iovec *iov, size_t iovlen);
+ssize_t _kcapi_common_read_data(struct kcapi_handle *handle,
+				uint8_t *out, size_t outlen);
 int _kcapi_common_accept(struct kcapi_handle *handle);
 int _kcapi_common_close(struct kcapi_handle *handle);
-int32_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
-				     const uint8_t *in, uint32_t inlen,
+ssize_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
+				     const uint8_t *in, size_t inlen,
 				     uint32_t flags);
 int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 		       const char *ciphername, uint32_t flags);
 void _kcapi_handle_destroy(struct kcapi_handle *handle);
 int _kcapi_common_setkey(struct kcapi_handle *handle, const uint8_t *key,
 			 uint32_t keylen);
-int32_t _kcapi_cipher_crypt(struct kcapi_handle *handle, const uint8_t *in,
-			    uint32_t inlen, uint8_t *out, uint32_t outlen,
-			    int access, int enc);
-int32_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
-				  const uint8_t *in, uint32_t inlen,
-				  uint8_t *out, uint32_t outlen,
-				  int access, int enc);
-int32_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
+ssize_t _kcapi_cipher_crypt(struct kcapi_handle *handle, const uint8_t *in,
+			    size_t inlen, uint8_t *out, size_t outlen,
+			    int access, unsigned int enc);
+ssize_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
+				  const uint8_t *in, size_t inlen,
+				  uint8_t *out, size_t outlen,
+				  int access, unsigned int enc);
+ssize_t _kcapi_cipher_crypt_aio(struct kcapi_handle *handle,
 				struct iovec *iniov, struct iovec *outiov,
-				uint32_t iovlen, int access, int enc);
+				size_t iovlen, int access, unsigned int enc);
 int _kcapi_aio_send_iov(struct kcapi_handle *handle, struct iovec *iov,
-			uint32_t iovlen, int access, int enc);
+			size_t iovlen, int access, unsigned int enc);
 
 int _kcapi_aio_read_iov(struct kcapi_handle *handle,
-			struct iovec *iov, uint32_t iovlen);
-int32_t _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
+			struct iovec *iov, size_t iovlen);
+int32_t _kcapi_aio_read_all(struct kcapi_handle *handle, size_t toread,
 			    struct timespec *timeout);
 
 /************************************************************
@@ -316,17 +317,17 @@ int32_t _kcapi_aio_read_all(struct kcapi_handle *handle, uint32_t toread,
 
 static inline int io_setup(unsigned n, aio_context_t *ctx)
 {
-    return syscall(__NR_io_setup, n, ctx);
+    return (int)syscall(__NR_io_setup, n, ctx);
 }
 
 static inline int io_destroy(aio_context_t ctx)
 {
-    return syscall(__NR_io_destroy, ctx);
+    return (int)syscall(__NR_io_destroy, ctx);
 }
 
 static inline int io_submit(aio_context_t ctx, long n,  struct iocb **iocb)
 {
-    return syscall(__NR_io_submit, ctx, n, iocb);
+    return (int)syscall(__NR_io_submit, ctx, n, iocb);
 }
 
 static inline int io_getevents(__attribute__((unused)) aio_context_t ctx,
@@ -336,7 +337,7 @@ static inline int io_getevents(__attribute__((unused)) aio_context_t ctx,
 			       __attribute__((unused)) struct timespec *timeout)
 {
 #ifdef __NR_io_getevents
-    return syscall(__NR_io_getevents, ctx, min, max, events, timeout);
+    return (int)syscall(__NR_io_getevents, ctx, min, max, events, timeout);
 #else
     return -ENOSYS;
 #endif

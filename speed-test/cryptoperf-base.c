@@ -184,7 +184,7 @@ int cp_read_random(unsigned char *buf, size_t buflen)
 	do {
 		ret = read(fd, (buf + len), (buflen - len));
 		if(0 < ret)
-			len += ret;
+			len += (size_t)ret;
 	} while ((0 < ret || EINTR == errno || ERESTART == errno)
 		 && buflen > len);
 

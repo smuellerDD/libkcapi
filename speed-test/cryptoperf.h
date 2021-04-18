@@ -110,7 +110,7 @@ struct cp_res {
 	uint64_t rounds;
 	uint64_t processed_bytes;
 	uint64_t totaltime;
-	unsigned int byteperop;
+	size_t byteperop;
 	size_t chunksize;
 };
 
@@ -127,7 +127,7 @@ struct cp_test {
 	struct cp_res results;
 	struct cp_test_param *test_params;
 	int (*init_test)(struct cp_test *test);
-	unsigned int (*exec_test)(struct cp_test *test);
+	size_t (*exec_test)(struct cp_test *test);
 	void (*fini_test)(struct cp_test *test);
 
 	/* information not to be set by user */
@@ -141,10 +141,10 @@ struct cp_test {
 
 static inline uint64_t cp_ts2u64(struct timespec *ts)
 {
-	uint64_t upper = ts->tv_sec;
+	uint64_t upper = (uint64_t)ts->tv_sec;
 
 	upper = upper << 32;
-	return (upper | ts->tv_nsec);
+	return (upper | (uint64_t)ts->tv_nsec);
 }
 
 /*
