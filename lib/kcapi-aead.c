@@ -455,7 +455,7 @@ int kcapi_aead_ccm_nonce_to_iv(const uint8_t *nonce, uint32_t noncelen,
 			       uint8_t **iv, uint32_t *ivlen)
 {
 	uint8_t *newiv = NULL;
-	uint8_t l = 16 - 2 - (uint8_t)noncelen;
+	uint8_t l = (uint8_t)(16 - 2 - noncelen);
 	int ret = 0;
 
 	if (noncelen > 16 - 2)
