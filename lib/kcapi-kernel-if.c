@@ -243,7 +243,7 @@ ssize_t _kcapi_common_send_data(struct kcapi_handle *handle,
 	ret = sendmsg(*_kcapi_get_opfd(handle), &msg, (int)flags);
 	if (ret < 0)
 		ret = -errno;
-	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: sendmsg syscall returned %d",
+	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: sendmsg syscall returned %zd",
 		    ret);
 
 	return ret;
