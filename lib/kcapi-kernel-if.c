@@ -157,7 +157,7 @@ ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 			return -ENOMEM;
 		buffer_p = buffer_alloc;
 		kcapi_dolog(KCAPI_LOG_VERBOSE,
-			    "_kcapi_common_send_meta_fd: submission buffer of size %u allocated",
+			    "_kcapi_common_send_meta_fd: submission buffer of size %zu allocated",
 			    bufferlen);
 	}
 
@@ -212,7 +212,7 @@ ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 	if (ret < 0)
 		ret = -errno;
 	kcapi_dolog(KCAPI_LOG_DEBUG,
-		    "AF_ALG: sendmsg syscall returned %d", ret);
+		    "AF_ALG: sendmsg syscall returned %zd", ret);
 
 out:
 	kcapi_memset_secure(buffer_p, 0, bufferlen);
@@ -297,10 +297,10 @@ ssize_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 	if (ret < 0) {
 		ret = -errno;
 		kcapi_dolog(KCAPI_LOG_DEBUG,
-			    "AF_ALG: vmsplice syscall returned %d", ret);
+			    "AF_ALG: vmsplice syscall returned %zd", ret);
 		return ret;
 	}
-	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: vmsplice syscall returned %d",
+	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: vmsplice syscall returned %zd",
 		    ret);
 
 	if ((uint32_t)ret != inlen) {
@@ -313,7 +313,8 @@ ssize_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 		     (size_t)ret, flags);
 	if (ret < 0)
 		ret = -errno;
-	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: splice syscall returned %d", ret);
+	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: splice syscall returned %zd",
+		    ret);
 
 	return ret;
 }
@@ -359,12 +360,12 @@ ssize_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 			if (ret < 0) {
 				ret = -errno;
 				kcapi_dolog(KCAPI_LOG_DEBUG,
-					    "AF_ALG: vmsplice syscall returned %d",
+					    "AF_ALG: vmsplice syscall returned %zd",
 					    ret);
 				return ret;
 			}
 			kcapi_dolog(KCAPI_LOG_DEBUG,
-				    "AF_ALG: vmsplice syscall returned %d",
+				    "AF_ALG: vmsplice syscall returned %zd",
 				    ret);
 
 			ret = splice(handle->pipes[0], NULL,
@@ -373,12 +374,12 @@ ssize_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 			if (ret < 0) {
 				ret = -errno;
 				kcapi_dolog(KCAPI_LOG_DEBUG,
-					    "AF_ALG: splice syscall returned %d",
+					    "AF_ALG: splice syscall returned %zd",
 					    ret);
 				return ret;
 			}
 			kcapi_dolog(KCAPI_LOG_DEBUG,
-				    "AF_ALG: splice syscall returned %d", ret);
+				    "AF_ALG: splice syscall returned %zd", ret);
 		}
 
 		processed += ret;
@@ -540,7 +541,7 @@ ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 	ret = recvmsg(*_kcapi_get_opfd(handle), &msg, 0);
 	if (ret < 0)
 		ret = -errno;
-	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: recvmsg syscall returned %d",
+	kcapi_dolog(KCAPI_LOG_DEBUG, "AF_ALG: recvmsg syscall returned %zd",
 		    ret);
 
 	/*
@@ -590,7 +591,7 @@ ssize_t _kcapi_common_read_data(struct kcapi_handle *handle,
 				totallen += ret;
 			}
 			kcapi_dolog(KCAPI_LOG_DEBUG,
-				    "AF_ALG: read syscall returned %d", ret);
+				    "AF_ALG: read syscall returned %zd", ret);
 		} while ((ret > 0 || errno == EINTR) && outlen);
 
 		if (ret < 0)
@@ -749,7 +750,7 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	if (res_n->nlmsg_type == CRYPTO_MSG_GETALG) {
 		cru_res = NLMSG_DATA(res_n);
 		if (res_len < NLMSG_SPACE(sizeof(*cru_res))) {
-			kcapi_dolog(KCAPI_LOG_ERR, "Netlink error: nlmsg len %d",
+			kcapi_dolog(KCAPI_LOG_ERR, "Netlink error: nlmsg len %lu",
 				    res_len);
 			goto out;
 		}
@@ -769,7 +770,7 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 		rta = RTA_NEXT(rta, res_len);
 	}
 	if (res_len) {
-		kcapi_dolog(KCAPI_LOG_ERR, "Netlink error: unprocessed data %d",
+		kcapi_dolog(KCAPI_LOG_ERR, "Netlink error: unprocessed data %lu",
 			    res_len);
 		goto out;
 	}

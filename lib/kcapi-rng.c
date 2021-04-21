@@ -116,17 +116,17 @@ static int get_random(uint8_t *buf, size_t buflen)
 #ifdef HAVE_GETRANDOM
 		ret = getrandom(buf, buflen, 0);
 		kcapi_dolog(KCAPI_LOG_DEBUG,
-			    "Accessed getrandom system call for %u bytes",
+			    "Accessed getrandom system call for %zu bytes",
 			    buflen);
 #elif defined __NR_getrandom
 		ret = syscall(__NR_getrandom, buf, buflen, 0);
 		kcapi_dolog(KCAPI_LOG_DEBUG,
-			    "Accessed getrandom system call for %u bytes",
+			    "Accessed getrandom system call for %zu bytes",
 			    buflen);
 #else
 		ret = read(random_fd, buf, buflen);
 		kcapi_dolog(KCAPI_LOG_DEBUG,
-			    "Accessed /dev/urandom for %u bytes", buflen);
+			    "Accessed /dev/urandom for %zu bytes", buflen);
 #endif
 		if (0 < ret) {
 			buflen -= (size_t)ret;
