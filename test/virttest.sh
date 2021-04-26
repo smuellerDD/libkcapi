@@ -44,7 +44,7 @@ fi
 
 # TESTKERNELS specifies the kernel versions (i.e. Linux kernel
 # source code directories) to be used and tested
-TESTKERNELS="linux-5.9 linux-5.8 linux-5.1 linux-4.20 linux-4.17 linux-4.13 linux-4.12 linux-4.10 linux-4.7 linux-4.5 linux-4.4.86 linux-4.3.6"
+TESTKERNELS="linux-5.12 linux-5.9 linux-5.8 linux-5.1 linux-4.20 linux-4.17 linux-4.13 linux-4.12 linux-4.10 linux-4.7 linux-4.5 linux-4.4.86 linux-4.3.6"
 
 ###################################################################
 # General variables - do not change
