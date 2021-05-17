@@ -77,11 +77,11 @@ FILELINE * docsection;
 static char *srctree, *kernsrctree;
 
 static char **all_list = NULL;
-static unsigned int all_list_len = 0;
+static size_t all_list_len = 0;
 
 static void consume_symbol(const char *sym)
 {
-	unsigned int i;
+	size_t i;
 
 	for (i = 0; i < all_list_len; i++) {
 		if (!all_list[i])
@@ -361,11 +361,11 @@ static void find_all_symbols(char *filename)
 {
 	char *vec[4]; /* kerneldoc -list file NULL */
 	pid_t pid;
-	ssize_t ret, i, count, start;
+	ssize_t ret;
 	char real_filename[PATH_MAX + 1];
 	int pipefd[2];
 	char *data, *str;
-	size_t data_len = 0;
+	size_t i, count, start, data_len = 0;
 
 	vec[0] = KERNELDOC;
 	vec[1] = LIST;
@@ -424,21 +424,21 @@ static void find_all_symbols(char *filename)
 
 	count = 0;
 	/* poor man's strtok, but with counting */
-	for (i = 0; i < (int)data_len; i++) {
+	for (i = 0; i < data_len; i++) {
 		if (data[i] == '\n') {
 			count++;
 			data[i] = '\0';
 		}
 	}
 	start = all_list_len;
-	all_list_len += (unsigned int)count;
+	all_list_len += count;
 	all_list = realloc(all_list, sizeof(char *) * all_list_len);
 	if (!all_list) {
 		perror("realloc");
 		exit(1);
 	}
 	str = data;
-	for (i = 0; i < (int)data_len && start != all_list_len; i++) {
+	for (i = 0; i < data_len && start != all_list_len; i++) {
 		if (data[i] == '\0') {
 			all_list[start] = str;
 			str = data + i + 1;
