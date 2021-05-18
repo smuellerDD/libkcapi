@@ -125,7 +125,7 @@ ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 
 	/* plaintext / ciphertext data */
 	struct cmsghdr *header = NULL;
-	size_t *type = NULL;
+	uint32_t *type = NULL;
 	struct msghdr msg;
 
 	/* IV data */
@@ -135,7 +135,7 @@ ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 			  0;
 
 	/* AEAD data */
-	size_t *assoclen = NULL;
+	uint32_t *assoclen = NULL;
 	size_t assoc_msg_size = handle->aead.assoclen ?
 				CMSG_SPACE(sizeof(*assoclen)) : 0;
 
@@ -205,7 +205,7 @@ ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 		header->cmsg_type = ALG_SET_AEAD_ASSOCLEN;
 		header->cmsg_len = CMSG_LEN(sizeof(*assoclen));
 		assoclen = (void*)CMSG_DATA(header);
-		*assoclen = handle->aead.assoclen;
+		*assoclen = (uint32_t)handle->aead.assoclen;
 	}
 
 	ret = sendmsg(*_kcapi_get_opfd(handle), &msg, (int)flags);
