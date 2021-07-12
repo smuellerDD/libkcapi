@@ -72,21 +72,38 @@ int kcapi_kpp_setkey(struct kcapi_handle *handle,
 	return _kcapi_common_setkey(handle, key, keylen);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_kpp_keygen(struct kcapi_handle *handle,
-			 uint8_t *pubkey, size_t pubkeylen, int access)
+IMPL_SYMVER(kpp_keygen, "1.3.1")
+ssize_t impl_kpp_keygen(struct kcapi_handle *handle,
+			uint8_t *pubkey, size_t pubkeylen, int access)
 {
 	return _kcapi_cipher_crypt(handle, NULL, 0, pubkey, pubkeylen, access,
 				   ALG_OP_KEYGEN);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_kpp_ssgen(struct kcapi_handle *handle,
-			const uint8_t *pubkey, size_t pubkeylen,
-			uint8_t *ss, size_t sslen, int access)
+ORIG_SYMVER(kpp_keygen, "1.0.0")
+int32_t orig_kpp_keygen(struct kcapi_handle *handle,
+			uint8_t *pubkey, uint32_t pubkeylen, int access)
+{
+	return (int32_t)_kcapi_cipher_crypt(handle, NULL, 0, pubkey, pubkeylen,
+					    access, ALG_OP_KEYGEN);
+}
+
+IMPL_SYMVER(kpp_ssgen, "1.3.1")
+ssize_t impl_kpp_ssgen(struct kcapi_handle *handle,
+		       const uint8_t *pubkey, size_t pubkeylen,
+		       uint8_t *ss, size_t sslen, int access)
 {
 	return _kcapi_cipher_crypt(handle, pubkey, pubkeylen, ss, sslen, access,
 				   ALG_OP_SSGEN);
+}
+
+ORIG_SYMVER(kpp_ssgen, "1.0.0")
+int32_t orig_kpp_ssgen(struct kcapi_handle *handle,
+		       const uint8_t *pubkey, uint32_t pubkeylen,
+		       uint8_t *ss, uint32_t sslen, int access)
+{
+	return (int32_t)_kcapi_cipher_crypt(handle, pubkey, pubkeylen, ss,
+					    sslen, access, ALG_OP_SSGEN);
 }
 
 static ssize_t
@@ -114,19 +131,36 @@ _kcapi_kpp_crypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 	return processed;
 }
 
-DSO_PUBLIC
-ssize_t kcapi_kpp_keygen_aio(struct kcapi_handle *handle, struct iovec *outiov,
-			     size_t iovlen, int access)
+IMPL_SYMVER(kpp_keygen_aio, "1.3.1")
+ssize_t impl_kpp_keygen_aio(struct kcapi_handle *handle, struct iovec *outiov,
+			    size_t iovlen, int access)
 {
 	return _kcapi_kpp_crypt_aio(handle, NULL, outiov, iovlen, access,
 				    ALG_OP_KEYGEN);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_kpp_ssgen_aio(struct kcapi_handle *handle,
-			    struct iovec *iniov, struct iovec *outiov,
-			    size_t iovlen, int access)
+ORIG_SYMVER(kpp_keygen_aio, "1.0.0")
+int32_t orig_kpp_keygen_aio(struct kcapi_handle *handle, struct iovec *outiov,
+			    uint32_t iovlen, int access)
+{
+	return (int32_t)_kcapi_kpp_crypt_aio(handle, NULL, outiov, iovlen,
+					     access, ALG_OP_KEYGEN);
+}
+
+IMPL_SYMVER(kpp_ssgen_aio, "1.3.1")
+ssize_t impl_kpp_ssgen_aio(struct kcapi_handle *handle,
+			   struct iovec *iniov, struct iovec *outiov,
+			   size_t iovlen, int access)
 {
 	return _kcapi_kpp_crypt_aio(handle, iniov, outiov, iovlen, access,
 				    ALG_OP_SSGEN);
+}
+
+ORIG_SYMVER(kpp_ssgen_aio, "1.0.0")
+int32_t orig_kpp_ssgen_aio(struct kcapi_handle *handle,
+			   struct iovec *iniov, struct iovec *outiov,
+			   uint32_t iovlen, int access)
+{
+	return (int32_t)_kcapi_kpp_crypt_aio(handle, iniov, outiov, iovlen,
+					     access, ALG_OP_SSGEN);
 }

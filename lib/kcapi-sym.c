@@ -41,11 +41,11 @@ int kcapi_cipher_setkey(struct kcapi_handle *handle,
 	return _kcapi_common_setkey(handle, key, keylen);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
-			     const uint8_t *in, size_t inlen,
-			     const uint8_t *iv,
-			     uint8_t *out, size_t outlen, int access)
+IMPL_SYMVER(cipher_encrypt, "1.3.1")
+ssize_t impl_cipher_encrypt(struct kcapi_handle *handle,
+			    const uint8_t *in, size_t inlen,
+			    const uint8_t *iv,
+			    uint8_t *out, size_t outlen, int access)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
 	uint32_t bs = tfm->info.blocksize;
@@ -59,6 +59,16 @@ ssize_t kcapi_cipher_encrypt(struct kcapi_handle *handle,
 	handle->cipher.iv = iv;
 	return _kcapi_cipher_crypt_chunk(handle, in, inlen, out, outlen, access,
 					 ALG_OP_ENCRYPT);
+}
+
+ORIG_SYMVER(cipher_encrypt, "0.12.0")
+int32_t orig_cipher_encrypt(struct kcapi_handle *handle,
+			    const uint8_t *in, uint32_t inlen,
+			    const uint8_t *iv,
+			    uint8_t *out, uint32_t outlen, int access)
+{
+    return (int32_t)impl_cipher_encrypt(handle, in, inlen, iv, out, outlen,
+					access);
 }
 
 /*
@@ -77,10 +87,10 @@ _kcapi_cipher_encrypt_aio_fallback(struct kcapi_handle *handle,
 	return kcapi_cipher_stream_op(handle, outiov, iovlen);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
-				 struct iovec *iniov, struct iovec *outiov,
-				 size_t iovlen, const uint8_t *iv, int access)
+IMPL_SYMVER(cipher_encrypt_aio, "1.3.1")
+ssize_t impl_cipher_encrypt_aio(struct kcapi_handle *handle,
+				struct iovec *iniov, struct iovec *outiov,
+				size_t iovlen, const uint8_t *iv, int access)
 {
 	ssize_t ret;
 
@@ -95,11 +105,21 @@ ssize_t kcapi_cipher_encrypt_aio(struct kcapi_handle *handle,
 						  iovlen, iv);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
-			     const uint8_t *in, size_t inlen,
-			     const uint8_t *iv,
-			     uint8_t *out, size_t outlen, int access)
+ORIG_SYMVER(cipher_encrypt_aio, "0.12.0")
+int32_t orig_cipher_encrypt_aio(struct kcapi_handle *handle,
+				struct iovec *iniov, struct iovec *outiov,
+				uint32_t iovlen, const uint8_t *iv,
+				int access)
+{
+    return (int32_t)impl_cipher_encrypt_aio(handle, iniov, outiov, iovlen,
+					    iv, access);
+}
+
+IMPL_SYMVER(cipher_decrypt, "1.3.1")
+ssize_t impl_cipher_decrypt(struct kcapi_handle *handle,
+			    const uint8_t *in, size_t inlen,
+			    const uint8_t *iv,
+			    uint8_t *out, size_t outlen, int access)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
 
@@ -119,6 +139,16 @@ ssize_t kcapi_cipher_decrypt(struct kcapi_handle *handle,
 					 ALG_OP_DECRYPT);
 }
 
+ORIG_SYMVER(cipher_decrypt, "0.12.0")
+int32_t orig_cipher_decrypt(struct kcapi_handle *handle,
+			    const uint8_t *in, uint32_t inlen,
+			    const uint8_t *iv,
+			    uint8_t *out, uint32_t outlen, int access)
+{
+	return (int32_t)impl_cipher_decrypt(handle, in, inlen, iv, out, outlen,
+					    access);
+}
+
 /*
  * Fallback function if AIO is not present, but caller requested AIO operation.
  */
@@ -135,10 +165,10 @@ _kcapi_cipher_decrypt_aio_fallback(struct kcapi_handle *handle,
 	return kcapi_cipher_stream_op(handle, outiov, iovlen);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
-				 struct iovec *iniov, struct iovec *outiov,
-				 size_t iovlen, const uint8_t *iv, int access)
+IMPL_SYMVER(cipher_decrypt_aio, "1.3.1")
+ssize_t impl_cipher_decrypt_aio(struct kcapi_handle *handle,
+				struct iovec *iniov, struct iovec *outiov,
+				size_t iovlen, const uint8_t *iv, int access)
 {
 	ssize_t ret;
 
@@ -153,29 +183,54 @@ ssize_t kcapi_cipher_decrypt_aio(struct kcapi_handle *handle,
 						  iovlen, iv);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_cipher_stream_init_enc(struct kcapi_handle *handle,
-				     const uint8_t *iv,
-				     struct iovec *iov, size_t iovlen)
+ORIG_SYMVER(cipher_decrypt_aio, "0.12.0")
+int32_t orig_cipher_decrypt_aio(struct kcapi_handle *handle,
+				struct iovec *iniov, struct iovec *outiov,
+				uint32_t iovlen, const uint8_t *iv, int access)
+{
+	return (int32_t)impl_cipher_decrypt_aio(handle, iniov, outiov, iovlen,
+						iv, access);
+}
+
+IMPL_SYMVER(cipher_stream_init_enc, "1.3.1")
+ssize_t impl_cipher_stream_init_enc(struct kcapi_handle *handle,
+				    const uint8_t *iv,
+				    struct iovec *iov, size_t iovlen)
 {
 	handle->cipher.iv = iv;
 	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_ENCRYPT,
 				       MSG_MORE);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_cipher_stream_init_dec(struct kcapi_handle *handle,
-				     const uint8_t *iv,
-				     struct iovec *iov, size_t iovlen)
+ORIG_SYMVER(cipher_stream_init_enc, "0.12.0")
+int32_t orig_cipher_stream_init_enc(struct kcapi_handle *handle,
+				    const uint8_t *iv,
+				    struct iovec *iov, uint32_t iovlen)
+{
+	return (int32_t)impl_cipher_stream_init_enc(handle, iv, iov, iovlen);
+}
+
+IMPL_SYMVER(cipher_stream_init_dec, "1.3.1")
+ssize_t impl_cipher_stream_init_dec(struct kcapi_handle *handle,
+				    const uint8_t *iv,
+				    struct iovec *iov, size_t iovlen)
 {
 	handle->cipher.iv = iv;
 	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_DECRYPT,
 				       MSG_MORE);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
-				   struct iovec *iov, size_t iovlen)
+ORIG_SYMVER(cipher_stream_init_dec, "0.12.0")
+int32_t orig_cipher_stream_init_dec(struct kcapi_handle *handle,
+				    const uint8_t *iv,
+				    struct iovec *iov, uint32_t iovlen)
+{
+	return (int32_t)impl_cipher_stream_init_dec(handle, iv, iov, iovlen);
+}
+
+IMPL_SYMVER(cipher_stream_update, "1.3.1")
+ssize_t impl_cipher_stream_update(struct kcapi_handle *handle,
+				  struct iovec *iov, size_t iovlen)
 {
 	if (handle->processed_sg <= handle->flags.alg_max_pages)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen,
@@ -184,9 +239,16 @@ ssize_t kcapi_cipher_stream_update(struct kcapi_handle *handle,
 		return _kcapi_common_send_data(handle, iov, iovlen, MSG_MORE);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_cipher_stream_update_last(struct kcapi_handle *handle,
-					struct iovec *iov, size_t iovlen)
+ORIG_SYMVER(cipher_stream_update, "0.12.0")
+int32_t orig_cipher_stream_update(struct kcapi_handle *handle,
+				  struct iovec *iov, uint32_t iovlen)
+{
+	return (int32_t)impl_cipher_stream_update(handle, iov, iovlen);
+}
+
+IMPL_SYMVER(cipher_stream_update_last, "1.3.1")
+ssize_t impl_cipher_stream_update_last(struct kcapi_handle *handle,
+				       struct iovec *iov, size_t iovlen)
 {
 	if (handle->processed_sg <= handle->flags.alg_max_pages)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
@@ -194,9 +256,16 @@ ssize_t kcapi_cipher_stream_update_last(struct kcapi_handle *handle,
 		return _kcapi_common_send_data(handle, iov, iovlen, 0);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
-			       struct iovec *iov, size_t iovlen)
+ORIG_SYMVER(cipher_stream_update_last, "1.2.0")
+int32_t orig_cipher_stream_update_last(struct kcapi_handle *handle,
+				       struct iovec *iov, uint32_t iovlen)
+{
+	return (int32_t)impl_cipher_stream_update_last(handle, iov, iovlen);
+}
+
+IMPL_SYMVER(cipher_stream_op, "1.3.1")
+ssize_t impl_cipher_stream_op(struct kcapi_handle *handle,
+			      struct iovec *iov, size_t iovlen)
 {
 	if (!iov || !iovlen) {
 		kcapi_dolog(KCAPI_LOG_ERR,
@@ -204,6 +273,13 @@ ssize_t kcapi_cipher_stream_op(struct kcapi_handle *handle,
 		return -EINVAL;
 	}
 	return _kcapi_common_recv_data(handle, iov, iovlen);
+}
+
+ORIG_SYMVER(cipher_stream_op, "0.12.0")
+int32_t orig_cipher_stream_op(struct kcapi_handle *handle,
+			      struct iovec *iov, uint32_t iovlen)
+{
+	return (int32_t)impl_cipher_stream_op(handle, iov, iovlen);
 }
 
 DSO_PUBLIC
@@ -267,42 +343,86 @@ out:
 	return ret;
 }
 
-DSO_PUBLIC
-ssize_t kcapi_cipher_enc_aes_cbc(const uint8_t *key, uint32_t keylen,
-				 const uint8_t *in, size_t inlen,
-				 const uint8_t *iv,
-				 uint8_t *out, size_t outlen)
+IMPL_SYMVER(cipher_enc_aes_cbc, "1.3.1")
+ssize_t impl_cipher_enc_aes_cbc(const uint8_t *key, uint32_t keylen,
+				const uint8_t *in, size_t inlen,
+				const uint8_t *iv,
+				uint8_t *out, size_t outlen)
 {
 	return kcapi_cipher_conv_enc_common("cbc(aes)", key, keylen, in, inlen,
 					    iv, out, outlen);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_cipher_enc_aes_ctr(const uint8_t *key, uint32_t keylen,
-				 const uint8_t *in, size_t inlen,
-				 const uint8_t *ctr,
-				 uint8_t *out, size_t outlen)
+ORIG_SYMVER(cipher_enc_aes_cbc, "1.0.0")
+int32_t orig_cipher_enc_aes_cbc(const uint8_t *key, uint32_t keylen,
+				const uint8_t *in, uint32_t inlen,
+				const uint8_t *iv,
+				uint8_t *out, uint32_t outlen)
+{
+	return (int32_t)kcapi_cipher_conv_enc_common("cbc(aes)", key, keylen,
+						     in, inlen, iv,
+						     out, outlen);
+}
+
+IMPL_SYMVER(cipher_enc_aes_ctr, "1.3.1")
+ssize_t impl_cipher_enc_aes_ctr(const uint8_t *key, uint32_t keylen,
+				const uint8_t *in, size_t inlen,
+				const uint8_t *ctr,
+				uint8_t *out, size_t outlen)
 {
 	return kcapi_cipher_conv_enc_common("ctr(aes)", key, keylen, in, inlen,
 					    ctr, out, outlen);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_cipher_dec_aes_cbc(const uint8_t *key, uint32_t keylen,
-				 const uint8_t *in, size_t inlen,
-				 const uint8_t *iv,
-				 uint8_t *out, size_t outlen)
+ORIG_SYMVER(cipher_enc_aes_ctr, "1.0.0")
+int32_t orig_cipher_enc_aes_ctr(const uint8_t *key, uint32_t keylen,
+				const uint8_t *in, uint32_t inlen,
+				const uint8_t *ctr,
+				uint8_t *out, uint32_t outlen)
+{
+	return (int32_t)kcapi_cipher_conv_enc_common("ctr(aes)", key, keylen,
+						     in, inlen, ctr,
+						     out, outlen);
+}
+
+IMPL_SYMVER(cipher_dec_aes_cbc, "1.3.1")
+ssize_t impl_cipher_dec_aes_cbc(const uint8_t *key, uint32_t keylen,
+				const uint8_t *in, size_t inlen,
+				const uint8_t *iv,
+				uint8_t *out, size_t outlen)
 {
 	return kcapi_cipher_conv_dec_common("cbc(aes)", key, keylen, in, inlen,
 					    iv, out, outlen);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_cipher_dec_aes_ctr(const uint8_t *key, uint32_t keylen,
-				 const uint8_t *in, size_t inlen,
-				 const uint8_t *ctr,
-				 uint8_t *out, size_t outlen)
+ORIG_SYMVER(cipher_dec_aes_cbc, "1.0.0")
+int32_t orig_cipher_dec_aes_cbc(const uint8_t *key, uint32_t keylen,
+				const uint8_t *in, uint32_t inlen,
+				const uint8_t *iv,
+				uint8_t *out, uint32_t outlen)
+{
+	return (int32_t)kcapi_cipher_conv_dec_common("cbc(aes)", key, keylen,
+						     in, inlen, iv,
+						     out, outlen);
+}
+
+IMPL_SYMVER(cipher_dec_aes_ctr, "1.3.1")
+ssize_t impl_cipher_dec_aes_ctr(const uint8_t *key, uint32_t keylen,
+				const uint8_t *in, size_t inlen,
+				const uint8_t *ctr,
+				uint8_t *out, size_t outlen)
 {
 	return kcapi_cipher_conv_dec_common("ctr(aes)", key, keylen, in, inlen,
 					    ctr, out, outlen);
+}
+
+ORIG_SYMVER(cipher_dec_aes_ctr, "1.0.0")
+int32_t orig_cipher_dec_aes_ctr(const uint8_t *key, uint32_t keylen,
+				const uint8_t *in, uint32_t inlen,
+				const uint8_t *ctr,
+				uint8_t *out, uint32_t outlen)
+{
+	return (int32_t)kcapi_cipher_conv_dec_common("ctr(aes)", key, keylen,
+						     in, inlen, ctr,
+						     out, outlen);
 }

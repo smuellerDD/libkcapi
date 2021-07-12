@@ -349,8 +349,19 @@ static inline int io_getevents(__attribute__((unused)) aio_context_t ctx,
 
 #if __GNUC__ >= 4
 # define DSO_PUBLIC __attribute__ ((visibility ("default")))
+
+# define IMPL_SYMVER(name, version) \
+    __asm__(".global impl_" #name ";"\
+	    ".symver impl_" #name ",kcapi_" #name "@@LIBKCAPI_" version);\
+    __attribute__ ((visibility ("default")))
+
+# define ORIG_SYMVER(name, version) \
+    __asm__(".global orig_" #name ";"\
+	    ".symver orig_" #name ",kcapi_" #name "@LIBKCAPI_" version);\
+    __attribute__ ((visibility ("default")))
+
 #else
-# define DSO_PUBLIC
+# error "Compiler version too old"
 #endif
 
 #ifdef __cplusplus
