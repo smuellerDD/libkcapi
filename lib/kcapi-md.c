@@ -98,15 +98,22 @@ static ssize_t _kcapi_md_final(struct kcapi_handle *handle,
 	return _kcapi_common_recv_data(handle, &iov, 1);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_md_final(struct kcapi_handle *handle,
-		       uint8_t *buffer, size_t len)
+IMPL_SYMVER(md_final, "1.3.1")
+ssize_t impl_md_final(struct kcapi_handle *handle,
+		      uint8_t *buffer, size_t len)
 {
 	return _kcapi_md_final(handle, buffer, len);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_md_digest(struct kcapi_handle *handle,
+ORIG_SYMVER(md_final, "0.12.0")
+int32_t orig_md_final(struct kcapi_handle *handle,
+		      uint8_t *buffer, uint32_t len)
+{
+	return (int32_t)_kcapi_md_final(handle, buffer, len);
+}
+
+IMPL_SYMVER(md_digest, "1.3.1")
+ssize_t impl_md_digest(struct kcapi_handle *handle,
 		       const uint8_t *in, size_t inlen,
 		       uint8_t *out, size_t outlen)
 {
@@ -116,6 +123,14 @@ ssize_t kcapi_md_digest(struct kcapi_handle *handle,
 	if (0 > ret)
 		return ret;
 	return _kcapi_md_final(handle, out, outlen);
+}
+
+ORIG_SYMVER(md_digest, "0.12.0")
+int32_t orig_md_digest(struct kcapi_handle *handle,
+		       const uint8_t *in, uint32_t inlen,
+		       uint8_t *out, uint32_t outlen)
+{
+	return (int32_t)impl_md_digest(handle, in, inlen, out, outlen);
 }
 
 DSO_PUBLIC
@@ -151,39 +166,74 @@ static inline ssize_t kcapi_md_conv_common(const char *name,
 	return ret;
 }
 
-DSO_PUBLIC
-ssize_t kcapi_md_sha1(const uint8_t *in, size_t inlen,
-		      uint8_t *out, size_t outlen)
+IMPL_SYMVER(md_sha1, "1.3.1")
+ssize_t impl_md_sha1(const uint8_t *in, size_t inlen,
+		     uint8_t *out, size_t outlen)
 {
 	return kcapi_md_conv_common("sha1", in, inlen, out, outlen);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_md_sha224(const uint8_t *in, size_t inlen,
-			uint8_t *out, size_t outlen)
+ORIG_SYMVER(md_sha1, "1.0.0")
+int32_t orig_md_sha1(const uint8_t *in, uint32_t inlen,
+		     uint8_t *out, uint32_t outlen)
+{
+	return (int32_t)kcapi_md_conv_common("sha1", in, inlen, out, outlen);
+}
+
+IMPL_SYMVER(md_sha224, "1.3.1")
+ssize_t impl_md_sha224(const uint8_t *in, size_t inlen,
+		       uint8_t *out, size_t outlen)
 {
 	return kcapi_md_conv_common("sha224", in, inlen, out, outlen);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_md_sha256(const uint8_t *in, size_t inlen,
-			uint8_t *out, size_t outlen)
+ORIG_SYMVER(md_sha224, "1.0.0")
+int32_t orig_md_sha224(const uint8_t *in, uint32_t inlen,
+		       uint8_t *out, uint32_t outlen)
+{
+	return (int32_t)kcapi_md_conv_common("sha224", in, inlen, out, outlen);
+}
+
+IMPL_SYMVER(md_sha256, "1.3.1")
+ssize_t impl_md_sha256(const uint8_t *in, size_t inlen,
+		       uint8_t *out, size_t outlen)
 {
 	return kcapi_md_conv_common("sha256", in, inlen, out, outlen);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_md_sha384(const uint8_t *in, size_t inlen,
-			uint8_t *out, size_t outlen)
+ORIG_SYMVER(md_sha256, "1.0.0")
+ssize_t orig_md_sha256(const uint8_t *in, uint32_t inlen,
+		       uint8_t *out, uint32_t outlen)
+{
+	return (int32_t)kcapi_md_conv_common("sha256", in, inlen, out, outlen);
+}
+
+IMPL_SYMVER(md_sha384, "1.3.1")
+ssize_t impl_md_sha384(const uint8_t *in, size_t inlen,
+		       uint8_t *out, size_t outlen)
 {
 	return kcapi_md_conv_common("sha384", in, inlen, out, outlen);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_md_sha512(const uint8_t *in, size_t inlen,
-			uint8_t *out, size_t outlen)
+ORIG_SYMVER(md_sha384, "1.0.0")
+int32_t orig_md_sha384(const uint8_t *in, uint32_t inlen,
+		       uint8_t *out, uint32_t outlen)
+{
+	return (int32_t)kcapi_md_conv_common("sha384", in, inlen, out, outlen);
+}
+
+IMPL_SYMVER(md_sha512, "1.3.1")
+ssize_t impl_md_sha512(const uint8_t *in, size_t inlen,
+		       uint8_t *out, size_t outlen)
 {
 	return kcapi_md_conv_common("sha512", in, inlen, out, outlen);
+}
+
+ORIG_SYMVER(md_sha512, "1.0.0")
+int32_t orig_md_sha512(const uint8_t *in, uint32_t inlen,
+		       uint8_t *out, uint32_t outlen)
+{
+	return (int32_t)kcapi_md_conv_common("sha512", in, inlen, out, outlen);
 }
 
 static inline ssize_t kcapi_md_mac_conv_common(const char *name,
@@ -207,47 +257,92 @@ out:
 	return ret;
 }
 
-DSO_PUBLIC
-ssize_t kcapi_md_hmac_sha1(const uint8_t *key, uint32_t keylen,
-			   const uint8_t *in, size_t inlen,
-			   uint8_t *out, size_t outlen)
+IMPL_SYMVER(md_hmac_sha1, "1.3.1")
+ssize_t impl_md_hmac_sha1(const uint8_t *key, uint32_t keylen,
+			  const uint8_t *in, size_t inlen,
+			  uint8_t *out, size_t outlen)
 {
 	return kcapi_md_mac_conv_common("hmac(sha1)", key, keylen, in, inlen,
 					out, outlen);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_md_hmac_sha224(const uint8_t *key, uint32_t keylen,
-			     const uint8_t *in, size_t inlen,
-			     uint8_t *out, size_t outlen)
+ORIG_SYMVER(md_hmac_sha1, "1.0.0")
+int32_t orig_md_hmac_sha1(const uint8_t *key, uint32_t keylen,
+			  const uint8_t *in, uint32_t inlen,
+			  uint8_t *out, uint32_t outlen)
+{
+	return (int32_t)kcapi_md_mac_conv_common("hmac(sha1)", key, keylen,
+						 in, inlen, out, outlen);
+}
+
+IMPL_SYMVER(md_hmac_sha224, "1.3.1")
+ssize_t impl_md_hmac_sha224(const uint8_t *key, uint32_t keylen,
+			    const uint8_t *in, size_t inlen,
+			    uint8_t *out, size_t outlen)
 {
 	return kcapi_md_mac_conv_common("hmac(sha224)", key, keylen, in, inlen,
 					out, outlen);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_md_hmac_sha256(const uint8_t *key, uint32_t keylen,
-			     const uint8_t *in, size_t inlen,
-			     uint8_t *out, size_t outlen)
+ORIG_SYMVER(md_hmac_sha224, "1.0.0")
+int32_t orig_md_hmac_sha224(const uint8_t *key, uint32_t keylen,
+			    const uint8_t *in, uint32_t inlen,
+			    uint8_t *out, uint32_t outlen)
+{
+	return (int32_t)kcapi_md_mac_conv_common("hmac(sha224)", key, keylen,
+						 in, inlen, out, outlen);
+}
+
+IMPL_SYMVER(md_hmac_sha256, "1.3.1")
+ssize_t impl_md_hmac_sha256(const uint8_t *key, uint32_t keylen,
+			    const uint8_t *in, size_t inlen,
+			    uint8_t *out, size_t outlen)
 {
 	return kcapi_md_mac_conv_common("hmac(sha256)", key, keylen, in, inlen,
 					out, outlen);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_md_hmac_sha384(const uint8_t *key, uint32_t keylen,
-			     const uint8_t *in, size_t inlen,
-			     uint8_t *out, size_t outlen)
+ORIG_SYMVER(md_hmac_sha256, "1.0.0")
+int32_t orig_md_hmac_sha256(const uint8_t *key, uint32_t keylen,
+			    const uint8_t *in, uint32_t inlen,
+			    uint8_t *out, uint32_t outlen)
+{
+	return (int32_t)kcapi_md_mac_conv_common("hmac(sha256)", key, keylen,
+						 in, inlen, out, outlen);
+}
+
+IMPL_SYMVER(md_hmac_sha384, "1.3.1")
+ssize_t impl_md_hmac_sha384(const uint8_t *key, uint32_t keylen,
+			    const uint8_t *in, size_t inlen,
+			    uint8_t *out, size_t outlen)
 {
 	return kcapi_md_mac_conv_common("hmac(sha384)", key, keylen, in, inlen,
 					out, outlen);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_md_hmac_sha512(const uint8_t *key, uint32_t keylen,
-			     const uint8_t *in, size_t inlen,
-			     uint8_t *out, size_t outlen)
+ORIG_SYMVER(md_hmac_sha384, "1.0.0")
+int32_t orig_md_hmac_sha384(const uint8_t *key, uint32_t keylen,
+			    const uint8_t *in, uint32_t inlen,
+			    uint8_t *out, uint32_t outlen)
+{
+	return (int32_t)kcapi_md_mac_conv_common("hmac(sha384)", key, keylen,
+						 in, inlen, out, outlen);
+}
+
+IMPL_SYMVER(md_hmac_sha512, "1.3.1")
+ssize_t impl_md_hmac_sha512(const uint8_t *key, uint32_t keylen,
+			    const uint8_t *in, size_t inlen,
+			    uint8_t *out, size_t outlen)
 {
 	return kcapi_md_mac_conv_common("hmac(sha512)", key, keylen, in, inlen,
 					out, outlen);
+}
+
+ORIG_SYMVER(md_hmac_sha512, "1.0.0")
+int32_t orig_md_hmac_sha512(const uint8_t *key, uint32_t keylen,
+			    const uint8_t *in, uint32_t inlen,
+			    uint8_t *out, uint32_t outlen)
+{
+	return (int32_t)kcapi_md_mac_conv_common("hmac(sha512)", key, keylen,
+						 in, inlen, out, outlen);
 }

@@ -55,18 +55,24 @@ int kcapi_aead_settaglen(struct kcapi_handle *handle, uint32_t taglen)
 	return 0;
 }
 
-DSO_PUBLIC
-void kcapi_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen)
+IMPL_SYMVER(aead_setassoclen, "1.3.1")
+void impl_aead_setassoclen(struct kcapi_handle *handle, size_t assoclen)
 {
 	handle->aead.assoclen = assoclen;
 }
 
-DSO_PUBLIC
-void kcapi_aead_getdata_input(struct kcapi_handle *handle,
-			      uint8_t *encdata, size_t encdatalen, int enc,
-			      uint8_t **aad, size_t *aadlen,
-			      uint8_t **data, size_t *datalen,
-			      uint8_t **tag, size_t *taglen)
+ORIG_SYMVER(aead_setassoclen, "0.12.0")
+void orig_aead_setassoclen(struct kcapi_handle *handle, uint32_t assoclen)
+{
+	handle->aead.assoclen = assoclen;
+}
+
+IMPL_SYMVER(aead_getdata_input, "1.3.1")
+void impl_aead_getdata_input(struct kcapi_handle *handle,
+			     uint8_t *encdata, size_t encdatalen, int enc,
+			     uint8_t **aad, size_t *aadlen,
+			     uint8_t **data, size_t *datalen,
+			     uint8_t **tag, size_t *taglen)
 {
 	uint8_t *l_aad, *l_data, *l_tag;
 	size_t l_aadlen, l_datalen, l_taglen;
@@ -116,12 +122,38 @@ void kcapi_aead_getdata_input(struct kcapi_handle *handle,
 		*taglen = l_taglen;
 }
 
-DSO_PUBLIC
-void kcapi_aead_getdata_output(struct kcapi_handle *handle,
-			       uint8_t *encdata, size_t encdatalen, int enc,
-			       uint8_t **aad, size_t *aadlen,
-			       uint8_t **data, size_t *datalen,
-			       uint8_t **tag, size_t *taglen)
+ORIG_SYMVER(aead_getdata_input, "0.13.0")
+void orig_aead_getdata_input(struct kcapi_handle *handle,
+			     uint8_t *encdata, uint32_t encdatalen, int enc,
+			     uint8_t **aad, uint32_t *aadlen,
+			     uint8_t **data, uint32_t *datalen,
+			     uint8_t **tag, uint32_t *taglen)
+{
+	size_t s_aadlen;
+	size_t s_datalen;
+	size_t s_taglen;
+
+	impl_aead_getdata_input(handle, encdata, encdatalen, enc,
+				aad, aadlen?(&s_aadlen):NULL,
+				data, datalen?(&s_datalen):NULL,
+				tag, taglen?(&s_taglen):NULL);
+
+	if (aadlen)
+	    *aadlen = (uint32_t)s_aadlen;
+
+	if (datalen)
+	    *datalen = (uint32_t)s_datalen;
+
+	if (taglen)
+	    *taglen = (uint32_t)s_taglen;
+}
+
+IMPL_SYMVER(aead_getdata_output, "1.3.1")
+void impl_aead_getdata_output(struct kcapi_handle *handle,
+			      uint8_t *encdata, size_t encdatalen, int enc,
+			      uint8_t **aad, size_t *aadlen,
+			      uint8_t **data, size_t *datalen,
+			      uint8_t **tag, size_t *taglen)
 {
 	uint8_t *l_aad, *l_data, *l_tag;
 	size_t l_aadlen, l_datalen, l_taglen;
@@ -182,11 +214,37 @@ void kcapi_aead_getdata_output(struct kcapi_handle *handle,
 		*taglen = l_taglen;
 }
 
-DSO_PUBLIC
-ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
-			   const uint8_t *in, size_t inlen,
-			   const uint8_t *iv,
-			   uint8_t *out, size_t outlen, int access)
+ORIG_SYMVER(aead_getdata_output, "0.13.0")
+void orig_aead_getdata_output(struct kcapi_handle *handle,
+			      uint8_t *encdata, uint32_t encdatalen, int enc,
+			      uint8_t **aad, uint32_t *aadlen,
+			      uint8_t **data, uint32_t *datalen,
+			      uint8_t **tag, uint32_t *taglen)
+{
+	size_t s_aadlen;
+	size_t s_datalen;
+	size_t s_taglen;
+
+	impl_aead_getdata_output(handle, encdata, encdatalen, enc,
+				 aad, aadlen?(&s_aadlen):NULL,
+				 data, datalen?(&s_datalen):NULL,
+				 tag, taglen?(&s_taglen):NULL);
+
+	if (aadlen)
+	    *aadlen = (uint32_t)s_aadlen;
+
+	if (datalen)
+	    *datalen = (uint32_t)s_datalen;
+
+	if (taglen)
+	    *taglen = (uint32_t)s_taglen;
+}
+
+IMPL_SYMVER(aead_encrypt, "1.3.1")
+ssize_t impl_aead_encrypt(struct kcapi_handle *handle,
+			  const uint8_t *in, size_t inlen,
+			  const uint8_t *iv,
+			  uint8_t *out, size_t outlen, int access)
 {
 	ssize_t ret = 0;
 
@@ -199,6 +257,16 @@ ssize_t kcapi_aead_encrypt(struct kcapi_handle *handle,
 		return -E2BIG;
 
 	return ret;
+}
+
+ORIG_SYMVER(aead_encrypt, "0.12.0")
+int32_t orig_aead_encrypt(struct kcapi_handle *handle,
+			  const uint8_t *in, uint32_t inlen,
+			  const uint8_t *iv,
+			  uint8_t *out, uint32_t outlen, int access)
+{
+	return (int32_t)impl_aead_encrypt(handle, in, inlen, iv, out, outlen,
+					  access);
 }
 
 /*
@@ -235,10 +303,10 @@ _kcapi_aead_encrypt_aio_fallback(struct kcapi_handle *handle,
 	return ret;
 }
 
-DSO_PUBLIC
-ssize_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
-			       struct iovec *outiov, size_t iovlen,
-			       const uint8_t *iv, int access)
+IMPL_SYMVER(aead_encrypt_aio, "1.3.1")
+ssize_t impl_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
+			      struct iovec *outiov, size_t iovlen,
+			      const uint8_t *iv, int access)
 {
 	ssize_t ret = 0;
 
@@ -253,15 +321,34 @@ ssize_t kcapi_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 						iv);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_aead_decrypt(struct kcapi_handle *handle,
-			   const uint8_t *in, size_t inlen,
-			   const uint8_t *iv,
-			   uint8_t *out, size_t outlen, int access)
+ORIG_SYMVER(aead_encrypt_aio, "0.12.0")
+int32_t orig_aead_encrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
+			      struct iovec *outiov, uint32_t iovlen,
+			      const uint8_t *iv, int access)
+{
+	return (int32_t)impl_aead_encrypt_aio(handle, iniov, outiov, iovlen,
+					      iv, access);
+}
+
+IMPL_SYMVER(aead_decrypt, "1.3.1")
+ssize_t impl_aead_decrypt(struct kcapi_handle *handle,
+			  const uint8_t *in, size_t inlen,
+			  const uint8_t *iv,
+			  uint8_t *out, size_t outlen, int access)
 {
 	handle->cipher.iv = iv;
 	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
 				   ALG_OP_DECRYPT);
+}
+
+ORIG_SYMVER(aead_decrypt, "0.12.0")
+int32_t orig_aead_decrypt(struct kcapi_handle *handle,
+			  const uint8_t *in, uint32_t inlen,
+			  const uint8_t *iv,
+			  uint8_t *out, uint32_t outlen, int access)
+{
+	return (int32_t)impl_aead_decrypt(handle, in, inlen, iv, out, outlen,
+					  access);
 }
 
 /*
@@ -298,10 +385,10 @@ _kcapi_aead_decrypt_aio_fallback(struct kcapi_handle *handle,
 	return ret;
 }
 
-DSO_PUBLIC
-ssize_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
-			       struct iovec *outiov, size_t iovlen,
-			       const uint8_t *iv, int access)
+IMPL_SYMVER(aead_decrypt_aio, "1.3.1")
+ssize_t impl_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
+			      struct iovec *outiov, size_t iovlen,
+			      const uint8_t *iv, int access)
 {
 	ssize_t ret = 0;
 
@@ -317,29 +404,54 @@ ssize_t kcapi_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
 						iv);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_aead_stream_init_enc(struct kcapi_handle *handle,
-				   const uint8_t *iv,
-				   struct iovec *iov, size_t iovlen)
+ORIG_SYMVER(aead_decrypt_aio, "0.12.0")
+int32_t orig_aead_decrypt_aio(struct kcapi_handle *handle, struct iovec *iniov,
+			      struct iovec *outiov, uint32_t iovlen,
+			      const uint8_t *iv, int access)
+{
+	return (int32_t)impl_aead_decrypt_aio(handle, iniov, outiov, iovlen,
+					      iv, access);
+}
+
+IMPL_SYMVER(aead_stream_init_enc, "1.3.1")
+ssize_t impl_aead_stream_init_enc(struct kcapi_handle *handle,
+				  const uint8_t *iv,
+				  struct iovec *iov, size_t iovlen)
 {
 	handle->cipher.iv = iv;
 	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_ENCRYPT,
 				       MSG_MORE);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_aead_stream_init_dec(struct kcapi_handle *handle,
-				   const uint8_t *iv,
-				   struct iovec *iov, size_t iovlen)
+ORIG_SYMVER(aead_stream_init_enc, "0.12.0")
+int32_t orig_aead_stream_init_enc(struct kcapi_handle *handle,
+				  const uint8_t *iv,
+				  struct iovec *iov, uint32_t iovlen)
+{
+	return (int32_t)impl_aead_stream_init_enc(handle, iv, iov, iovlen);
+}
+
+IMPL_SYMVER(aead_stream_init_dec, "1.3.1")
+ssize_t impl_aead_stream_init_dec(struct kcapi_handle *handle,
+				  const uint8_t *iv,
+				  struct iovec *iov, size_t iovlen)
 {
 	handle->cipher.iv = iv;
 	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_DECRYPT,
 				       MSG_MORE);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_aead_stream_update(struct kcapi_handle *handle,
-				 struct iovec *iov, size_t iovlen)
+ORIG_SYMVER(aead_stream_init_dec, "0.12.0")
+int32_t orig_aead_stream_init_dec(struct kcapi_handle *handle,
+				  const uint8_t *iv,
+				  struct iovec *iov, uint32_t iovlen)
+{
+	return (int32_t)impl_aead_stream_init_dec(handle, iv, iov, iovlen);
+}
+
+IMPL_SYMVER(aead_stream_update, "1.3.1")
+ssize_t impl_aead_stream_update(struct kcapi_handle *handle,
+				struct iovec *iov, size_t iovlen)
 {
 	if (handle->processed_sg <= handle->flags.alg_max_pages)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen,
@@ -348,9 +460,16 @@ ssize_t kcapi_aead_stream_update(struct kcapi_handle *handle,
 		return _kcapi_common_send_data(handle, iov, iovlen, MSG_MORE);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
-				      struct iovec *iov, size_t iovlen)
+ORIG_SYMVER(aead_stream_update, "0.12.0")
+int32_t orig_aead_stream_update(struct kcapi_handle *handle,
+				struct iovec *iov, uint32_t iovlen)
+{
+	return (int32_t)impl_aead_stream_update(handle, iov, iovlen);
+}
+
+IMPL_SYMVER(aead_stream_update_last, "1.3.1")
+ssize_t impl_aead_stream_update_last(struct kcapi_handle *handle,
+				     struct iovec *iov, size_t iovlen)
 {
 	if (handle->processed_sg <= handle->flags.alg_max_pages)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
@@ -358,9 +477,16 @@ ssize_t kcapi_aead_stream_update_last(struct kcapi_handle *handle,
 		return _kcapi_common_send_data(handle, iov, iovlen, 0);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_aead_stream_op(struct kcapi_handle *handle,
-			     struct iovec *iov, size_t iovlen)
+ORIG_SYMVER(aead_stream_update_last, "0.12.0")
+int32_t orig_aead_stream_update_last(struct kcapi_handle *handle,
+				     struct iovec *iov, uint32_t iovlen)
+{
+	return (int32_t)impl_aead_stream_update_last(handle, iov, iovlen);
+}
+
+IMPL_SYMVER(aead_stream_op, "1.3.1")
+ssize_t impl_aead_stream_op(struct kcapi_handle *handle,
+			    struct iovec *iov, size_t iovlen)
 {
 	if (!iov) {
 		kcapi_dolog(KCAPI_LOG_ERR,
@@ -369,6 +495,13 @@ ssize_t kcapi_aead_stream_op(struct kcapi_handle *handle,
 	}
 
 	return _kcapi_common_recv_data(handle, iov, iovlen);
+}
+
+ORIG_SYMVER(aead_stream_op, "0.12.0")
+int32_t orig_aead_stream_op(struct kcapi_handle *handle,
+			    struct iovec *iov, uint32_t iovlen)
+{
+	return (int32_t)impl_aead_stream_op(handle, iov, iovlen);
 }
 
 DSO_PUBLIC
@@ -395,9 +528,9 @@ uint32_t kcapi_aead_authsize(struct kcapi_handle *handle)
 	return tfm->info.aead_maxauthsize;
 }
 
-DSO_PUBLIC
-size_t kcapi_aead_inbuflen_enc(struct kcapi_handle *handle,
-			       size_t inlen, size_t assoclen, size_t taglen)
+IMPL_SYMVER(aead_inbuflen_enc, "1.3.1")
+size_t impl_aead_inbuflen_enc(struct kcapi_handle *handle,
+			      size_t inlen, size_t assoclen, size_t taglen)
 {
 	size_t len = inlen + assoclen;
 
@@ -407,18 +540,36 @@ size_t kcapi_aead_inbuflen_enc(struct kcapi_handle *handle,
 	return len;
 }
 
-DSO_PUBLIC
-size_t kcapi_aead_inbuflen_dec(struct kcapi_handle *handle,
-			        size_t inlen, size_t assoclen, size_t taglen)
+ORIG_SYMVER(aead_inbuflen_enc, "0.13.0")
+uint32_t orig_aead_inbuflen_enc(struct kcapi_handle *handle,
+				uint32_t inlen, uint32_t assoclen,
+				uint32_t taglen)
+{
+	return (uint32_t)impl_aead_inbuflen_enc(handle, inlen, assoclen,
+						taglen);
+}
+
+IMPL_SYMVER(aead_inbuflen_dec, "1.3.1")
+size_t impl_aead_inbuflen_dec(struct kcapi_handle *handle,
+			      size_t inlen, size_t assoclen, size_t taglen)
 {
 	(void)handle;
 	return (inlen + assoclen + taglen);
 }
 
-DSO_PUBLIC
-size_t kcapi_aead_outbuflen_enc(struct kcapi_handle *handle,
-				  size_t inlen, size_t assoclen,
-				  size_t taglen)
+ORIG_SYMVER(aead_inbuflen_dec, "0.13.0")
+uint32_t orig_aead_inbuflen_dec(struct kcapi_handle *handle,
+				uint32_t inlen, uint32_t assoclen,
+				uint32_t taglen)
+{
+	return (uint32_t)impl_aead_inbuflen_dec(handle, inlen, assoclen,
+						taglen);
+}
+
+IMPL_SYMVER(aead_outbuflen_enc, "1.3.1")
+size_t impl_aead_outbuflen_enc(struct kcapi_handle *handle,
+			       size_t inlen, size_t assoclen,
+			       size_t taglen)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
 	uint32_t bs = tfm->info.blocksize;
@@ -431,10 +582,19 @@ size_t kcapi_aead_outbuflen_enc(struct kcapi_handle *handle,
 	return outlen;
 }
 
-DSO_PUBLIC
-size_t kcapi_aead_outbuflen_dec(struct kcapi_handle *handle,
-				size_t inlen, size_t assoclen,
-				size_t taglen)
+ORIG_SYMVER(aead_outbuflen_enc, "0.13.0")
+uint32_t orig_aead_outbuflen_enc(struct kcapi_handle *handle,
+				 uint32_t inlen, uint32_t assoclen,
+				 uint32_t taglen)
+{
+	return (uint32_t)impl_aead_outbuflen_enc(handle, inlen, assoclen,
+						 taglen);
+}
+
+IMPL_SYMVER(aead_outbuflen_dec, "1.3.1")
+size_t impl_aead_outbuflen_dec(struct kcapi_handle *handle,
+			       size_t inlen, size_t assoclen,
+			       size_t taglen)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
 	uint32_t bs = tfm->info.blocksize;
@@ -448,6 +608,15 @@ size_t kcapi_aead_outbuflen_dec(struct kcapi_handle *handle,
 		outlen = 1;
 
 	return outlen;
+}
+
+ORIG_SYMVER(aead_outbuflen_dec, "0.13.0")
+uint32_t orig_aead_outbuflen_dec(struct kcapi_handle *handle,
+				 uint32_t inlen, uint32_t assoclen,
+				 uint32_t taglen)
+{
+	return (uint32_t)impl_aead_outbuflen_dec(handle, inlen, assoclen,
+						 taglen);
 }
 
 DSO_PUBLIC

@@ -50,9 +50,9 @@ int kcapi_rng_seed(struct kcapi_handle *handle, uint8_t *seed,
 	return _kcapi_common_setkey(handle, seed, seedlen);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_rng_generate(struct kcapi_handle *handle,
-			   uint8_t *buffer, size_t len)
+IMPL_SYMVER(rng_generate, "1.3.1")
+ssize_t impl_rng_generate(struct kcapi_handle *handle,
+			  uint8_t *buffer, size_t len)
 {
 	ssize_t out = 0;
 	struct iovec iov;
@@ -72,6 +72,13 @@ ssize_t kcapi_rng_generate(struct kcapi_handle *handle,
 	}
 
 	return out;
+}
+
+ORIG_SYMVER(rng_generate, "0.12.0")
+int32_t orig_rng_generate(struct kcapi_handle *handle,
+			  uint8_t *buffer, uint32_t len)
+{
+	return (int32_t)impl_rng_generate(handle, buffer, len);
 }
 
 DSO_PUBLIC
@@ -151,8 +158,8 @@ static int get_random(uint8_t *buf, size_t buflen)
 #define KCAPI_APP_ALIGN 8
 #define __aligned(x)	__attribute__((aligned(x)))
 
-DSO_PUBLIC
-ssize_t kcapi_rng_get_bytes(uint8_t *buffer, size_t outlen)
+IMPL_SYMVER(rng_get_bytes, "1.3.1")
+ssize_t impl_rng_get_bytes(uint8_t *buffer, size_t outlen)
 {
 	struct kcapi_handle *handle;
 	uint8_t buf[KCAPI_RNG_BUFSIZE] __aligned(KCAPI_APP_ALIGN);
@@ -225,4 +232,10 @@ out:
 		kcapi_memset_secure(buf, 0, sizeof(buf));
 	_kcapi_handle_destroy(handle);
 	return ret;
+}
+
+ORIG_SYMVER(rng_get_bytes, "1.0.0")
+int32_t orig_rng_get_bytes(uint8_t *buffer, uint32_t outlen)
+{
+        return (int32_t)impl_rng_get_bytes(buffer, outlen);
 }

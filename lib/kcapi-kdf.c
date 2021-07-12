@@ -92,10 +92,10 @@ static inline uint32_t _bswap32(uint32_t x)
 # error "Endianess not defined"
 #endif
 
-DSO_PUBLIC
-ssize_t kcapi_kdf_dpi(struct kcapi_handle *handle,
-		      const uint8_t *src, size_t slen,
-		      uint8_t *dst, size_t dlen)
+IMPL_SYMVER(kdf_dpi, "1.3.1")
+ssize_t impl_kdf_dpi(struct kcapi_handle *handle,
+		     const uint8_t *src, size_t slen,
+		     uint8_t *dst, size_t dlen)
 {
 	uint32_t h = kcapi_md_digestsize(handle);
 	ssize_t err = 0;
@@ -164,10 +164,18 @@ err:
 	return err;
 }
 
-DSO_PUBLIC
-ssize_t kcapi_kdf_fb(struct kcapi_handle *handle,
-		     const uint8_t *src, size_t slen,
-		     uint8_t *dst, size_t dlen)
+ORIG_SYMVER(kdf_dpi, "0.12.0")
+int32_t orig_kdf_dpi(struct kcapi_handle *handle,
+		     const uint8_t *src, uint32_t slen,
+		     uint8_t *dst, uint32_t dlen)
+{
+	return (int32_t)impl_kdf_dpi(handle, src, slen, dst, dlen);
+}
+
+IMPL_SYMVER(kdf_fb, "1.3.1")
+ssize_t impl_kdf_fb(struct kcapi_handle *handle,
+		    const uint8_t *src, size_t slen,
+		    uint8_t *dst, size_t dlen)
 {
 	uint32_t h = kcapi_md_digestsize(handle);
 	ssize_t err = 0;
@@ -237,10 +245,18 @@ err:
 	return err;
 }
 
-DSO_PUBLIC
-ssize_t kcapi_kdf_ctr(struct kcapi_handle *handle,
-		      const uint8_t *src, size_t slen,
-		      uint8_t *dst, size_t dlen)
+ORIG_SYMVER(kdf_fb, "0.12.0")
+int32_t orig_kdf_fb(struct kcapi_handle *handle,
+		    const uint8_t *src, uint32_t slen,
+		    uint8_t *dst, uint32_t dlen)
+{
+	return (int32_t)impl_kdf_fb(handle, src, slen, dst, dlen);
+}
+
+IMPL_SYMVER(kdf_ctr, "1.3.1")
+ssize_t impl_kdf_ctr(struct kcapi_handle *handle,
+		     const uint8_t *src, size_t slen,
+		     uint8_t *dst, size_t dlen)
 {
 	uint32_t h = kcapi_md_digestsize(handle);
 	ssize_t err = 0;
@@ -291,15 +307,23 @@ err:
 	return err;
 }
 
+ORIG_SYMVER(kdf_ctr, "0.12.0")
+int32_t orig_kdf_ctr(struct kcapi_handle *handle,
+		     const uint8_t *src, uint32_t slen,
+		     uint8_t *dst, uint32_t dlen)
+{
+	return (int32_t)impl_kdf_ctr(handle, src, slen, dst, dlen);
+}
+
 /*
  * RFC 5869 KDF
  */
-DSO_PUBLIC
-ssize_t kcapi_hkdf(const char *hashname,
-		   const uint8_t *ikm, size_t ikmlen,
-		   const uint8_t *salt, uint32_t saltlen,
-		   const uint8_t *info, size_t infolen,
-		   uint8_t *dst, size_t dlen)
+IMPL_SYMVER(hkdf, "1.3.1")
+ssize_t impl_hkdf(const char *hashname,
+		  const uint8_t *ikm, size_t ikmlen,
+		  const uint8_t *salt, uint32_t saltlen,
+		  const uint8_t *info, size_t infolen,
+		  uint8_t *dst, size_t dlen)
 {
 #define HKDF_MAXHASH 64
 	uint32_t h;
@@ -407,6 +431,17 @@ out:
 	kcapi_memset_secure(prk_tmp, 0, h);
 	kcapi_md_destroy(handle);
 	return err;
+}
+
+ORIG_SYMVER(hkdf, "0.14.0")
+int32_t orig_hkdf(const char *hashname,
+		  const uint8_t *ikm, uint32_t ikmlen,
+		  const uint8_t *salt, uint32_t saltlen,
+		  const uint8_t *info, uint32_t infolen,
+		  uint8_t *dst, uint32_t dlen)
+{
+	return (int32_t)impl_hkdf(hashname, ikm, ikmlen, salt, saltlen,
+				  info, infolen, dst, dlen);
 }
 
 static inline uint64_t kcapi_get_time(void)
@@ -529,12 +564,12 @@ static inline void kcapi_xor_64(uint8_t *dst, const uint8_t *src, size_t size)
 		kcapi_xor_32(dst, src, size);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_pbkdf(const char *hashname,
-		    const uint8_t *pw, uint32_t pwlen,
-		    const uint8_t *salt, size_t saltlen,
-		    uint32_t count,
-		    uint8_t *key, size_t keylen)
+IMPL_SYMVER(pbkdf, "1.3.1")
+ssize_t impl_pbkdf(const char *hashname,
+		   const uint8_t *pw, uint32_t pwlen,
+		   const uint8_t *salt, size_t saltlen,
+		   uint32_t count,
+		   uint8_t *key, size_t keylen)
 {
 	struct kcapi_handle *handle;
 	uint8_t *key_orig = key;
@@ -622,3 +657,13 @@ err:
 	return err;
 }
 
+ORIG_SYMVER(pbkdf, "0.12.0")
+int32_t orig_pbkdf(const char *hashname,
+		   const uint8_t *pw, uint32_t pwlen,
+		   const uint8_t *salt, uint32_t saltlen,
+		   uint32_t count,
+		   uint8_t *key, uint32_t keylen)
+{
+	return (int32_t)impl_pbkdf(hashname, pw, pwlen, salt, saltlen, count,
+				   key, keylen);
+}

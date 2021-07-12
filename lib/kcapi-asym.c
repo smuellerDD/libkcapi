@@ -52,77 +52,145 @@ int kcapi_akcipher_setpubkey(struct kcapi_handle *handle,
 	return (ret >= 0) ? ret : -errno;
 }
 
-DSO_PUBLIC
-ssize_t kcapi_akcipher_encrypt(struct kcapi_handle *handle,
-			       const uint8_t *in, size_t inlen,
-			       uint8_t *out, size_t outlen, int access)
+IMPL_SYMVER(akcipher_encrypt, "1.3.1")
+ssize_t impl_akcipher_encrypt(struct kcapi_handle *handle,
+			      const uint8_t *in, size_t inlen,
+			      uint8_t *out, size_t outlen, int access)
 {
 	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
 				   ALG_OP_ENCRYPT);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_akcipher_decrypt(struct kcapi_handle *handle,
-			       const uint8_t *in, size_t inlen,
-			       uint8_t *out, size_t outlen, int access)
+ORIG_SYMVER(akcipher_encrypt, "0.12.0")
+int32_t orig_akcipher_encrypt(struct kcapi_handle *handle,
+			      const uint8_t *in, uint32_t inlen,
+			      uint8_t *out, uint32_t outlen, int access)
+{
+	return (int32_t)_kcapi_cipher_crypt(handle, in, inlen, out, outlen,
+					    access, ALG_OP_ENCRYPT);
+}
+
+IMPL_SYMVER(akcipher_decrypt, "1.3.1")
+ssize_t impl_akcipher_decrypt(struct kcapi_handle *handle,
+			      const uint8_t *in, size_t inlen,
+			      uint8_t *out, size_t outlen, int access)
 {
 	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
 				   ALG_OP_DECRYPT);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_akcipher_sign(struct kcapi_handle *handle,
-			    const uint8_t *in, size_t inlen,
-			    uint8_t *out, size_t outlen, int access)
+ORIG_SYMVER(akcipher_decrypt, "0.12.0")
+int32_t orig_akcipher_decrypt(struct kcapi_handle *handle,
+			      const uint8_t *in, uint32_t inlen,
+			      uint8_t *out, uint32_t outlen, int access)
+{
+	return (int32_t)_kcapi_cipher_crypt(handle, in, inlen, out, outlen,
+					    access, ALG_OP_DECRYPT);
+}
+
+IMPL_SYMVER(akcipher_sign, "1.3.1")
+ssize_t impl_akcipher_sign(struct kcapi_handle *handle,
+			   const uint8_t *in, size_t inlen,
+			   uint8_t *out, size_t outlen, int access)
 {
 	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
 				   ALG_OP_SIGN);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_akcipher_verify(struct kcapi_handle *handle,
-			      const uint8_t *in, size_t inlen,
-			      uint8_t *out, size_t outlen, int access)
+ORIG_SYMVER(akcipher_sign, "0.12.0")
+int32_t orig_akcipher_sign(struct kcapi_handle *handle,
+			   const uint8_t *in, uint32_t inlen,
+			   uint8_t *out, uint32_t outlen, int access)
+{
+	return (int32_t)_kcapi_cipher_crypt(handle, in, inlen, out, outlen,
+					    access, ALG_OP_SIGN);
+}
+
+IMPL_SYMVER(akcipher_verify, "1.3.1")
+ssize_t impl_akcipher_verify(struct kcapi_handle *handle,
+			     const uint8_t *in, size_t inlen,
+			     uint8_t *out, size_t outlen, int access)
 {
 	return _kcapi_cipher_crypt(handle, in, inlen, out, outlen, access,
 				   ALG_OP_VERIFY);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_akcipher_stream_init_enc(struct kcapi_handle *handle,
-				       struct iovec *iov, size_t iovlen)
+ORIG_SYMVER(akcipher_verify, "0.12.0")
+int32_t orig_akcipher_verify(struct kcapi_handle *handle,
+			     const uint8_t *in, uint32_t inlen,
+			     uint8_t *out, uint32_t outlen, int access)
+{
+	return (int32_t)_kcapi_cipher_crypt(handle, in, inlen, out, outlen,
+					    access, ALG_OP_VERIFY);
+}
+
+IMPL_SYMVER(akcipher_stream_init_enc, "1.3.1")
+ssize_t impl_akcipher_stream_init_enc(struct kcapi_handle *handle,
+				      struct iovec *iov, size_t iovlen)
 {
 	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_ENCRYPT,
 				       MSG_MORE);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_akcipher_stream_init_dec(struct kcapi_handle *handle,
-				       struct iovec *iov, size_t iovlen)
+ORIG_SYMVER(akcipher_stream_init_enc, "0.12.0")
+int32_t orig_akcipher_stream_init_enc(struct kcapi_handle *handle,
+				      struct iovec *iov, uint32_t iovlen)
+{
+	return (int32_t)_kcapi_common_send_meta(handle, iov, iovlen,
+						ALG_OP_ENCRYPT, MSG_MORE);
+}
+
+IMPL_SYMVER(akcipher_stream_init_dec, "1.3.1")
+ssize_t impl_akcipher_stream_init_dec(struct kcapi_handle *handle,
+				      struct iovec *iov, size_t iovlen)
 {
 	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_DECRYPT,
 				       MSG_MORE);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_akcipher_stream_init_sgn(struct kcapi_handle *handle,
-				       struct iovec *iov, size_t iovlen)
+ORIG_SYMVER(akcipher_stream_init_dec, "0.12.0")
+int32_t orig_akcipher_stream_init_dec(struct kcapi_handle *handle,
+				      struct iovec *iov, uint32_t iovlen)
+{
+	return (int32_t)_kcapi_common_send_meta(handle, iov, iovlen,
+						ALG_OP_DECRYPT, MSG_MORE);
+}
+
+IMPL_SYMVER(akcipher_stream_init_sgn, "1.3.1")
+ssize_t impl_akcipher_stream_init_sgn(struct kcapi_handle *handle,
+				      struct iovec *iov, size_t iovlen)
 {
 	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_SIGN,
 				       MSG_MORE);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_akcipher_stream_init_vfy(struct kcapi_handle *handle,
-				       struct iovec *iov, size_t iovlen)
+ORIG_SYMVER(akcipher_stream_init_sgn, "0.12.0")
+int32_t orig_akcipher_stream_init_sgn(struct kcapi_handle *handle,
+				      struct iovec *iov, uint32_t iovlen)
+{
+	return (int32_t)_kcapi_common_send_meta(handle, iov, iovlen,
+						ALG_OP_SIGN, MSG_MORE);
+}
+
+IMPL_SYMVER(akcipher_stream_init_vfy, "1.3.1")
+ssize_t impl_akcipher_stream_init_vfy(struct kcapi_handle *handle,
+				      struct iovec *iov, size_t iovlen)
 {
 	return _kcapi_common_send_meta(handle, iov, iovlen, ALG_OP_VERIFY,
 				       MSG_MORE);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
-				     struct iovec *iov, size_t iovlen)
+ORIG_SYMVER(akcipher_stream_init_vfy, "0.12.0")
+int32_t orig_akcipher_stream_init_vfy(struct kcapi_handle *handle,
+				      struct iovec *iov, uint32_t iovlen)
+{
+	return (int32_t)_kcapi_common_send_meta(handle, iov, iovlen,
+						ALG_OP_VERIFY, MSG_MORE);
+}
+
+IMPL_SYMVER(akcipher_stream_update, "1.3.1")
+ssize_t impl_akcipher_stream_update(struct kcapi_handle *handle,
+				    struct iovec *iov, size_t iovlen)
 {
 	if (handle->processed_sg < handle->flags.alg_max_pages)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen,
@@ -131,9 +199,16 @@ ssize_t kcapi_akcipher_stream_update(struct kcapi_handle *handle,
 		return _kcapi_common_send_data(handle, iov, iovlen, MSG_MORE);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
-				          struct iovec *iov, size_t iovlen)
+ORIG_SYMVER(akcipher_stream_update, "0.12.0")
+int32_t orig_akcipher_stream_update(struct kcapi_handle *handle,
+				    struct iovec *iov, uint32_t iovlen)
+{
+	return (int32_t)impl_akcipher_stream_update(handle, iov, iovlen);
+}
+
+IMPL_SYMVER(akcipher_stream_update_last, "1.3.1")
+ssize_t impl_akcipher_stream_update_last(struct kcapi_handle *handle,
+					 struct iovec *iov, size_t iovlen)
 {
 	if (handle->processed_sg < handle->flags.alg_max_pages)
 		return _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
@@ -141,9 +216,16 @@ ssize_t kcapi_akcipher_stream_update_last(struct kcapi_handle *handle,
 		return _kcapi_common_send_data(handle, iov, iovlen, 0);
 }
 
-DSO_PUBLIC
-ssize_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
-			         struct iovec *iov, size_t iovlen)
+ORIG_SYMVER(akcipher_stream_update_last, "0.12.0")
+int32_t orig_akcipher_stream_update_last(struct kcapi_handle *handle,
+					 struct iovec *iov, uint32_t iovlen)
+{
+	return (int32_t)impl_akcipher_stream_update_last(handle, iov, iovlen);
+}
+
+IMPL_SYMVER(akcipher_stream_op, "1.3.1")
+ssize_t impl_akcipher_stream_op(struct kcapi_handle *handle,
+				struct iovec *iov, size_t iovlen)
 {
 	if (!iov || !iovlen) {
 		kcapi_dolog(KCAPI_LOG_ERR,
@@ -151,6 +233,13 @@ ssize_t kcapi_akcipher_stream_op(struct kcapi_handle *handle,
 		return -EINVAL;
 	}
 	return _kcapi_common_recv_data(handle, iov, iovlen);
+}
+
+ORIG_SYMVER(akcipher_stream_op, "0.12.0")
+int32_t orig_akcipher_stream_op(struct kcapi_handle *handle,
+				struct iovec *iov, uint32_t iovlen)
+{
+	return (int32_t)impl_akcipher_stream_op(handle, iov, iovlen);
 }
 
 static ssize_t
@@ -210,10 +299,10 @@ _kcapi_akcipher_encrypt_aio_fallback(struct kcapi_handle *handle,
 	return ret;
 }
 
-DSO_PUBLIC
-ssize_t kcapi_akcipher_encrypt_aio(struct kcapi_handle *handle,
-				   struct iovec *iniov, struct iovec *outiov,
-				   size_t iovlen, int access)
+IMPL_SYMVER(akciper_encrypt_aio, "1.3.1")
+ssize_t impl_akcipher_encrypt_aio(struct kcapi_handle *handle,
+				  struct iovec *iniov, struct iovec *outiov,
+				  size_t iovlen, int access)
 {
 	ssize_t ret;
 
@@ -224,6 +313,15 @@ ssize_t kcapi_akcipher_encrypt_aio(struct kcapi_handle *handle,
 
 	return _kcapi_akcipher_encrypt_aio_fallback(handle, iniov, outiov,
 						    iovlen);
+}
+
+ORIG_SYMVER(akciper_encrypt_aio, "0.14.0")
+int32_t orig_akcipher_encrypt_aio(struct kcapi_handle *handle,
+				  struct iovec *iniov, struct iovec *outiov,
+				  uint32_t iovlen, int access)
+{
+	return (int32_t)impl_akcipher_encrypt_aio(handle, iniov, outiov,
+						  iovlen, access);
 }
 
 /*
@@ -259,10 +357,10 @@ _kcapi_akcipher_decrypt_aio_fallback(struct kcapi_handle *handle,
 	return ret;
 }
 
-DSO_PUBLIC
-ssize_t kcapi_akcipher_decrypt_aio(struct kcapi_handle *handle,
-				   struct iovec *iniov, struct iovec *outiov,
-				   size_t iovlen, int access)
+IMPL_SYMVER(akcipher_decrypt_aio, "1.3.1")
+ssize_t impl_akcipher_decrypt_aio(struct kcapi_handle *handle,
+				  struct iovec *iniov, struct iovec *outiov,
+				  size_t iovlen, int access)
 {
 	ssize_t ret;
 
@@ -273,6 +371,15 @@ ssize_t kcapi_akcipher_decrypt_aio(struct kcapi_handle *handle,
 
 	return _kcapi_akcipher_decrypt_aio_fallback(handle, iniov, outiov,
 						    iovlen);
+}
+
+ORIG_SYMVER(akcipher_decrypt_aio, "0.14.0")
+int32_t orig_akcipher_decrypt_aio(struct kcapi_handle *handle,
+				  struct iovec *iniov, struct iovec *outiov,
+				  uint32_t iovlen, int access)
+{
+	return (int32_t)impl_akcipher_decrypt_aio(handle, iniov, outiov,
+						  iovlen, access);
 }
 
 /*
@@ -308,10 +415,10 @@ _kcapi_akcipher_sign_aio_fallback(struct kcapi_handle *handle,
 	return ret;
 }
 
-DSO_PUBLIC
-ssize_t kcapi_akcipher_sign_aio(struct kcapi_handle *handle,
-				struct iovec *iniov, struct iovec *outiov,
-				size_t iovlen, int access)
+IMPL_SYMVER(akcipher_sign_aio, "1.3.1")
+ssize_t impl_akcipher_sign_aio(struct kcapi_handle *handle,
+			       struct iovec *iniov, struct iovec *outiov,
+			       size_t iovlen, int access)
 {
 	ssize_t ret;
 
@@ -321,6 +428,15 @@ ssize_t kcapi_akcipher_sign_aio(struct kcapi_handle *handle,
 		return ret;
 
 	return _kcapi_akcipher_sign_aio_fallback(handle, iniov, outiov, iovlen);
+}
+
+ORIG_SYMVER(akcipher_sign_aio, "0.14.0")
+int32_t orig_akcipher_sign_aio(struct kcapi_handle *handle,
+			       struct iovec *iniov, struct iovec *outiov,
+			       uint32_t iovlen, int access)
+{
+	return (int32_t)impl_akcipher_sign_aio(handle, iniov, outiov, iovlen,
+					       access);
 }
 
 /*
@@ -356,10 +472,10 @@ _kcapi_akcipher_verify_aio_fallback(struct kcapi_handle *handle,
 	return ret;
 }
 
-DSO_PUBLIC
-ssize_t kcapi_akcipher_verify_aio(struct kcapi_handle *handle,
-				  struct iovec *iniov, struct iovec *outiov,
-				  size_t iovlen, int access)
+IMPL_SYMVER(akcipher_verify_aio, "1.3.1")
+ssize_t impl_akcipher_verify_aio(struct kcapi_handle *handle,
+				 struct iovec *iniov, struct iovec *outiov,
+				 size_t iovlen, int access)
 {
 	ssize_t ret;
 
@@ -370,4 +486,13 @@ ssize_t kcapi_akcipher_verify_aio(struct kcapi_handle *handle,
 
 	return _kcapi_akcipher_verify_aio_fallback(handle, iniov, outiov,
 						   iovlen);
+}
+
+ORIG_SYMVER(akcipher_verify_aio, "0.14.0")
+int32_t orig_akcipher_verify_aio(struct kcapi_handle *handle,
+				 struct iovec *iniov, struct iovec *outiov,
+				 uint32_t iovlen, int access)
+{
+	return (int32_t)impl_akcipher_verify_aio(handle, iniov, outiov,
+						 iovlen, access);
 }

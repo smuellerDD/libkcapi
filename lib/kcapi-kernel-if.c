@@ -39,11 +39,17 @@
 /************************************************************
  * Common helper used within the lib and as an API
  ************************************************************/
-DSO_PUBLIC
-void kcapi_memset_secure(void *s, int c, size_t n)
+IMPL_SYMVER(memset_secure, "1.3.1")
+void impl_memset_secure(void *s, int c, size_t n)
 {
 	memset(s, c, n);
 	__asm__ __volatile__("" : : "r" (s) : "memory");
+}
+
+ORIG_SYMVER(memset_secure, "0.12.0")
+void orig_memset_secure(void *s, int c, uint32_t n)
+{
+        impl_memset_secure(s, c, n);
 }
 
 /************************************************************
