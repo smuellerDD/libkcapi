@@ -1,3 +1,8 @@
+Changes 1.3.1:
+ * fix: fix -Wconversion warnings (by Ondrej Mosnacek)
+ * fix: fix bad data types in _kcapi_common_send_meta (by Ondrej Mosnacek)
+ * fix: Version symbols to maintain ABI compatibility (by Simo Sorce)
+
 Changes 1.3.0:
  * fix: disable io_getevents on systems that do not support it (by Khem Raj)
  * fix: remove prctl PR_SET_DUMPABLE to allow library to be debugged - as the library does not store any sensitive data in data structures it owns, such security precautions may not be necessary considering the benefit of allowing regular debugging
