@@ -350,6 +350,16 @@ static inline int io_getevents(__attribute__((unused)) aio_context_t ctx,
 #if __GNUC__ >= 4
 # define DSO_PUBLIC __attribute__ ((visibility ("default")))
 
+#if __GNUC__ >= 10
+# define IMPL_SYMVER(name, version) \
+    __attribute__ ((visibility ("default"))) \
+    __attribute__((__symver__("kcapi_" #name "@@LIBKCAPI_" version)))
+
+# define ORIG_SYMVER(name, version) \
+    __attribute__ ((visibility ("default"))) \
+    __attribute__((__symver__("kcapi_" #name "@LIBKCAPI_" version)))
+
+#else
 # define IMPL_SYMVER(name, version) \
     __asm__(".global impl_" #name ";"\
 	    ".symver impl_" #name ",kcapi_" #name "@@LIBKCAPI_" version);\
@@ -359,6 +369,7 @@ static inline int io_getevents(__attribute__((unused)) aio_context_t ctx,
     __asm__(".global orig_" #name ";"\
 	    ".symver orig_" #name ",kcapi_" #name "@LIBKCAPI_" version);\
     __attribute__ ((visibility ("default")))
+#endif
 
 #else
 # error "Compiler version too old"
