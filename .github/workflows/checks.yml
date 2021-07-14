@@ -6,8 +6,9 @@ jobs:
         strategy:
             matrix:
                 compiler:
-                - { cc: clang, env: '' }
-                - { cc: gcc,   env: '' }
+                - { cc: clang }
+                - { cc: clang, env: "CFLAGS=-flto\nLDFLAGS=-flto" }
+                - { cc: gcc }
                 -
                     cc: gcc-8
                     env: |
@@ -29,6 +30,15 @@ jobs:
                         AR=gcc-ar-10
                         NM=gcc-nm-10
                         RANLIB=gcc-ranlib-10
+                -
+                    cc: gcc-10
+                    env: |
+                        NO_32BIT_TEST=1
+                        AR=gcc-ar-10
+                        NM=gcc-nm-10
+                        RANLIB=gcc-ranlib-10
+                        CFLAGS=-flto
+                        LDFLAGS=-flto
         steps:
         - uses: actions/checkout@v2
         - name: Install dependencies
