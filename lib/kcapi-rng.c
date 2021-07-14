@@ -28,20 +28,17 @@
 #include "internal.h"
 #include "kcapi.h"
 
-DSO_PUBLIC
 int kcapi_rng_init(struct kcapi_handle **handle, const char *ciphername,
 		   uint32_t flags)
 {
 	return _kcapi_handle_init(handle, "rng", ciphername, flags);
 }
 
-DSO_PUBLIC
 void kcapi_rng_destroy(struct kcapi_handle *handle)
 {
 	_kcapi_handle_destroy(handle);
 }
 
-DSO_PUBLIC
 int kcapi_rng_seed(struct kcapi_handle *handle, uint8_t *seed,
 		   uint32_t seedlen)
 {
@@ -81,7 +78,6 @@ int32_t orig_rng_generate(struct kcapi_handle *handle,
 	return (int32_t)impl_rng_generate(handle, buffer, len);
 }
 
-DSO_PUBLIC
 uint32_t kcapi_rng_seedsize(struct kcapi_handle *handle)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;

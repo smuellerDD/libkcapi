@@ -21,20 +21,17 @@
 #include "internal.h"
 #include "kcapi.h"
 
-DSO_PUBLIC
 int kcapi_cipher_init(struct kcapi_handle **handle, const char *ciphername,
 		      uint32_t flags)
 {
 	return _kcapi_handle_init(handle, "skcipher", ciphername, flags);
 }
 
-DSO_PUBLIC
 void kcapi_cipher_destroy(struct kcapi_handle *handle)
 {
 	_kcapi_handle_destroy(handle);
 }
 
-DSO_PUBLIC
 int kcapi_cipher_setkey(struct kcapi_handle *handle,
 			const uint8_t *key, uint32_t keylen)
 {
@@ -282,7 +279,6 @@ int32_t orig_cipher_stream_op(struct kcapi_handle *handle,
 	return (int32_t)impl_cipher_stream_op(handle, iov, iovlen);
 }
 
-DSO_PUBLIC
 uint32_t kcapi_cipher_ivsize(struct kcapi_handle *handle)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
@@ -290,7 +286,6 @@ uint32_t kcapi_cipher_ivsize(struct kcapi_handle *handle)
 	return tfm->info.ivsize;
 }
 
-DSO_PUBLIC
 uint32_t kcapi_cipher_blocksize(struct kcapi_handle *handle)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;

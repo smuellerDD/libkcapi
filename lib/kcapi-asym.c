@@ -21,27 +21,23 @@
 #include "internal.h"
 #include "kcapi.h"
 
-DSO_PUBLIC
 int kcapi_akcipher_init(struct kcapi_handle **handle, const char *ciphername,
 			uint32_t flags)
 {
 	return _kcapi_handle_init(handle, "akcipher", ciphername, flags);
 }
 
-DSO_PUBLIC
 void kcapi_akcipher_destroy(struct kcapi_handle *handle)
 {
 	_kcapi_handle_destroy(handle);
 }
 
-DSO_PUBLIC
 int kcapi_akcipher_setkey(struct kcapi_handle *handle,
 			  const uint8_t *key, uint32_t keylen)
 {
 	return _kcapi_common_setkey(handle, key, keylen);
 }
 
-DSO_PUBLIC
 int kcapi_akcipher_setpubkey(struct kcapi_handle *handle,
 			     const uint8_t *key, uint32_t keylen)
 {

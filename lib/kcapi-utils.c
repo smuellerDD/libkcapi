@@ -21,13 +21,11 @@
 #include "internal.h"
 #include "kcapi.h"
 
-DSO_PUBLIC
 void kcapi_set_verbosity(enum kcapi_verbosity level)
 {
 	kcapi_verbosity_level = level;
 }
 
-DSO_PUBLIC
 void kcapi_versionstring(char *buf, uint32_t buflen)
 {
 	snprintf(buf, buflen, "libkcapi%s%d.%d.%.f",
@@ -36,7 +34,6 @@ void kcapi_versionstring(char *buf, uint32_t buflen)
 		 KCAPI_MAJVERSION, KCAPI_MINVERSION, (double)KCAPI_PATCHLEVEL);
 }
 
-DSO_PUBLIC
 uint32_t kcapi_version(void)
 {
 	uint32_t version = 0;
@@ -48,7 +45,6 @@ uint32_t kcapi_version(void)
 	return version;
 }
 
-DSO_PUBLIC
 int kcapi_pad_iv(struct kcapi_handle *handle,
 		 const uint8_t *iv, uint32_t ivlen,
 		 uint8_t **newiv, uint32_t *newivlen)
@@ -72,7 +68,6 @@ int kcapi_pad_iv(struct kcapi_handle *handle,
 	return 0;
 }
 
-DSO_PUBLIC
 int kcapi_set_maxsplicesize(struct kcapi_handle *handle, unsigned int size)
 {
 	int ret;
@@ -106,7 +101,6 @@ err:
 	return ret;
 }
 
-DSO_PUBLIC
 int kcapi_get_maxsplicesize(struct kcapi_handle *handle)
 {
 	unsigned int pagesize = (unsigned int)sysconf(_SC_PAGESIZE);
