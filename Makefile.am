@@ -69,7 +69,7 @@ else
 libkcapi_la_SOURCES +=
 endif
 
-libkcapi_la_CPPFLAGS = $(COMMON_CPPFLAGS) -fvisibility=hidden
+libkcapi_la_CPPFLAGS = $(COMMON_CPPFLAGS)
 libkcapi_la_LDFLAGS = $(COMMON_LDFLAGS) -Wl,--version-script,$(top_srcdir)/lib/version.lds -version-number `echo $(VERSION) | sed 's/\./:/g'`
 
 SCAN_FILES = $(libkcapi_la_SOURCES)

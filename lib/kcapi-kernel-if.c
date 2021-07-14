@@ -1230,7 +1230,6 @@ err:
 	return ret;
 }
 
-DSO_PUBLIC
 int kcapi_handle_reinit(struct kcapi_handle **newhandle,
 			struct kcapi_handle *existing, uint32_t flags)
 {

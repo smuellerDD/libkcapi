@@ -21,20 +21,17 @@
 #include "internal.h"
 #include "kcapi.h"
 
-DSO_PUBLIC
 int kcapi_md_init(struct kcapi_handle **handle, const char *ciphername,
 		  uint32_t flags)
 {
 	return _kcapi_handle_init(handle, "hash", ciphername, flags);
 }
 
-DSO_PUBLIC
 void kcapi_md_destroy(struct kcapi_handle *handle)
 {
 	_kcapi_handle_destroy(handle);
 }
 
-DSO_PUBLIC
 int kcapi_md_setkey(struct kcapi_handle *handle,
 		    const uint8_t *key, uint32_t keylen)
 {
@@ -69,7 +66,6 @@ static inline ssize_t _kcapi_md_update(struct kcapi_handle *handle,
 	return 0;
 }
 
-DSO_PUBLIC
 ssize_t kcapi_md_update(struct kcapi_handle *handle,
 			const uint8_t *buffer, size_t len)
 {
@@ -133,7 +129,6 @@ int32_t orig_md_digest(struct kcapi_handle *handle,
 	return (int32_t)impl_md_digest(handle, in, inlen, out, outlen);
 }
 
-DSO_PUBLIC
 uint32_t kcapi_md_digestsize(struct kcapi_handle *handle)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
@@ -141,7 +136,6 @@ uint32_t kcapi_md_digestsize(struct kcapi_handle *handle)
 	return tfm->info.hash_digestsize;
 }
 
-DSO_PUBLIC
 uint32_t kcapi_md_blocksize(struct kcapi_handle *handle)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;

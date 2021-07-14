@@ -21,7 +21,6 @@
 #include "internal.h"
 #include "kcapi.h"
 
-DSO_PUBLIC
 int kcapi_kpp_init(struct kcapi_handle **handle, const char *ciphername,
 		   uint32_t flags)
 {
@@ -33,13 +32,11 @@ int kcapi_kpp_init(struct kcapi_handle **handle, const char *ciphername,
 	return 0;
 }
 
-DSO_PUBLIC
 void kcapi_kpp_destroy(struct kcapi_handle *handle)
 {
 	_kcapi_handle_destroy(handle);
 }
 
-DSO_PUBLIC
 int kcapi_kpp_dh_setparam_pkcs3(struct kcapi_handle *handle,
 				const uint8_t *pkcs3, uint32_t pkcs3len)
 {
@@ -51,7 +48,6 @@ int kcapi_kpp_dh_setparam_pkcs3(struct kcapi_handle *handle,
 	return (ret >= 0) ? ret : -errno;
 }
 
-DSO_PUBLIC
 int kcapi_kpp_ecdh_setcurve(struct kcapi_handle *handle,
 			    unsigned long curve_id)
 {
@@ -65,7 +61,6 @@ int kcapi_kpp_ecdh_setcurve(struct kcapi_handle *handle,
 	return (ret >= 0) ? ret : -errno;
 }
 
-DSO_PUBLIC
 int kcapi_kpp_setkey(struct kcapi_handle *handle,
 		     const uint8_t *key, uint32_t keylen)
 {

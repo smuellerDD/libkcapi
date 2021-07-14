@@ -21,27 +21,23 @@
 #include "internal.h"
 #include "kcapi.h"
 
-DSO_PUBLIC
 int kcapi_aead_init(struct kcapi_handle **handle, const char *ciphername,
 		    uint32_t flags)
 {
 	return _kcapi_handle_init(handle, "aead", ciphername, flags);
 }
 
-DSO_PUBLIC
 void kcapi_aead_destroy(struct kcapi_handle *handle)
 {
 	_kcapi_handle_destroy(handle);
 }
 
-DSO_PUBLIC
 int kcapi_aead_setkey(struct kcapi_handle *handle,
 		      const uint8_t *key, uint32_t keylen)
 {
 	return _kcapi_common_setkey(handle, key, keylen);
 }
 
-DSO_PUBLIC
 int kcapi_aead_settaglen(struct kcapi_handle *handle, uint32_t taglen)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
@@ -504,7 +500,6 @@ int32_t orig_aead_stream_op(struct kcapi_handle *handle,
 	return (int32_t)impl_aead_stream_op(handle, iov, iovlen);
 }
 
-DSO_PUBLIC
 uint32_t kcapi_aead_ivsize(struct kcapi_handle *handle)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
@@ -512,7 +507,6 @@ uint32_t kcapi_aead_ivsize(struct kcapi_handle *handle)
 	return tfm->info.ivsize;
 }
 
-DSO_PUBLIC
 uint32_t kcapi_aead_blocksize(struct kcapi_handle *handle)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
@@ -520,7 +514,6 @@ uint32_t kcapi_aead_blocksize(struct kcapi_handle *handle)
 	return tfm->info.blocksize;
 }
 
-DSO_PUBLIC
 uint32_t kcapi_aead_authsize(struct kcapi_handle *handle)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
@@ -619,7 +612,6 @@ uint32_t orig_aead_outbuflen_dec(struct kcapi_handle *handle,
 						 taglen);
 }
 
-DSO_PUBLIC
 int kcapi_aead_ccm_nonce_to_iv(const uint8_t *nonce, uint32_t noncelen,
 			       uint8_t **iv, uint32_t *ivlen)
 {

@@ -454,7 +454,6 @@ static inline uint64_t kcapi_get_time(void)
 	return 0;
 }
 
-DSO_PUBLIC
 uint32_t kcapi_pbkdf_iteration_count(const char *hashname, uint64_t timeshresh)
 {
 #define LOW_ITERATION_COUNT	(UINT32_C(1<<16))
