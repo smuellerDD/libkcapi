@@ -39,6 +39,22 @@ jobs:
                         RANLIB=gcc-ranlib-10
                         CFLAGS=-flto
                         LDFLAGS=-flto
+                -
+                    cc: gcc-11
+                    env: |
+                        NO_32BIT_TEST=1
+                        AR=gcc-ar-11
+                        NM=gcc-nm-11
+                        RANLIB=gcc-ranlib-11
+                -
+                    cc: gcc-11
+                    env: |
+                        NO_32BIT_TEST=1
+                        AR=gcc-ar-11
+                        NM=gcc-nm-11
+                        RANLIB=gcc-ranlib-11
+                        CFLAGS=-flto
+                        LDFLAGS=-flto
         steps:
         - uses: actions/checkout@v2
         - name: Install dependencies
