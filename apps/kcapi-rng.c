@@ -84,15 +84,15 @@ static ssize_t get_random(uint8_t *buf, size_t buflen)
 #ifdef HAVE_GETRANDOM
 		ret = getrandom(buf, buflen, 0);
 		dolog(KCAPI_LOG_DEBUG,
-		      "Accessed getrandom system call for %u bytes", buflen);
+		      "Accessed getrandom system call for %lu bytes", buflen);
 #elif defined __NR_getrandom
 		ret = syscall(__NR_getrandom, buf, buflen, 0);
 		dolog(KCAPI_LOG_DEBUG,
-		      "Accessed getrandom system call for %u bytes", buflen);
+		      "Accessed getrandom system call for %lu bytes", buflen);
 #else
 		ret = read(random_fd, buf, buflen);
 		dolog(KCAPI_LOG_DEBUG,
-		      "Accessed /dev/urandom for %u bytes", buflen);
+		      "Accessed /dev/urandom for %lu bytes", buflen);
 #endif
 		if (0 < ret) {
 			buflen -= (size_t)ret;
@@ -286,7 +286,7 @@ int main(int argc, char *argv[])
 			ret = kcapi_rng_seed(rng, seedbuf, seedsize);
 			if (ret)
 				dolog(KCAPI_LOG_WARN,
-				      "User-provided seed of %lu bytes not accepted by DRNG (error: %d)",
+				      "User-provided seed of %lu bytes not accepted by DRNG (error: %ld)",
 				      (unsigned long)sizeof(buf), ret);
 			else
 				dolog(KCAPI_LOG_DEBUG,
