@@ -121,7 +121,9 @@ if $(uname -m | grep -q "x86_64") && [ -z "$NO_32BIT_TEST" ]
 then
 	(
 		cd "$DIRNAME/.." && \
-		LDFLAGS=-m32 CFLAGS=-m32 ./configure $COMPILE_OPTS && \
+		LDFLAGS="-m32 $LDFLAGS" \
+		CFLAGS="-m32 $CFLAGS" \
+		./configure $COMPILE_OPTS && \
 		make
 	)
 	if [ $? -ne 0 ]
