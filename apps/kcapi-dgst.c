@@ -139,7 +139,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 
 		if ((uint32_t)ret != kcapi_md_digestsize(handle)) {
 			dolog(KCAPI_LOG_ERR,
-			      "Unexpected digest output size: %d (expected %u)\n",
+			      "Unexpected digest output size: %ld (expected %u)\n",
 			      ret, kcapi_md_digestsize(handle));
 			ret = -EFAULT;
 			goto out;
@@ -157,7 +157,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			}
 		}
 
-		dolog(KCAPI_LOG_VERBOSE, "Digest of %d bytes generated\n", ret);
+		dolog(KCAPI_LOG_VERBOSE, "Digest of %ld bytes generated\n", ret);
 	} else {
 		if ((uint64_t)outsb.st_size != outlen) {
 			ret = ftruncate(outfd, outlen);
@@ -183,7 +183,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 
 		if ((uint32_t)ret != kcapi_md_digestsize(handle)) {
 			dolog(KCAPI_LOG_ERR,
-			      "Unexpected digest output size: %d (expected %u)\n",
+			      "Unexpected digest output size: %ld (expected %u)\n",
 			      ret, kcapi_md_digestsize(handle));
 			ret = -EFAULT;
 			goto out;
@@ -193,7 +193,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			bin2hex(tmpbuf, kcapi_md_digestsize(handle),
 				(char *)outmem, outlen, 0);
 
-		dolog(KCAPI_LOG_VERBOSE, "Digest of %d bytes generated\n", ret);
+		dolog(KCAPI_LOG_VERBOSE, "Digest of %ld bytes generated\n", ret);
 	}
 
 out:

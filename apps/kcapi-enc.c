@@ -273,7 +273,7 @@ static size_t outbufsize(struct kcapi_handle *handle, struct opt_data *opts,
 			   opts->func_blocksize(handle);
 	}
 
-	dolog(KCAPI_LOG_DEBUG, "Data size expected to be generated: %u",
+	dolog(KCAPI_LOG_DEBUG, "Data size expected to be generated: %lu",
 	      outsize);
 
 	return outsize;
