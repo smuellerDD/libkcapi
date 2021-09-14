@@ -60,7 +60,7 @@ static void register_tests(int print)
 }
 
 static int exec_all_tests(struct test_array *tests,
-			  struct cp_test_param *test_params)
+			  struct cp_test_param *test_params, int raw)
 {
 	size_t i;
 
@@ -73,7 +73,7 @@ static int exec_all_tests(struct test_array *tests,
 		/* Execute all tests and do not error out on errors */
 		if (cp_exec_test(test))
 			continue;
-		out = cp_print_status(test, 0);
+		out = cp_print_status(test, raw);
 		if (!out)
 			return -ENOMEM;
 		printf("%s\n", out);
@@ -233,7 +233,7 @@ int main(int argc, char *argv[])
 
 	if (alltests) {
 		for (i = 0; i < 4; i++)
-			exec_all_tests(&tests[i], &test_params);
+			exec_all_tests(&tests[i], &test_params, raw);
 		return 0;
 	}
 
