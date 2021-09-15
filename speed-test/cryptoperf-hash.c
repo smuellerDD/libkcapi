@@ -143,6 +143,10 @@ static const struct cp_hash_tests testcases[] = {
 	{ "SHA-224(STM32)", "stm32-sha224", 0 },
 	{ "SHA-256(STM32)", "stm32-sha256", 0 },
 
+	{ "SHA-1(ARM64 CE)", "sha1-ce", 0 },
+	{ "SHA-224(ARM64 CE)", "sha224-ce", 0 },
+	{ "SHA-256(ARM64 CE)", "sha256-ce", 0 },
+
 	{ "HMAC SHA-1(G)", "hmac(sha1-generic)", 1 },
 	{ "HMAC SHA-224(G)", "hmac(sha224-generic)", 1 },
 	{ "HMAC SHA-256(G)", "hmac(sha256-generic)", 1 },
