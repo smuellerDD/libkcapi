@@ -158,8 +158,10 @@ static const struct cp_hash_tests testcases[] = {
 	{ "HMAC SHA-1(MV-CESA)", "mv-hmac-sha1", 1 },
 	{ "HMAC SHA-256(MV-CESA)", "mv-hmac-sha256", 1 },
 
+	{ "SM3(G)", "sm3-generic", 0 },
 	{ "MD5(G)", "md5-generic", 0 },
 	{ "MD5(MV-CESA)", "mv-md5", 0 },
+	{ "HMAC SM3(G)", "hmac(sm3-generic)", 1 },
 	{ "HMAC MD5(G)", "hmac(md5-generic)", 1 },
 	{ "HMAC MD5(MV-CESA)", "mv-hmac-md5", 1 },
 };

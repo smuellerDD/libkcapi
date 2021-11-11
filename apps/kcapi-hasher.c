@@ -26,6 +26,7 @@
  *	* sha256sum
  *	* sha384sum
  *	* sha512sum
+ *	* sm3sum
  *	* md5sum
  *	* fipscheck with hard coded key from libfipscheck
  *	* fipshmac with hard coded key from libfipscheck
@@ -34,6 +35,7 @@
  *	* sha256hmac
  *	* sha384hmac
  *	* sha512hmac
+ *	* sm3hmac
  *
  * Once the application is compiled, a symlink or hardlink to the
  * aforementioned application would turn the binary into behaving like the
@@ -102,6 +104,9 @@ static const struct hash_name NAMES_SHA384[2] = {
 };
 static const struct hash_name NAMES_SHA512[2] = {
 	{ "sha512", "SHA512" }, { "hmac(sha512)", "HMAC(SHA512)" }
+};
+static const struct hash_name NAMES_SM3[2] = {
+	{ "sm3", "SM3" }, { "hmac(sm3)", "HMAC(SM3)" }
 };
 
 static const char fipscheck_hmackey[] = "orboDeJITITejsirpADONivirpUkvarP";
@@ -923,6 +928,8 @@ int main(int argc, char *argv[])
 		names = NAMES_SHA384;
 	} else if (0 == strncmp(basen, "md5sum", 6)) {
 		names = NAMES_MD5;
+	} else if (0 == strncmp(basen, "sm3sum", 6)) {
+		names = NAMES_SM3;
 	} else if (0 == strncmp(basen, "fipshmac", 8)) {
 		names = NAMES_SHA256;
 		hmac = 1;
@@ -955,6 +962,11 @@ int main(int argc, char *argv[])
 		params_self = &PARAMS_SELF_HMACCALC;
 	} else if (0 == strncmp(basen, "sha512hmac", 10)) {
 		names = NAMES_SHA512;
+		hmac = 1;
+		params.key = KEY_HMACCALC;
+		params_self = &PARAMS_SELF_HMACCALC;
+	} else if (0 == strncmp(basen, "sm3hmac", 7)) {
+		names = NAMES_SM3;
 		hmac = 1;
 		params.key = KEY_HMACCALC;
 		params_self = &PARAMS_SELF_HMACCALC;
@@ -1022,6 +1034,8 @@ int main(int argc, char *argv[])
 					names = NAMES_SHA384;
 				else if (0 == strcmp(optarg, "sha512"))
 					names = NAMES_SHA512;
+				else if (0 == strcmp(optarg, "sm3"))
+					names = NAMES_SM3;
 				else {
 					fprintf(stderr, "Invalid hash: %s\n", optarg);
 					ret = 1;

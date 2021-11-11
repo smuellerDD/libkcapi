@@ -231,3 +231,8 @@ LIBKCAPI_1.3.1 {
 	kcapi_pbkdf;
 	kcapi_hkdf;
 } LIBKCAPI_1.3.0;
+
+LIBKCAPI_1.4.0 {
+	kcapi_md_sm3;
+	kcapi_md_hmac_sm3;
+} LIBKCAPI_1.3.1;

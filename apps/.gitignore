@@ -12,4 +12,6 @@
 /sha384sum
 /sha512hmac
 /sha512sum
+/sm3hmac
+/sm3sum
 /*.o

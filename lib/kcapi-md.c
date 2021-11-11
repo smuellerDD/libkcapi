@@ -230,6 +230,12 @@ int32_t orig_md_sha512(const uint8_t *in, uint32_t inlen,
 	return (int32_t)kcapi_md_conv_common("sha512", in, inlen, out, outlen);
 }
 
+ssize_t kcapi_md_sm3(const uint8_t *in, size_t inlen,
+		     uint8_t *out, size_t outlen)
+{
+	return kcapi_md_conv_common("sm3", in, inlen, out, outlen);
+}
+
 static inline ssize_t kcapi_md_mac_conv_common(const char *name,
 	const uint8_t *key, uint32_t keylen,
 	const uint8_t *in, size_t inlen, uint8_t *out, size_t outlen)
@@ -339,4 +345,12 @@ int32_t orig_md_hmac_sha512(const uint8_t *key, uint32_t keylen,
 {
 	return (int32_t)kcapi_md_mac_conv_common("hmac(sha512)", key, keylen,
 						 in, inlen, out, outlen);
+}
+
+ssize_t kcapi_md_hmac_sm3(const uint8_t *key, uint32_t keylen,
+			  const uint8_t *in, size_t inlen,
+			  uint8_t *out, size_t outlen)
+{
+	return kcapi_md_mac_conv_common("hmac(sm3)", key, keylen, in, inlen,
+					out, outlen);
 }
