@@ -44,7 +44,7 @@ available in all Linux distributions:
 
 * libfipscheck: fipscheck / fipshmac
 
-* hmaccalc: sha512hmac, sha384hmac, sha256hmac, sha224hmac, sha1hmac
+* hmaccalc: sha512hmac, sha384hmac, sha256hmac, sha224hmac, sha1hmac, sm3hmac
 
 The output as well as the command line options are modeled according to the
 commands found in the coreutils package.
