@@ -117,6 +117,8 @@ static const struct cp_rng_tests testcases[] = {
 	{ "CTR AES-128 DRBG PR", "drbg_pr_ctr_aes128", 16 },
 	{ "CTR AES-192 DRBG PR", "drbg_pr_ctr_aes192", 16 },
 	{ "CTR AES-256 DRBG PR", "drbg_pr_ctr_aes256", 16 },
+	{ "CTR SM4 DRBG NOPR", "drbg_nopr_ctr_sm4", 16 },
+	{ "CTR SM4 DRBG PR", "drbg_pr_ctr_sm4", 16 },
 //	{ "ANSI X9.31", "ansi_cprng", 16 },
 //	{ "FIPS mode ANSI X9.31", "fips_ansi_cprng", 16 },
 };

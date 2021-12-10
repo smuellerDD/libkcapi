@@ -421,3 +421,39 @@ int32_t orig_cipher_dec_aes_ctr(const uint8_t *key, uint32_t keylen,
 						     in, inlen, ctr,
 						     out, outlen);
 }
+
+ssize_t kcapi_cipher_enc_sm4_cbc(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, size_t inlen,
+				 const uint8_t *iv,
+				 uint8_t *out, size_t outlen)
+{
+	return kcapi_cipher_conv_enc_common("cbc(sm4)", key, keylen, in, inlen,
+					    iv, out, outlen);
+}
+
+ssize_t kcapi_cipher_enc_sm4_ctr(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, size_t inlen,
+				 const uint8_t *ctr,
+				 uint8_t *out, size_t outlen)
+{
+	return kcapi_cipher_conv_enc_common("ctr(sm4)", key, keylen, in, inlen,
+					    ctr, out, outlen);
+}
+
+ssize_t kcapi_cipher_dec_sm4_cbc(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, size_t inlen,
+				 const uint8_t *iv,
+				 uint8_t *out, size_t outlen)
+{
+	return kcapi_cipher_conv_dec_common("cbc(sm4)", key, keylen, in, inlen,
+					    iv, out, outlen);
+}
+
+ssize_t kcapi_cipher_dec_sm4_ctr(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, size_t inlen,
+				 const uint8_t *ctr,
+				 uint8_t *out, size_t outlen)
+{
+	return kcapi_cipher_conv_dec_common("ctr(sm4)", key, keylen, in, inlen,
+					    ctr, out, outlen);
+}
