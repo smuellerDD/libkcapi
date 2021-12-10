@@ -590,6 +590,138 @@ ssize_t kcapi_cipher_dec_aes_ctr(const uint8_t *key, uint32_t keylen,
 				 uint8_t *out, size_t outlen);
 
 /**
+ * kcapi_cipher_enc_sm4_cbc - Convenience function for SM4 CBC encryption
+ *
+ * @key: [in] key buffer
+ * @keylen: [in] length of key buffer
+ * @in: [in] plaintext data buffer
+ * @inlen: [in] length of in buffer
+ * @iv: [in] IV to be used for cipher operation
+ * @out: [out] ciphertext data buffer
+ * @outlen: [in] length of out buffer
+ *
+ * The convenience function performs an SM4 CBC encryption operation
+ * using the provided key, the given input buffer and the given IV.
+ * The output is stored in the out buffer.
+ *
+ * Note, SM4 CBC requires an input data that is a multiple of 16 bytes.
+ * If you have data that is not guaranteed to be multiples of 16 bytes, either
+ * add zero bytes at the end of the buffer to pad it up to a multiple of 16
+ * bytes. Otherwise, the CTR mode encryption operation may be usable.
+ *
+ * The output buffer must be at least as large as the input buffer.
+ *
+ * The IV must be exactly 16 bytes in size.
+ *
+ * The SM4 key is fixed 16 bytes long.
+ *
+ * @return number of bytes generated upon success;
+ *	   a negative errno-style error code if an error occurred
+ */
+ssize_t kcapi_cipher_enc_sm4_cbc(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, size_t inlen,
+				 const uint8_t *iv,
+				 uint8_t *out, size_t outlen);
+
+/**
+ * kcapi_cipher_dec_sm4_cbc - Convenience function for SM4 CBC decryption
+ *
+ * @key: [in] key buffer
+ * @keylen: [in] length of key buffer
+ * @in: [in] ciphertext data buffer
+ * @inlen: [in] length of in buffer
+ * @iv: [in] IV to be used for cipher operation
+ * @out: [out] plaintext data buffer
+ * @outlen: [in] length of out buffer
+ *
+ * The convenience function performs an SM4 CBC decryption operation
+ * using the provided key, the given input buffer and the given IV.
+ * The output is stored in the out buffer.
+ *
+ * Note, SM4 CBC requires an input data that is a multiple of 16 bytes.
+ * If you have data that is not guaranteed to be multiples of 16 bytes, either
+ * add zero bytes at the end of the buffer to pad it up to a multiple of 16
+ * bytes. Otherwise, the CTR mode encryption operation may be usable.
+ *
+ * The output buffer must be at least as large as the input buffer.
+ *
+ * The IV must be exactly 16 bytes in size.
+ *
+ * The SM4 key is fixed 16 bytes long.
+ *
+ * @return number of bytes generated upon success;
+ *	   a negative errno-style error code if an error occurred
+ */
+ssize_t kcapi_cipher_dec_sm4_cbc(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, size_t inlen,
+				 const uint8_t *iv,
+				 uint8_t *out, size_t outlen);
+
+/**
+ * kcapi_cipher_enc_sm4_ctr - Convenience function for SM4 CTR encryption
+ *
+ * @key: [in] key buffer
+ * @keylen: [in] length of key buffer
+ * @in: [in] plaintext data buffer
+ * @inlen: [in] length of in buffer
+ * @ctr: [in] start counter value to be used for cipher operation
+ * @out: [out] ciphertext data buffer
+ * @outlen: [in] length of out buffer
+ *
+ * The convenience function performs an SM4 counter mode encryption operation
+ * using the provided key, the given input buffer and the given IV.
+ * The output is stored in the out buffer.
+ *
+ * The input buffer can be of arbitrary length.
+ *
+ * The output buffer must be at least as large as the input buffer.
+ *
+ * The start counter can contain all zeros (not a NULL buffer!) and must be
+ * exactly 16 bytes in size.
+ *
+ * The SM4 key is fixed 16 bytes long.
+ *
+ * @return number of bytes generated upon success;
+ *	   a negative errno-style error code if an error occurred
+ */
+ssize_t kcapi_cipher_enc_sm4_ctr(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, size_t inlen,
+				 const uint8_t *ctr,
+				 uint8_t *out, size_t outlen);
+
+/**
+ * kcapi_cipher_dec_sm4_ctr - Convenience function for SM4 CTR decryption
+ *
+ * @key: [in] key buffer
+ * @keylen: [in] length of key buffer
+ * @in: [in] ciphertext data buffer
+ * @inlen: [in] length of in buffer
+ * @ctr: [in] start counter value to be used for cipher operation
+ * @out: [out] plaintext data buffer
+ * @outlen: [in] length of out buffer
+ *
+ * The convenience function performs an SM4 counter mode encryption operation
+ * using the provided key, the given input buffer and the given IV.
+ * The output is stored in the out buffer.
+ *
+ * The input buffer can be of arbitrary length.
+ *
+ * The output buffer must be at least as large as the input buffer.
+ *
+ * The start counter can contain all zeros (not a NULL buffer!) and must be
+ * exactly 16 bytes in size.
+ *
+ * The SM4 key is fixed 16 bytes long.
+ *
+ * @return number of bytes generated upon success;
+ *	   a negative errno-style error code if an error occurred
+ */
+ssize_t kcapi_cipher_dec_sm4_ctr(const uint8_t *key, uint32_t keylen,
+				 const uint8_t *in, size_t inlen,
+				 const uint8_t *ctr,
+				 uint8_t *out, size_t outlen);
+
+/**
  * kcapi_cipher_ivsize() - return size of IV required for cipher
  *
  * @handle: [in] cipher handle

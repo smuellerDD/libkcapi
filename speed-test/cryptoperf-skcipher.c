@@ -455,6 +455,19 @@ static const struct cp_skcipher_tests testcases[] = {
 	{ "Salsa20(x86) 128", "salsa20-asm", 16 },
 	{ "Salsa20(x86) 192", "salsa20-asm", 24 },
 	{ "Salsa20(x86) 256", "salsa20-asm", 32 },
+
+	{ "SM4(G) ECB(G)", "ecb(sm4-generic)", 16 },
+	{ "SM4(AVX) ECB(AVX)", "ecb-sm4-aesni-avx)", 16 },
+	{ "SM4(AVX2) ECB(AVX2)", "ecb-sm4-aesni-avx2)", 16 },
+	{ "SM4(G) CBC(G)", "cbc(sm4-generic)", 16 },
+	{ "SM4(AVX) CBC(AVX)", "cbc-sm4-aesni-avx)", 16 },
+	{ "SM4(AVX2) CBC(AVX2)", "cbc-sm4-aesni-avx2)", 16 },
+	{ "SM4(G) CFB(G)", "cfb(sm4-generic)", 16 },
+	{ "SM4(AVX) CFB(AVX)", "cfb-sm4-aesni-avx)", 16 },
+	{ "SM4(AVX2) CFB(AVX2)", "cfb-sm4-aesni-avx2)", 16 },
+	{ "SM4(G) CTR(G)", "ctr(sm4-generic)", 16 },
+	{ "SM4(AVX) CTR(AVX)", "ctr-sm4-aesni-avx)", 16 },
+	{ "SM4(AVX2) CTR(AVX2)", "ctr-sm4-aesni-avx2)", 16 },
 };
 
 static struct cp_test cp_skcipher_testdef[2 * (ARRAY_SIZE(testcases))];

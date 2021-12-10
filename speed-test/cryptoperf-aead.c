@@ -342,6 +342,12 @@ static const struct cp_aead_tests testcases[] = {
 	{ "AES(AESNI) CCM(G) 128", "ccm(aes-aesni)", 16, 16, 1 },
 	{ "AES(AESNI) CCM(G) 192", "ccm(aes-aesni)", 24, 16, 1 },
 	{ "AES(AESNI) CCM(G) 256", "ccm(aes-aesni)", 32, 16, 1 },
+	{ "SM4(G) GCM(G)", "gcm(sm4-generic)", 16, 16, 0 },
+	{ "SM4(AVX) GCM(G)", "gcm(sm4-aesni-avx)", 16, 16, 0 },
+	{ "SM4(AVX2) GCM(G)", "gcm(sm4-aesni-avx2)", 16, 16, 0 },
+	{ "SM4(G) CCM(G)", "ccm(sm4-generic)", 16, 16, 0 },
+	{ "SM4(AVX) CCM(G)", "ccm(sm4-aesni-avx)", 16, 16, 0 },
+	{ "SM4(AVX2) CCM(G)", "ccm(sm4-aesni-avx2)", 16, 16, 0 },
 };
 
 static struct cp_test cp_aead_testdef[(2 * (ARRAY_SIZE(testcases)))];

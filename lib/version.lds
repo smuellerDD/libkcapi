@@ -235,4 +235,8 @@ LIBKCAPI_1.3.1 {
 LIBKCAPI_1.4.0 {
 	kcapi_md_sm3;
 	kcapi_md_hmac_sm3;
+	kcapi_cipher_enc_sm4_cbc;
+	kcapi_cipher_dec_sm4_cbc;
+	kcapi_cipher_enc_sm4_ctr;
+	kcapi_cipher_dec_sm4_ctr;
 } LIBKCAPI_1.3.1;
