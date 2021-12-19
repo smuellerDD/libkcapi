@@ -1,3 +1,9 @@
+Changes 1.4.0:
+ * fix: ensure that LTO is supported (by Simo Sorce)
+ * fix: add LTO regression testing (by Ondrej Mosnacek)
+ * enhancement: add sm3sum, sm3hmac tools, add APIs kcapi_md_sm3, kcapi_md_hmac_sm3
+ * enhancement: add SM4 convenience functions
+
 Changes 1.3.1:
  * fix: fix -Wconversion warnings (by Ondrej Mosnacek)
  * fix: fix bad data types in _kcapi_common_send_meta (by Ondrej Mosnacek)
