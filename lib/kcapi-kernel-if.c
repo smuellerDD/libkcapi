@@ -647,6 +647,22 @@ int _kcapi_common_setkey(struct kcapi_handle *handle,
 	return ret;
 }
 
+int _kcapi_common_setentropy(struct kcapi_handle *handle,
+			     const uint8_t *ent, uint32_t entlen)
+{
+	struct kcapi_handle_tfm *tfm = handle->tfm;
+	int ret;
+
+	ret = setsockopt(tfm->tfmfd, SOL_ALG, ALG_SET_DRBG_ENTROPY, ent,
+			 entlen);
+	if (ret < 0)
+		ret = -errno;
+	kcapi_dolog(KCAPI_LOG_DEBUG,
+		    "AF_ALG setentropy: setsockopt syscall returned %d", ret);
+
+	return ret;
+}
+
 static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 				  const char *ciphername,
 				  int drivername)
