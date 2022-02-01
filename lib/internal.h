@@ -52,14 +52,17 @@ extern "C"
 #ifndef ALG_SET_AEAD_AUTHSIZE
 #define ALG_SET_AEAD_AUTHSIZE		5
 #endif
+#ifndef ALG_SET_DRBG_ENTROPY
+#define ALG_SET_DRBG_ENTROPY		6
+#endif
 #ifndef ALG_SET_PUBKEY
-#define ALG_SET_PUBKEY			6
+#define ALG_SET_PUBKEY			7
 #endif
 #ifndef ALG_SET_DH_PARAMETERS
-#define ALG_SET_DH_PARAMETERS		7
+#define ALG_SET_DH_PARAMETERS		8
 #endif
 #ifndef ALG_SET_ECDH_CURVE
-#define ALG_SET_ECDH_CURVE		8
+#define ALG_SET_ECDH_CURVE		9
 #endif
 
 
@@ -293,6 +296,8 @@ int _kcapi_handle_init(struct kcapi_handle **caller, const char *type,
 void _kcapi_handle_destroy(struct kcapi_handle *handle);
 int _kcapi_common_setkey(struct kcapi_handle *handle, const uint8_t *key,
 			 uint32_t keylen);
+int _kcapi_common_setentropy(struct kcapi_handle *handle, const uint8_t *ent,
+			     uint32_t entlen);
 ssize_t _kcapi_cipher_crypt(struct kcapi_handle *handle, const uint8_t *in,
 			    size_t inlen, uint8_t *out, size_t outlen,
 			    int access, unsigned int enc);

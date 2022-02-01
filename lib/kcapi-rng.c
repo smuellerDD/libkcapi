@@ -47,6 +47,14 @@ int kcapi_rng_seed(struct kcapi_handle *handle, uint8_t *seed,
 	return _kcapi_common_setkey(handle, seed, seedlen);
 }
 
+int kcapi_rng_setentropy(struct kcapi_handle *handle, uint8_t *ent,
+			 uint32_t entlen)
+{
+	kcapi_dolog(KCAPI_LOG_VERBOSE,
+		    "Set %u bytes of initial entropy of DRBG");
+	return _kcapi_common_setentropy(handle, ent, entlen);
+}
+
 IMPL_SYMVER(rng_generate, "1.3.1")
 ssize_t impl_rng_generate(struct kcapi_handle *handle,
 			  uint8_t *buffer, size_t len)

@@ -1784,6 +1784,26 @@ int kcapi_rng_seed(struct kcapi_handle *handle, uint8_t *seed,
 		   uint32_t seedlen);
 
 /**
+ * kcapi_rng_setentropy() - set the initial entropy of the RNG
+ *
+ * @handle: [in] cipher handle
+ * @ent: [in] entropy data
+ * @entlen: [in] size of entropy
+ *
+ * Note, this call must be called to initialize the selected RNG. When the
+ * SP800-90A DRBG is used, this call causes the DRBG to seed itself from the
+ * provided data in 'ent'.
+ *
+ * Note, in case of using the SP800-90A DRBG, the CRYPTO_USER_API_RNG_CAVP
+ * kernel config knob must be set to 'y' to use this API.
+ *
+ * @return 0 upon success;
+ * 	   a negative errno-style error code if an error occurred
+ */
+int kcapi_rng_setentropy(struct kcapi_handle *handle, uint8_t *ent,
+			 uint32_t entlen);
+
+/**
  * kcapi_rng_generate() - generate a random number
  *
  * @handle: [in] cipher handle
