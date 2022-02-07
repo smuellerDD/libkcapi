@@ -242,5 +242,6 @@ LIBKCAPI_1.4.0 {
 } LIBKCAPI_1.3.1;
 
 LIBKCAPI_1.5.0 {
+	kcapi_rng_setaddtl;
 	kcapi_rng_setentropy;
 } LIBKCAPI_1.4.0;
