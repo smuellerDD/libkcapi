@@ -1804,6 +1804,25 @@ int kcapi_rng_setentropy(struct kcapi_handle *handle, uint8_t *ent,
 			 uint32_t entlen);
 
 /**
+ * kcapi_rng_setaddtl() - send additional data to the RNG
+ *
+ * @handle: [in] cipher handle
+ * @addtl: [in] additional data to be sent
+ * @len: [in] size of additional data
+ *
+ * Note, this call must be called immediately prior to calling kcapi_rng_generate
+ * in order to send additional data to be consumed by the RNG.
+ *
+ * Note, in case of using the SP800-90A DRBG, the CRYPTO_USER_API_RNG_CAVP
+ * kernel config knob must be set to 'y' to use this API.
+ *
+ * @return 0 upon success;
+ * 	   a negative errno-style error code if an error occurred
+ */
+int kcapi_rng_setaddtl(struct kcapi_handle *handle, uint8_t *addtl,
+		       uint32_t len);
+
+/**
  * kcapi_rng_generate() - generate a random number
  *
  * @handle: [in] cipher handle
