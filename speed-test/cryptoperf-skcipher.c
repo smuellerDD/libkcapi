@@ -209,6 +209,10 @@ static const struct cp_skcipher_tests testcases[] = {
 	{ "AES(CAAM) CBC(CAAM) 192", "cbc-aes-caam", 24 },
 	{ "AES(CAAM) CBC(CAAM) 256", "cbc-aes-caam", 32 },
 
+	{ "AES(STM32) CBC(STM32) 128", "stm32-cbc-aes", 16 },
+	{ "AES(STM32) CBC(STM32) 192", "stm32-cbc-aes", 24 },
+	{ "AES(STM32) CBC(STM32) 256", "stm32-cbc-aes", 32 },
+
 	{ "AES(MV-CESA) CBC(MV-CESA) 128", "mv-cbc-aes", 16 },
 	{ "AES(MV-CESA) CBC(MV-CESA) 192", "mv-cbc-aes", 24 },
 	{ "AES(MV-CESA) CBC(MV-CESA) 256", "mv-cbc-aes", 32 },
@@ -233,6 +237,10 @@ static const struct cp_skcipher_tests testcases[] = {
 	{ "AES(CAAM) CTR(CAAM) 128", "ctr-aes-caam", 16 },
 	{ "AES(CAAM) CTR(CAAM) 192", "ctr-aes-caam", 24 },
 	{ "AES(CAAM) CTR(CAAM) 256", "ctr-aes-caam", 32 },
+
+	{ "AES(STM32) CTR(STM32) 128", "stm32-ctr-aes", 16 },
+	{ "AES(STM32) CTR(STM32) 192", "stm32-ctr-aes", 24 },
+	{ "AES(STM32) CTR(STM32) 256", "stm32-ctr-aes", 32 },
 
 	{ "AES(G) XTS(G) 128", "xts(aes-generic)", 32 },
 	{ "AES(G) XTS(G) 192", "xts(aes-generic)", 48 },
@@ -279,6 +287,10 @@ static const struct cp_skcipher_tests testcases[] = {
 	{ "AES(CAAM) ECB(CAAM) 128", "ecb-aes-caam", 16 },
 	{ "AES(CAAM) ECB(CAAM) 192", "ecb-aes-caam", 24 },
 	{ "AES(CAAM) ECB(CAAM) 256", "ecb-aes-caam", 32 },
+
+	{ "AES(STM32) ECB(STM32) 128", "stm32-ecb-aes", 16 },
+	{ "AES(STM32) ECB(STM32) 192", "stm32-ecb-aes", 24 },
+	{ "AES(STM32) ECB(STM32) 256", "stm32-ecb-aes", 32 },
 
 	{ "DES(MV-CESA) CBC(MV-CESA) 56", "mv-cbc-des", 8 },
 	{ "DES(MV-CESA) ECB(MV-CESA) 56", "mv-ecb-des", 8 },
