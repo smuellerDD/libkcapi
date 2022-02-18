@@ -139,6 +139,10 @@ static const struct cp_hash_tests testcases[] = {
 	{ "SHA-224(CAAM)", "sha224-caam", 0 },
 	{ "SHA-256(CAAM)", "sha256-caam", 0 },
 
+	{ "SHA-1(STM32)", "stm32-sha1", 0 },
+	{ "SHA-224(STM32)", "stm32-sha224", 0 },
+	{ "SHA-256(STM32)", "stm32-sha256", 0 },
+
 	{ "HMAC SHA-1(G)", "hmac(sha1-generic)", 1 },
 	{ "HMAC SHA-224(G)", "hmac(sha224-generic)", 1 },
 	{ "HMAC SHA-256(G)", "hmac(sha256-generic)", 1 },
@@ -168,6 +172,10 @@ static const struct cp_hash_tests testcases[] = {
 	{ "HMAC SHA-224(CAAM)", "hmac-sha224-caam", 1 },
 	{ "HMAC SHA-224(CAAM)", "hmac-sha224-caam", 1 },
 
+	{ "HMAC SHA-1(STM32)", "stm32-hmac-sha1", 1 },
+	{ "HMAC SHA-224(STM32)", "stm32-hmac-sha224", 1 },
+	{ "HMAC SHA-256(STM32)", "stm32-hmac-sha256", 1 },
+
 	{ "MD5(G)", "md5-generic", 0 },
 	{ "MD5(MV-CESA)", "mv-md5", 0 },
 	{ "HMAC SM3(G)", "hmac(sm3-generic)", 1 },
@@ -176,6 +184,9 @@ static const struct cp_hash_tests testcases[] = {
 
 	{ "MD5(CAAM)", "md5-caam", 0 },
 	{ "HMAC MD5(CAAM)", "hmac-md5-caam", 1 },
+
+	{ "MD5(STM32)", "stm32-md5", 0 },
+	{ "HMAC MD5(STM32)", "stm32-hmac-md5", 1 },
 };
 
 static struct cp_test cp_hash_testdef[(ARRAY_SIZE(testcases))];
