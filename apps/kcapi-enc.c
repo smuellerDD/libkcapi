@@ -233,7 +233,6 @@ static ssize_t return_data(struct kcapi_handle *handle, struct opt_data *opts,
 	/* send generated data to stdout */
 	if (outfd == STDOUT_FD)
 		return return_data_stdout(handle, opts, outsize);
-
 	/* Write to a file. */
 	else
 		return return_data_fd(handle, opts, outfd, outsize, offset,
@@ -415,6 +414,8 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 	uint8_t padbuf[32] __aligned(KCAPI_APP_ALIGN);
 	uint8_t tagtmpbuf[TAGBUFLEN] __aligned(KCAPI_APP_ALIGN);
 
+	unsigned int maxdata;
+
 	/*
 	 * To avoid spurious padding, the buffer must be multiples of the
 	 * block size.
@@ -553,11 +554,27 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		      opts->aadlen);
 	}
 
+	ret = kcapi_get_maxsplicesize(handle);
+	if (ret < 0)
+		goto out;
+	maxdata = (unsigned int)ret;
+
 	/* Get data from stdin. */
 	if (infd == STDIN_FD) {
+		bool data_sent = false;
+
 		iniov.iov_base = tmpbuf;
 		while ((iniov.iov_len =
 		        fread(tmpbuf, sizeof(uint8_t), TMPBUFLEN, stdin))) {
+
+			/* WARNING: with AEAD, only one loop is possible */
+			if (opts->aad && data_sent) {
+				dolog(KCAPI_LOG_ERR,
+				      "Kernel is unable to receive AEAD data in chunks, send all AEAD data in one operation using a file (max numbers of bytes for STDIN is %u)\n",
+				      TMPBUFLEN);
+				ret = -EOVERFLOW;
+				goto out;
+			}
 
 			ret = opts->func_stream_update(handle, &iniov, 1);
 			if (ret < 0)
@@ -565,8 +582,6 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 
 			outsize = outbufsize(handle, opts,
 					     (uint32_t)iniov.iov_len);
-
-			/* WARNING: with AEAD, only one loop is possible */
 			ret = sendtag(handle, opts, tagbuf, tagtmpbuf);
 			if (ret)
 				goto out;
@@ -588,13 +603,12 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 					  generated_bytes, 0);
 			if (ret < 0)
 				goto out;
+
 			generated_bytes += (unsigned int)ret;
 		}
 
 	/* Get data from file. */
 	} else {
-		uint32_t maxdata = (uint32_t)(sysconf(_SC_PAGESIZE) *
-					      MAX_ALG_PAGES);
 		uint32_t sent_data = 0;
 
 		inmem = mmap(NULL, (size_t)insb.st_size, PROT_READ, MAP_SHARED,
@@ -648,6 +662,17 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			uint32_t avail = (uint32_t)insb.st_size - sent_data;
 			uint32_t todo = avail > maxdata ? maxdata : avail;
 
+			if (opts->aad && avail > todo) {
+				dolog(KCAPI_LOG_VERBOSE,
+				      "Increase pipeseize for AEAD operation to %u\n",
+				      avail);
+
+				ret = kcapi_set_maxsplicesize(handle, avail);
+				if (ret < 0)
+					goto out;
+				todo = avail;
+			}
+
 			iniov.iov_base = inmem + sent_data;
 			iniov.iov_len = todo;
 			ret = opts->func_stream_update(handle, &iniov, 1);
@@ -657,7 +682,6 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			outsize = outbufsize(handle, opts,
 					     (uint32_t)iniov.iov_len);
 
-			/* WARNING: with AEAD, only one loop is possible */
 			ret = sendtag(handle, opts, tagbuf, tagtmpbuf);
 			if (ret)
 				goto out;
