@@ -3,6 +3,7 @@ Changes 1.4.0:
  * fix: add LTO regression testing (by Ondrej Mosnacek)
  * enhancement: add sm3sum, sm3hmac tools, add APIs kcapi_md_sm3, kcapi_md_hmac_sm3
  * enhancement: add SM4 convenience functions
+ * fix: support AEAD encryption of arbitrary size with kcapi-enc
 
 Changes 1.3.1:
  * fix: fix -Wconversion warnings (by Ondrej Mosnacek)
