@@ -119,6 +119,30 @@ int _kcapi_common_accept(struct kcapi_handle *handle)
 	return 0;
 }
 
+#ifdef __GLIBC__
+static inline size_t kcapi_downcast_int(size_t in)
+{
+	return in;
+}
+
+static inline size_t kcapi_downcast_socklen_t(size_t in)
+{
+	return in;
+}
+#else
+static inline int kcapi_downcast_int(size_t in)
+{
+	if (in > INT_MAX)
+		return INT_MAX;
+	return (int)in;
+}
+
+static inline socklen_t kcapi_downcast_socklen_t(size_t in)
+{
+	return (socklen_t)in;
+}
+#endif
+
 ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 				struct iovec *iov, size_t iovlen,
 				unsigned int enc, uint32_t flags)
@@ -168,10 +192,9 @@ ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 	}
 
 	msg.msg_control = buffer_p;
-	msg.msg_controllen = bufferlen;
 	msg.msg_iov = iov;
-	msg.msg_iovlen = iovlen;
-
+	msg.msg_iovlen = kcapi_downcast_int(iovlen);
+	msg.msg_controllen = kcapi_downcast_socklen_t(bufferlen);
 	/* encrypt/decrypt operation */
 	header = CMSG_FIRSTHDR(&msg);
 	if (!header) {
@@ -193,7 +216,7 @@ ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 		}
 		header->cmsg_level = SOL_ALG;
 		header->cmsg_type = ALG_SET_IV;
-		header->cmsg_len = iv_msg_size;
+		header->cmsg_len = kcapi_downcast_socklen_t(iv_msg_size);
 		alg_iv = (void*)CMSG_DATA(header);
 		alg_iv->ivlen = tfm->info.ivsize;
 		memcpy(alg_iv->iv, handle->cipher.iv, tfm->info.ivsize);
@@ -244,8 +267,7 @@ ssize_t _kcapi_common_send_data(struct kcapi_handle *handle,
 	msg.msg_controllen = 0;
 	msg.msg_flags = 0;
 	msg.msg_iov = iov;
-	msg.msg_iovlen = iovlen;
-
+	msg.msg_iovlen = kcapi_downcast_int(iovlen);
 	ret = sendmsg(*_kcapi_get_opfd(handle), &msg, (int)flags);
 	if (ret < 0)
 		ret = -errno;
@@ -542,8 +564,11 @@ ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 	msg.msg_controllen = 0;
 	msg.msg_flags = 0;
 	msg.msg_iov = iov;
+#ifdef __GLIBC__
 	msg.msg_iovlen = iovlen;
-
+#else
+	msg.msg_iovlen = (int)iovlen;
+#endif
 	ret = recvmsg(*_kcapi_get_opfd(handle), &msg, 0);
 	if (ret < 0)
 		ret = -errno;
