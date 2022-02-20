@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2017 - 2021, Stephan Mueller <smueller@chronox.de>
+# Copyright (C) 2017 - 2022, Stephan Mueller <smueller@chronox.de>
 #
 # License: see LICENSE file in root directory
 #
