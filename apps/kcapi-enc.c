@@ -820,13 +820,13 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 		*/
 		ret = kcapi_pbkdf(opts->pbkdf_hash, passwdptr, passwdlen,
 				  saltbuf, saltbuflen, opts->pbkdf_iterations,
-				  keybuf, sizeof(keybuf));
+				  keybuf, 32);
 		free(saltbuf);
 		if (ret)
 			goto out;
 
 		have_key = 1;
-		keybuflen = sizeof(keybuf);
+		keybuflen = 32;
 
 		dolog(KCAPI_LOG_VERBOSE,
 		      "Data Encryption Key derived from Password using PBKDF2 using %s with %u iterations",
