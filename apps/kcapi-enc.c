@@ -729,7 +729,7 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 {
 	uint8_t passwdbuf[128] __aligned(KCAPI_APP_ALIGN);
 	uint32_t passwdlen = 0;
-	uint8_t keybuf[32] __aligned(KCAPI_APP_ALIGN);
+	uint8_t keybuf[64] __aligned(KCAPI_APP_ALIGN);
 	uint32_t keybuflen = 0;
 	int have_key = 0;
 	const uint8_t *passwdptr = NULL;
