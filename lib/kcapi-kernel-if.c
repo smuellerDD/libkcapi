@@ -55,7 +55,7 @@ void orig_memset_secure(void *s, int c, uint32_t n)
 /************************************************************
  * Logging logic
  ************************************************************/
-enum kcapi_verbosity kcapi_verbosity_level = KCAPI_LOG_ERR;
+enum kcapi_verbosity kcapi_verbosity_level = KCAPI_LOG_NONE;
 
 void kcapi_dolog(enum kcapi_verbosity severity, const char *fmt, ...)
 {
