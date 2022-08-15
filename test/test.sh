@@ -1560,7 +1560,8 @@ else
 	echo_deact "AEAD tests of copied AAD deactivated"
 fi
 
-if $(check_min_kernelver 5 99); then
+# TODO add version check when supported upstream
+if false; then
 	asymfunc 4
 	asymfunc 4 -s
 	asymfunc 4 -v
@@ -1583,7 +1584,8 @@ else
 	echo_deact "All asymmetric tests deactivated"
 fi
 
-if $(check_min_kernelver 5 99); then
+# TODO add version check when supported upstream
+if false; then
 	kppfunc 13
 	kppfunc 13 X -m
 	kppfunc 13 -v
