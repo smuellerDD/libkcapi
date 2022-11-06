@@ -119,7 +119,7 @@ int _kcapi_common_accept(struct kcapi_handle *handle)
 	return 0;
 }
 
-#ifdef __GLIBC__
+#if defined(__GLIBC__) && !(defined(__UCLIBC__) && __WORDSIZE == 32)
 static inline size_t kcapi_downcast_int(size_t in)
 {
 	return in;
@@ -564,11 +564,7 @@ ssize_t _kcapi_common_recv_data(struct kcapi_handle *handle,
 	msg.msg_controllen = 0;
 	msg.msg_flags = 0;
 	msg.msg_iov = iov;
-#ifdef __GLIBC__
-	msg.msg_iovlen = iovlen;
-#else
-	msg.msg_iovlen = (int)iovlen;
-#endif
+	msg.msg_iovlen = kcapi_downcast_int(iovlen);
 	ret = recvmsg(*_kcapi_get_opfd(handle), &msg, 0);
 	if (ret < 0)
 		ret = -errno;
