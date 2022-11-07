@@ -76,6 +76,9 @@ AX_ADD_FORTIFY_SOURCE
 
 AC_CHECK_API_VERSION
 
+AC_ARG_ENABLE([werror], [AS_HELP_STRING([--disable-werror], [Disable -Werror])], [with_werror=$enableval], [with_werror=yes])
+AM_CONDITIONAL([ENABLE_WERROR], [test "x$with_werror" = "xyes"])
+
 AC_ARG_ENABLE([kcapi-test], [AS_HELP_STRING([--enable-kcapi-test], [Compile kcapi test program])], [with_kcapi_test=$enableval])
 AM_CONDITIONAL([ENABLE_KCAPI_TEST], [test "x$with_kcapi_test" = "xyes"])
 
