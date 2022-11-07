@@ -2,7 +2,10 @@ ACLOCAL_AMFLAGS = -I m4
 AUTOMAKE_OPTIONS = subdir-objects
 lib_LTLIBRARIES = libkcapi.la
 
-COMMON_CPPFLAGS = -Wextra -Wall -pedantic -fwrapv --param ssp-buffer-size=4 -O2 -Werror -std=gnu99 -Wconversion
+COMMON_CPPFLAGS = -Wextra -Wall -pedantic -fwrapv --param ssp-buffer-size=4 -O2 -std=gnu99 -Wconversion
+if ENABLE_WERROR
+COMMON_CPPFLAGS += -Werror
+endif
 COMMON_LDFLAGS =  -Wl,-z,relro,-z,now
 
 libtool: $(LIBTOOL_DEPS)
