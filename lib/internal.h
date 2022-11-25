@@ -352,7 +352,7 @@ static inline int io_getevents(__attribute__((unused)) aio_context_t ctx,
  * Auxiliary macros
  ************************************************************/
 
-#if __GNUC__ >= 10
+#if HAVE_ATTRIBUTE_SYMVER && __GNUC__ >= 10
 # define IMPL_SYMVER(name, version) \
     __attribute__((__symver__("kcapi_" #name "@@LIBKCAPI_" version)))
 

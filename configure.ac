@@ -76,6 +76,8 @@ AX_ADD_FORTIFY_SOURCE
 
 AC_CHECK_API_VERSION
 
+AC_CHECK_ATTRIBUTE_SYMVER
+
 AC_ARG_ENABLE([werror], [AS_HELP_STRING([--disable-werror], [Disable -Werror])], [with_werror=$enableval], [with_werror=yes])
 AM_CONDITIONAL([ENABLE_WERROR], [test "x$with_werror" = "xyes"])
 
