@@ -28,11 +28,9 @@
 int cp_exec_test(struct cp_test *test)
 {
 	uint64_t testduration = 0;
-	uint64_t nano = 1;
+	uint64_t nano = 1000000000UL;
 	unsigned int i = 0;
 	struct cp_test_param *params = test->test_params;
-
-	nano = nano << 32;
 
 	testduration = nano * test->exectime;
 

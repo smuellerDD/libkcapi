@@ -141,7 +141,7 @@ struct cp_test {
 
 static inline uint64_t cp_ts2u64(struct timespec *ts)
 {
-	return ((uint64_t)ts->tv_sec * 1000000 + (uint64_t)ts->tv_nsec);
+	return ((uint64_t)ts->tv_sec * 1000000000UL + (uint64_t)ts->tv_nsec);
 }
 
 /*
