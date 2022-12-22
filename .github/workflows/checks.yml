@@ -2,14 +2,16 @@ name: checks
 on: [push, pull_request]
 jobs:
     build:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-22.04
         strategy:
             fail-fast: false
             matrix:
                 compiler:
                 - { cc: clang }
                 - { cc: clang, env: "CFLAGS=-flto\nLDFLAGS=-flto" }
+                # Ubuntu 22.04 ships with GCC 11 as the default version
                 - { cc: gcc }
+                - { cc: gcc, env: "CFLAGS=-flto\nLDFLAGS=-flto" }
                 -
                     cc: gcc-9
                     env: |
@@ -34,19 +36,19 @@ jobs:
                         CFLAGS=-flto
                         LDFLAGS=-flto
                 -
-                    cc: gcc-11
+                    cc: gcc-12
                     env: |
                         NO_32BIT_TEST=1
-                        AR=gcc-ar-11
-                        NM=gcc-nm-11
-                        RANLIB=gcc-ranlib-11
+                        AR=gcc-ar-12
+                        NM=gcc-nm-12
+                        RANLIB=gcc-ranlib-12
                 -
-                    cc: gcc-11
+                    cc: gcc-12
                     env: |
                         NO_32BIT_TEST=1
-                        AR=gcc-ar-11
-                        NM=gcc-nm-11
-                        RANLIB=gcc-ranlib-11
+                        AR=gcc-ar-12
+                        NM=gcc-nm-12
+                        RANLIB=gcc-ranlib-12
                         CFLAGS=-flto
                         LDFLAGS=-flto
         steps:
