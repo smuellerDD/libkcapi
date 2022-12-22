@@ -10,13 +10,6 @@ jobs:
                 - { cc: clang, env: "CFLAGS=-flto\nLDFLAGS=-flto" }
                 - { cc: gcc }
                 -
-                    cc: gcc-8
-                    env: |
-                        NO_32BIT_TEST=1
-                        AR=gcc-ar-8
-                        NM=gcc-nm-8
-                        RANLIB=gcc-ranlib-8
-                -
                     cc: gcc-9
                     env: |
                         NO_32BIT_TEST=1
