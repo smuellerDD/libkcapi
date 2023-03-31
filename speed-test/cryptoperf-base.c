@@ -91,22 +91,22 @@ int cp_exec_test(struct cp_test *test)
  */
 static void cp_bytes2string(uint64_t bytes, char *str, size_t strlen)
 {
-	if (1UL<<30 < bytes) {
-		uint64_t abs = (bytes>>30);
-		uint64_t part = ((bytes - (abs<<30)) / (10000000));
+	if (1000000000 < bytes) {
+		uint64_t abs = (bytes / 1000000000);
+		uint64_t part = ((bytes - (abs * 1000000000)) / (10000000));
 		snprintf(str, strlen, "%lu.%lu GB", (unsigned long)abs,
 			 (unsigned long)part);
 		return;
 
-	} else if (1UL<<20 < bytes) {
-		uint64_t abs = (bytes>>20);
-		uint64_t part = ((bytes - (abs<<20)) / (10000));
+	} else if (1000000 < bytes) {
+		uint64_t abs = (bytes / 1000000);
+		uint64_t part = ((bytes - (abs * 1000000)) / (10000));
 		snprintf(str, strlen, "%lu.%lu MB", (unsigned long)abs,
 			 (unsigned long)part);
 		return;
-	} else if (1UL<<10 < bytes) {
-		uint64_t abs = (bytes>>10);
-		uint64_t part = ((bytes - (abs<<10)) / (10));
+	} else if (1000 < bytes) {
+		uint64_t abs = (bytes / 1000);
+		uint64_t part = ((bytes - (abs * 1000)) / (10));
 		snprintf(str, strlen, "%lu.%lu kB", (unsigned long)abs,
 			 (unsigned long)part);
 		return;
@@ -130,7 +130,7 @@ char *cp_print_status(struct cp_test *test, int raw)
 {
 	char *str = NULL;
 	uint64_t processed_bytes = test->results.rounds * test->results.byteperop;
-	uint64_t totaltime = test->results.totaltime>>30;
+	uint64_t totaltime = test->results.totaltime / 1000000000;
 	uint64_t ops = 0;
 
 	str = calloc(1, 121);
