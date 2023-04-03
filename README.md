@@ -120,7 +120,7 @@ $ ./configure --prefix=/usr/ --enable-kcapi-test
 Then, run `make` to compile and `make install` to install in the folder
 specified by the `--prefix` option.
 
-The Makefile compiles libkcapi as a shared library and as a static libary.
+The Makefile compiles libkcapi as a shared library and as a static library.
 
 Build documentation
 -------------------
