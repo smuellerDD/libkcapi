@@ -219,6 +219,12 @@ of
 .IR hmac(sha256)
 is used.
 .TP
+\fB\-\-key\-len \fI\,LENGTH\/\fR
+.IR LENGTH
+specifies length of the key passed to the cipher algorithm.
+.IR kcapi-enc
+uses 32-byte key by default.
+.TP
 \fB\-\-keyfd \fI\,FD\/\fR
 To provide a symmetric key that is directly used for the
 cryptographic operation, the file descriptor referenced with

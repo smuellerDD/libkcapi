@@ -48,6 +48,7 @@ struct opt_data {
 	const char *pbkdf_hash;
 	int password_fd;
 	int key_fd;
+	uint32_t key_len;
 	uint32_t pbkdf_iterations;
 	uint32_t taglen;
 	uint32_t aadlen;
@@ -735,6 +736,9 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 	const uint8_t *passwdptr = NULL;
 	ssize_t ret;
 
+	if (opts->key_len > sizeof(keybuf))
+		return -EINVAL;
+
 	/* Get password from command line */
 	if (opts->passwd) {
 		passwdptr = (uint8_t *)opts->passwd;
@@ -820,13 +824,13 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 		*/
 		ret = kcapi_pbkdf(opts->pbkdf_hash, passwdptr, passwdlen,
 				  saltbuf, saltbuflen, opts->pbkdf_iterations,
-				  keybuf, 32);
+				  keybuf, opts->key_len);
 		free(saltbuf);
 		if (ret)
 			goto out;
 
 		have_key = 1;
-		keybuflen = 32;
+		keybuflen = opts->key_len;
 
 		dolog(KCAPI_LOG_VERBOSE,
 		      "Data Encryption Key derived from Password using PBKDF2 using %s with %u iterations",
@@ -835,7 +839,7 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 
 	/* Get key from key FD */
 	if (opts->key_fd != -1) {
-		ret = read_complete(opts->key_fd, keybuf, sizeof(keybuf));
+		ret = read_complete(opts->key_fd, keybuf, opts->key_len);
 		if (ret < 0)
 			goto out;
 
@@ -884,6 +888,8 @@ static void usage(void)
 	fprintf(stderr, "\t   --taglen <BYTES>\tTag length to be generated AEAD encryption\n");
 	fprintf(stderr, "\t   --ccm-nonce <NONCE>\tCCM nonce (instead of IV)\n");
 	fprintf(stderr, "\t\t\t\toperation\n");
+	fprintf(stderr, "\t   --key-len <LENGTH>\tLength of key passed to cipher");
+	fprintf(stderr, " (default: 32)\n");
 	fprintf(stderr, "\t-s --salt <SALT>\tSalt for PBKDF2\n");
 	fprintf(stderr, "\t-p --passwd <PWD>\tPassword the session key is derived from using\n");
 	fprintf(stderr, "\t\t\t\tPBKDF2\n");
@@ -913,6 +919,7 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 	memset(opts, 0, sizeof(*opts));
 	opts->password_fd = -1;
 	opts->key_fd = -1;
+	opts->key_len = 32;
 
 	while (1) {
 		int opt_index = 0;
@@ -939,6 +946,7 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 			{"quiet",	no_argument,		0, 'q'},
 			{"help",	no_argument,		0, 'h'},
 			{"version",	no_argument,		0, 0},
+			{"key-len",	required_argument,	0, 0},
 			{0, 0, 0, 0}
 		};
 		c = getopt_long(argc, argv, "c:edi:o:s:p:vqh",
@@ -1038,6 +1046,15 @@ static void parse_opts(int argc, char *argv[], struct opt_data *opts)
 				kcapi_versionstring(version, sizeof(version));
 				fprintf(stderr, "Version %s\n", version);
 				exit(0);
+				break;
+			case 21:
+				val = strtoul(optarg, NULL, 10);
+				if (val == UINT_MAX) {
+					dolog(KCAPI_LOG_ERR,
+					      "Key length value too big");
+					usage();
+				}
+				opts->key_len = (uint32_t)val;
 				break;
 			default:
 				usage();
