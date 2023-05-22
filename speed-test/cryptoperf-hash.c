@@ -29,6 +29,8 @@ static int cp_hash_init_test(struct cp_test *test)
 {
 	struct cp_test_param *params = test->test_params;
 	unsigned char *scratchpad = NULL;
+	size_t alignment, alignedlength;
+	uint32_t blocksize;
 #define MAX_KEYLEN 128
 	unsigned char data[MAX_KEYLEN];
 
@@ -45,17 +47,19 @@ static int cp_hash_init_test(struct cp_test *test)
 		goto out2;
 	}
 
+	blocksize = kcapi_md_blocksize(test->u.hash.handle);
+
 	/* HMAC */
 	if (test->u.hash.hmac) {
-		if (kcapi_md_blocksize(test->u.hash.handle) > MAX_KEYLEN) {
+		if (blocksize > MAX_KEYLEN) {
 			printf(DRIVER_NAME": key length for cipher %s too large %u\n",
 			       test->driver_name,
-			       kcapi_md_blocksize(test->u.hash.handle));
+			       blocksize);
 			goto out;
 		}
-		cp_read_random(data, kcapi_md_blocksize(test->u.hash.handle));
+		cp_read_random(data, blocksize);
 		if (kcapi_md_setkey(test->u.hash.handle, data,
-				    kcapi_md_blocksize(test->u.hash.handle))) {
+				    blocksize)) {
 			printf(DRIVER_NAME": key could not be set\n");
 			goto out;
 		}
@@ -64,19 +68,19 @@ static int cp_hash_init_test(struct cp_test *test)
 	if (params->len < 4)
 		params->len = 4;
 
-	if (posix_memalign((void *)&scratchpad,
-			   kcapi_md_blocksize(test->u.hash.handle),
-			   kcapi_md_blocksize(test->u.hash.handle) * params->len)) {
+	for (alignment = 1; blocksize > alignment; alignment <<= 1);
+
+	alignedlength = alignment * params->len;
+
+	if (posix_memalign((void *)&scratchpad, alignment, alignedlength)) {
 		printf(DRIVER_NAME": could not allocate scratchpad for "
 		       "%s\n", test->driver_name);
 		goto out;
 	}
 
-	cp_read_random(scratchpad,
-		       kcapi_md_blocksize(test->u.hash.handle) * params->len);
+	cp_read_random(scratchpad, alignedlength);
 
-	test->u.hash.inputlen =
-			params->len * kcapi_md_blocksize(test->u.hash.handle);
+	test->u.hash.inputlen = params->len * blocksize;
 	test->u.hash.scratchpad = scratchpad;
 	return 0;
 
