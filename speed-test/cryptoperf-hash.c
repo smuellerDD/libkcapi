@@ -172,6 +172,11 @@ static const struct cp_hash_tests testcases[] = {
 
 	{ "SM3(G)", "sm3-generic", 0 },
 
+	{ "SHA3-224(G)", "sha3-224-generic", 0 },
+	{ "SHA3-256(G)", "sha3-256-generic", 0 },
+	{ "SHA3-384(G)", "sha3-384-generic", 0 },
+	{ "SHA3-512(G)", "sha3-512-generic", 0 },
+
 	{ "HMAC SHA-1(CAAM)", "hmac-sha1-caam", 1 },
 	{ "HMAC SHA-224(CAAM)", "hmac-sha224-caam", 1 },
 	{ "HMAC SHA-224(CAAM)", "hmac-sha224-caam", 1 },

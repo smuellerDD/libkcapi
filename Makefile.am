@@ -157,7 +157,7 @@ EXTRA_bin_kcapi_hasher_DEPENDENCIES = libtool
 SCAN_FILES += $(bin_kcapi_hasher_SOURCES)
 
 hasher_links_fc = sha1sum sha224sum sha256sum sha384sum sha512sum \
-		  md5sum sm3sum fipscheck fipshmac
+		  md5sum sm3sum fipscheck fipshmac sha3sum
 hasher_links_hc = sha1hmac sha224hmac sha256hmac sha384hmac sha512hmac sm3hmac
 hasher_links = $(hasher_links_fc) $(hasher_links_hc)
 
