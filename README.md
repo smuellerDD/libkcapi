@@ -46,6 +46,8 @@ available in all Linux distributions:
 
 * hmaccalc: sha512hmac, sha384hmac, sha256hmac, sha224hmac, sha1hmac, sm3hmac
 
+* libdigest-sha3-perl: sha3sum
+
 The output as well as the command line options are modeled according to the
 commands found in the coreutils package.
 

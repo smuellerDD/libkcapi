@@ -27,6 +27,7 @@
  *	* sha384sum
  *	* sha512sum
  *	* sm3sum
+ *	* sha3sum
  *	* md5sum
  *	* fipscheck with hard coded key from libfipscheck
  *	* fipshmac with hard coded key from libfipscheck
@@ -107,6 +108,18 @@ static const struct hash_name NAMES_SHA512[2] = {
 };
 static const struct hash_name NAMES_SM3[2] = {
 	{ "sm3", "SM3" }, { "hmac(sm3)", "HMAC(SM3)" }
+};
+static const struct hash_name NAMES_SHA3_224[1] = {
+	{ "sha3-224", "SHA3-224" }
+};
+static const struct hash_name NAMES_SHA3_256[1] = {
+	{ "sha3-256", "SHA3-256" }
+};
+static const struct hash_name NAMES_SHA3_384[1] = {
+	{ "sha3-384", "SHA3-384" }
+};
+static const struct hash_name NAMES_SHA3_512[1] = {
+	{ "sha3-512", "SHA3-512" }
 };
 
 static const char fipscheck_hmackey[] = "orboDeJITITejsirpADONivirpUkvarP";
@@ -930,6 +943,8 @@ int main(int argc, char *argv[])
 		names = NAMES_MD5;
 	} else if (0 == strncmp(basen, "sm3sum", 6)) {
 		names = NAMES_SM3;
+	} else if (0 == strncmp(basen, "sha3sum", 7)) {
+		names = NAMES_SHA3_224;
 	} else if (0 == strncmp(basen, "fipshmac", 8)) {
 		names = NAMES_SHA256;
 		hmac = 1;
@@ -1036,6 +1051,14 @@ int main(int argc, char *argv[])
 					names = NAMES_SHA512;
 				else if (0 == strcmp(optarg, "sm3"))
 					names = NAMES_SM3;
+				else if (0 == strcmp(optarg, "sha3-224"))
+					names = NAMES_SHA3_224;
+				else if (0 == strcmp(optarg, "sha3-256"))
+					names = NAMES_SHA3_256;
+				else if (0 == strcmp(optarg, "sha3-384"))
+					names = NAMES_SHA3_384;
+				else if (0 == strcmp(optarg, "sha3-512"))
+					names = NAMES_SHA3_512;
 				else {
 					fprintf(stderr, "Invalid hash: %s\n", optarg);
 					ret = 1;
@@ -1135,6 +1158,12 @@ int main(int argc, char *argv[])
 				ret = 1;
 				goto out;
 		}
+	}
+
+	if (0 == strncmp(names[0].kcapiname, "sha3-", 5) && hmac) {
+		fprintf(stderr, "KMAC is not defined\n");
+		ret = 1;
+		goto out;
 	}
 
 	if (selfcheck_mode != SELFCHECK_CHECK) {
