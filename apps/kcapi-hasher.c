@@ -905,12 +905,14 @@ int main(int argc, char *argv[])
 		.bsd_style = 0,
 		.hashlen = 0,
 		.key = KEY_FIPSCHECK,
+		.newline = 1,
 	};
 	const struct hash_params PARAMS_SELF_HMACCALC = {
 		.name = NAMES_SHA512[1],
 		.bsd_style = 0,
 		.hashlen = 0,
 		.key = KEY_HMACCALC,
+		.newline = 1,
 	};
 
 	basec = strdup(argv[0]);
