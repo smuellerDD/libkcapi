@@ -1,0 +1,113 @@
+.\" Copyright (c) 2017 - 2022 by Stephan Mueller (smueller@chronox.de)
+.\" Copyright (c) 2023 by Dimitri John Ledkov (dimitri.ledkov@canonical.com)
+.\"
+.\" Permission is granted to make and distribute verbatim copies of this
+.\" manual provided the copyright notice and this permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted to copy and distribute modified versions of this
+.\" manual under the conditions for verbatim copying, provided that the
+.\" entire resulting derived work is distributed under the terms of a
+.\" permission notice identical to this one.
+.\"
+.\" Formatted or processed versions of this manual, if unaccompanied by
+.\" the source, must acknowledge the copyright and authors of this work.
+.\" License.
+.TH KCAPI-HASHER 1  2023-07-04
+.SH NAME
+kcapi-hasher \- Kernel Crypto API Message Digest Check Helper
+.SH SYNOPSIS
+.B kcapi-hasher
+[\-n \fI\,BASENAME\/\fR]
+[\fI\,OPTION\/\fR]... \fB\-S\fR|\-L
+
+.B kcapi-hasher
+[\-n \fI\,BASENAME\/\fR]
+[\fI\,OPTION\/\fR]... \fB\-c\fR FILE
+
+.B kcapi-hasher
+[\-n \fI\,BASENAME\/\fR]
+[\fI\,OPTION\/\fR]... FILE...
+
+.SH DESCRIPTION
+The
+.I kcapi-hasher
+application provides tool to compute and check the message digest as
+well as keyed message digest ciphers of the Linux kernel crypto API
+from the command line.
+.PP
+The command line arguments, inputs and outputs closely mimick those of
+other similar utilities. I.e. \fBsha1sum\fR(1) \fBsha512sum\fR(1), and
+etc.
+.PP
+This is a multi-call binary, and algorithm can be selected by
+symlinking this application under the desired name. Separately
+application name can be overriden directly with with name option, or
+desired hash can be selected with the hash option.
+.PP
+The input data can be provided either via STDIN or via a file
+that is referenced with a command line option.
+.LP
+.SH OPTIONS
+.TP
+\fB-n\fR, \fB\-\-name \fI\,NAME\/\fR
+Force a given application
+.IR NAME
+from the supported list of: sha1sum, sha224sum, sha256sum, sha384sum,
+sha512sum, sm3sum, sha3sum, md5sum, fipscheck, fipshmac, sha1hmac,
+sha224hmac, sha256hmac, sha384hmac, sha512hmac, sm3hmac.
+.TP
+\fB\-h\fR, \fB\-\-hash \fI\,HASH\/\fR
+Use given
+.IR HASH
+algorithm from the supported list of: sha1, sha224, sha256, sha384, sha512, sm3, sha3-224, sha3-256, sha3-384, sha3-512.
+.TP
+\fB\-S\fR \fB\-\-self\-sum\fR
+Print checksum of this binary and exit
+.TP
+\fB\-L\fR \fB\-\-self\-sum\-lib\fR
+Print checksum of the libkcapi library and exit
+.TP
+\fB\-c\fR \fB\-\-check\fR FILE
+Verify hash sums from file
+.TP
+\fB\-u\fR \fB\-\-unkeyed\fR
+Force unkeyed hash
+.TP
+\fB\-t\fR \fB\-\-truncate\fR N
+Use hash truncated to N bits
+.TP
+\fB\-q\fR \fB\-\-status\fR
+Suppress verification output
+.TP
+\fB\-\-quiet\fR
+Suppress only success messages
+.TP
+\fB\-k\fR \fB\-\-key\-file\fR FILE
+Use HMAC key from given file
+.TP
+\fB\-K\fR \fB\-\-key\fR KEY
+Use KEY as the HMAC key
+.TP
+\fB\-\-tag\fR
+Create a BSD\-style checksum
+.TP
+\fB\-d\fR
+Check directory for fipshmac; otherwise ignored
+.TP
+\fB\-b\fR, \fB\-P\fR
+Compatibility hmaccalc options; ignored
+.TP
+\fB\-z\fR
+NUL line termination
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Display the help text.
+.TP
+\fB\-\-version\fR
+Display the version number of the
+.IR kcapi-hasher
+application.
+.PP
+.SH SEE ALSO
+\fBkcapi-dgst\fR(1) \fBkcapi-enc\fR(1) \fBkcapi-rng\fR(1)
