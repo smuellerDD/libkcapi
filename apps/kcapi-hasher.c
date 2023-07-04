@@ -842,7 +842,7 @@ int strtou32(const char *str, uint32_t *out)
 
 int main(int argc, char *argv[])
 {
-	const struct hash_name *names;
+	const struct hash_name *names = NULL;
 	struct hash_params params = {
 		.name = { NULL, NULL },
 		.key = { NULL, NULL, 0 },
@@ -931,7 +931,9 @@ int main(int argc, char *argv[])
 	opterr = 1;
 
 	params_self = &PARAMS_SELF_FIPSCHECK;
-	if (0 == strncmp(basen, "sha256sum", 9)) {
+	if (0 == strncmp(basen, "kcapi-hasher", 12)) {
+		// called directly, hash must be set with -h
+	} else if (0 == strncmp(basen, "sha256sum", 9)) {
 		names = NAMES_SHA256;
 	} else if (0 == strncmp(basen, "sha512sum", 9)) {
 		names = NAMES_SHA512;
@@ -1160,6 +1162,13 @@ int main(int argc, char *argv[])
 				ret = 1;
 				goto out;
 		}
+	}
+
+	if (!names) {
+		fprintf(stderr, "Unknown invocation: hash nor name are set.\n");
+		usage(argv[0], fipscheck);
+		ret = 1;
+		goto out;
 	}
 
 	if (0 == strncmp(names[0].kcapiname, "sha3-", 5) && hmac) {
