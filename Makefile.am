@@ -155,6 +155,7 @@ bin_kcapi_hasher_SOURCES = apps/kcapi-hasher.c apps/app-internal.c
 EXTRA_bin_kcapi_hasher_DEPENDENCIES = libtool
 
 SCAN_FILES += $(bin_kcapi_hasher_SOURCES)
+man_MANS += apps/kcapi-hasher.1
 
 hasher_links_fc = sha1sum sha224sum sha256sum sha384sum sha512sum \
 		  md5sum sm3sum fipscheck fipshmac sha3sum
