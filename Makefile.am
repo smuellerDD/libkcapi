@@ -157,31 +157,23 @@ EXTRA_bin_kcapi_hasher_DEPENDENCIES = libtool
 SCAN_FILES += $(bin_kcapi_hasher_SOURCES)
 man_MANS += apps/kcapi-hasher.1
 
-hasher_links_fc = sha1sum sha224sum sha256sum sha384sum sha512sum \
-		  md5sum sm3sum fipscheck fipshmac sha3sum
-hasher_links_hc = sha1hmac sha224hmac sha256hmac sha384hmac sha512hmac sm3hmac
-hasher_links = $(hasher_links_fc) $(hasher_links_hc)
+hasher_links = sha1sum sha224sum sha256sum sha384sum sha512sum md5sum	\
+	sm3sum fipscheck fipshmac sha3sum sha1hmac sha224hmac		\
+	sha256hmac sha384hmac sha512hmac sm3hmac
 
-CHECKSUM_CMD_FC = $(OPENSSL) sha256 -r -hmac orboDeJITITejsirpADONivirpUkvarP
-CHECKSUM_CMD_HC = $(OPENSSL) sha512 -r -hmac FIPS-FTW-RHT2009
+CHECKSUM_CMD = $(OPENSSL) sha512 -r -hmac FIPS-FTW-RHT2009
 
-CHECK_DIR_LIB = $(if $(CHECK_DIR),$(CHECK_DIR)/fipscheck,$(libdir))
-CHECK_DIR_BIN_FC = $(if $(CHECK_DIR),$(CHECK_DIR)/fipscheck,$(bindir))
-CHECK_DIR_BIN_HC = $(if $(CHECK_DIR),$(CHECK_DIR)/hmaccalc,$(bindir))
+CHECK_DIR_LIB = $(if $(CHECK_DIR),$(CHECK_DIR)/hmaccalc,$(libdir))
+CHECK_DIR_BIN = $(if $(CHECK_DIR),$(CHECK_DIR)/hmaccalc,$(bindir))
 
 install-exec-hook:
 	$(MKDIR_P) -p $(DESTDIR)/$(pkglibexecdir)
 	$(foreach link, $(hasher_links), $(LN) -srf $(DESTDIR)/$(bindir)/kcapi-hasher $(DESTDIR)/$(pkglibexecdir)/$(link);)
 if HAVE_OPENSSL
-	$(MKDIR_P) $(DESTDIR)$(CHECK_DIR_BIN_FC)
-	$(MKDIR_P) $(DESTDIR)$(CHECK_DIR_BIN_HC)
-	(cd $(DESTDIR)$(bindir) && \
-	($(foreach link, $(hasher_links_fc), \
-		$(CHECKSUM_CMD_FC) $(link) > $(DESTDIR)$(CHECK_DIR_BIN_FC)/$(CHECK_PREFIX)$(link).$(CHECK_SUFFIX);) \
-	$(foreach link, $(hasher_links_hc), \
-		$(CHECKSUM_CMD_HC) $(link) > $(DESTDIR)$(CHECK_DIR_BIN_HC)/$(CHECK_PREFIX)$(link).$(CHECK_SUFFIX);):))
-	($(foreach lib, $(wildcard $(DESTDIR)$(libdir)/libkcapi.so*), \
-		$(CHECKSUM_CMD_FC) $(lib)  > $(DESTDIR)$(CHECK_DIR_LIB)/$(CHECK_PREFIX)$(notdir $(lib)).$(CHECK_SUFFIX);):)
+	$(MKDIR_P) $(DESTDIR)$(CHECK_DIR_BIN)
+	cd $(DESTDIR)$(bindir) && $(CHECKSUM_CMD) kcapi-hasher > $(DESTDIR)$(CHECK_DIR_BIN)/$(CHECK_PREFIX)kcapi-hasher.$(CHECK_SUFFIX)
+	$(foreach lib, $(wildcard $(DESTDIR)$(libdir)/libkcapi.so*), \
+		$(CHECKSUM_CMD) $(lib)  > $(DESTDIR)$(CHECK_DIR_LIB)/$(CHECK_PREFIX)$(notdir $(lib)).$(CHECK_SUFFIX);)
 endif
 endif
 

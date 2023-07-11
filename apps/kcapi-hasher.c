@@ -850,7 +850,6 @@ int main(int argc, char *argv[])
 		.bsd_style = 0,
 		.newline = 1,
 	};
-	const struct hash_params *params_self;
 	char *basec = NULL;
 	const char *basen = NULL;
 	int ret = -EFAULT;
@@ -893,20 +892,6 @@ int main(int argc, char *argv[])
 		{0, 0, 0, 0}
 	};
 
-	/*
-	 * Self-integrity check:
-	 *	* fipscheck/fipshmac and sha*sum equivalents are using the
-	 *	  fipscheck key and hmac(sha256)
-	 *	* hmaccalc applications are using the hmaccalc key and
-	 *	  hmac(sha512)
-	 */
-	const struct hash_params PARAMS_SELF_FIPSCHECK = {
-		.name = NAMES_SHA256[1],
-		.bsd_style = 0,
-		.hashlen = 0,
-		.key = KEY_FIPSCHECK,
-		.newline = 1,
-	};
 	const struct hash_params PARAMS_SELF_HMACCALC = {
 		.name = NAMES_SHA512[1],
 		.bsd_style = 0,
@@ -930,7 +915,6 @@ int main(int argc, char *argv[])
 		optind = 1;
 	opterr = 1;
 
-	params_self = &PARAMS_SELF_FIPSCHECK;
 	if (0 == strncmp(basen, "kcapi-hasher", 12)) {
 		// called directly, hash must be set with -h
 	} else if (0 == strncmp(basen, "sha256sum", 9)) {
@@ -963,32 +947,26 @@ int main(int argc, char *argv[])
 		names = NAMES_SHA1;
 		hmac = 1;
 		params.key = KEY_HMACCALC;
-		params_self = &PARAMS_SELF_HMACCALC;
 	} else if (0 == strncmp(basen, "sha224hmac", 10)) {
 		names = NAMES_SHA224;
 		hmac = 1;
 		params.key = KEY_HMACCALC;
-		params_self = &PARAMS_SELF_HMACCALC;
 	} else if (0 == strncmp(basen, "sha256hmac", 10)) {
 		names = NAMES_SHA256;
 		hmac = 1;
 		params.key = KEY_HMACCALC;
-		params_self = &PARAMS_SELF_HMACCALC;
 	} else if (0 == strncmp(basen, "sha384hmac", 10)) {
 		names = NAMES_SHA384;
 		hmac = 1;
 		params.key = KEY_HMACCALC;
-		params_self = &PARAMS_SELF_HMACCALC;
 	} else if (0 == strncmp(basen, "sha512hmac", 10)) {
 		names = NAMES_SHA512;
 		hmac = 1;
 		params.key = KEY_HMACCALC;
-		params_self = &PARAMS_SELF_HMACCALC;
 	} else if (0 == strncmp(basen, "sm3hmac", 7)) {
 		names = NAMES_SM3;
 		hmac = 1;
 		params.key = KEY_HMACCALC;
-		params_self = &PARAMS_SELF_HMACCALC;
 	} else {
 		fprintf(stderr, "Unknown invocation name: %s\n", basen);
 		usage(argv[0], fipscheck);
@@ -1191,7 +1169,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* library self-check must be consistent across apps: */
-	if (fipscheck_self(params_self, &PARAMS_SELF_FIPSCHECK, selfcheck_mode)) {
+	if (fipscheck_self(&PARAMS_SELF_HMACCALC, &PARAMS_SELF_HMACCALC, selfcheck_mode)) {
 		fprintf(stderr, "Integrity check of application %s failed\n",
 			basen);
 		ret = 1;
