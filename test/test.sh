@@ -1210,7 +1210,7 @@ hkdftest()
 			echo_pass "HKDF $aout test $i"
 		else
 			echo_fail "HKDF $aout test $i"
-			echo "($KCAPI $aligned -x 12 -c $HKDF_name -k $HKDF_ikm -i "$HKDF_salt" -p "$HKDF_info" -b $explen)"
+			echo "($KCAPI $aligned -x 12 -c $HKDF_name -k $HKDF_ikm -i \"$HKDF_salt\" -p \"$HKDF_info\" -b $explen)"
 			echo " Exp $HKDF_exp"
 			echo " Got $result"
 			failures=$(($failures+1))
