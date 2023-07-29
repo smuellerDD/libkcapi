@@ -4626,6 +4626,8 @@ static int cavs_hkdf(struct kcapi_cavs *cavs_test, uint32_t loops)
 	size_t mdhexlen = cavs_test->outlen * 2 + 1;
 	ssize_t ret = 1;
 
+	(void)loops;
+
 	if (cavs_test->aligned) {
 		if (posix_memalign((void *)&outbuf, pagesize, cavs_test->outlen))
 			return -ENOMEM;
