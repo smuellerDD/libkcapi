@@ -321,7 +321,7 @@ ssize_t _kcapi_common_vmsplice_iov(struct kcapi_handle *handle,
 	if (ret)
 		return ret;
 
-	ret = vmsplice(handle->pipes[1], iov, iovlen, SPLICE_F_GIFT|flags);
+	ret = vmsplice(handle->pipes[1], iov, iovlen, flags);
 	if (ret < 0) {
 		ret = -errno;
 		kcapi_dolog(KCAPI_LOG_DEBUG,
@@ -383,8 +383,7 @@ ssize_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 			if (ret < 0)
 				return ret;
 		} else {
-			ret = vmsplice(handle->pipes[1], &iov, 1,
-				       SPLICE_F_GIFT|flags);
+			ret = vmsplice(handle->pipes[1], &iov, 1, flags);
 			if (ret < 0) {
 				ret = -errno;
 				kcapi_dolog(KCAPI_LOG_DEBUG,
