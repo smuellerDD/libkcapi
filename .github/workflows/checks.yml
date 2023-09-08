@@ -70,6 +70,7 @@ jobs:
           run: |
             autoreconf -i
             ./configure \
+                --prefix=/usr \
                 --enable-kcapi-hasher \
                 --enable-kcapi-test \
                 --enable-kcapi-rngapp \
@@ -79,6 +80,17 @@ jobs:
                 --enable-lib-kpp
         - name: Run build
           run: make -j$(nproc)
+        - name: Run install
+          run: sudo make install
+        - name: Check installed binaries FIPS self-checks
+          env:
+            KCAPI_HASHER_FORCE_FIPS: 1
+          run: |
+            rc=0
+            /usr/bin/kcapi-hasher -n sha512hmac /bin/true || rc=$?
+            /usr/libexec/libkcapi/sha512hmac /bin/true || rc=$?
+            /usr/libexec/libkcapi/fipshmac /bin/true || rc=$?
+            exit $rc
         - name: Run cppcheck
           run: make cppcheck
         - name: Run CLang static analysis
