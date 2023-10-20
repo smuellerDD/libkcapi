@@ -90,7 +90,7 @@ color()
 			reset|off|default) code=0 ;;
 			bold|bright) code=1 ;;
 		esac
-		if [ $code == 0 ]
+		if [ $code == 0 ]; then
 			echo -ne "\033[$(printf "%02d" $((code+bg)))m"
 		fi
 		shift
