@@ -304,7 +304,7 @@ done
 #
 
 function expand_string() {
-	if [[ "$1" == 0x* ]]
+	if [ "$1" == 0x* ]
 	then
 		printf "$(echo -n "${1#0x}" | sed 's/\(..\)/\\x\1/g')"
 	else

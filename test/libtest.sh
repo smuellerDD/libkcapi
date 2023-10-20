@@ -74,7 +74,7 @@ color()
 {
 	bg=0
 	echo -ne "\033[0m"
-	while [[ $# -gt 0 ]]; do
+	while [ $# -gt 0 ]; do
 		code=0
 		case $1 in
 			black) code=30 ;;
@@ -90,7 +90,9 @@ color()
 			reset|off|default) code=0 ;;
 			bold|bright) code=1 ;;
 		esac
-		[[ $code == 0 ]] || echo -ne "\033[$(printf "%02d" $((code+bg)))m"
+		if [ $code == 0 ]
+			echo -ne "\033[$(printf "%02d" $((code+bg)))m"
+		fi
 		shift
 	done
 }
