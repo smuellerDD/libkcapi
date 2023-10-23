@@ -1,3 +1,7 @@
+Changes 1.4.1:
+ * move all sha* applications to the libexec directory to allow them to coexist with other packages sha* applications - the caller is expected to make a symlink to them
+ * various small fixes
+
 Changes 1.4.0:
  * fix: ensure that LTO is supported (by Simo Sorce)
  * fix: add LTO regression testing (by Ondrej Mosnacek)
