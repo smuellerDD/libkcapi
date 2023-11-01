@@ -360,6 +360,7 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 		if (hashlen > (uint32_t)ret) {
 			fprintf(stderr, "Invalid truncated hash size: %lu > %zd\n",
 			        (unsigned long)hashlen, ret);
+			kcapi_memset_secure(md, 0, sizeof(md));
 			return (int)ret;
 		}
 
@@ -376,6 +377,7 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 				ret = 1;
 			else
 				ret = 0;
+			kcapi_memset_secure(compmd, 0, sizeof(compmd));
 		} else {
 			if (outfile == NULL) { /* only print hash (hmaccalc -S) */
 				bin2print(md, hashlen, NULL, stdout,
@@ -396,6 +398,7 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 		fprintf(stderr, "Generation of hash for file %s failed (%zd)\n",
 			filename ? filename : "stdin", ret);
 	}
+	kcapi_memset_secure(md, 0, sizeof(md));
 	return (int)ret;
 }
 
@@ -696,6 +699,7 @@ out:
 	if (file)
 		fclose(file);
 	kcapi_md_destroy(handle);
+	kcapi_memset_secure(buf, 0, sizeof(buf));
 
 	/*
 	 * If we found no lines to check, return an error.
