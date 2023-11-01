@@ -24,6 +24,7 @@ kcapi-hasher \- Kernel Crypto API Message Digest Check Helper
 .B kcapi-hasher
 [\-n \fI\,BASENAME\/\fR]
 [\fI\,OPTION\/\fR]... \fB\-c\fR FILE
+[\fB\-T\fR FILE]
 
 .B kcapi-hasher
 [\-n \fI\,BASENAME\/\fR]
@@ -70,6 +71,9 @@ Print checksum of the libkcapi library and exit
 .TP
 \fB\-c\fR \fB\-\-check\fR FILE
 Verify hash sums from file
+.TP
+\fB\-T\fR \fB\-\-target\fR FILE
+Override filenames found in hash sums file; use with -c
 .TP
 \fB\-u\fR \fB\-\-unkeyed\fR
 Force unkeyed hash
