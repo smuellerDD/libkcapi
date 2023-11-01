@@ -153,15 +153,17 @@ static void usage(char *name, int fipscheck)
 	if (fipscheck)
 		fprintf(stderr, "\t%s [-n BASENAME] [OPTION]... FILE\n", base);
 	else {
-		fprintf(stderr, "\t%s [-n BASENAME] [OPTION]... -c FILE\n", base);
+		fprintf(stderr, "\t%s [-n BASENAME] [OPTION]... -c FILE [-T FILE]\n", base);
 		fprintf(stderr, "\t%s [-n BASENAME] [OPTION]... FILE...\n", base);
 	}
 	fprintf(stderr, "\nOptions:\n");
 	fprintf(stderr, "\t-n --name\t\tForce given application name (sha512hmac/...)\n");
 	fprintf(stderr, "\t-S --self-sum\t\tPrint checksum of this binary and exit\n");
 	fprintf(stderr, "\t-L --self-sum-lib\tPrint checksum of the libkcapi library and exit\n");
-	if (!fipscheck)
+	if (!fipscheck) {
 		fprintf(stderr, "\t-c --check FILE\t\tVerify hash sums from file\n");
+		fprintf(stderr, "\t-T --target FILE\tOverride filenames found in hash sums file; use with -c\n");
+	}
 	fprintf(stderr, "\t-u --unkeyed\t\tForce unkeyed hash\n");
 	fprintf(stderr, "\t-h --hash HASH\t\tUse given hash algorithm\n");
 	fprintf(stderr, "\t-t --truncate N\t\tUse hash truncated to N bits\n");
@@ -543,7 +545,7 @@ static int hash_files(const struct hash_params *params,
 #define CHK_STATUS (2)
 
 static int process_checkfile(const struct hash_params *params,
-			     const char *checkfile, const char *targetfile, int log)
+			     const char *checkfile, const char *targetfile, int log, int fipscheck)
 {
 	FILE *file = NULL;
 	int ret = 0;
@@ -583,7 +585,7 @@ static int process_checkfile(const struct hash_params *params,
 	}
 
 	while (fgets(buf, sizeof(buf), file)) {
-		char *filename = NULL;   // parsed file name
+		const char *filename = NULL;   // parsed file name
 		char *hexhash = NULL;    // parsed hex value of hash
 		uint32_t hexhashlen = 0; // length of hash hex value
 		uint32_t linelen = (uint32_t)strlen(buf);
@@ -658,17 +660,7 @@ static int process_checkfile(const struct hash_params *params,
 			goto out;
 		}
 
-		/* fipscheck does not have the filename in the check file */
-		if (targetfile) {
-			ret = hasher(handle, params, targetfile,
-			             hexhash, hexhashlen, stdout);
-			checked_any = 1;
-			goto out;
-		}
-
 		if (filename) {
-			int r;
-
 			if (!bsd_style) {
 				if (!isblank(filename[0]) ||
 				    (!isblank(filename[1]) && filename[1] != '*')) {
@@ -678,20 +670,28 @@ static int process_checkfile(const struct hash_params *params,
 				}
 				filename += 2;
 			}
+		}
 
-			r = hasher(handle, params, filename, hexhash, hexhashlen, stdout);
+		/*
+		 * if targetfile is specified, use it instead of the filename
+		 * found inside the checkfile
+		 */
+		if (targetfile)
+			filename = targetfile;
 
-			if (r == 0) {
+		if (filename) {
+			ret = hasher(handle, params, filename, hexhash, hexhashlen, stdout);
+			checked_any = 1;
+			if (fipscheck)
+				goto out;
+
+			if (ret == 0) {
 				if (log < CHK_QUIET)
 					printf("%s: OK\n", filename);
 			} else {
 				if (log < CHK_STATUS)
-					printf("%s: Not OK\n",
-						filename);
-				if (ret >= 0)
-					ret++;
+					printf("%s: Not OK\n", filename);
 			}
-			checked_any = 1;
 		}
 	}
 
@@ -783,7 +783,7 @@ static int fipscheck_self(const struct hash_params *params_bin,
 			goto out;
 		}
 
-		ret = process_checkfile(params_bin, checkfile, selfname, CHK_STATUS);
+		ret = process_checkfile(params_bin, checkfile, selfname, CHK_STATUS, 1);
 		if (ret)
 			goto out;
 	}
@@ -823,7 +823,7 @@ static int fipscheck_self(const struct hash_params *params_bin,
 			goto out;
 		}
 
-		ret = process_checkfile(params_lib, checkfile, selfname, CHK_STATUS);
+		ret = process_checkfile(params_lib, checkfile, selfname, CHK_STATUS, 1);
 	}
 
 out:
@@ -878,12 +878,13 @@ int main(int argc, char *argv[])
 		{0, 0, 0, 0}
 	};
 
-	static const char *opts_short = "c:uh:t:SLqk:K:vbd:Pz";
+	static const char *opts_short = "c:T:uh:t:SLqk:K:vbd:Pz";
 	static const struct option opts[] = {
 		{"help", 0, 0, 0},
 		{"tag", 0, 0, 0},
 		{"quiet", 0, 0, 0},
 		{"check", 1, 0, 'c'},
+		{"target", 1, 0, 'T'},
 		{"unkeyed", 0, 0, 'u'},
 		{"hash", 1, 0, 'h'},
 		{"truncate", 1, 0, 't'},
@@ -1129,6 +1130,9 @@ int main(int argc, char *argv[])
 				version(argv[0]);
 				ret = 0;
 				goto out;
+			case 'T':
+				targetfile = optarg;
+				break;
 			case 'd':
 				checkdir = optarg;
 				break;
@@ -1198,6 +1202,11 @@ int main(int argc, char *argv[])
 			ret = 1;
 			goto out;
 		}
+		if (targetfile) {
+			fprintf(stderr, "-T is not valid for fipscheck\n");
+			ret = 1;
+			goto out;
+		}
 
 		targetfile = argv[optind];
 		if (checkfile)
@@ -1215,7 +1224,7 @@ int main(int argc, char *argv[])
 				 (uint32_t)(argc - optind),
 		                 fipshmac, checkdir, 0);
 	else if (optind == argc)
-		ret = process_checkfile(&params, checkfile, targetfile, loglevel);
+		ret = process_checkfile(&params, checkfile, targetfile, loglevel, fipscheck);
 	else {
 		fprintf(stderr, "-c cannot be used with input files\n");
 		ret = 1;
