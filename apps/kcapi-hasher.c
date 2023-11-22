@@ -1219,6 +1219,12 @@ int main(int argc, char *argv[])
 		optind++;
 	}
 
+	if (targetfile && !checkfile) {
+		fprintf(stderr, "-T cannot be used without -c\n");
+		ret = 1;
+		goto out;
+	}
+
 	if (!checkfile)
 		ret = hash_files(&params, argv + optind,
 				 (uint32_t)(argc - optind),
