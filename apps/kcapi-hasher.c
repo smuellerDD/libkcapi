@@ -550,6 +550,7 @@ static int process_checkfile(const struct hash_params *params,
 	FILE *file = NULL;
 	int ret = 0;
 	int checked_any = 0;
+	int failed_any = 0;
 	struct kcapi_handle *handle;
 	const char *hashname = params->name.kcapiname;
 
@@ -689,6 +690,7 @@ static int process_checkfile(const struct hash_params *params,
 				if (log < CHK_QUIET)
 					printf("%s: OK\n", filename);
 			} else {
+				failed_any = 1;
 				if (log < CHK_STATUS)
 					printf("%s: Not OK\n", filename);
 			}
@@ -705,7 +707,7 @@ out:
 	 * If we found no lines to check, return an error.
 	 * (See https://pagure.io/hmaccalc/c/1afb99549816192eb8e6bc8101bc417c2ffa764c)
 	 */
-	return ret != 0 ? ret : !checked_any;
+	return ret != 0 ? ret : !(checked_any && !failed_any);
 
 }
 
