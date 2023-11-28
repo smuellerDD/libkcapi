@@ -163,8 +163,8 @@ test_stdin_stdout()
 	diff_file $GENCT $GENCT.openssl "STDIN / STDOUT enc test ($keysize bits) (openssl generated CT)"
 	diff_file $GENPT $GENPT.openssl "STDIN / STDOUT enc test ($keysize bits) (openssl generated PT)"
 
-	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwd" -s $IV -e -c "ctr(aes)" --iv $IV < $ORIGPT > $GENCT
-	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwd" -s $IV -d -c "ctr(aes)" --iv $IV < $GENCT > $GENPT
+	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwordpassword" -s $IV -e -c "ctr(aes)" --iv $IV < $ORIGPT > $GENCT
+	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwordpassword" -s $IV -d -c "ctr(aes)" --iv $IV < $GENCT > $GENPT
 
 	diff_file $ORIGPT $GENPT "STDIN / STDOUT enc test (password)"
 }
@@ -195,8 +195,8 @@ test_stdin_fileout()
 	diff_file $GENCT $GENCT.openssl "STDIN / FILEOUT enc test ($keysize bits) (openssl generated CT)"
 	diff_file $GENPT $GENPT.openssl "STDIN / FILEOUT enc test ($keysize bits) (openssl generated PT)"
 
-	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwd" -s $IV -e -c "ctr(aes)" --iv $IV -o $GENCT < $ORIGPT
-	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwd" -s $IV -d -c "ctr(aes)" --iv $IV -o $GENPT < $GENCT
+	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwordpassword" -s $IV -e -c "ctr(aes)" --iv $IV -o $GENCT < $ORIGPT
+	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwordpassword" -s $IV -d -c "ctr(aes)" --iv $IV -o $GENPT < $GENCT
 
 	diff_file $ORIGPT $GENPT "STDIN / FILEOUT enc test (password)"
 }
@@ -227,8 +227,8 @@ test_filein_stdout()
 	diff_file $GENCT $GENCT.openssl "FILEIN / STDOUT enc test ($keysize bits) (openssl generated CT)"
 	diff_file $GENPT $GENPT.openssl "FILEIN / STDOUT enc test ($keysize bits) (openssl generated PT)"
 
-	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwd" -s $IV -e -c "ctr(aes)" --iv $IV -i $ORIGPT > $GENCT
-	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwd" -s $IV -d -c "ctr(aes)" --iv $IV -i $GENCT > $GENPT
+	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwordpassword" -s $IV -e -c "ctr(aes)" --iv $IV -i $ORIGPT > $GENCT
+	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwordpassword" -s $IV -d -c "ctr(aes)" --iv $IV -i $GENCT > $GENPT
 
 	diff_file $ORIGPT $GENPT "FILEIN / STDOUT enc test (password)"
 }
@@ -271,8 +271,8 @@ test_filein_fileout()
 	diff_file $GENCT $GENCT.openssl "FILEIN / FILEOUT enc test ($keysize bits) (openssl generated CT)"
 	diff_file $GENPT $GENPT.openssl "FILEIN / FILEOUT enc test ($keysize bits) (openssl generated PT)"
 
-	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwd" -s "123" -e -c "cbc(aes)" --iv $IV -i $ORIGPT -o $GENCT
-	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwd" -s "123" -d -c "cbc(aes)" --iv $IV -i $GENCT -o $GENPT
+	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwordpassword" -s "123" -e -c "cbc(aes)" --iv $IV -i $ORIGPT -o $GENCT
+	run_app kcapi-enc -q --pbkdfiter 1000 -p "passwordpassword" -s "123" -d -c "cbc(aes)" --iv $IV -i $GENCT -o $GENPT
 
 	diff_file $ORIGPT $GENPT "FILEIN / FILEOUT enc test (password)"
 }

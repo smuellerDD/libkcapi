@@ -450,27 +450,27 @@ PBKDF_exp_7="133a4ce837b4d2521ee2bf03e11c71ca794e0797"
 
 PBKDF_name_8="hmac(sha256)"
 PBKDF_salt_8="73616c74"
-PBKDF_pw_8="70617373776f7264"
+PBKDF_pw_8="70617373776f726470617373776f7264"
 PBKDF_count_8=4096
-PBKDF_exp_8="c5e478d59288c841aa530db6845c4c8d962893a0"
+PBKDF_exp_8="9cefdbeb6abaaf0e0b6fa3fb5bc9f2b8301d6aca"
 
 PBKDF_name_9="hmac(sha224)"
 PBKDF_salt_9="73616c74"
-PBKDF_pw_9="70617373776f7264"
+PBKDF_pw_9="70617373776f726470617373776f7264"
 PBKDF_count_9=4096
-PBKDF_exp_9="218c453bf90635bd0a21a75d172703ff6108ef60"
+PBKDF_exp_9="624f7dd223ae0bd8d46a69b27f84e703e7dadd70"
 
 PBKDF_name_10="hmac(sha384)"
 PBKDF_salt_10="73616c74"
-PBKDF_pw_10="70617373776f7264"
+PBKDF_pw_10="70617373776f726470617373776f7264"
 PBKDF_count_10=4096
-PBKDF_exp_10="559726be38db125bc85ed7895f6e3cf574c7a01c"
+PBKDF_exp_10="2c34a3242a138933c63fce6d827e4acf57ef528d"
 
 PBKDF_name_11="hmac(sha512)"
 PBKDF_salt_11="73616c74"
-PBKDF_pw_11="70617373776f7264"
+PBKDF_pw_11="70617373776f726470617373776f7264"
 PBKDF_count_11=4096
-PBKDF_exp_11="d197b1b33db0143e018b12f3d1d1479e6cdebdcc"
+PBKDF_exp_11="299ae1f55743f2cb81be4a417b878ab32374660b"
 
 PBKDF_name_12="cmac(aes)"
 PBKDF_salt_12="73616c74"
@@ -480,9 +480,9 @@ PBKDF_exp_12="c4c112c6e1e3b8757640603dec78825ff87605a7"
 
 PBKDF_name_13="hmac(sha512)"
 PBKDF_salt_13="73616c74"
-PBKDF_pw_13="70617373776f7264"
+PBKDF_pw_13="70617373776f726470617373776f7264"
 PBKDF_count_13=4096
-PBKDF_exp_13="d197b1b33db0143e018b12f3d1d1479e6cdebdcc97c5c0f87f6902e072f457b5143f30602641b3d55cd335988cb36b84376060ecd532e039b742a239434af2d5d6883f0be4c24d363b638f4c2f8d917533cd4158937d0b490697a64adadb07f180c323080a7368033eeadf9e612b2e"
+PBKDF_exp_13="299ae1f55743f2cb81be4a417b878ab32374660b17f5b328662e56296582e8a285c307947b41e00fed812c978212394574f57756c481b3d64cc91659f75a468383bcad1e25f2b85c15f8ac7004484889081eb91001b0feab9b12dd51e001491c795bdf45ff880ffe493e7acdd91f1a"
 
 ###########################################################################
 ###########################################################################
@@ -491,9 +491,9 @@ PBKDF_exp_13="d197b1b33db0143e018b12f3d1d1479e6cdebdcc97c5c0f87f6902e072f457b514
 #RFC 5869 Appendix A vectors
 HKDF_name_1="hmac(sha256)"
 HKDF_ikm_1="0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"
-HKDF_salt_1="000102030405060708090a0b0c"
+HKDF_salt_1="000102030405060708090a0b0c0d"
 HKDF_info_1="f0f1f2f3f4f5f6f7f8f9"
-HKDF_exp_1="3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"
+HKDF_exp_1="cb95d056d6ba6f084df0a03a3317bcca7f83773204b76f527f4f06736168a52bbcd88869a3a4e7972dcd"
 
 HKDF_name_2="hmac(sha256)"
 HKDF_ikm_2="000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f"
@@ -555,6 +555,11 @@ KPP_exp_2="78fbd4d1ed7ea6fc8f1e1a6f8a5c750845401589ad3c135088b4ec78f54c57b436d1a
 ###########################################################################
 ###########################################################################
 
+is_fips_enabled()
+{
+	test $(cat /proc/sys/crypto/fips_enabled) = "1"
+}
+
 # Test required for test with multiple IOVECs on i686
 check_memory() {
 	if [ $(cat /proc/sys/net/core/optmem_max) -lt $1 ]
@@ -576,7 +581,14 @@ check_memory_soft() {
 hashfunc()
 {
 	stream=$1
-	HASHEXEC="1 2 3 4 5 6 7 8 9"
+
+	if is_fips_enabled; then
+		echo_deact "Hash tests using 3DES are disabled in FIPS"
+		HASHEXEC="2 3 4 5 6 7 8 9"
+	else
+		HASHEXEC="1 2 3 4 5 6 7 8 9"
+	fi
+
 	for i in $HASHEXEC
 	do
 		eval HASH_name=\$HASH_name_$i
@@ -630,7 +642,12 @@ symfunc()
 	aligned=$3
 	aiofallback=$4
 
-	SYMEXEC="1 2 3 4 5 6 7 8 9 10 11 12"
+	if is_fips_enabled; then
+		echo_deact "Symmetric tests using 3DES are disabled in FIPS"
+		SYMEXEC="1 2 3 8 9 10 11 12"
+	else
+		SYMEXEC="1 2 3 4 5 6 7 8 9 10 11 12"
+	fi
 
 	if [ x"$stream" = x"X" ]
 	then
@@ -666,7 +683,11 @@ symfunc()
 
 		# Disable XTS tests for multi-threading due to the issue
 		# discussed in https://github.com/smuellerDD/libkcapi/issues/92
-		SYMEXEC="1 2 3 4 5 6 7"
+		if is_fips_enabled; then
+			SYMEXEC="1 2 3"
+		else
+			SYMEXEC="1 2 3 4 5 6 7"
+		fi
 	else
 		sout="one shot"
 	fi
@@ -1148,7 +1169,13 @@ pbkdftest()
 {
 	aligned=$1
 
-	PBKDFEXEC="1 2 3 4 5 6 7 8 9 10 11 12 13"
+	if is_fips_enabled; then
+		echo_deact "PBKDF tests using SHA1 are disabled in FIPS"
+		PBKDFEXEC="8 9 10 11 12 13"
+	else
+		PBKDFEXEC="1 2 3 4 5 6 7 8 9 10 11 12 13"
+	fi
+
 	for i in $PBKDFEXEC
 	do
 		eval PBKDF_name=\$PBKDF_name_$i
@@ -1185,7 +1212,13 @@ hkdftest()
 {
 	aligned=$1
 
-	HKDFEXEC="1 2 3 4 5 6 7"
+	if is_fips_enabled; then
+		echo_deact "HKDF tests using SHA1 and zero length salts are disabled in FIPS"
+		HKDFEXEC="1 2"
+	else
+		HKDFEXEC="1 2 3 4 5 6 7"
+	fi
+
 	for i in $HKDFEXEC
 	do
 		eval HKDF_name=\$HKDF_name_$i
