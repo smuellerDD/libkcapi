@@ -63,7 +63,7 @@ static int hashtest(void)
 
 static int hmactest(void)
 {
-	char *in = "teststring";
+	char *in = "longteststring";
 	uint8_t out[64];
 	ssize_t ret;
 

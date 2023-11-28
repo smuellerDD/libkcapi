@@ -26,6 +26,11 @@ HMACHASHER="sha1hmac sha256hmac sha384hmac sha512hmac"
 CHKFILE="${TMPDIR}/chk.$$"
 ANOTHER="${TMPDIR}/test.$$"
 
+is_fips_enabled()
+{
+	test $(cat /proc/sys/crypto/fips_enabled) = "1"
+}
+
 if [ "$KCAPI_TEST_LOCAL" -eq 1 ]; then
 	find_platform kcapi-hasher
 	function run_hasher() {
@@ -365,7 +370,11 @@ fi
 for suffix in $KAT_SUFFIXES
 do
 	run_kat sha1$suffix   "RFC 2202, section 3, #1"   0x0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b "Hi There" 0xb617318655057264e28bc0b6fb378c8ef146be00
-	run_kat sha1$suffix   "RFC 2202, section 3, #2"   "Jefe" "what do ya want for nothing?" 0xeffcdf6ae5eb2fa2d27416d5f184df9c259a7c79
+	if is_fips_enabled; then
+		echo_deact "'RFC 2202, section 3, #2' test case deactivated in FIPS"
+	else
+		run_kat sha1$suffix   "RFC 2202, section 3, #2"   "Jefe" "what do ya want for nothing?" 0xeffcdf6ae5eb2fa2d27416d5f184df9c259a7c79
+	fi
 	run_kat sha1$suffix   "RFC 2202, section 3, #3"   0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd 0x125d7342b9ac11cd91a39af48aa17b4f63f175d3
 	run_kat sha1$suffix   "RFC 2202, section 3, #4"   0x0102030405060708090a0b0c0d0e0f10111213141516171819 0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd 0x4c9007f4026250c6bc8414f9bf50c86c2d7235da
 	run_kat sha1$suffix   "RFC 2202, section 3, #5"   0x0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c "Test With Truncation" 0x4c1a03424b55e07fe7f27be1d58bb9324a9a5a04
@@ -374,9 +383,15 @@ do
 	run_kat sha256$suffix "RFC 4231, section 4.2, #1" 0x0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b "Hi There" 0xb0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7
 	run_kat sha384$suffix "RFC 4231, section 4.2, #2" 0x0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b "Hi There" 0xafd03944d84895626b0825f4ab46907f15f9dadbe4101ec682aa034c7cebc59cfaea9ea9076ede7f4af152e8b2fa9cb6
 	run_kat sha512$suffix "RFC 4231, section 4.2, #3" 0x0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b "Hi There" 0x87aa7cdea5ef619d4ff0b4241a1d6cb02379f4e2ce4ec2787ad0b30545e17cdedaa833b7d6b8a702038b274eaea3f4e4be9d914eeb61f1702e696c203a126854
-	run_kat sha256$suffix "RFC 4231, section 4.3, #1" "Jefe" "what do ya want for nothing?" 0x5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843
-	run_kat sha384$suffix "RFC 4231, section 4.3, #2" "Jefe" "what do ya want for nothing?" 0xaf45d2e376484031617f78d2b58a6b1b9c7ef464f5a01b47e42ec3736322445e8e2240ca5e69e2c78b3239ecfab21649
-	run_kat sha512$suffix "RFC 4231, section 4.3, #3" "Jefe" "what do ya want for nothing?" 0x164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea2505549758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737
+	if is_fips_enabled; then
+		echo_deact "'RFC 4231, section 4.3, #1' test case deactivated in FIPS"
+		echo_deact "'RFC 4231, section 4.3, #2' test case deactivated in FIPS"
+		echo_deact "'RFC 4231, section 4.3, #3' test case deactivated in FIPS"
+	else
+		run_kat sha256$suffix "RFC 4231, section 4.3, #1" "Jefe" "what do ya want for nothing?" 0x5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843
+		run_kat sha384$suffix "RFC 4231, section 4.3, #2" "Jefe" "what do ya want for nothing?" 0xaf45d2e376484031617f78d2b58a6b1b9c7ef464f5a01b47e42ec3736322445e8e2240ca5e69e2c78b3239ecfab21649
+		run_kat sha512$suffix "RFC 4231, section 4.3, #3" "Jefe" "what do ya want for nothing?" 0x164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea2505549758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737
+	fi
 	run_kat sha256$suffix "RFC 4231, section 4.4, #1" 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd 0x773ea91e36800e46854db8ebd09181a72959098b3ef8c122d9635514ced565fe
 	run_kat sha384$suffix "RFC 4231, section 4.4, #2" 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd 0x88062608d3e6ad8a0aa2ace014c8a86f0aa635d947ac9febe83ef4e55966144b2a5ab39dc13814b94e3ab6e101a34f27
 	run_kat sha512$suffix "RFC 4231, section 4.4, #3" 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd 0xfa73b0089d56a284efb0f0756c890be9b1b5dbdd8ee81a3655f83e33b2279d39bf3e848279a722c806b485a47e67c807b946a337bee8942674278859e13292fb

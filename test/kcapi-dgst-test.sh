@@ -105,8 +105,8 @@ test_stdin_stdout()
 	openssl dgst -sha256 -hmac $opensslkey $ORIGPT  | awk 'BEGIN {FS="= "} {print $2}' > $GENDGST.openssl
 	diff_file $GENDGST $GENDGST.openssl "STDIN / STDOUT test (keyed MD $keysize bits)"
 
-	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" < $ORIGPT > $GENDGST
-	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" < $ORIGPT > $GENDGST.2
+	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwordpassword" -s $SALT -c "hmac(sha256)" < $ORIGPT > $GENDGST
+	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwordpassword" -s $SALT -c "hmac(sha256)" < $ORIGPT > $GENDGST.2
 
 	diff_file $GENDGST $GENDGST.2 "STDIN / STDOUT test (password)"
 }
@@ -135,8 +135,8 @@ test_stdin_fileout()
 	openssl dgst -sha256 -hmac $opensslkey $ORIGPT  | awk 'BEGIN {FS="= "} {print $2}' > $GENDGST.openssl
 	diff_file $GENDGST $GENDGST.openssl "STDIN / FILEOUT test (keyed MD $keysize bits)"
 
-	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" -o $GENDGST < $ORIGPT
-	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" -o $GENDGST.2 < $ORIGPT
+	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwordpassword" -s $SALT -c "hmac(sha256)" -o $GENDGST < $ORIGPT
+	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwordpassword" -s $SALT -c "hmac(sha256)" -o $GENDGST.2 < $ORIGPT
 
 	diff_file $GENDGST $GENDGST.2 "STDIN / FILEOUT test (password)"
 }
@@ -165,8 +165,8 @@ test_filein_stdout()
 	openssl dgst -sha256 -hmac $opensslkey $ORIGPT  | awk 'BEGIN {FS="= "} {print $2}' > $GENDGST.openssl
 	diff_file $GENDGST $GENDGST.openssl "FILEIN / STDOUT test (keyed MD $keysize bits)"
 
-	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" -i $ORIGPT > $GENDGST
-	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)"  -i $ORIGPT > $GENDGST.2
+	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwordpassword" -s $SALT -c "hmac(sha256)" -i $ORIGPT > $GENDGST
+	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwordpassword" -s $SALT -c "hmac(sha256)"  -i $ORIGPT > $GENDGST.2
 
 	diff_file $GENDGST $GENDGST.2 "FILEIN / STDOUT test (password)"
 }
@@ -197,8 +197,8 @@ test_filein_fileout()
 	openssl dgst -sha256 -hmac $opensslkey $ORIGPT  | awk 'BEGIN {FS="= "} {print $2}' > $GENDGST.openssl
 	diff_file $GENDGST $GENDGST.openssl "FILEIN / FILEOUT test (keyed MD $keysize bits)"
 
-	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)" -i $ORIGPT -o $GENDGST
-	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwd" -s $SALT -c "hmac(sha256)"  -i $ORIGPT -o $GENDGST.2
+	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwordpassword" -s $SALT -c "hmac(sha256)" -i $ORIGPT -o $GENDGST
+	run_app kcapi-dgst -q --pbkdfiter 1000 -p "passwordpassword" -s $SALT -c "hmac(sha256)"  -i $ORIGPT -o $GENDGST.2
 
 	diff_file $GENDGST $GENDGST.2 "FILEIN / FILEOUT test (password)"
 }
