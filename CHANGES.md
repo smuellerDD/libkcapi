@@ -1,5 +1,7 @@
-Changes 1.4.1:
+Changes 1.5.0:
  * move all sha* applications to the libexec directory to allow them to coexist with other packages sha* applications - the caller is expected to make a symlink to them
+ * add sha3sum
+ * add kcapi_md_sha3_* wrapper APIs
  * various small fixes
 
 Changes 1.4.0:
