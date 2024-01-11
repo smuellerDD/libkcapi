@@ -59,7 +59,7 @@ index 000000000000..9fb56117e5ed
 +/*
 + * algif_akcipher: User-space interface for asymmetric cipher algorithms
 + *
-+ * Copyright (C) 2017 - 2022, Stephan Mueller <smueller@chronox.de>
++ * Copyright (C) 2017 - 2024, Stephan Mueller <smueller@chronox.de>
 + *
 + * This file provides the user-space API for asymmetric ciphers.
 + *
