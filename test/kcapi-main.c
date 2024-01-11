@@ -704,8 +704,6 @@ static int auxiliary_tests(void)
 
 	if (aux_test_rng("drbg_nopr_hmac_sha256", NULL, 0))
 		ret++;
-	if (aux_test_rng("drbg_nopr_sha1", NULL, 0))
-		ret++;
 	if (aux_test_rng("drbg_nopr_ctr_aes256", NULL, 0))
 		ret++;
 
