@@ -663,6 +663,7 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 				  int drivername)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
+	struct timespec tp;
 	int ret = -EFAULT;
 
 	/* NETLINK_CRYPTO specific */
@@ -691,7 +692,13 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	req.n.nlmsg_len = NLMSG_LENGTH(sizeof(req.cru));
 	req.n.nlmsg_flags = NLM_F_REQUEST;
 	req.n.nlmsg_type = CRYPTO_MSG_GETALG;
-	req.n.nlmsg_seq = (__u32)time(NULL);
+
+	if (clock_gettime(CLOCK_MONOTONIC, &tp) < 0) {
+		kcapi_dolog(KCAPI_LOG_ERR,
+			    "Netlink error: cannot retrieve monotonic time");
+		return -errno;
+	}
+	req.n.nlmsg_seq = (__u32)tp.tv_sec;
 
 	if (drivername)
 		strncpy(req.cru.cru_driver_name, ciphername,
