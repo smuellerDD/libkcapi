@@ -35,6 +35,7 @@
  */
 
 #define _GNU_SOURCE
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -402,7 +403,8 @@ static void find_all_symbols(char *filename)
 			do {
 				while ((ret = read(pipefd[0],
 						   data + data_len,
-						   4096)) > 0) {
+						   4096)) > 0 &&
+				       data_len <= SIZE_MAX - 4096 - (size_t)ret) {
 					data_len += (size_t)ret;
 					data = realloc(data, data_len + 4096);
 					if (!data) {
