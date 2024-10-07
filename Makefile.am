@@ -168,7 +168,7 @@ CHECK_DIR_BIN = $(if $(CHECK_DIR),$(CHECK_DIR)/hmaccalc,$(bindir))
 
 install-exec-hook:
 	$(MKDIR_P) -p $(DESTDIR)/$(pkglibexecdir)
-	$(foreach link, $(hasher_links), $(LN) -sf $(DESTDIR)/$(bindir)/kcapi-hasher $(DESTDIR)/$(pkglibexecdir)/$(link);)
+	$(foreach link, $(hasher_links), $(LN) -sf $(bindir)/kcapi-hasher $(DESTDIR)/$(pkglibexecdir)/$(link);)
 if HAVE_OPENSSL
 	$(MKDIR_P) $(DESTDIR)$(CHECK_DIR_BIN)
 	cd $(DESTDIR)$(bindir) && $(CHECKSUM_CMD) kcapi-hasher > $(DESTDIR)$(CHECK_DIR_BIN)/$(CHECK_PREFIX)kcapi-hasher.$(CHECK_SUFFIX)
