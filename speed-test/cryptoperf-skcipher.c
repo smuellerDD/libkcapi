@@ -213,6 +213,10 @@ static const struct cp_skcipher_tests testcases[] = {
 	{ "AES(STM32) CBC(STM32) 192", "stm32-cbc-aes", 24 },
 	{ "AES(STM32) CBC(STM32) 256", "stm32-cbc-aes", 32 },
 
+	{ "AES(SA2UL) CBC(SA2UL) 128", "cbc-aes-sa2ul", 16 },
+	{ "AES(SA2UL) CBC(SA2UL) 192", "cbc-aes-sa2ul", 24 },
+	{ "AES(SA2UL) CBC(SA2UL) 256", "cbc-aes-sa2ul", 32 },
+
 	{ "AES(ARM64 CE) CBC(ARM64 CE) 128", "cbc-aes-ce", 16 },
 	{ "AES(ARM64 CE) CBC(ARM64 CE) 192", "cbc-aes-ce", 24 },
 	{ "AES(ARM64 CE) CBC(ARM64 CE) 256", "cbc-aes-ce", 32 },
@@ -304,6 +308,10 @@ static const struct cp_skcipher_tests testcases[] = {
 	{ "AES(STM32) ECB(STM32) 192", "stm32-ecb-aes", 24 },
 	{ "AES(STM32) ECB(STM32) 256", "stm32-ecb-aes", 32 },
 
+	{ "AES(SA2UL) ECB(SA2UL) 128", "ecb-aes-sa2ul", 16 },
+	{ "AES(SA2UL) ECB(SA2UL) 192", "ecb-aes-sa2ul", 24 },
+	{ "AES(SA2UL) ECB(SA2UL) 256", "ecb-aes-sa2ul", 32 },
+
 	{ "AES(ARM64 CE) ECB(ARM64 CE) 128", "ecb-aes-ce", 16 },
 	{ "AES(ARM64 CE) ECB(ARM64 CE) 192", "ecb-aes-ce", 24 },
 	{ "AES(ARM64 CE) ECB(ARM64 CE) 256", "ecb-aes-ce", 32 },
@@ -313,6 +321,9 @@ static const struct cp_skcipher_tests testcases[] = {
 
 	{ "DES3(MV-CESA) CBC(MV-CESA) EDE 168", "mv-cbc-des3-ede", 24 },
 	{ "DES3(MV-CESA) ECB(MV-CESA) EDE 168", "mv-ecb-des3-ede", 24 },
+
+	{ "DES3(SA2UL) CBC(SA2UL) 168", "cbc-des3-sa2ul", 24 },
+	{ "DES3(SA2UL) ECB(SA2UL) 168", "ecb-des3-sa2ul", 24 },
 
 	{ "Serpent(AVX) XTS(AVX) 128", "xts-serpent-avx", 32 },
 	{ "Serpent(AVX) XTS(AVX) 192", "xts-serpent-avx", 48 },
