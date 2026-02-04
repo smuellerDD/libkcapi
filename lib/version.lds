@@ -20,7 +20,6 @@ LIBKCAPI_0.12.0 {
 	kcapi_aead_setassoclen;
 	kcapi_aead_encrypt;
 	kcapi_aead_encrypt_aio;
-	kcapi_aead_getdata;
 	kcapi_aead_decrypt;
 	kcapi_aead_decrypt_aio;
 	kcapi_aead_stream_init_enc;
@@ -31,7 +30,6 @@ LIBKCAPI_0.12.0 {
 	kcapi_aead_ivsize;
 	kcapi_aead_blocksize;
 	kcapi_aead_authsize;
-	kcapi_aead_outbuflen;
 	kcapi_aead_ccm_nonce_to_iv;
 	kcapi_md_init;
 	kcapi_md_destroy;
