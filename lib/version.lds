@@ -247,3 +247,6 @@ LIBKCAPI_1.5.0 {
 	kcapi_md_sha3_384;
 	kcapi_md_sha3_512;
 } LIBKCAPI_1.4.0;
+
+LIBKCAPI_1.5.1 {
+} LIBKCAPI_1.5.0;
