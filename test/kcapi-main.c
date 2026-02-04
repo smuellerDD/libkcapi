@@ -637,18 +637,6 @@ static int aux_test_rng(const char *name, uint8_t *seed, uint32_t seedlen)
 	return 0;
 }
 
-static int is_fips_mode(void)
-{
-	char c;
-	FILE *f = fopen("/proc/sys/crypto/fips_enabled", "r");
-	if (!f)
-		return 0;
-	if (fread(&c, 1, 1, f) < 1)
-		c = '0';
-	fclose(f);
-	return c == '1';
-}
-
 static int auxiliary_tests(void)
 {
 	struct kcapi_handle *handle = NULL;
