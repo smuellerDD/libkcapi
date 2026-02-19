@@ -229,11 +229,21 @@ IMPL_SYMVER(cipher_stream_update, "1.3.1")
 ssize_t impl_cipher_stream_update(struct kcapi_handle *handle,
 				  struct iovec *iov, size_t iovlen)
 {
-	if (handle->processed_sg <= handle->flags.alg_max_pages)
-		return _kcapi_common_vmsplice_iov(handle, iov, iovlen,
-						  SPLICE_F_MORE);
-	else
-		return _kcapi_common_send_data(handle, iov, iovlen, MSG_MORE);
+	ssize_t ret = 0;
+
+	switch (handle->vmsplice_eperm) {
+	case 0:
+		if (handle->processed_sg <= handle->flags.alg_max_pages) {
+			ret = _kcapi_common_vmsplice_iov(handle, iov, iovlen, SPLICE_F_MORE);
+			if (ret != -EPERM) break;
+			handle->vmsplice_eperm = 1;
+		}
+		__attribute__((fallthrough));
+	default:
+		ret = _kcapi_common_send_data(handle, iov, iovlen, MSG_MORE);
+	}
+
+	return ret;
 }
 
 ORIG_SYMVER(cipher_stream_update, "0.12.0")
@@ -247,10 +257,21 @@ IMPL_SYMVER(cipher_stream_update_last, "1.3.1")
 ssize_t impl_cipher_stream_update_last(struct kcapi_handle *handle,
 				       struct iovec *iov, size_t iovlen)
 {
-	if (handle->processed_sg <= handle->flags.alg_max_pages)
-		return _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
-	else
-		return _kcapi_common_send_data(handle, iov, iovlen, 0);
+	ssize_t ret = 0;
+
+	switch (handle->vmsplice_eperm) {
+	case 0:
+		if (handle->processed_sg <= handle->flags.alg_max_pages) {
+			ret = _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
+			if (ret != -EPERM) break;
+			handle->vmsplice_eperm = 1;
+		}
+		__attribute__((fallthrough));
+	default:
+		ret = _kcapi_common_send_data(handle, iov, iovlen, 0);
+	}
+
+	return ret;
 }
 
 ORIG_SYMVER(cipher_stream_update_last, "1.2.0")
