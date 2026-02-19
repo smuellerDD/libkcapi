@@ -259,6 +259,7 @@ struct kcapi_handle {
 	struct kcapi_aead_data aead;
 	struct kcapi_aio aio;
 	struct kcapi_flags flags;
+	int vmsplice_eperm;
 };
 
 /************************************************************
