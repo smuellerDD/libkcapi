@@ -46,15 +46,20 @@ static inline ssize_t _kcapi_md_update(struct kcapi_handle *handle,
 	if (len > INT_MAX)
 		return -EMSGSIZE;
 
+	switch (handle->vmsplice_eperm) {
+	case 0:
+		if (len >= (1<<15)) {
+			ret = _kcapi_common_vmsplice_chunk(handle, buffer, len, SPLICE_F_MORE);
+			if (ret != -EPERM) break;
+			handle->vmsplice_eperm = 1;
+		}
+		__attribute__((fallthrough));
+	default:
 	/* zero buffer length cannot be handled via splice */
-	if (len < (1<<15)) {
 		ret = _kcapi_common_accept(handle);
 		if (ret)
 			return ret;
 		ret = send(*_kcapi_get_opfd(handle), buffer, len, MSG_MORE);
-	} else {
-		ret = _kcapi_common_vmsplice_chunk(handle, buffer, len,
-						   SPLICE_F_MORE);
 	}
 
 	if (ret < 0)
