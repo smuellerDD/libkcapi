@@ -49,8 +49,10 @@ static inline ssize_t _kcapi_md_update(struct kcapi_handle *handle,
 	switch (handle->vmsplice_eperm) {
 	case 0:
 		if (len >= (1<<15)) {
-			ret = _kcapi_common_vmsplice_chunk(handle, buffer, len, SPLICE_F_MORE);
-			if (ret != -EPERM) break;
+			ret = _kcapi_common_vmsplice_chunk(handle, buffer, len,
+							   SPLICE_F_MORE);
+			if (ret != -EPERM)
+				break;
 			handle->vmsplice_eperm = 1;
 		}
 		__attribute__((fallthrough));

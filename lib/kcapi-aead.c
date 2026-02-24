@@ -454,8 +454,10 @@ ssize_t impl_aead_stream_update(struct kcapi_handle *handle,
 	switch (handle->vmsplice_eperm) {
 	case 0:
 		if (handle->processed_sg <= handle->flags.alg_max_pages) {
-			ret = _kcapi_common_vmsplice_iov(handle, iov, iovlen, SPLICE_F_MORE);
-			if (ret != -EPERM) break;
+			ret = _kcapi_common_vmsplice_iov(handle, iov, iovlen,
+							 SPLICE_F_MORE);
+			if (ret != -EPERM)
+				break;
 			handle->vmsplice_eperm = 1;
 		}
 		__attribute__((fallthrough));
@@ -482,8 +484,10 @@ ssize_t impl_aead_stream_update_last(struct kcapi_handle *handle,
 	switch (handle->vmsplice_eperm) {
 	case 0:
 		if (handle->processed_sg <= handle->flags.alg_max_pages) {
-			ret = _kcapi_common_vmsplice_iov(handle, iov, iovlen, 0);
-			if (ret != -EPERM) break;
+			ret = _kcapi_common_vmsplice_iov(handle, iov, iovlen,
+							 0);
+			if (ret != -EPERM)
+				break;
 			handle->vmsplice_eperm = 1;
 		}
 		__attribute__((fallthrough));
