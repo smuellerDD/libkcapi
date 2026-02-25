@@ -544,15 +544,13 @@ static int hash_files(const struct hash_params *params,
 #define CHK_QUIET (1)
 #define CHK_STATUS (2)
 
-static int process_checkfile(const struct hash_params *params,
+static int process_checkfile(struct kcapi_handle *handle, const struct hash_params *params,
 			     const char *checkfile, const char *targetfile, int log, int fipscheck)
 {
 	FILE *file = NULL;
 	int ret = 0;
 	int checked_any = 0;
 	int failed_any = 0;
-	struct kcapi_handle *handle;
-	const char *hashname = params->name.kcapiname;
 
 	/*
 	 * A file can have up to 4096 characters, so a complete line has at most
@@ -560,23 +558,6 @@ static int process_checkfile(const struct hash_params *params,
 	 * one byte for the CR.
 	 */
 	char buf[(4096 + 128 + 2 + 1)];
-
-	ret = kcapi_md_init(&handle, hashname, 0);
-	if (ret) {
-		fprintf(stderr, "Allocation of %s cipher failed (%d)\n",
-			hashname, ret);
-		return -EFAULT;
-	}
-	if (params->key.data) {
-		ret = kcapi_md_setkey(handle, params->key.data,
-				      (uint32_t)params->key.len);
-		if (ret) {
-			fprintf(stderr, "Setting HMAC key for %s failed (%d)\n",
-				hashname, ret);
-			ret = -EINVAL;
-			goto out;
-		}
-	}
 
 	file = strcmp(checkfile, "-") ? fopen(checkfile, "r") : stdin;
 	if (!file) {
@@ -700,7 +681,6 @@ static int process_checkfile(const struct hash_params *params,
 out:
 	if (file)
 		fclose(file);
-	kcapi_md_destroy(handle);
 	kcapi_memset_secure(buf, 0, sizeof(buf));
 
 	/*
@@ -708,7 +688,52 @@ out:
 	 * (See https://pagure.io/hmaccalc/c/1afb99549816192eb8e6bc8101bc417c2ffa764c)
 	 */
 	return ret != 0 ? ret : !(checked_any && !failed_any);
+}
 
+static int process_checkfiles(const struct hash_params *params,
+			      char *checkfiles[], uint32_t files,
+			      const char *targetfile, int log, int fipscheck)
+{
+	struct kcapi_handle *handle;
+	const char *hashname = params->name.kcapiname;
+	int ret = 0;
+
+	ret = kcapi_md_init(&handle, hashname, 0);
+	if (ret) {
+		fprintf(stderr, "Allocation of %s cipher failed (%d)\n",
+			hashname, ret);
+		return -EFAULT;
+	}
+
+	if (params->key.data) {
+		ret = kcapi_md_setkey(handle, params->key.data,
+				      (uint32_t)params->key.len);
+		if (ret) {
+			fprintf(stderr, "Setting HMAC key for %s failed (%d)\n",
+				hashname, ret);
+			kcapi_md_destroy(handle);
+			return -EINVAL;
+		}
+	}
+
+	if (files == 0) {
+		char *stdin_file = "-";
+
+		ret = process_checkfile(handle, params, stdin_file,
+					targetfile, log, fipscheck);
+	} else {
+		for (uint32_t i = 0; i < files; i++) {
+			const char *checkfile = checkfiles[i];
+
+			ret = process_checkfile(handle, params, checkfile,
+						targetfile, log, fipscheck);
+			if (ret)
+				break;
+		}
+	}
+
+	kcapi_md_destroy(handle);
+	return ret;
 }
 
 /* self-check modes: */
@@ -785,7 +810,7 @@ static int fipscheck_self(const struct hash_params *params_bin,
 			goto out;
 		}
 
-		ret = process_checkfile(params_bin, checkfile, selfname, CHK_STATUS, 1);
+		ret = process_checkfiles(params_bin, &checkfile, 1, selfname, CHK_STATUS, 1);
 		if (ret)
 			goto out;
 	}
@@ -825,7 +850,7 @@ static int fipscheck_self(const struct hash_params *params_bin,
 			goto out;
 		}
 
-		ret = process_checkfile(params_lib, checkfile, selfname, CHK_STATUS, 1);
+		ret = process_checkfiles(params_lib, &checkfile, 1, selfname, CHK_STATUS, 1);
 	}
 
 out:
@@ -873,6 +898,7 @@ int main(int argc, char *argv[])
 	int fipscheck = 0;
 	int fipshmac = 0;
 	int selfcheck_mode = SELFCHECK_CHECK;
+	int do_check = 0;
 
 	static const char *opts_name_short = "n:";
 	static const struct option opts_name[] = {
@@ -880,12 +906,12 @@ int main(int argc, char *argv[])
 		{0, 0, 0, 0}
 	};
 
-	static const char *opts_short = "c:T:uh:t:SLqk:K:vbd:Pz";
+	static const char *opts_short = "cT:uh:t:SLqk:K:vbd:Pz";
 	static const struct option opts[] = {
 		{"help", 0, 0, 0},
 		{"tag", 0, 0, 0},
 		{"quiet", 0, 0, 0},
-		{"check", 1, 0, 'c'},
+		{"check", 0, 0, 'c'},
 		{"target", 1, 0, 'T'},
 		{"unkeyed", 0, 0, 'u'},
 		{"hash", 1, 0, 'h'},
@@ -1002,15 +1028,7 @@ int main(int argc, char *argv[])
 				}
 				break;
 			case 'c':
-				if (checkfile)
-					free(checkfile);
-				checkfile = strdup(optarg);
-				if (!checkfile) {
-					fprintf(stderr, "Error copying file name: %s\n",
-					        strerror(errno));
-					ret = 1;
-					goto out;
-				}
+				do_check = 1;
 				break;
 			case 'u':
 				if (hmackey_alloc) {
@@ -1166,7 +1184,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (selfcheck_mode != SELFCHECK_CHECK) {
-		if (checkfile) {
+		if (do_check) {
 			fprintf(stderr, "-S/-L and -c cannot be combined\n");
 			ret = 1;
 			goto out;
@@ -1199,7 +1217,7 @@ int main(int argc, char *argv[])
 			ret = 1;
 			goto out;
 		}
-		if (checkfile) {
+		if (do_check) {
 			fprintf(stderr, "-c is not valid for fipscheck\n");
 			ret = 1;
 			goto out;
@@ -1221,22 +1239,22 @@ int main(int argc, char *argv[])
 		optind++;
 	}
 
-	if (targetfile && !checkfile) {
+	if (targetfile && !do_check && !fipscheck) {
 		fprintf(stderr, "-T cannot be used without -c\n");
 		ret = 1;
 		goto out;
 	}
 
-	if (!checkfile)
+	if (fipscheck)
+		ret = process_checkfiles(&params, &checkfile, 1,
+					 targetfile, loglevel, fipscheck);
+	else if (!do_check)
 		ret = hash_files(&params, argv + optind,
 				 (uint32_t)(argc - optind),
 		                 fipshmac, checkdir, 0);
-	else if (optind == argc)
-		ret = process_checkfile(&params, checkfile, targetfile, loglevel, fipscheck);
-	else {
-		fprintf(stderr, "-c cannot be used with input files\n");
-		ret = 1;
-	}
+	else
+		ret = process_checkfiles(&params, argv + optind, (uint32_t)(argc - optind),
+					 targetfile, loglevel, fipscheck);
 
 
 out:
