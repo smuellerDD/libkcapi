@@ -96,7 +96,7 @@ err:
 	} else {
 		kcapi_dolog(KCAPI_LOG_WARN,
 			    "AF_ALG: setting maximum splice pipe size to %u failed: %s",
-			    size, strerror(ret));
+			    size, strerror(-ret));
 	}
 	return ret;
 }
@@ -109,7 +109,10 @@ int kcapi_get_maxsplicesize(struct kcapi_handle *handle)
 		return -EINVAL;
 
 	/* Both pipe endpoints should have the same pipe size */
-	handle->pipesize = (unsigned int)fcntl(handle->pipes[0], F_GETPIPE_SZ);
+	int ret = fcntl(handle->pipes[0], F_GETPIPE_SZ);
+	if (ret < 0)
+		return -errno;
+	handle->pipesize = (unsigned int)ret;
 
 	/*
 	 * For vmsplice to allow the maximum number of 16 pages, we need to

@@ -54,6 +54,8 @@
 #include "kcapi.h"
 #include "internal.h"
 
+#define MAX_DIGESTSIZE 64
+
 #ifndef __has_builtin
 # define __has_builtin(x) 0
 #endif
@@ -101,7 +103,7 @@ ssize_t impl_kdf_dpi(struct kcapi_handle *handle,
 	ssize_t err = 0;
 	uint8_t *dst_orig = dst;
 	size_t dlen_orig = dlen;
-	uint8_t Ai[h];
+	uint8_t Ai[MAX_DIGESTSIZE];
 	uint32_t i = 1;
 
 	if (dlen > INT_MAX)
@@ -448,7 +450,7 @@ static inline uint64_t kcapi_get_time(void)
 {
 	struct timespec time;
 
-	if (clock_gettime(CLOCK_REALTIME, &time) == 0)
+	if (clock_gettime(CLOCK_MONOTONIC, &time) == 0)
 		return (uint64_t)time.tv_nsec;
 
 	return 0;

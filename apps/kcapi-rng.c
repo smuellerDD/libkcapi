@@ -282,16 +282,18 @@ int main(int argc, char *argv[])
 	      seedsize);
 
 	if (!isatty(0) && (errno == EINVAL || errno == ENOTTY)) {
-		while (fgets((char *)seedbuf, (int)seedsize, stdin)) {
-			ret = kcapi_rng_seed(rng, seedbuf, seedsize);
+		ssize_t rret;
+
+		while ((rret = read(STDIN_FILENO, seedbuf, seedsize)) > 0) {
+			ret = kcapi_rng_seed(rng, seedbuf, (uint32_t)rret);
 			if (ret)
 				dolog(KCAPI_LOG_WARN,
-				      "User-provided seed of %lu bytes not accepted by DRNG (error: %ld)",
-				      (unsigned long)sizeof(buf), ret);
+				      "User-provided seed of %zd bytes not accepted by DRNG (error: %ld)",
+				      rret, ret);
 			else
 				dolog(KCAPI_LOG_DEBUG,
-				      "User-provided seed of %u bytes",
-				      seedsize);
+				      "User-provided seed of %zd bytes",
+				      rret);
 		}
 	}
 
@@ -312,9 +314,15 @@ int main(int argc, char *argv[])
 			char hexbuf[2 * KCAPI_RNG_BUFSIZE];
 
 			bin2hex(buf, (size_t)ret, hexbuf, sizeof(hexbuf), 0);
-			fwrite(hexbuf, 2 * (size_t)ret, 1, stdout);
+			if (fwrite(hexbuf, 2 * (size_t)ret, 1, stdout) != 1) {
+				ret = -EIO;
+				goto out;
+			}
 		} else {
-			fwrite(buf, (size_t)ret, 1, stdout);
+			if (fwrite(buf, (size_t)ret, 1, stdout) != 1) {
+				ret = -EIO;
+				goto out;
+			}
 		}
 
 		outlen -= (size_t)ret;

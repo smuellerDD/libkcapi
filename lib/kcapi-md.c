@@ -203,7 +203,7 @@ ssize_t impl_md_sha256(const uint8_t *in, size_t inlen,
 }
 
 ORIG_SYMVER(md_sha256, "1.0.0")
-ssize_t orig_md_sha256(const uint8_t *in, uint32_t inlen,
+int32_t orig_md_sha256(const uint8_t *in, uint32_t inlen,
 		       uint8_t *out, uint32_t outlen)
 {
 	return (int32_t)kcapi_md_conv_common("sha256", in, inlen, out, outlen);

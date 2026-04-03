@@ -216,7 +216,7 @@ ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 		}
 		header->cmsg_level = SOL_ALG;
 		header->cmsg_type = ALG_SET_IV;
-		header->cmsg_len = kcapi_downcast_socklen_t(iv_msg_size);
+		header->cmsg_len = CMSG_LEN(iv_msg_size);
 		alg_iv = (void*)CMSG_DATA(header);
 		alg_iv->ivlen = tfm->info.ivsize;
 		memcpy(alg_iv->iv, handle->cipher.iv, tfm->info.ivsize);
@@ -409,8 +409,10 @@ ssize_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 				    "AF_ALG: splice syscall returned %zd", ret);
 		}
 
+		if (ret == 0)
+			return -EPIPE;
 		processed += ret;
-		inlen -= (uint32_t)ret;
+		inlen -= (size_t)ret;
 	}
 
 	return processed;
@@ -434,14 +436,17 @@ int _kcapi_aio_read_all(struct kcapi_handle *handle, size_t toread,
 
 		for (i = 0; i < rc; i++) {
 			struct iocb *cb;
+			unsigned int idx = (unsigned int)events[i].data;
+
+			if (idx >= KCAPI_AIO_CONCURRENT)
+				return -EOVERFLOW;
 
 			/*
 			 * If one cipher operation fails, so will the entire
 			 * AIO operation
 			 */
 			if (events[i].res < 0) {
-				handle->aio.iocb_ret[events[i].data] =
-							events[i].res;
+				handle->aio.iocb_ret[idx] = events[i].res;
 				return (int)events[i].res;
 			}
 
@@ -452,16 +457,15 @@ int _kcapi_aio_read_all(struct kcapi_handle *handle, size_t toread,
 			 * return code.
 			 */
 			if (events[i].res > 0) {
-				handle->aio.iocb_ret[events[i].data] =
-								events[i].res;
+				handle->aio.iocb_ret[idx] = events[i].res;
 			} else {
-				handle->aio.iocb_ret[events[i].data] =
+				handle->aio.iocb_ret[idx] =
 							(__s64)cb->aio_nbytes;
 			}
 
 			cb->aio_fildes = 0;
 		}
-		toread -= (uint32_t)rc;
+		toread -= (size_t)rc;
 	}
 
 	return 0;
@@ -613,7 +617,7 @@ ssize_t _kcapi_common_read_data(struct kcapi_handle *handle,
 			ret = read(*_kcapi_get_opfd(handle), out, outlen);
 			if (ret > 0) {
 				out += ret;
-				outlen -= (uint32_t)ret;
+				outlen -= (size_t)ret;
 				totallen += ret;
 			}
 			kcapi_dolog(KCAPI_LOG_DEBUG,
@@ -722,13 +726,13 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 		goto out;
 	}
 	if (addr_len != sizeof(nl)) {
-		ret = -errno;
+		ret = -EPROTO;
 		kcapi_dolog(KCAPI_LOG_ERR,
 			    "Netlink error: wrong address length %d", addr_len);
 		goto out;
 	}
 	if (nl.nl_family != AF_NETLINK) {
-		ret = -errno;
+		ret = -EPROTO;
 		kcapi_dolog(KCAPI_LOG_ERR,
 			    "Netlink error: wrong address family %d",
 			    nl.nl_family);
@@ -764,12 +768,12 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 			goto out;
 		}
 		if (rc == 0) {
-			ret = -errno;
+			ret = -ENODATA;
 			kcapi_dolog(KCAPI_LOG_ERR, "Netlink error: no data");
 			goto out;
 		}
 		if (rc > (ssize_t)sizeof(buf)) {
-			ret = -errno;
+			ret = -EOVERFLOW;
 			kcapi_dolog(KCAPI_LOG_ERR,
 				    "Netlink error: received too much data");
 			goto out;
@@ -779,6 +783,12 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 
 	ret = -EFAULT;
 	res_len = res_n->nlmsg_len;
+	if (res_len > sizeof(buf)) {
+		kcapi_dolog(KCAPI_LOG_ERR,
+			    "Netlink error: nlmsg_len %lu exceeds buffer",
+			    res_len);
+		goto out;
+	}
 	if (res_n->nlmsg_type == NLMSG_ERROR) {
 		/*
 		 * return -EAGAIN -- this error will occur if we received a
@@ -819,6 +829,9 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 
 	if (tb[CRYPTOCFGA_REPORT_HASH]) {
 		struct rtattr *rta = tb[CRYPTOCFGA_REPORT_HASH];
+
+		if (RTA_PAYLOAD(rta) < sizeof(struct crypto_report_hash))
+			goto out;
 		struct crypto_report_hash *rsh =
 			(struct crypto_report_hash *) RTA_DATA(rta);
 		tfm->info.hash_digestsize = rsh->digestsize;
@@ -831,6 +844,9 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	}
 	if (tb[CRYPTOCFGA_REPORT_BLKCIPHER]) {
 		struct rtattr *rta = tb[CRYPTOCFGA_REPORT_BLKCIPHER];
+
+		if (RTA_PAYLOAD(rta) < sizeof(struct crypto_report_blkcipher))
+			goto out;
 		struct crypto_report_blkcipher *rblk =
 			(struct crypto_report_blkcipher *) RTA_DATA(rta);
 		tfm->info.blocksize = rblk->blocksize;
@@ -845,6 +861,9 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	}
 	if (tb[CRYPTOCFGA_REPORT_AEAD]) {
 		struct rtattr *rta = tb[CRYPTOCFGA_REPORT_AEAD];
+
+		if (RTA_PAYLOAD(rta) < sizeof(struct crypto_report_aead))
+			goto out;
 		struct crypto_report_aead *raead =
 			(struct crypto_report_aead *) RTA_DATA(rta);
 		tfm->info.blocksize = raead->blocksize;
@@ -858,6 +877,9 @@ static int __kcapi_common_getinfo(struct kcapi_handle *handle,
 	}
 	if (tb[CRYPTOCFGA_REPORT_RNG]) {
 		struct rtattr *rta = tb[CRYPTOCFGA_REPORT_RNG];
+
+		if (RTA_PAYLOAD(rta) < sizeof(struct crypto_report_rng))
+			goto out;
 		struct crypto_report_rng *rrng =
 			(struct crypto_report_rng *) RTA_DATA(rta);
 		tfm->info.rng_seedsize = rrng->seedsize;
@@ -981,19 +1003,19 @@ static int _kcapi_get_kernver(struct kcapi_handle *handle)
 	/* 3.15.0 */
 	res = strtok_r(kernel.release, ".", &saveptr);
 	if (!res) {
-		printf("Could not parse kernel version");
+		kcapi_dolog(KCAPI_LOG_ERR, "Could not parse kernel version");
 		return -EFAULT;
 	}
 	tfm->sysinfo.kernel_maj = strtoul(res, NULL, 10);
 	res = strtok_r(NULL, ".", &saveptr);
 	if (!res) {
-		printf("Could not parse kernel version");
+		kcapi_dolog(KCAPI_LOG_ERR, "Could not parse kernel version");
 		return -EFAULT;
 	}
 	tfm->sysinfo.kernel_minor = strtoul(res, NULL, 10);
 	res = strtok_r(NULL, ".", &saveptr);
 	if (!res) {
-		printf("Could not parse kernel version");
+		kcapi_dolog(KCAPI_LOG_ERR, "Could not parse kernel version");
 		return -EFAULT;
 	}
 	tfm->sysinfo.kernel_patchlevel = strtoul(res, NULL, 10);
@@ -1217,7 +1239,6 @@ static int _kcapi_handle_init_tfm(struct kcapi_handle *handle, const char *type,
 
 	ret = _kcapi_common_getinfo(handle, ciphername);
 	if (ret) {
-		ret = -errno;
 		kcapi_dolog(KCAPI_LOG_ERR, "NETLINK_CRYPTO: cannot obtain cipher information for %s (is required crypto_user.c patch missing? see documentation)",
 			    ciphername);
 		return ret;
@@ -1368,7 +1389,7 @@ ssize_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
 		in += inprocess;
 		inlen -= inprocess;
 		out += ret;
-		outlen -= (uint32_t)ret;
+		outlen -= (size_t)ret;
 	}
 
 	return totallen;

@@ -47,6 +47,9 @@ ssize_t impl_cipher_encrypt(struct kcapi_handle *handle,
 	struct kcapi_handle_tfm *tfm = handle->tfm;
 	uint32_t bs = tfm->info.blocksize;
 
+	if (!bs)
+		return -EINVAL;
+
 	/* require properly sized output data size */
 	if (outlen < ((inlen + bs - 1) / bs * bs))
 		kcapi_dolog(KCAPI_LOG_WARN,
@@ -119,6 +122,9 @@ ssize_t impl_cipher_decrypt(struct kcapi_handle *handle,
 			    uint8_t *out, size_t outlen, int access)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
+
+	if (!tfm->info.blocksize)
+		return -EINVAL;
 
 	/* require properly sized output data size */
 	if (inlen % tfm->info.blocksize)

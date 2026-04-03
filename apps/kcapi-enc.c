@@ -218,7 +218,7 @@ static ssize_t return_data_fd(struct kcapi_handle *handle,
 	}
 
 out:
-	munmap(outmem, outsize);
+	munmap(outmem, outsize + offset);
 	return (ret < 0) ? ret : generated_bytes;
 }
 
@@ -609,7 +609,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		}
 
 	/* Get data from file. */
-	} else {
+	} else if (insb.st_size) {
 		uint32_t sent_data = 0;
 
 		inmem = mmap(NULL, (size_t)insb.st_size, PROT_READ, MAP_SHARED,
@@ -636,6 +636,7 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 			 * we will not apply padding.
 			 */
 			if (!opts->decrypt &&
+			    insb.st_size >= 2 &&
 			    !(insb.st_size % opts->func_blocksize(handle)) &&
 			    (uint32_t)padbyte < opts->func_blocksize(handle)) {
 				uint32_t i;
@@ -803,8 +804,8 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 			}
 
 			while (j < saltbuflen) {
-				ret = kcapi_rng_generate(rng, saltbuf,
-							 saltbuflen);
+				ret = kcapi_rng_generate(rng, saltbuf + j,
+							 saltbuflen - j);
 				if (ret < 0) {
 					kcapi_rng_destroy(rng);
 					free(saltbuf);
