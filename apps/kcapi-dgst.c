@@ -128,6 +128,11 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 	}
 
 	outlen = kcapi_md_digestsize(handle);
+	if (!outlen) {
+		dolog(KCAPI_LOG_ERR, "Cipher has zero digest size");
+		ret = -EINVAL;
+		goto out;
+	}
 
 	if (opts->hexout)
 		outlen *= 2;
@@ -285,8 +290,8 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 			}
 
 			while (j < saltbuflen) {
-				ret = kcapi_rng_generate(rng, saltbuf,
-							 (size_t)saltbuflen);
+				ret = kcapi_rng_generate(rng, saltbuf + j,
+							 (size_t)(saltbuflen - j));
 				if (ret < 0) {
 					kcapi_rng_destroy(rng);
 					free(saltbuf);
@@ -320,7 +325,7 @@ static int set_key(struct kcapi_handle *handle, struct opt_data *opts)
 	if (opts->key_fd != -1) {
 		ret = read_complete(opts->key_fd, keybuf, sizeof(keybuf));
 		if (ret < 0)
-			return (int)ret;
+			goto out;
 
 		have_key = 1;
 		keybuflen = (uint32_t)ret;

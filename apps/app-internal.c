@@ -173,17 +173,23 @@ static uint8_t bin_char(char hex)
 void hex2bin(const char *hex, uint32_t hexlen, uint8_t *bin, uint32_t binlen)
 {
 	uint32_t i;
-	uint32_t chars = (binlen > (hexlen / 2)) ? (hexlen / 2) : binlen;
+	uint32_t chars;
 
 	/*
 	 * handle odd-length of strings where the first digit is the least
 	 * significant nibble
 	 */
 	if (hexlen & 1) {
+		if (!binlen)
+			return;
 		bin[0] = bin_char(hex[0]);
 		bin++;
 		hex++;
+		hexlen--;
+		binlen--;
 	}
+
+	chars = (binlen > (hexlen / 2)) ? (hexlen / 2) : binlen;
 
 	for (i = 0; i < chars; i++) {
 		bin[i] = (uint8_t)(bin_char(hex[(i*2)]) << 4);
@@ -238,12 +244,13 @@ ssize_t read_complete(int fd, uint8_t *buf, size_t buflen)
 		if (0 < ret) {
 			buflen -= (size_t)ret;
 			buf += ret;
+			rc += ret;
 		}
-		rc += ret;
-		if (ret)
-			break;
 	} while ((0 < ret || EINTR == errno || ERESTART == errno)
 		 && buflen > 0);
+
+	if (ret < 0)
+		return -errno;
 
 	return rc;
 }

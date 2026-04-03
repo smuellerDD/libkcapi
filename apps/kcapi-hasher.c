@@ -271,7 +271,7 @@ static int load_file(const char *filename, uint8_t **memory, off_t *size)
 				fprintf(stderr, "Key longer than UINT32_MAX\n");
 				ret = -ERANGE;
 				goto out;
-			} else if (buffer_size * 2 < buffer_size)
+			} else if (buffer_size > UINT32_MAX / 2)
 				buffer_size = UINT32_MAX;
 			else
 				buffer_size *= 2;
@@ -340,7 +340,7 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 			} while (left);
 			munmap(memblock, mapped);
 			offset = offset + (off_t)mapped;
-		} while (offset ^ size);
+		} while (offset != size);
 	} else {
 		uint8_t tmpbuf[TMPBUFLEN] __aligned(KCAPI_APP_ALIGN);
 		uint32_t bufsize;
@@ -371,11 +371,14 @@ static int hasher(struct kcapi_handle *handle, const struct hash_params *params,
 
 		if (comphash && comphashlen) {
 			uint8_t compmd[64];
+			volatile uint8_t diff = 0;
+			uint32_t j;
 
 			memset(compmd, 0, sizeof(compmd));
 			hex2bin(comphash, comphashlen, compmd, sizeof(compmd));
-			if ((comphashlen != hashlen * 2) ||
-			    memcmp(compmd, md, hashlen))
+			for (j = 0; j < hashlen; j++)
+				diff |= compmd[j] ^ md[j];
+			if ((comphashlen != hashlen * 2) || diff)
 				ret = 1;
 			else
 				ret = 0;
@@ -628,11 +631,17 @@ static int process_checkfile(struct kcapi_handle *handle, const struct hash_para
 			hexhash = buf;
 
 		if (bsd_style) {
+			if (bsd_style > linelen) {
+				fprintf(stderr, "Invalid checkfile format\n");
+				ret = 1;
+				goto out;
+			}
+
 			/* Hash starts after separator */
 			hexhashlen = linelen - bsd_style + 1;
 
 			/* remove closing parenthesis behind filename */
-			if (buf[(bsd_style - 4)] == ')')
+			if (bsd_style >= 4 && buf[(bsd_style - 4)] == ')')
 				buf[(bsd_style - 4)] = '\0';
 		}
 

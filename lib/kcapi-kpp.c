@@ -52,12 +52,12 @@ int kcapi_kpp_ecdh_setcurve(struct kcapi_handle *handle,
 			    unsigned long curve_id)
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
-	char curve_id_str[sizeof(unsigned long)];
+	char curve_id_str[24];
 	int ret = 0;
 
 	snprintf(curve_id_str, sizeof(curve_id_str), "%lu", curve_id);
 	ret = setsockopt(tfm->tfmfd, SOL_ALG, ALG_SET_ECDH_CURVE,
-			 curve_id_str, sizeof(curve_id_str));
+			 curve_id_str, (socklen_t)strlen(curve_id_str));
 	return (ret >= 0) ? ret : -errno;
 }
 

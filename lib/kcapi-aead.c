@@ -591,7 +591,11 @@ size_t impl_aead_outbuflen_enc(struct kcapi_handle *handle,
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
 	uint32_t bs = tfm->info.blocksize;
-	size_t outlen = (inlen + bs - 1) / bs * bs + taglen + assoclen;
+	size_t outlen;
+
+	if (!bs)
+		return 0;
+	outlen = (inlen + bs - 1) / bs * bs + taglen + assoclen;
 
 	/* the kernel does not like zero length output buffers */
 	if (!outlen)
@@ -616,7 +620,11 @@ size_t impl_aead_outbuflen_dec(struct kcapi_handle *handle,
 {
 	struct kcapi_handle_tfm *tfm = handle->tfm;
 	uint32_t bs = tfm->info.blocksize;
-	size_t outlen = (inlen + bs - 1) / bs * bs + assoclen;
+	size_t outlen;
+
+	if (!bs)
+		return 0;
+	outlen = (inlen + bs - 1) / bs * bs + assoclen;
 
 	if (!handle->flags.ge_v4_9 == true)
 		outlen += taglen;
