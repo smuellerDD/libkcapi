@@ -216,7 +216,7 @@ ssize_t _kcapi_common_send_meta(struct kcapi_handle *handle,
 		}
 		header->cmsg_level = SOL_ALG;
 		header->cmsg_type = ALG_SET_IV;
-		header->cmsg_len = CMSG_LEN(iv_msg_size);
+		header->cmsg_len = kcapi_downcast_socklen_t(iv_msg_size);
 		alg_iv = (void*)CMSG_DATA(header);
 		alg_iv->ivlen = tfm->info.ivsize;
 		memcpy(alg_iv->iv, handle->cipher.iv, tfm->info.ivsize);
@@ -411,6 +411,7 @@ ssize_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 
 		if (ret == 0)
 			return -EPIPE;
+
 		processed += ret;
 		inlen -= (size_t)ret;
 	}
@@ -436,7 +437,7 @@ int _kcapi_aio_read_all(struct kcapi_handle *handle, size_t toread,
 
 		for (i = 0; i < rc; i++) {
 			struct iocb *cb;
-			unsigned int idx = (unsigned int)events[i].data;
+			uint64_t idx = events[i].data;
 
 			if (idx >= KCAPI_AIO_CONCURRENT)
 				return -EOVERFLOW;
@@ -459,8 +460,7 @@ int _kcapi_aio_read_all(struct kcapi_handle *handle, size_t toread,
 			if (events[i].res > 0) {
 				handle->aio.iocb_ret[idx] = events[i].res;
 			} else {
-				handle->aio.iocb_ret[idx] =
-							(__s64)cb->aio_nbytes;
+				handle->aio.iocb_ret[idx] = (__s64)cb->aio_nbytes;
 			}
 
 			cb->aio_fildes = 0;
