@@ -557,7 +557,7 @@ KPP_exp_2="78fbd4d1ed7ea6fc8f1e1a6f8a5c750845401589ad3c135088b4ec78f54c57b436d1a
 
 is_fips_enabled()
 {
-	test $(cat /proc/sys/crypto/fips_enabled) = "1"
+	test "$(cat /proc/sys/crypto/fips_enabled 2> /dev/null)" = "1"
 }
 
 # Test required for test with multiple IOVECs on i686
