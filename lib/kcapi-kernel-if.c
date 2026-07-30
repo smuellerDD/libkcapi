@@ -1387,6 +1387,15 @@ ssize_t _kcapi_cipher_crypt_chunk(struct kcapi_handle *handle,
 		inlen -= inprocess;
 		out += ret;
 		outlen -= (size_t)ret;
+
+		/*
+		 * Clear the IV so subsequent chunks do not override the
+		 * kernel's chained IV via ALG_SET_IV.  The kernel updates
+		 * its internal IV after each operation; by not sending
+		 * ALG_SET_IV for later chunks, the next chunk continues
+		 * where the previous one left off.
+		 */
+		handle->cipher.iv = NULL;
 	}
 
 	return totallen;
