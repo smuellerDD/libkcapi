@@ -423,6 +423,8 @@ ssize_t _kcapi_common_vmsplice_chunk(struct kcapi_handle *handle,
 int _kcapi_aio_read_all(struct kcapi_handle *handle, size_t toread,
 			struct timespec *timeout)
 {
+	int err = 0;
+
 	if (toread > KCAPI_AIO_CONCURRENT)
 		return -EINVAL;
 
@@ -433,34 +435,26 @@ int _kcapi_aio_read_all(struct kcapi_handle *handle, size_t toread,
 				      events, timeout);
 
 		if (rc < 0)
-			return rc;
+			return err == 0 ? rc : err;
 
 		for (i = 0; i < rc; i++) {
 			struct iocb *cb;
 			uint64_t idx = events[i].data;
 
-			if (idx >= KCAPI_AIO_CONCURRENT)
-				return -EOVERFLOW;
-
-			/*
-			 * If one cipher operation fails, so will the entire
-			 * AIO operation
-			 */
-			if (events[i].res < 0) {
-				handle->aio.iocb_ret[idx] = events[i].res;
-				return (int)events[i].res;
+			if (idx >= KCAPI_AIO_CONCURRENT) {
+				if (err == 0)
+					err = -EOVERFLOW;
+				continue;
 			}
 
 			cb = (struct iocb *)(uintptr_t)events[i].obj;
 
-			/*
-			 * Older symmetric AIO implementations used a wrong
-			 * return code.
-			 */
-			if (events[i].res > 0) {
-				handle->aio.iocb_ret[idx] = events[i].res;
-			} else {
+			if (events[i].res == 0) {
 				handle->aio.iocb_ret[idx] = (__s64)cb->aio_nbytes;
+			} else {
+				handle->aio.iocb_ret[idx] = events[i].res;
+				if (events[i].res < 0 && err == 0)
+					err = (int)events[i].res;
 			}
 
 			cb->aio_fildes = 0;
@@ -468,7 +462,7 @@ int _kcapi_aio_read_all(struct kcapi_handle *handle, size_t toread,
 		toread -= (size_t)rc;
 	}
 
-	return 0;
+	return err;
 }
 
 int _kcapi_aio_send_iov(struct kcapi_handle *handle, struct iovec *iov,
@@ -544,6 +538,7 @@ int _kcapi_aio_read_iov(struct kcapi_handle *handle,
 		} else {
 			kcapi_dolog(KCAPI_LOG_ERR,
 				    "Could not sumbit AIO read\n");
+			_kcapi_aio_read_all(handle, (size_t)ret, NULL);
 			return -EIO;
 		}
 	}
