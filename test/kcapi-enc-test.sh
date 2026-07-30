@@ -321,9 +321,58 @@ test_gcm_enc()
 	fi
 }
 
+test_aead_zero_len()
+{
+	local aadlen=${#GCM_AAD}
+
+	aadlen=$(($aadlen/2))
+
+	: > ${TSTPREFIX}empty
+
+	# Encrypt zero-length plaintext
+	exec 10<${TSTPREFIX}gcm_key; run_app kcapi-enc --keyfd 10 -e -c "gcm(aes)" -i ${TSTPREFIX}empty -o ${TSTPREFIX}gcm_zero_ct --iv $GCM_IV --aad $GCM_AAD --taglen $GCM_TAGLEN
+	if [ $? -ne 0 ]
+	then
+		echo_fail "AEAD zero-length encryption failed"
+		return
+	fi
+
+	local ctsize=$(stat -c %s ${TSTPREFIX}gcm_zero_ct)
+	if [ $ctsize -eq 0 ]
+	then
+		echo_fail "AEAD zero-length encryption produced no output"
+		return
+	fi
+	echo_pass "AEAD zero-length GCM encrypt"
+
+	# Extract the tag from the encryption output
+	local tag=$(bin2hex_noaad ${TSTPREFIX}gcm_zero_ct $aadlen)
+
+	# Decrypt zero-length ciphertext with correct tag
+	exec 10<${TSTPREFIX}gcm_key; run_app kcapi-enc --keyfd 10 -d -c "gcm(aes)" -i ${TSTPREFIX}empty -o ${TSTPREFIX}gcm_zero_pt --iv $GCM_IV --aad $GCM_AAD --tag $tag
+	if [ $? -ne 0 ]
+	then
+		echo_fail "AEAD zero-length decryption with valid tag failed"
+		return
+	fi
+	echo_pass "AEAD zero-length GCM decrypt with valid tag"
+
+	# Decrypt zero-length ciphertext with wrong tag - must fail
+	exec 10<${TSTPREFIX}gcm_key; run_app kcapi-enc --keyfd 10 -d -c "gcm(aes)" -i ${TSTPREFIX}empty -o ${TSTPREFIX}gcm_zero_pt --iv $GCM_IV --aad $GCM_AAD --tag 00000000000000000000000000000000 -q
+
+	# 182 == -EBADMSG
+	if [ $? -eq 182 ]
+	then
+		echo_pass "AEAD zero-length GCM decrypt integrity violation"
+	else
+		echo_fail "AEAD zero-length GCM decrypt integrity violation not caught"
+	fi
+}
+
 init_setup
 test_gcm_enc
 test_ccm_dec
+test_aead_zero_len
 
 for i in 1 15 16 29 32 257 512 1023 16385 65535 65536 65537 99999 100000 100001
 do

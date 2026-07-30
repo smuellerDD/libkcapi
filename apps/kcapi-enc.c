@@ -704,6 +704,27 @@ static int cipher_op(struct kcapi_handle *handle, struct opt_data *opts)
 		}
 	}
 
+	/* AEAD with no input. Still generate/verify the tag */
+	if (opts->aad && !generated_bytes) {
+		outsize = outbufsize(handle, opts, 0);
+
+		ret = sendtag(handle, opts, tagbuf, tagtmpbuf);
+		if (ret)
+			goto out;
+
+		if (outfd != STDOUT_FD) {
+			ret = ftruncate(outfd, (off_t)outsize);
+			if (ret)
+				goto out;
+		}
+
+		ret = return_data(handle, opts, outfd, outsize, 0, 0);
+		if (ret < 0)
+			goto out;
+
+		generated_bytes += (unsigned int)ret;
+	}
+
 out:
 	if (inmem && inmem != MAP_FAILED)
 		munmap(inmem, (size_t)insb.st_size);
