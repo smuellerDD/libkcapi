@@ -436,6 +436,8 @@ int _kcapi_aio_read_all(struct kcapi_handle *handle, size_t toread,
 
 		if (rc < 0)
 			return err == 0 ? rc : err;
+		if (rc == 0)
+			return err == 0 ? -ETIMEDOUT : err;
 
 		for (i = 0; i < rc; i++) {
 			struct iocb *cb;
@@ -509,7 +511,7 @@ int _kcapi_aio_read_iov(struct kcapi_handle *handle,
 			timeout.tv_sec = 0;
 			timeout.tv_nsec = 10000;
 			ret = _kcapi_aio_read_all(handle, iovlen, &timeout);
-			if (ret < 0)
+			if (ret < 0 && ret != -ETIMEDOUT)
 				return ret;
 		}
 
