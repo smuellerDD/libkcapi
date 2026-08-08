@@ -1,4 +1,4 @@
-Changes 1.5.1-prerelease:
+Changes 1.5.1:
  * remove tests of ansi_cprng
  * apply change suggestions derived from Claude code
  * kcapi-enc: add tag processing in decryption without ciphertext for completeness reason
