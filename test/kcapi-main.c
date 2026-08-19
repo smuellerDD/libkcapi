@@ -690,9 +690,9 @@ static int auxiliary_tests(void)
 	kcapi_md_destroy(handle);
 
 
-	if (aux_test_rng("drbg_nopr_hmac_sha256", NULL, 0))
+	if (aux_test_rng("drbg_nopr_hmac_sha512", NULL, 0))
 		ret++;
-	if (aux_test_rng("drbg_nopr_ctr_aes256", NULL, 0))
+	if (aux_test_rng("stdrng", NULL, 0))
 		ret++;
 
 	return ret;
