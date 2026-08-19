@@ -2,7 +2,7 @@ name: checks
 on: [push, pull_request]
 jobs:
     build:
-        runs-on: ubuntu-22.04
+        runs-on: ubuntu-26.04
         strategy:
             fail-fast: false
             matrix:
@@ -13,46 +13,55 @@ jobs:
                 - { cc: gcc }
                 - { cc: gcc, env: "CFLAGS=-flto\nLDFLAGS=-flto" }
                 -
-                    cc: gcc-9
+                    cc: gcc-12
                     env: |
                         NO_32BIT_TEST=1
-                        AR=gcc-ar-9
-                        NM=gcc-nm-9
-                        RANLIB=gcc-ranlib-9
+                        AR=gcc-ar-12
+                        NM=gcc-nm-12
+                        RANLIB=gcc-ranlib-12
                 -
-                    cc: gcc-10
+                    cc: gcc-12
                     env: |
                         NO_32BIT_TEST=1
-                        AR=gcc-ar-10
-                        NM=gcc-nm-10
-                        RANLIB=gcc-ranlib-10
-                -
-                    cc: gcc-10
-                    env: |
-                        NO_32BIT_TEST=1
-                        AR=gcc-ar-10
-                        NM=gcc-nm-10
-                        RANLIB=gcc-ranlib-10
+                        AR=gcc-ar-12
+                        NM=gcc-nm-12
+                        RANLIB=gcc-ranlib-12
                         CFLAGS=-flto
                         LDFLAGS=-flto
                 -
-                    cc: gcc-12
+                    cc: gcc-13
                     env: |
                         NO_32BIT_TEST=1
-                        AR=gcc-ar-12
-                        NM=gcc-nm-12
-                        RANLIB=gcc-ranlib-12
+                        AR=gcc-ar-13
+                        NM=gcc-nm-13
+                        RANLIB=gcc-ranlib-13
                 -
-                    cc: gcc-12
+                    cc: gcc-13
                     env: |
                         NO_32BIT_TEST=1
-                        AR=gcc-ar-12
-                        NM=gcc-nm-12
-                        RANLIB=gcc-ranlib-12
+                        AR=gcc-ar-13
+                        NM=gcc-nm-13
+                        RANLIB=gcc-ranlib-13
+                        CFLAGS=-flto
+                        LDFLAGS=-flto
+                -
+                    cc: gcc-14
+                    env: |
+                        NO_32BIT_TEST=1
+                        AR=gcc-ar-14
+                        NM=gcc-nm-14
+                        RANLIB=gcc-ranlib-14
+                -
+                    cc: gcc-14
+                    env: |
+                        NO_32BIT_TEST=1
+                        AR=gcc-ar-14
+                        NM=gcc-nm-14
+                        RANLIB=gcc-ranlib-14
                         CFLAGS=-flto
                         LDFLAGS=-flto
         steps:
-        - uses: actions/checkout@v2
+        - uses: actions/checkout@v7
         - name: Install dependencies
           run: |
             sudo apt-get update -y
