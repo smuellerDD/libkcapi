@@ -1,5 +1,6 @@
 Changes 1.5.2-prerelease:
  * fix AIO requests left in flight after a partial io_submit
+ * fix error handling of io_getevents
 
 Changes 1.5.1:
  * remove tests of ansi_cprng

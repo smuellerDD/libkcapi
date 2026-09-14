@@ -434,8 +434,26 @@ int _kcapi_aio_read_all(struct kcapi_handle *handle, size_t toread,
 		int rc = io_getevents(handle->aio.aio_ctx, 1, (long)toread,
 				      events, timeout);
 
-		if (rc < 0)
+		if (rc < 0) {
+			/*
+			 * io_getevents is the raw system call which reports an
+			 * error as -1 with errno set. Only the fallback which
+			 * is compiled in when the system call is unavailable
+			 * returns a negative errno value directly.
+			 */
+			if (rc == -1)
+				rc = -errno;
+
+			/*
+			 * The requests are still in flight, i.e. the kernel may
+			 * still write to the caller's buffers. Wait again
+			 * instead of handing them back to the caller.
+			 */
+			if (rc == -EINTR)
+				continue;
+
 			return err == 0 ? rc : err;
+		}
 		if (rc == 0)
 			return err == 0 ? -ETIMEDOUT : err;
 
