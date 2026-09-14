@@ -533,6 +533,20 @@ int _kcapi_aio_read_iov(struct kcapi_handle *handle,
 
 	ret = io_submit(handle->aio.aio_ctx, (long)iovlen, handle->aio.ciopp);
 	if ((uint32_t)ret != iovlen) {
+		size_t submitted = (ret > 0) ? (size_t)ret : (size_t)0;
+
+		/*
+		 * The requests which were not accepted by the kernel will
+		 * never be completed. Release their IOCBs, as otherwise they
+		 * are considered to be in flight for the lifetime of the
+		 * handle and any later use of that handle waits for a
+		 * completion which cannot arrive.
+		 */
+		for (i = submitted; i < iovlen; i++) {
+			handle->aio.cio[i].aio_fildes = 0;
+			handle->aio.iocb_ret[i] = 0;
+		}
+
 		if (ret < 0) {
 			ret = -errno;
 			kcapi_dolog(KCAPI_LOG_ERR, "io_read Error: %d\n", ret);
@@ -540,7 +554,7 @@ int _kcapi_aio_read_iov(struct kcapi_handle *handle,
 		} else {
 			kcapi_dolog(KCAPI_LOG_ERR,
 				    "Could not sumbit AIO read\n");
-			_kcapi_aio_read_all(handle, (size_t)ret, NULL);
+			_kcapi_aio_read_all(handle, submitted, NULL);
 			return -EIO;
 		}
 	}
